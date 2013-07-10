@@ -25,6 +25,11 @@
     [[foo "foo" 1]]
     (println "index " foo)))
 
+(defn -idxstats [args] "Usage :todo")
+(defn -merge [args] "Usage :todo")
+(defn -mpileup [args] "Usage :todo")
+(defn -tview [args] "Usage :todo")
+
 (defn -main [& args]
   (let [[subcmd & args] args]
     (condp = subcmd

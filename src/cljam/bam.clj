@@ -1,5 +1,5 @@
 (ns cljam.bam
-  :use [clojure.java.io :only (file reader writer)])
+  (:use [clojure.java.io :only (file reader writer)]))
 
 (defrecord Bam1Core
     [tid pos bin qual l_qname flag n-cigar l-qseq mtid mpos isize])

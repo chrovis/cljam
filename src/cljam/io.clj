@@ -1,8 +1,11 @@
 (ns cljam.io
+  (:use [cljam.util :only [reg2bin]])
   (:require [clojure.string :as str]
             [clojure.java.io :only (file reader) :as io]
-            [cljam.sam :as sam])
+            [cljam.sam :as sam]
+            [cljam.bam :as bam])
   (:import (java.io DataOutputStream FileOutputStream)
+           (java.nio ByteBuffer ByteOrder)
            net.sf.samtools.util.BlockCompressedOutputStream
            (cljam.sam Sam SamHeader SamAlignment)))
 
@@ -33,10 +36,8 @@
     nil))
 
 (defn- stringify-header [headers]
-  (->> (map #(stringify-header-map %) headers)
+  (->> (map #(sam/stringify %) headers)
        (str/join \newline)))
-
-(def fixed-block-size 32)
 
 ;;; TODO
 (defn slurp-bam
@@ -44,21 +45,87 @@
   [bam-file]
   nil)
 
-;; (defn spit-bam
-;;   "Opposite of slurp-bam. Opens bam-file with writer, writes bam headers and alignments, then closes bam-file."
-;;   [bam-file sam]
-;;   (with-open [w (DataOutputStream. (BlockCompressedOutputStream. bam-file))]
-;;     ;; header
-;;     (.write w (.getBytes "BAM\1"))
-;;     (.write w (.getBytes (stringify-header (:header sam))))
-;;     (.write w (.getBytes "\n"))
-;;     ;; alignments
-;;     (doseq [alignment-map (:alignments sam)]
-;;       (.write w (+ fixed-block-size     ; TODO
-;;                    (count (:RNAME alignment-map))
-;;                    1
-;;                    (* cigar-length 4)
-;;                    (/ (+ read-length 1) 2)
-;;                    read-length))
-;;       (.write w ))
-;;     nil))
+(def byte-buffer (ByteBuffer/allocate 8))
+(.order byte-buffer ByteOrder/LITTLE_ENDIAN)
+
+(defn write-int [writer value]
+  (.clear byte-buffer)
+  (.putInt byte-buffer value)
+  (.write writer (.array byte-buffer) 0 4))
+
+(defn string-to-bytes [s]
+  (let [buf (byte-array (count s))]
+    (.getBytes s 0 (count buf) buf 0)
+    buf))
+
+(defn write-string [writer s]
+  (let [data-bytes (string-to-bytes s)]
+   (.write writer data-bytes 0 (count data-bytes))))
+
+(defn write-bytes [writer b]
+  (.write writer b 0 (count b)))
+
+(defn write-ubyte [writer value]
+  (.clear byte-buffer)
+  (.putShort byte-buffer value)
+  (.write writer (.array byte-buffer) 0 1))
+
+(defn write-ushort [writer value]
+  (.clear byte-buffer)
+  (.putInt byte-buffer value)
+  (.write writer (.array byte-buffer) 0 2))
+
+(defn spit-bam
+  "Opposite of slurp-bam. Opens bam-file with writer, writes bam headers and alignments, then closes bam-file."
+  [bam-file sam]
+  (with-open [w (DataOutputStream. (BlockCompressedOutputStream. bam-file))]
+    ;; header
+    (write-bytes w (.getBytes bam/bam-magic)) ; magic
+    (let [header (str (stringify-header (:header sam)) \newline)]
+      (write-int w (count header))
+      (write-string w header))
+    (write-int w (count (:header sam)))
+
+    ;; list of reference information
+    (doseq [sh (:header sam)]
+      (write-int w (inc (count (:SN (:SQ sh)))))
+      (write-string w (:SN (:SQ sh)))
+      (write-bytes w (byte-array 1 (byte 0)))
+      (write-int w (Integer/parseInt (:LN (:SQ sh)))))
+
+    ;; list of alignments
+    (doseq [sa (:alignments sam)]
+      (write-int w (bam/get-block-size sa))
+
+      (write-int w (bam/get-ref-id sa))
+
+      (write-int w (bam/get-pos sa))
+
+      ;; (write-int w (bam/get-bin-mq-nl sa))
+      (write-ubyte w (short (inc (count (:qname sa)))))
+      (write-ubyte w (short (:mapq sa)))
+      (write-ushort w (reg2bin (:pos sa) (bam/get-end sa)))
+
+      ;; (write-int w (bam/get-flag-nc sa))
+      (write-ushort w (bam/count-cigar sa))
+      (write-ushort w (:flag sa))
+
+      (write-int w (bam/get-l-seq sa))
+
+      (write-int w (bam/get-next-ref-id sa))
+
+      (write-int w (bam/get-next-pos sa))
+
+      (write-int w (bam/get-tlen sa))
+
+      (write-string w (bam/get-read-name sa))
+      (write-bytes w (byte-array 1 (byte 0)))
+
+      (doseq [cigar (bam/get-cigar sa)]
+        (write-int w cigar))
+
+      (let [data (bam/get-seq sa)]
+        (write-bytes w data))
+
+      (write-bytes w (bam/get-qual sa)))
+    nil))

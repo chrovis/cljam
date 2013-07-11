@@ -12,17 +12,18 @@
 ;;; parse
 
 (defn- parse-header-keyvalues [keyvalues]
-  (map (fn [kv]
-         (let [[k v] (str/split kv #":")]
-           {(keyword k) v}))
-       keyvalues))
+  (->> (map (fn [kv]
+              (let [[k v] (str/split kv #":")]
+                {(keyword k) v}))
+            keyvalues)
+       (apply merge)))
 
 (defn parse-header [line]
   "Parse a line, returning a SamHeader record."
   (let [[type & keyvalues] (str/split line #"\t")]
     (assoc (SamHeader.)
       (keyword (subs type 1))
-      (vec (parse-header-keyvalues keyvalues)))))
+      (parse-header-keyvalues keyvalues))))
 
 (defn- parse-optional-fields [options]
   (map (fn [op]
@@ -48,11 +49,11 @@
 
 ;;; stringify
 
-(defn- stringify-header-keyvalues [kv-vec]
+(defn- stringify-header-keyvalues [kv-map]
   (->> (map (fn [kv]
-              (let [[k v] (first (seq kv))]
+              (let [[k v] (seq kv)]
                 (str (name k) \: v)))
-            kv-vec)
+            kv-map)
        (str/join \tab)))
 
 (defn- stringify-optional-fields [options]
@@ -81,6 +82,6 @@
                       (:pnext sa)
                       (:tlen  sa)
                       (:seq   sa)
-                      (:suql  sa)
+                      (:qual  sa)
                       (stringify-optional-fields (:options sa))])
       str/trim))

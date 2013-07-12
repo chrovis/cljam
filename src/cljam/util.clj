@@ -1,7 +1,10 @@
 (ns cljam.util
   (:import net.sf.samtools.util.StringUtil))
 
-(defn byte-cast [n]
+(defn ubyte
+  "Casts to byte avoiding an error about out of range for byte."
+  [n]
+  {:pre [(>= n 0) (<= n 255)]}
   (byte (if (< n 0x80) n (- n 0x100))))
 
 (defn string-to-bytes [s]
@@ -10,7 +13,8 @@
     buf))
 
 (defn reg-to-bin
-  "Calculate bin given an alignment covering [beg,end) (zero-based, half-close-half-open)."
+  "Calculates bin given an alignment covering [beg,end) (zero-based, half-close-half-open),
+the same as reg2bin on samtools."
   [beg end]
   (let [end (dec end)]
     (cond
@@ -34,44 +38,44 @@
 (defn char-to-compressed-base-low [base]
   (condp (fn [case-vec ch]
            (some #(= ch %) case-vec)) base
-    [\=]       (byte-cast 0x0)
-    [\a \A]    (byte-cast 0x1)
-    [\c \C]    (byte-cast 0x2)
-    [\g \G]    (byte-cast 0x4)
-    [\t \T]    (byte-cast 0x8)
-    [\n \N \.] (byte-cast 0xf)
+    [\=]       (ubyte 0x0)
+    [\a \A]    (ubyte 0x1)
+    [\c \C]    (ubyte 0x2)
+    [\g \G]    (ubyte 0x4)
+    [\t \T]    (ubyte 0x8)
+    [\n \N \.] (ubyte 0xf)
     ;; IUPAC ambigui-castt0xy codes
-    [\m \M]    (byte-cast 0x3)
-    [\r \R]    (byte-cast 0x5)
-    [\s \S]    (byte-cast 0x6)
-    [\v \V]    (byte-cast 0x7)
-    [\w \W]    (byte-cast 0x9)
-    [\y \Y]    (byte-cast 0xa)
-    [\h \H]    (byte-cast 0xb)
-    [\k \K]    (byte-cast 0xc)
-    [\d \D]    (byte-cast 0xd)
-    [\b \B]    (byte-cast 0xe)))
+    [\m \M]    (ubyte 0x3)
+    [\r \R]    (ubyte 0x5)
+    [\s \S]    (ubyte 0x6)
+    [\v \V]    (ubyte 0x7)
+    [\w \W]    (ubyte 0x9)
+    [\y \Y]    (ubyte 0xa)
+    [\h \H]    (ubyte 0xb)
+    [\k \K]    (ubyte 0xc)
+    [\d \D]    (ubyte 0xd)
+    [\b \B]    (ubyte 0xe)))
 
 (defn char-to-compressed-base-high [base]
   (condp (fn [case-vec ch]
            (some #(= ch %) case-vec)) base
-    [\=]       (byte-cast 0x0)
-    [\a \A]    (byte-cast 0x10)
-    [\c \C]    (byte-cast 0x20)
-    [\g \G]    (byte-cast 0x40)
-    [\t \T]    (byte-cast 0x80)
-    [\n \N \.] (byte-cast 0xf0)
+    [\=]       (ubyte 0x0)
+    [\a \A]    (ubyte 0x10)
+    [\c \C]    (ubyte 0x20)
+    [\g \G]    (ubyte 0x40)
+    [\t \T]    (ubyte 0x80)
+    [\n \N \.] (ubyte 0xf0)
     ;; IUPAC ambigui-castty codes
-    [\m \M]    (byte-cast 0x30)
-    [\r \R]    (byte-cast 0x50)
-    [\s \S]    (byte-cast 0x60)
-    [\v \V]    (byte-cast 0x70)
-    [\w \W]    (byte-cast 0x90)
-    [\y \Y]    (byte-cast 0xa0)
-    [\h \H]    (byte-cast 0xb0)
-    [\k \K]    (byte-cast 0xc0)
-    [\d \D]    (byte-cast 0xd0)
-    [\b \B]    (byte-cast 0xe0)))
+    [\m \M]    (ubyte 0x30)
+    [\r \R]    (ubyte 0x50)
+    [\s \S]    (ubyte 0x60)
+    [\v \V]    (ubyte 0x70)
+    [\w \W]    (ubyte 0x90)
+    [\y \Y]    (ubyte 0xa0)
+    [\h \H]    (ubyte 0xb0)
+    [\k \K]    (ubyte 0xc0)
+    [\d \D]    (ubyte 0xd0)
+    [\b \B]    (ubyte 0xe0)))
 
 (defn normalize-bases [bases]
   (map-indexed (fn [idx _]

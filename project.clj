@@ -6,4 +6,5 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.utgenome.thirdparty/picard "1.86p"]]
+  :profiles {:dev {:dependencies [[midje "1.5.1"]]}}
   :main cljam.core)

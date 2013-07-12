@@ -1,6 +1,6 @@
 (ns cljam.bam
   (:use [cljam.util :only [fastq-to-phred bytes-to-compressed-bases string-to-bytes
-                           normalize-bases byte-cast]])
+                           normalize-bases ubyte]])
   (:import [net.sf.samtools TextCigarCodec CigarElement CigarOperator]))
 
 (defn index [] nil)
@@ -60,5 +60,5 @@
 
 (defn get-qual [sam-alignment]
   (if (= (:qual sam-alignment "*"))
-    (byte-array (count (:seq sam-alignment)) (byte-cast 0xff))
+    (byte-array (count (:seq sam-alignment)) (ubyte 0xff))
     (fastq-to-phred (:qual sam-alignment))))

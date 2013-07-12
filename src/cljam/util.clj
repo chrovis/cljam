@@ -1,6 +1,9 @@
 (ns cljam.util
   (:import net.sf.samtools.util.StringUtil))
 
+(defn byte-cast [n]
+  (byte (if (< n 0x80) n (- n 0x100))))
+
 (defn reg2bin [beg end]
   (let [end (dec end)]
     (cond
@@ -25,12 +28,10 @@
 
 (defmethod fastq-to-phred String
   [fastq]
-  (let [length (count fastq)
-        scores (byte-array length)]
-    (map-indexed (fn [idx _]
-                   (aset scores idx (fastq-to-phred (.charAt fastq idx))))
-                 (range length))
-    scores))
+  (let [length (count fastq)]
+    (-> (for [i (range length)]
+          (fastq-to-phred (.charAt fastq i)))
+        (byte-array))))
 
 (defmethod fastq-to-phred Character
   [ch]
@@ -43,41 +44,41 @@
     [\=]       (byte 0)
     [\a \A]    (byte 1)
     [\c \C]    (byte 2)
-    [\g \G]    (byte 3)
-    [\t \T]    (byte 4)
-    [\n \N \.] (byte 5)
+    [\g \G]    (byte 4)
+    [\t \T]    (byte 8)
+    [\n \N \.] (byte 15)
     ;; IUPAC ambiguity codes
-    [\m \M]    (byte 6)
-    [\r \R]    (byte 7)
-    [\s \S]    (byte 8)
-    [\v \V]    (byte 9)
-    [\w \W]    (byte 10)
-    [\y \Y]    (byte 11)
-    [\h \H]    (byte 12)
-    [\k \K]    (byte 13)
-    [\d \D]    (byte 14)
-    [\b \B]    (byte 15)))
+    [\m \M]    (byte 3)
+    [\r \R]    (byte 5)
+    [\s \S]    (byte 6)
+    [\v \V]    (byte 7)
+    [\w \W]    (byte 9)
+    [\y \Y]    (byte 10)
+    [\h \H]    (byte 11)
+    [\k \K]    (byte 12)
+    [\d \D]    (byte 13)
+    [\b \B]    (byte 14)))
 
 (defn char-to-compressed-base-high [base]
   (condp (fn [case-vec ch]
            (some #(= ch %) case-vec)) base
-    [\=]       (byte (bit-shift-left (byte 0) 4))
-    [\a \A]    (byte (bit-shift-left (byte 1) 4))
-    [\c \C]    (byte (bit-shift-left (byte 2) 4))
-    [\g \G]    (byte (bit-shift-left (byte 3) 4))
-    [\t \T]    (byte (bit-shift-left (byte 4) 4))
-    [\n \N \.] (byte (bit-shift-left (byte 5) 4))
-    ;; IUPAC ambiguity codes
-    [\m \M]    (byte (bit-shift-left (byte 6) 4))
-    [\r \R]    (byte (bit-shift-left (byte 7) 4))
-    [\s \S]    (byte (bit-shift-left (byte 8) 4))
-    [\v \V]    (byte (bit-shift-left (byte 9) 4))
-    [\w \W]    (byte (bit-shift-left (byte 10) 4))
-    [\y \Y]    (byte (bit-shift-left (byte 11) 4))
-    [\h \H]    (byte (bit-shift-left (byte 12) 4))
-    [\k \K]    (byte (bit-shift-left (byte 13) 4))
-    [\d \D]    (byte (bit-shift-left (byte 14) 4))
-    [\b \B]    (byte (bit-shift-left (byte 15) 4))))
+    [\=]       (byte-cast 0x0)
+    [\a \A]    (byte-cast 0x10)
+    [\c \C]    (byte-cast 0x20)
+    [\g \G]    (byte-cast 0x40)
+    [\t \T]    (byte-cast 0x80)
+    [\n \N \.] (byte-cast 0xf0)
+    ;; IUPAC ambigui-castty codes
+    [\m \M]    (byte-cast 0x30)
+    [\r \R]    (byte-cast 0x50)
+    [\s \S]    (byte-cast 0x60)
+    [\v \V]    (byte-cast 0x70)
+    [\w \W]    (byte-cast 0x90)
+    [\y \Y]    (byte-cast 0xa0)
+    [\h \H]    (byte-cast 0xb0)
+    [\k \K]    (byte-cast 0xc0)
+    [\d \D]    (byte-cast 0xd0)
+    [\b \B]    (byte-cast 0xe0)))
 
 (defn string-to-bytes [s]
   (let [buf (byte-array (count s))]
@@ -94,13 +95,9 @@
 
 (defn bytes-to-compressed-bases [read-bases]
   (let [rlen (count read-bases)
-        len (/ (inc rlen) 2)
-        cbases (byte-array len)]
-   (map-indexed (fn [idx _]
-                  (aset cbases (/ idx 2)
-                        (byte (bit-or (char-to-compressed-base-high (nth read-bases (dec idx)))
-                                      (char-to-compressed-base-low (nth read-bases idx))))))
-                (filter odd? (range 1 (count read-bases))))
+        aaa (for [i (range 1 rlen) :when (odd? i)]
+              (byte (bit-or (char-to-compressed-base-high (char (nth read-bases (dec i))))
+                            (char-to-compressed-base-low (char (nth read-bases i))))))]
    (if (odd? rlen)
-     (aset cbases (/ rlen 2) (char-to-compressed-base-high (char (nth read-bases (dec rlen))))))
-   cbases))
+     (byte-array (conj (vec aaa) (char-to-compressed-base-high (char (nth read-bases (dec rlen))))))
+     (byte-array aaa))))

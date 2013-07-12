@@ -1,5 +1,5 @@
 (ns cljam.bam
-  (:use [cljam.util :only [reg2bin fastq-to-phred bytes-to-compressed-bases string-to-bytes
+  (:use [cljam.util :only [fastq-to-phred bytes-to-compressed-bases string-to-bytes
                            normalize-bases byte-cast]])
   (:import [net.sf.samtools TextCigarCodec CigarElement CigarOperator]))
 
@@ -29,15 +29,6 @@
   (- (+ (:pos sam-alignment)
         (.getReferenceLength (.decode (TextCigarCodec/getSingleton) (:cigar sam-alignment))))
      1))
-
-(defn get-bin-mq-nl [sam-alignment]
-  (bit-or (bit-shift-left (reg2bin (:pos sam-alignment) (get-end sam-alignment)) 16)
-          (bit-shift-left (:mapq sam-alignment) 8)
-          (inc (count (:qname sam-alignment)))))
-
-(defn get-flag-nc [sam-alignment]
-  (bit-or (bit-shift-left (:flag sam-alignment) 16)
-          (count-cigar sam-alignment)))
 
 (defn get-l-seq [sam-alignment]
   (count (:seq sam-alignment)))

@@ -1,12 +1,20 @@
 (ns cljam.core
   (:use [clojure.contrib.command-line :only (with-command-line)])
-  (:require [cljam.bam :as bam]))
+  (:require [cljam.io :as io]
+            [cljam.sam :as sam]
+            [cljam.bam :as bam]))
 
 (defn -view [args]
   (with-command-line args
-    "Usage: todo"
-    [[foo "foo" 1]]
-    (println "view " foo)))
+    "Usage: view [--header] sam|bam"
+    [[header? "Include header in the output" false]
+     file]
+    (let [asam (io/slurp-sam (first file))]
+      (when header?
+        (doseq [sh (:header asam)]
+          (println (sam/stringify sh))))
+      (doseq [sa (:alignments asam)]
+        (println (sam/stringify sa))))))
 
 (defn -sort [args]
   (with-command-line args

@@ -1,18 +1,43 @@
 (ns cljam.io
-  (:use [cljam.util :only [reg2bin]])
+  (:use [clojure.java.io :only [reader writer]]
+        [cljam.util :only [reg-to-bin string-to-bytes]])
   (:require [clojure.string :as str]
-            [clojure.java.io :only (file reader) :as io]
             [cljam.sam :as sam]
             [cljam.bam :as bam])
-  (:import (java.io DataOutputStream FileOutputStream)
+  (:import java.io.DataOutputStream
            (java.nio ByteBuffer ByteOrder)
            net.sf.samtools.util.BlockCompressedOutputStream
            (cljam.sam Sam SamHeader SamAlignment)))
 
+(def byte-buffer (ByteBuffer/allocate 8))
+(.order byte-buffer ByteOrder/LITTLE_ENDIAN)
+
+(defn- write-int [writer value]
+  (.clear byte-buffer)
+  (.putInt byte-buffer value)
+  (.write writer (.array byte-buffer) 0 4))
+
+(defn- write-string [writer s]
+  (let [data-bytes (string-to-bytes s)]
+   (.write writer data-bytes 0 (count data-bytes))))
+
+(defn- write-bytes [writer b]
+  (.write writer b 0 (count b)))
+
+(defn- write-ubyte [writer value]
+  (.clear byte-buffer)
+  (.putShort byte-buffer value)
+  (.write writer (.array byte-buffer) 0 1))
+
+(defn- write-ushort [writer value]
+  (.clear byte-buffer)
+  (.putInt byte-buffer value)
+  (.write writer (.array byte-buffer) 0 2))
+
 (defn slurp-sam
   "Opens a reader on sam-file and reads all its headers and alignments, returning a map about sam records."
   [sam-file]
-  (with-open [r (io/reader sam-file)]
+  (with-open [r (reader sam-file)]
     (loop [sam (Sam. [] [])
            line (.readLine r)]
       (if (nil? line)
@@ -26,7 +51,7 @@
 (defn spit-sam
   "Opposite of slurp-sam. Opens sam-file with writer, writes sam headers and alignments, then closes sam-file."
   [sam-file sam]
-  (with-open [w (io/writer sam-file)]
+  (with-open [w (writer sam-file)]
     (doseq [sh (:header sam)]
       (.write w (sam/stringify sh))
       (.newLine w))
@@ -44,36 +69,6 @@
   "Opens a reader on bam-file and reads all its headers and alignments, returning a map about sam records."
   [bam-file]
   nil)
-
-(def byte-buffer (ByteBuffer/allocate 8))
-(.order byte-buffer ByteOrder/LITTLE_ENDIAN)
-
-(defn write-int [writer value]
-  (.clear byte-buffer)
-  (.putInt byte-buffer value)
-  (.write writer (.array byte-buffer) 0 4))
-
-(defn string-to-bytes [s]
-  (let [buf (byte-array (count s))]
-    (.getBytes s 0 (count buf) buf 0)
-    buf))
-
-(defn write-string [writer s]
-  (let [data-bytes (string-to-bytes s)]
-   (.write writer data-bytes 0 (count data-bytes))))
-
-(defn write-bytes [writer b]
-  (.write writer b 0 (count b)))
-
-(defn write-ubyte [writer value]
-  (.clear byte-buffer)
-  (.putShort byte-buffer value)
-  (.write writer (.array byte-buffer) 0 1))
-
-(defn write-ushort [writer value]
-  (.clear byte-buffer)
-  (.putInt byte-buffer value)
-  (.write writer (.array byte-buffer) 0 2))
 
 (defn spit-bam
   "Opposite of slurp-bam. Opens bam-file with writer, writes bam headers and alignments, then closes bam-file."
@@ -101,12 +96,10 @@
 
       (write-int w (bam/get-pos sa))
 
-      ;; (write-int w (bam/get-bin-mq-nl sa))
       (write-ubyte w (short (inc (count (:qname sa)))))
       (write-ubyte w (short (:mapq sa)))
-      (write-ushort w (reg2bin (:pos sa) (bam/get-end sa)))
+      (write-ushort w (reg-to-bin (:pos sa) (bam/get-end sa)))
 
-      ;; (write-int w (bam/get-flag-nc sa))
       (write-ushort w (bam/count-cigar sa))
       (write-ushort w (:flag sa))
 

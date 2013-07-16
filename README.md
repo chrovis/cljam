@@ -1,10 +1,22 @@
 # cljam
 
-A Clojure library designed to ... well, that part is up to you.
+A DNA Sequence Alignment/Map (SAM) library for Clojure.
 
 ## Usage
 
-FIXME
+Use commandline tools on leiningen. For example,
+
+    $ lein run view --header test/resources/test.sam
+
+## Test
+
+Add the following to `.lein/profiles.clj`, and install lein-midje plugin.
+
+    {:user {:plugins [[lein-midje "3.0.0"]]}}
+
+Run all test.
+
+    $ lein midje
 
 ## License
 

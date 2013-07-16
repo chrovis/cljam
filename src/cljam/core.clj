@@ -45,14 +45,14 @@
 (defn -main [& args]
   (let [[subcmd & args] args]
     (condp = subcmd
-      "view" (-view args)
-      "sort" (-sort args)
-      "index" (-index args)
+      "view"     (-view     args)
+      "sort"     (-sort     args)
+      "index"    (-index    args)
       "idxstats" (-idxstats args)
-      "merge" (-merge args)
-      "faidx" (-merge args)
-      "pileup" (-pileup args)
-      "mpileup" (-mpileup args)
-      "tview" (-tview args)
+      "merge"    (-merge    args)
+      "faidx"    (-merge    args)
+      "pileup"   (-pileup   args)
+      "mpileup"  (-mpileup  args)
+      "tview"    (-tview    args)
       (println subcmd "is invalid subcommand")))
   nil)

@@ -44,7 +44,7 @@ the same as reg2bin on samtools."
     [\g \G]    (ubyte 0x4)
     [\t \T]    (ubyte 0x8)
     [\n \N \.] (ubyte 0xf)
-    ;; IUPAC ambigui-castt0xy codes
+    ;; IUPAC ambiguity codes
     [\m \M]    (ubyte 0x3)
     [\r \R]    (ubyte 0x5)
     [\s \S]    (ubyte 0x6)
@@ -65,7 +65,7 @@ the same as reg2bin on samtools."
     [\g \G]    (ubyte 0x40)
     [\t \T]    (ubyte 0x80)
     [\n \N \.] (ubyte 0xf0)
-    ;; IUPAC ambigui-castty codes
+    ;; IUPAC ambiguity codes
     [\m \M]    (ubyte 0x30)
     [\r \R]    (ubyte 0x50)
     [\s \S]    (ubyte 0x60)
@@ -85,14 +85,64 @@ the same as reg2bin on samtools."
                bases)
   bases)
 
+(defn compressed-base->char-low [base]
+  (condp = (ubyte (bit-and base 0xf))
+    (ubyte 0x0) \=
+    (ubyte 0x1) \A
+    (ubyte 0x2) \C
+    (ubyte 0x4) \G
+    (ubyte 0x8) \T
+    (ubyte 0xf) \N
+    ;; IUPAC abiguity codes
+    (ubyte 0x3) \M
+    (ubyte 0x5) \R
+    (ubyte 0x6) \S
+    (ubyte 0x7) \V
+    (ubyte 0x9) \W
+    (ubyte 0xa) \Y
+    (ubyte 0xb) \H
+    (ubyte 0xc) \K
+    (ubyte 0xd) \D
+    (ubyte 0xe) \B))
+
+(defn compressed-base->char-high [base]
+  (condp = (ubyte (bit-and base 0xf0))
+    (ubyte 0x0)  \=
+    (ubyte 0x10) \A
+    (ubyte 0x20) \C
+    (ubyte 0x40) \G
+    (ubyte 0x80) \T
+    (ubyte 0xf0) \N
+    ;; IUPAC ambiguity codes
+    (ubyte 0x30) \M
+    (ubyte 0x50) \R
+    (ubyte 0x60) \S
+    (ubyte 0x70) \V
+    (ubyte 0x90) \W
+    (ubyte 0xa0) \Y
+    (ubyte 0xb0) \H
+    (ubyte 0xc0) \K
+    (ubyte 0xd0) \D
+    (ubyte 0xe0) \B))
+
 (defn bytes-to-compressed-bases [read-bases]
   (let [rlen (count read-bases)
         bases (for [i (range 1 rlen) :when (odd? i)]
-              (byte (bit-or (char-to-compressed-base-high (char (nth read-bases (dec i))))
-                            (char-to-compressed-base-low (char (nth read-bases i))))))]
+                (byte (bit-or (char-to-compressed-base-high (char (nth read-bases (dec i))))
+                              (char-to-compressed-base-low (char (nth read-bases i))))))]
    (if (odd? rlen)
      (byte-array (conj (vec bases) (char-to-compressed-base-high (char (nth read-bases (dec rlen))))))
      (byte-array bases))))
+
+(defn compressed-bases->chars [length compressed-bases compressed-offset]
+  (let [bases (->> (for [i (range 1 length) :when (odd? i)]
+                     (let [cidx (+ (/ i 2) compressed-offset)]
+                       [(compressed-base->char-high (nth compressed-bases cidx))
+                        (compressed-base->char-low  (nth compressed-bases cidx))]))
+                   (apply concat))]
+    (if (odd? length)
+      (conj (vec bases) (compressed-base->char-high (nth compressed-bases (+ (/ length 2) compressed-offset))))
+      bases)))
 
 (defmulti fastq-to-phred class)
 

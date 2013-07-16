@@ -1,16 +1,57 @@
 (ns cljam.io
-  (:use [clojure.java.io :only [reader writer]]
+  (:use [clojure.java.io :only [reader writer file]]
         [cljam.util :only [reg-to-bin string-to-bytes]])
   (:require [clojure.string :as str]
             [cljam.sam :as sam]
             [cljam.bam :as bam])
-  (:import java.io.DataOutputStream
-           (java.nio ByteBuffer ByteOrder)
-           net.sf.samtools.util.BlockCompressedOutputStream
-           (cljam.sam Sam SamHeader SamAlignment)))
+  (:import java.util.Arrays
+           [java.io DataInputStream DataOutputStream IOException]
+           [java.nio ByteBuffer ByteOrder]
+           [net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream]
+           [cljam.sam Sam SamHeader SamAlignment]))
 
 (def byte-buffer (ByteBuffer/allocate 8))
 (.order byte-buffer ByteOrder/LITTLE_ENDIAN)
+
+(defn- read-bytes
+  ([reader length]
+     (let [buf (byte-array length)]
+       (.read reader buf 0 length)
+       buf))
+  ([reader buffer offset length]
+     (loop [total-read 0]
+       (if (>= total-read length) nil
+           (do
+             (let [num-read (.read reader buffer (+ offset total-read) (- length total-read))]
+               (if (neg? num-read)
+                 (throw (Exception. "Premature EOF"))
+                 (recur (+ total-read num-read)))))))))
+
+(defn- read-byte-buffer [reader n]
+  {:pre (< n (.capacity byte-buffer))}
+  (read-bytes reader (.array byte-buffer) 0 n)
+  (.limit byte-buffer (.capacity byte-buffer))
+  (.position byte-buffer n))
+
+(defn- read-ubyte [reader]
+  (read-byte-buffer reader 1)
+  (.put byte-buffer (byte 0))
+  (.flip byte-buffer)
+  (.getShort byte-buffer))
+
+(defn- read-ushort [reader]
+  (read-byte-buffer reader 2)
+  (.putShort byte-buffer (short 0))
+  (.flip byte-buffer)
+  (.getInt byte-buffer))
+
+(defn- cljam.io/read-string [reader length]
+  (String. (read-bytes reader length) 0 0 length))
+
+(defn- read-int [reader]
+  (read-byte-buffer reader 4)
+  (.flip byte-buffer)
+  (.getInt byte-buffer))
 
 (defn- write-int [writer value]
   (.clear byte-buffer)
@@ -60,15 +101,56 @@
       (.newLine w))
     nil))
 
-(defn- stringify-header [headers]
-  (->> (map #(sam/stringify %) headers)
-       (str/join \newline)))
+(defn- parse-header [header]
+  (map #(sam/parse-header %) (str/split header #"\n")))
 
-;;; TODO
+(defn- parse-alignments [r]
+  (loop [alignments []]
+    (if (zero? (.available r))
+      alignments
+      (do
+        (let [block-size (read-int r)]
+          ;; (println "block-size: " block-size)
+          (if (< block-size bam/fixed-block-size)
+            (throw (Exception. (str "Invalid block size:" block-size)))))
+        (let [ref-id (read-int r)
+              rname "todo"
+              pos (inc (read-int r))
+              l-read-name (read-ubyte r)
+              mapq (read-ubyte r)
+              bin (read-ushort r)
+              n-cigar-op (read-ushort r)
+              flag (read-ushort r)
+              l-seq (read-int r)
+              rnext (read-int r)
+              pnext (inc (read-int r))
+              tlen (read-int r)
+              qname (cljam.io/read-string r (dec (int l-read-name)))
+              _ (read-bytes r 1)
+              cigar (bam/decode-cigar (read-bytes r (* n-cigar-op 4)))
+              seq (bam/decode-seq (read-bytes r (/ (inc l-seq) 2)) l-seq)
+              qual (read-bytes r (count seq))]
+          (recur (conj alignments (SamAlignment. qname flag rname pos mapq cigar rnext pnext tlen seq qual nil))))))))
+
 (defn slurp-bam
   "Opens a reader on bam-file and reads all its headers and alignments, returning a map about sam records."
   [bam-file]
-  nil)
+  (with-open [r (DataInputStream. (BlockCompressedInputStream. (file bam-file)))]
+    (if-not (Arrays/equals (read-bytes r 4) (.getBytes bam/bam-magic))
+      (throw (IOException. "Invalid BAM file header")))
+    (let [header (parse-header (cljam.io/read-string r (read-int r)))]
+      (let [cnt (read-int r)]
+        (loop [i cnt]
+          (if (zero? i)
+            nil
+            (do (cljam.io/read-string r  (read-int r))
+                (read-int r)
+                (recur (dec i))))))
+      (Sam. header (parse-alignments r)))))
+
+(defn- stringify-header [headers]
+  (->> (map #(sam/stringify %) headers)
+       (str/join \newline)))
 
 (defn spit-bam
   "Opposite of slurp-bam. Opens bam-file with writer, writes bam headers and alignments, then closes bam-file."
@@ -117,8 +199,7 @@
       (doseq [cigar (bam/get-cigar sa)]
         (write-int w cigar))
 
-      (let [data (bam/get-seq sa)]
-        (write-bytes w data))
+      (write-bytes w (bam/get-seq sa))
 
       (write-bytes w (bam/get-qual sa)))
     nil))

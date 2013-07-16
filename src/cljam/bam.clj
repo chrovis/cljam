@@ -1,7 +1,9 @@
 (ns cljam.bam
-  (:use [cljam.util :only [fastq-to-phred bytes-to-compressed-bases string-to-bytes
-                           normalize-bases ubyte]])
-  (:import [net.sf.samtools TextCigarCodec CigarElement CigarOperator]))
+  (:use [cljam.util :only [string-to-bytes normalize-bases ubyte
+                           fastq-to-phred bytes-to-compressed-bases compressed-bases->chars]])
+  (:require [cljam.binary-cigar-codec :as bcc])
+  (:import [net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator]
+           [java.nio ByteBuffer ByteOrder]))
 
 (defn index [] nil)
 
@@ -23,7 +25,7 @@
 (defn get-ref-id [sam-alignment] -1)
 
 (defn get-pos [sam-alignment]
-  (- (:pos sam-alignment) 1))
+  (dec (:pos sam-alignment)))
 
 (defn get-end [sam-alignment]
   (- (+ (:pos sam-alignment)
@@ -36,7 +38,7 @@
 (defn get-next-ref-id [sam-alignment] -1)
 
 (defn get-next-pos [sam-alignment]
-  (- (:pnext sam-alignment) 1))
+  (dec (:pnext sam-alignment)))
 
 (defn get-tlen [sam-alignment]
   (:tlen sam-alignment))
@@ -51,12 +53,20 @@
            (bit-or (bit-shift-left (.getLength cigar-element) 4) op)))
        (range (.numCigarElements cigar))))
 
+(defn decode-cigar [cigar-bytes]
+  (let [byte-buffer (ByteBuffer/wrap cigar-bytes)]
+    (.order byte-buffer ByteOrder/LITTLE_ENDIAN)
+    (str (bcc/decode byte-buffer))))
+
 (defn get-cigar [sam-alignment]
   (let [cigar (.decode (TextCigarCodec/getSingleton) (:cigar sam-alignment))]
     (encode-cigar cigar)))
 
 (defn get-seq [sam-alignment]
   (bytes-to-compressed-bases (normalize-bases (string-to-bytes (:seq sam-alignment)))))
+
+(defn decode-seq [seq-bytes length]
+  (apply str (compressed-bases->chars length seq-bytes 0)))
 
 (defn get-qual [sam-alignment]
   (if (= (:qual sam-alignment "*"))

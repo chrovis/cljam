@@ -1,6 +1,6 @@
 (ns cljam.io
   (:use [clojure.java.io :only [reader writer file]]
-        [cljam.util :only [reg-to-bin string-to-bytes]])
+        [cljam.util :only [reg->bin string->bytes]])
   (:require [clojure.string :as str]
             [cljam.sam :as sam]
             [cljam.bam :as bam])
@@ -59,7 +59,7 @@
   (.write writer (.array byte-buffer) 0 4))
 
 (defn- write-string [writer s]
-  (let [data-bytes (string-to-bytes s)]
+  (let [data-bytes (string->bytes s)]
    (.write writer data-bytes 0 (count data-bytes))))
 
 (defn- write-bytes [writer b]
@@ -180,7 +180,7 @@
 
       (write-ubyte w (short (inc (count (:qname sa)))))
       (write-ubyte w (short (:mapq sa)))
-      (write-ushort w (reg-to-bin (:pos sa) (bam/get-end sa)))
+      (write-ushort w (reg->bin (:pos sa) (bam/get-end sa)))
 
       (write-ushort w (bam/count-cigar sa))
       (write-ushort w (:flag sa))

@@ -1,4 +1,5 @@
 (ns cljam.io
+  (:refer-clojure :exclude [read-string slurp spit])
   (:use [clojure.java.io :only [reader writer file]]
         [cljam.util :only [reg->bin string->bytes]])
   (:require [clojure.string :as str]
@@ -76,7 +77,8 @@
   (.write writer (.array byte-buffer) 0 2))
 
 (defn slurp-sam
-  "Opens a reader on sam-file and reads all its headers and alignments, returning a map about sam records."
+  "Opens a reader on sam-file and reads all its headers and alignments,
+  returning a map about sam records."
   [sam-file]
   (with-open [r (reader sam-file)]
     (loop [sam (Sam. [] [])
@@ -90,7 +92,8 @@
          (.readLine r))))))
 
 (defn spit-sam
-  "Opposite of slurp-sam. Opens sam-file with writer, writes sam headers and alignments, then closes sam-file."
+  "Opposite of slurp-sam. Opens sam-file with writer, writes sam headers and
+  alignments, then closes the sam-file."
   [sam-file sam]
   (with-open [w (writer sam-file)]
     (doseq [sh (:header sam)]
@@ -133,7 +136,8 @@
           (recur (conj alignments (SamAlignment. qname flag rname pos mapq cigar rnext pnext tlen seq qual nil))))))))
 
 (defn slurp-bam
-  "Opens a reader on bam-file and reads all its headers and alignments, returning a map about sam records."
+  "Opens a reader on bam-file and reads all its headers and alignments,
+  returning a map about sam records."
   [bam-file]
   (with-open [r (DataInputStream. (BlockCompressedInputStream. (file bam-file)))]
     (if-not (Arrays/equals (read-bytes r 4) (.getBytes bam/bam-magic))
@@ -153,7 +157,8 @@
        (str/join \newline)))
 
 (defn spit-bam
-  "Opposite of slurp-bam. Opens bam-file with writer, writes bam headers and alignments, then closes bam-file."
+  "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and
+  alignments, then closes the bam-file."
   [bam-file sam]
   (with-open [w (DataOutputStream. (BlockCompressedOutputStream. bam-file))]
     ;; header
@@ -203,3 +208,21 @@
 
       (write-bytes w (bam/get-qual sa)))
     nil))
+
+(defn slurp
+  "Opens a reader on sam/bam-file and reads all its headers and alignments,
+  returning a map about sam records."
+  [f]
+  (condp #(re-find %1 %2) f
+      #"\.sam$" (slurp-sam f)
+      #"\.bam$" (slurp-bam f)
+      (throw (IllegalArgumentException. "Invalid file type"))))
+
+(defn spit
+  "Opposite of slurp. Opens sam/bam-file with writer, writes sam headers and
+  alignments, then closes the sam/bam-file."
+  [f sam]
+  (condp #(re-find %1 %2) f
+      #"\.sam$" (spit-sam f sam)
+      #"\.bam$" (spit-bam f sam)
+      (throw (IllegalArgumentException. "Invalid file type"))))

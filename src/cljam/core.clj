@@ -6,10 +6,14 @@
 
 (defn -view [args]
   (with-command-line args
-    "Usage: view [--header] sam|bam"
+    "Usage: view [--header] [--format <auto|sam|bam>] sam|bam"
     [[header? "Include header in the output" false]
+     [format "Specify input file format from <auto|sam|bam>" "auto"]
      file]
-    (let [asam (io/slurp-sam (first file))]
+    (let [asam (condp = format
+                   "auto" (io/slurp     (first file))
+                   "sam"  (io/slurp-sam (first file))
+                   "bam"  (io/slurp-bam (first file)))]
       (when header?
         (doseq [sh (:header asam)]
           (println (sam/stringify sh))))

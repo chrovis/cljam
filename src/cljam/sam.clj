@@ -65,13 +65,11 @@
 
 (defmulti stringify class)
 
-(defmethod stringify SamHeader
-  [sh]
+(defmethod stringify SamHeader [sh]
   (let [[type keyvalues] (first (seq sh))]
     (str \@ (name type) \tab (stringify-header-keyvalues keyvalues))))
 
-(defmethod stringify SamAlignment
-  [sa]
+(defmethod stringify SamAlignment [sa]
   (-> (str/join \tab [(:qname sa)
                       (:flag  sa)
                       (:rname sa)

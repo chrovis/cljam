@@ -1,18 +1,45 @@
 (ns cljam.bam
   (:use [cljam.util :only [string->bytes normalize-bases ubyte
                            fastq->phred bytes->compressed-bases compressed-bases->chars]])
-  (:require [cljam.binary-cigar-codec :as bcc])
+  (:require [clojure.string :as str]
+            [cljam.binary-cigar-codec :as bcc])
   (:import [net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator]
            [java.nio ByteBuffer ByteOrder]))
 
-(defn index [] nil)
-
 (def fixed-block-size 32)
+
+(def fixed-tag-size 3)
+
+(def fixed-binary-array-tag-size 5)
 
 (def bam-magic "BAM\1")
 
 (defn count-cigar [sam-alignment]
   (.numCigarElements (.decode (TextCigarCodec/getSingleton) (:cigar sam-alignment))))
+
+(defn- get-options-size [sam-alignment]
+  (->> (map
+        (fn [op]
+          (let [[tag value] (first (seq op))]
+            (+ fixed-tag-size
+               (condp = (first (:type value))
+                 \A 1
+                 \i 4
+                 \f 4
+                 \Z (inc (count (:value value)))
+                 \B (let [[array-type & array] (str/split (:value value) #",")]
+                      (+ fixed-binary-array-tag-size
+                         (* (count array)
+                            (condp = (first array-type)
+                              \c 1
+                              \C 1
+                              \s 2
+                              \S 2
+                              \i 4
+                              \I 4
+                              \f 4))))))))
+        (:options sam-alignment))
+       (reduce +)))
 
 (defn get-block-size [sam-alignment]
   (let [read-length (count (normalize-bases (string->bytes (:seq sam-alignment))))
@@ -20,7 +47,8 @@
     (+ fixed-block-size (count (:qname sam-alignment)) 1
        (* cigar-length 4)
        (int (/ (inc read-length) 2))
-       read-length)))
+       read-length
+       (get-options-size sam-alignment))))
 
 (defn get-ref-id [sam-alignment] -1)
 

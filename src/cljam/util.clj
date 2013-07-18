@@ -14,7 +14,7 @@
 
 (defn reg->bin
   "Calculates bin given an alignment covering [beg,end) (zero-based, half-close-half-open),
-the same as reg2bin on samtools."
+  the same as reg2bin on samtools."
   [beg end]
   (let [end (dec end)]
     (cond

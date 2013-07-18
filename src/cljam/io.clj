@@ -59,6 +59,16 @@
   (.putInt byte-buffer value)
   (.write writer (.array byte-buffer) 0 4))
 
+(defn- write-float [write value]
+  (.clear byte-buffer)
+  (.putFloat byte-buffer value)
+  (.write writer (.array byte-buffer) 0 4))
+
+(defn- write-short [writer value]
+  (.clear byte-buffer)
+  (.putShort byte-buffer value)
+  (.write writer (.array byte-buffer) 0 2))
+
 (defn- write-string [writer s]
   (let [data-bytes (string->bytes s)]
    (.write writer data-bytes 0 (count data-bytes))))
@@ -156,6 +166,27 @@
   (->> (map #(sam/stringify %) headers)
        (str/join \newline)))
 
+(defn- write-tag-value [writer val-type value]
+  (condp = val-type
+    \A (write-bytes  writer (char value))
+    \i (write-int    writer (Integer/parseInt value))
+    \f (write-float  writer (Float/parseFloat value))
+    \Z (write-string writer value)
+    ;; \H nil
+    \B (let [[array-type & array] (str/split value #",")]
+         (condp = (first array-type)
+           \c nil
+           \C nil
+           \s nil
+           \S (do
+                (write-bytes writer (byte-array 1 (byte \S)))
+                (write-int writer (count array))
+                (doseq [v array]
+                 (write-short writer (Short/parseShort v))))
+           \i nil
+           \I nil
+           \f nil))))
+
 (defn spit-bam
   "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and
   alignments, then closes the bam-file."
@@ -206,7 +237,15 @@
 
       (write-bytes w (bam/get-seq sa))
 
-      (write-bytes w (bam/get-qual sa)))
+      (write-bytes w (bam/get-qual sa))
+;; (short)(tag.charAt(1) << 8 | tag.charAt(0));
+      ;; options
+      (doseq [op (:options sa)]
+        (let [[tag value] (first (seq op))]
+          (write-short w (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
+                                        (byte (first (name tag))))))
+          (write-bytes w (.getBytes (:type value)))
+          (write-tag-value w (first (:type value)) (:value value)))))
     nil))
 
 (defn slurp

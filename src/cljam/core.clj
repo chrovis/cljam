@@ -29,7 +29,7 @@
 (defn -index [args]
   (let [[in-bam _] args]
     "Usage: cljam index <in.bam>"
-    (bam/index in-bam)))
+    nil))
 
 (defn -pileup [args]
   (with-command-line args

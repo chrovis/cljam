@@ -12,6 +12,9 @@
     (.getBytes s 0 (count buf) buf 0)
     buf))
 
+(defn bytes->string [b]
+  (String. b 0 (count b)))
+
 (defn reg->bin
   "Calculates bin given an alignment covering [beg,end) (zero-based, half-close-half-open),
   the same as reg2bin on samtools."

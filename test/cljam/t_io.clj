@@ -1,7 +1,14 @@
 (ns cljam.t-io
-  (:use midje.sweet)
+  (:use midje.sweet
+        [clojure.java.io :only [file]])
   (:require [cljam.io :as io])
   (:import [cljam.sam Sam SamHeader SamAlignment]))
+
+;;; Preparations
+
+(def test-sam-file "test/resources/test.sam")
+
+(def test-bam-file "test/resources/test.bam")
 
 (def test-sam
   (Sam. [(assoc (SamHeader.) :SQ {:SN "ref",  :LN "45"})
@@ -19,8 +26,30 @@
          (SamAlignment. "x5"   0   "ref2" 12 30 "24M"                "*" 0  0   "aaTaattaagtctacagagcaact"   "????????????????????????"   [])
          (SamAlignment. "x6"   0   "ref2" 14 30 "23M"                "*" 0  0   "Taattaagtctacagagcaacta"    "???????????????????????"    [])]))
 
+(def temp-dir (str (System/getProperty "java.io.tmpdir") "cljam-test"))
+
+(defn mk-temp-dir! []
+  (.mkdir (file temp-dir)))
+
+(defn rm-temp-dir! []
+  (.delete (file temp-dir)))
+
+;;; Facts
+
 (fact "about slurp-sam"
-  (io/slurp-sam "test/resources/test.sam") => test-sam)
+  (io/slurp-sam test-sam-file) => test-sam)
 
 (fact "about slurp-bam"
-  (io/slurp-bam "test/resources/test.bam") => test-sam)
+  (io/slurp-bam test-bam-file) => test-sam)
+
+(with-state-changes [(before :facts (mk-temp-dir!))
+                     (after  :facts (rm-temp-dir!))]
+  (fact "about spit-sam"
+    (let [temp-file (str temp-dir "/test.sam")]
+     (io/spit-sam temp-file test-sam) => nil
+     (= (slurp temp-file) (slurp test-sam-file)) => truthy))
+
+  (fact "about spit-bam"
+    (let [temp-file (str temp-dir "/test.bam")]
+     (io/spit-bam temp-file test-sam) => nil
+     (= (slurp temp-file) (slurp test-bam-file)) => truthy)))

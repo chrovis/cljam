@@ -6,19 +6,28 @@
 
 (defn -view [args]
   (with-command-line args
-    "Usage: view [--header] [--format <auto|sam|bam>] sam|bam"
+    "Usage: view [--header] [--format <auto|sam|bam>] <in.bam|sam>"
     [[header? "Include header in the output" false]
      [format "Specify input file format from <auto|sam|bam>" "auto"]
-     file]
+     files]
     (let [asam (condp = format
-                   "auto" (io/slurp     (first file))
-                   "sam"  (io/slurp-sam (first file))
-                   "bam"  (io/slurp-bam (first file)))]
+                   "auto" (io/slurp     (first files))
+                   "sam"  (io/slurp-sam (first files))
+                   "bam"  (io/slurp-bam (first files)))]
       (when header?
         (doseq [sh (:header asam)]
           (println (sam/stringify sh))))
       (doseq [sa (:alignments asam)]
         (println (sam/stringify sa))))))
+
+(defn -convert [args]
+  (with-command-line args
+    "Usage: convert [--src-format <auto|sam|bam>] [--dst-format <auto|sam|bam>] <in.bam|sam> <out.bam|sam>"
+    [[src-format "Specify input file format from <auto|sam|bam>" "auto"]
+     [dst-format "Specify output file format from <auto|sam|bam>" "auto"]
+     files]
+    (let [asam (io/slurp (first files))]
+      (io/spit (second files) asam))))
 
 (defn -sort [args]
   (with-command-line args
@@ -46,6 +55,7 @@
   (let [[subcmd & args] args]
     (condp = subcmd
       "view"     (-view     args)
+      "convert"  (-convert  args)
       "sort"     (-sort     args)
       "index"    (-index    args)
       "idxstats" (-idxstats args)

@@ -31,9 +31,9 @@
 
 (defn -sort [args]
   (with-command-line args
-    "Usage: todo"
-    [[foo "foo" 1]]
-    (println "sort " foo)))
+    "Usage: sort <in.bam|sam> <out.bam|sam>"
+    [files]
+    nil))
 
 (defn -index [args]
   (let [[in-bam _] args]

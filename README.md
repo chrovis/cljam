@@ -12,7 +12,7 @@ Use commandline tools on leiningen. For example,
 
 Add the following to `.lein/profiles.clj`, and install lein-midje plugin.
 
-    {:user {:plugins [[lein-midje "3.0.0"]]}}
+    {:user {:plugins [[lein-midje "3.0.1"]]}}
 
 Run all test.
 

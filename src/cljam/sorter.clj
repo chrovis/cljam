@@ -25,3 +25,6 @@
 (defn sort-by-qname [sam]
   (-> (sort-alignments-by-qname sam)
       (add-hd "1.3" "queryname")))
+
+(defn sort [sam]
+  (sort-by-pos sam))

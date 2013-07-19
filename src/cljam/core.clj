@@ -2,7 +2,8 @@
   (:use [clojure.contrib.command-line :only (with-command-line)])
   (:require [cljam.io :as io]
             [cljam.sam :as sam]
-            [cljam.bam :as bam]))
+            [cljam.bam :as bam]
+            [cljam.sorter :as sorter]))
 
 (defn -view [args]
   (with-command-line args
@@ -31,9 +32,13 @@
 
 (defn -sort [args]
   (with-command-line args
-    "Usage: sort <in.bam|sam> <out.bam|sam>"
-    [files]
-    nil))
+    "Usage: sort [--order <coordinate|queryname>] <in.bam|sam> <out.bam|sam>"
+    [[order "Specify sorting order of alignments from <coordinate|queryname>" "coordinate"]
+     files]
+    (let [asam (io/slurp (first files))]
+      (condp = order
+        "coordinate" (io/spit (second files) (sorter/sort-by-pos asam))
+        "queryname"  (io/spit (second files) (sorter/sort-by-qname asam))))))
 
 (defn -index [args]
   (let [[in-bam _] args]

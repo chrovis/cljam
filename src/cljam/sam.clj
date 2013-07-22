@@ -1,6 +1,8 @@
 (ns cljam.sam
   (:require [clojure.string :as str]))
 
+;;; Define records
+
 (defrecord SamHeader [])
 
 (defrecord SamAlignment
@@ -9,7 +11,7 @@
 (defrecord Sam
     [header alignments])
 
-;;; parse
+;;; Parse
 
 (defn- parse-header-keyvalues [keyvalues]
   (->> (map (fn [kv]
@@ -47,7 +49,7 @@
                    (nth fields 10)
                    (vec (parse-optional-fields (drop 11 fields))))))
 
-;;; stringify
+;;; Stringify
 
 (defn- stringify-header-keyvalues [kv-map]
   (->> (map (fn [kv]
@@ -83,3 +85,8 @@
                       (:qual  sa)
                       (stringify-optional-fields (:options sa))])
       str/trim))
+
+;;; Utilities
+
+(defn hd-header [sam]
+  (some #(when-not (nil? (:HD %)) %) (:header sam)))

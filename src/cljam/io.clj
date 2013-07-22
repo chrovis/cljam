@@ -5,12 +5,15 @@
   (:require [clojure.string :as str]
             [cljam.sam :as sam]
             [cljam.bam :as bam]
-            [cljam.lsb :as lsb])
+            [cljam.lsb :as lsb]
+            [cljam.indexer :as indexer])
   (:import java.util.Arrays
            [java.io DataInputStream DataOutputStream IOException]
            [java.nio ByteBuffer ByteOrder]
            [net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream]
            [cljam.sam Sam SamHeader SamAlignment]))
+
+;;; sam
 
 (defn slurp-sam
   "Opens a reader on sam-file and reads all its headers and alignments,
@@ -39,6 +42,8 @@
       (.write w (sam/stringify sa))
       (.newLine w))
     nil))
+
+;;; bam
 
 (defn- parse-header [header]
   (map #(sam/parse-header %) (str/split header #"\n")))
@@ -214,6 +219,19 @@
           (lsb/write-bytes w (.getBytes (:type value)))
           (write-tag-value w (first (:type value)) (:value value)))))
     nil))
+
+;;; bai
+
+(defn spit-bai
+  "Opposite of slurp. Opens sam/bam-file with writer, writes sam headers and
+  alignments, then closes the sam/bam-file."
+  [bai-file sam]
+  (with-open [w (DataOutputStream. (BlockCompressedOutputStream. bai-file))]
+    (lsb/write-bytes w (.getBytes indexer/bai-magic)) ; magic
+    ;; TODO
+    nil))
+
+;;; Automatic sam/bam detection
 
 (defn slurp
   "Opens a reader on sam/bam-file and reads all its headers and alignments,

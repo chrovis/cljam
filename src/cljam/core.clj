@@ -5,11 +5,13 @@
   (:require [cljam.io :as io]
             [cljam.sam :as sam]
             [cljam.bam :as bam]
-            [cljam.sorter :as sorter]))
+            [cljam.sorter :as sorter]
+            [cljam.indexer :as indexer])
+  (:import net.sf.picard.sam.BuildBamIndex))
 
 (defn view [& args]
   (with-command-line args
-    "Usage: view [--header] [--format <auto|sam|bam>] <in.bam|sam>"
+    "Usage: cljam view [--header] [--format <auto|sam|bam>] <in.bam|sam>"
     [[header? "Include header in the output" false]
      [format "Specify input file format from <auto|sam|bam>" "auto"]
      files]
@@ -25,7 +27,7 @@
 
 (defn convert [& args]
   (with-command-line args
-    "Usage: convert [--src-format <auto|sam|bam>] [--dst-format <auto|sam|bam>] <in.bam|sam> <out.bam|sam>"
+    "Usage: cljam convert [--src-format <auto|sam|bam>] [--dst-format <auto|sam|bam>] <in.bam|sam> <out.bam|sam>"
     [[src-format "Specify input file format from <auto|sam|bam>" "auto"]
      [dst-format "Specify output file format from <auto|sam|bam>" "auto"]
      files]
@@ -34,7 +36,7 @@
 
 (defn sort [& args]
   (with-command-line args
-    "Usage: sort [--order <coordinate|queryname>] <in.bam|sam> <out.bam|sam>"
+    "Usage: cljam sort [--order <coordinate|queryname>] <in.bam|sam> <out.bam|sam>"
     [[order "Specify sorting order of alignments from <coordinate|queryname>" "coordinate"]
      files]
     (let [asam (io/slurp (first files))]
@@ -43,9 +45,13 @@
         "queryname"  (io/spit (second files) (sorter/sort-by-qname asam))))))
 
 (defn index [& args]
-  (let [[in-bam _] args]
+  (with-command-line args
     "Usage: cljam index <in.bam>"
-    nil))
+    [files]
+    ;; TODO: Should not use Picard
+    (-> (BuildBamIndex.)
+        (.instanceMain (into-array String [(str "I=" (first files)),
+                                           (str "O=" (first files) ".bai")])))))
 
 (defn pileup [& args]
   (with-command-line args
@@ -62,7 +68,7 @@
     [:view "Extract/print all or sub alignments in SAM or BAM format." view]
     [:convert "Convert SAM to BAM or BAM to SAM." convert]
     [:sort "Sort alignments by leftmost coordinates." sort]
-    [:index "" index]
+    [:index "Index sorted alignment for fast random access. Index file <in.bam>.bai will be created." index]
     [:idxstats "" idxstats]
     [:merge "" merge]
     [:pileup "" pileup]))

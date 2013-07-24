@@ -90,13 +90,20 @@
     [[foo "foo" 1]]
     (println "index " foo)))
 
+(defn faidx [& args]
+  (with-command-line args
+    "Usage: cljam faidx <ref.fasta>"
+    [files]
+    nil))
+
 (defn -main [& args]
   (do-sub-command args
     "Usage: cljam [-h] {view,convert,sort,index,idxstats,merge,pileup} ..."
-    [:view "Extract/print all or sub alignments in SAM or BAM format." view]
-    [:convert "Convert SAM to BAM or BAM to SAM." convert]
-    [:sort "Sort alignments by leftmost coordinates." sort]
-    [:index "Index sorted alignment for fast random access. Index file <in.bam>.bai will be created." index]
-    [:idxstats "Retrieve  and print stats in the index file." idxstats]
-    [:merge "Merge multiple SAM/BAM." merge]
-    [:pileup "" pileup]))
+    [:view     cljam.core/view     "Extract/print all or sub alignments in SAM or BAM format."]
+    [:convert  cljam.core/convert  "Convert SAM to BAM or BAM to SAM."]
+    [:sort     cljam.core/sort     "Sort alignments by leftmost coordinates."]
+    [:index    cljam.core/index    "Index sorted alignment for fast random access."]
+    [:idxstats cljam.core/idxstats "Retrieve  and print stats in the index file."]
+    [:merge    cljam.core/merge    "Merge multiple SAM/BAM."]
+    [:pileup   cljam.core/pileup   "todo"]
+    [:faidx    cljam.core/faidx    "todo"]))

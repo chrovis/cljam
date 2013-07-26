@@ -67,6 +67,12 @@
 
 (defn get-next-ref-id [sam-alignment] -1)
 
+(defn decode-next-ref-id [n refs]
+  (condp = n
+    -1 "*"
+    0  "="
+    (:name (nth refs n))))
+
 (defn get-next-pos [sam-alignment]
   (dec (:pnext sam-alignment)))
 

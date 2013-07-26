@@ -54,7 +54,7 @@
         tag (str (char b) (char a))
         tag-type (char (.get bb))]
     {(keyword tag)
-     {:type  tag-type
+     {:type  (str tag-type)
       :value (condp = tag-type
                \A (.get bb)
                \i (.getInt bb)
@@ -83,7 +83,7 @@
         options
         (recur (conj options (parse-option bb)))))))
 
-(defn- parse-alignments [r]
+(defn- parse-alignments [r refs]
   (loop [alignments []]
     (if (zero? (.available r))
       alignments
@@ -92,7 +92,7 @@
           (if (< block-size bam/fixed-block-size)
             (throw (Exception. (str "Invalid block size:" block-size))))
           (let [ref-id (lsb/read-int r)
-                rname "todo"
+                rname (:name (nth refs ref-id))
                 pos (inc (lsb/read-int r))
                 l-read-name (lsb/read-ubyte r)
                 mapq (lsb/read-ubyte r)
@@ -100,7 +100,7 @@
                 n-cigar-op (lsb/read-ushort r)
                 flag (lsb/read-ushort r)
                 l-seq (lsb/read-int r)
-                rnext (lsb/read-int r)
+                rnext (bam/decode-next-ref-id (lsb/read-int r) refs)
                 pnext (inc (lsb/read-int r))
                 tlen (lsb/read-int r)
                 qname (lsb/read-string r (dec (int l-read-name)))
@@ -124,15 +124,18 @@
   (with-open [r (DataInputStream. (BlockCompressedInputStream. (file bam-file)))]
     (if-not (Arrays/equals (lsb/read-bytes r 4) (.getBytes bam/bam-magic))
       (throw (IOException. "Invalid BAM file header")))
-    (let [header (parse-header (lsb/read-string r (lsb/read-int r)))]
-      (let [cnt (lsb/read-int r)]
-        (loop [i cnt]
-          (if (zero? i)
-            nil
-            (do (lsb/read-string r (lsb/read-int r))
-                (lsb/read-int r)
-                (recur (dec i))))))
-      (Sam. header (parse-alignments r)))))
+    (let [header (parse-header (lsb/read-string r (lsb/read-int r)))
+          n-ref  (lsb/read-int r)
+          refs   (loop [i n-ref, ret []]
+                   (if (zero? i)
+                     ret
+                     (let [l-name (lsb/read-int r)
+                           name   (lsb/read-string r l-name)
+                           l-ref  (lsb/read-int r)]
+                      (recur (dec i)
+                             (conj ret {:name (subs name 0 (dec l-name))
+                                        :len  l-ref})))))]
+      (Sam. header (parse-alignments r refs)))))
 
 (defn- stringify-header [headers]
   (->> (map #(sam/stringify %) headers)

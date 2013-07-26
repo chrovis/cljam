@@ -193,6 +193,8 @@
                bases)
   bases)
 
+;;; fastq and phred
+
 (defmulti fastq->phred class)
 
 (defmethod fastq->phred String
@@ -206,3 +208,19 @@
   [ch]
   {:pre [(>= (int ch) 33) (<= (int ch) 126)]}
   (byte (- (int ch) 33)))
+
+(defmulti phred->fastq class)
+
+(defmethod phred->fastq (class (byte-array nil))
+  [b]
+  (if (nil? b)
+    nil
+    (apply str
+           (map #(phred->fastq (int (bit-and % 0xff))) b))))
+
+(def max-phred-score 93)
+
+(defmethod phred->fastq Integer
+  [n]
+  {:pre [(>= n 0) (<= n max-phred-score)]}
+  (char (+ n 33)))

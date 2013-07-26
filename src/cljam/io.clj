@@ -8,7 +8,7 @@
             [cljam.lsb :as lsb]
             [cljam.indexer :as indexer])
   (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException]
+           [java.io DataInputStream DataOutputStream RandomAccessFile IOException]
            [java.nio ByteBuffer ByteOrder]
            [net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream]
            [cljam.sam Sam SamHeader SamAlignment]))
@@ -107,7 +107,7 @@
                 _ (lsb/read-bytes r 1)
                 cigar (bam/decode-cigar (lsb/read-bytes r (* n-cigar-op 4)))
                 seq (bam/decode-seq (lsb/read-bytes r (/ (inc l-seq) 2)) l-seq)
-                qual (lsb/read-bytes r (count seq))
+                qual (bam/decode-qual (lsb/read-bytes r (count seq))) ;todo
                 rest (lsb/read-bytes r (- block-size
                                           bam/fixed-block-size
                                           (int l-read-name)
@@ -209,7 +209,7 @@
 
       (lsb/write-bytes w (bam/get-seq sa))
 
-      (lsb/write-bytes w (bam/get-qual sa))
+      (lsb/write-bytes w (bam/encode-qual sa))
 
       ;; options
       (doseq [op (:options sa)]
@@ -231,7 +231,36 @@
     ;; TODO
     nil))
 
-;;; Automatic sam/bam detection
+;;; fasta, fai
+
+(defn slurp-fasta
+  [fa-file]
+  (with-open [r (RandomAccessFile. fa-file "r")]
+    (loop [fa []
+           line (.readLine r)]
+      (if (nil? line)
+        fa
+        (if (= (first line) \>)
+          (recur (conj fa {:ref (subs line 1)
+                           :offset (.getFilePointer r)
+                           :seq (.readLine r)})
+                 (.readLine r))
+          (recur fa (.readLine r)))))))
+
+(defn spit-fai
+  [fai-file fa]
+  (with-open [w (writer fai-file)]
+    (doseq [ref fa]
+      (.write w (:ref ref))
+      (.write w \tab)
+      (.write w (count (:seq ref)))
+      (.write w \tab)
+      (.write w (:offset ref))
+      ;; todo
+      (.newLine w))
+    nil))
+
+;;; Automatic file-type detection
 
 (defn slurp
   "Opens a reader on sam/bam-file and reads all its headers and alignments,

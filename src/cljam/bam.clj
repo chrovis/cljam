@@ -1,10 +1,12 @@
 (ns cljam.bam
   (:use [cljam.util :only [string->bytes normalize-bases ubyte
-                           fastq->phred bytes->compressed-bases compressed-bases->chars]])
+                           fastq->phred phred->fastq
+                           bytes->compressed-bases compressed-bases->chars]])
   (:require [clojure.string :as str]
             [cljam.binary-cigar-codec :as bcc])
   (:import [net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator]
-           [java.nio ByteBuffer ByteOrder]))
+           [java.nio ByteBuffer ByteOrder]
+           java.util.Arrays))
 
 (def fixed-block-size 32)
 
@@ -96,7 +98,12 @@
 (defn decode-seq [seq-bytes length]
   (apply str (compressed-bases->chars length seq-bytes 0)))
 
-(defn get-qual [sam-alignment]
+(defn encode-qual [sam-alignment]
   (if (= (:qual sam-alignment "*"))
     (byte-array (count (:seq sam-alignment)) (ubyte 0xff))
     (fastq->phred (:qual sam-alignment))))
+
+(defn decode-qual [b]
+  (if (Arrays/equals b (byte-array (count b) (ubyte 0xff)))
+    "*"
+    (phred->fastq b)))

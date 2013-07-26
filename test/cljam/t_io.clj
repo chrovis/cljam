@@ -20,3 +20,6 @@
     (let [temp-file (str temp-dir "/test.bam")]
      (io/spit-bam temp-file test-sam) => nil
      (= (slurp temp-file) (slurp test-bam-file)) => truthy)))
+
+(fact "about slurp-fasta"
+  (io/slurp-fasta test-fa-file) => test-fa)

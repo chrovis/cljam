@@ -1,5 +1,5 @@
 (ns cljam.sam
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str :refer [split join trim upper-case]]))
 
 ;;; Define records
 
@@ -14,28 +14,30 @@
 ;;; Parse
 
 (defn- parse-header-keyvalues [keyvalues]
-  (->> (map (fn [kv]
-              (let [[k v] (str/split kv #":")]
-                {(keyword k) v}))
-            keyvalues)
-       (apply merge)))
+  (apply merge (map (fn [kv]
+                      (let [[k v] (split kv #":")]
+                        {(keyword k) v}))
+                    keyvalues)))
 
 (defn parse-header [line]
   "Parse a line, returning a SamHeader record."
-  (let [[type & keyvalues] (str/split line #"\t")]
+  (let [[type & keyvalues] (split line #"\t")]
     (assoc (SamHeader.)
       (keyword (subs type 1))
       (parse-header-keyvalues keyvalues))))
 
 (defn- parse-optional-fields [options]
   (map (fn [op]
-         (let [[tag type value] (str/split op #":")]
+         (let [[tag type value] (split op #":")]
            {(keyword tag) {:type type :value value}}))
        options))
 
+(defn- parse-seq-text [s]
+  (upper-case s))
+
 (defn parse-alignment [line]
   "Parse a line, returning a SamAlignment record."
-  (let [fields (str/split line #"\t")]
+  (let [fields (split line #"\t")]
     (SamAlignment. (first fields)
                    (Integer/parseInt (nth fields 1))
                    (nth fields 2)
@@ -45,25 +47,25 @@
                    (nth fields 6)
                    (Integer/parseInt (nth fields 7))
                    (Integer/parseInt (nth fields 8))
-                   (nth fields 9)
+                   (parse-seq-text (nth fields 9))
                    (nth fields 10)
                    (vec (parse-optional-fields (drop 11 fields))))))
 
 ;;; Stringify
 
 (defn- stringify-header-keyvalues [kv-map]
-  (->> (map (fn [kv]
-              (let [[k v] (seq kv)]
-                (str (name k) \: v)))
-            kv-map)
-       (str/join \tab)))
+  (join \tab
+        (map (fn [kv]
+               (let [[k v] (seq kv)]
+                 (str (name k) \: v)))
+             kv-map)))
 
 (defn- stringify-optional-fields [options]
-  (->> (map (fn [op]
-              (let [[tag entity] (first (seq op))]
-                (str (name tag) \: (:type entity) \: (:value entity))))
-            options)
-       (str/join \tab)))
+  (join \tab
+        (map (fn [op]
+               (let [[tag entity] (first (seq op))]
+                 (str (name tag) \: (:type entity) \: (:value entity))))
+             options)))
 
 (defmulti stringify class)
 
@@ -72,19 +74,20 @@
     (str \@ (name type) \tab (stringify-header-keyvalues keyvalues))))
 
 (defmethod stringify SamAlignment [sa]
-  (-> (str/join \tab [(:qname sa)
-                      (:flag  sa)
-                      (:rname sa)
-                      (:pos   sa)
-                      (:mapq  sa)
-                      (:cigar sa)
-                      (:rnext sa)
-                      (:pnext sa)
-                      (:tlen  sa)
-                      (:seq   sa)
-                      (:qual  sa)
-                      (stringify-optional-fields (:options sa))])
-      str/trim))
+  (trim
+   (join \tab
+         [(:qname sa)
+          (:flag  sa)
+          (:rname sa)
+          (:pos   sa)
+          (:mapq  sa)
+          (:cigar sa)
+          (:rnext sa)
+          (:pnext sa)
+          (:tlen  sa)
+          (:seq   sa)
+          (:qual  sa)
+          (stringify-optional-fields (:options sa))])))
 
 ;;; Utilities
 

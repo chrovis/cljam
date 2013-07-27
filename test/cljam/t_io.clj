@@ -13,13 +13,13 @@
                      (after  :facts (rm-temp-dir!))]
   (fact "about spit-sam"
     (let [temp-file (str temp-dir "/test.sam")]
-     (io/spit-sam temp-file test-sam) => nil
-     (= (slurp temp-file) (slurp test-sam-file)) => truthy))
+     (io/spit-sam temp-file test-sam) => nil?
+     (io/slurp-sam temp-file) => test-sam))
 
   (fact "about spit-bam"
     (let [temp-file (str temp-dir "/test.bam")]
-     (io/spit-bam temp-file test-sam) => nil
-     (= (slurp temp-file) (slurp test-bam-file)) => truthy)))
+     (io/spit-bam temp-file test-sam) => nil?
+     (io/slurp-bam temp-file) => test-sam)))
 
 (fact "about slurp-fasta"
   (io/slurp-fasta test-fa-file) => test-fa)

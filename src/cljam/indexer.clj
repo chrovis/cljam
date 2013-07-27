@@ -1,6 +1,6 @@
 (ns cljam.indexer
-  (:use [cljam.util :only [reg->bin]])
-  (:require [cljam.bam :as bam]))
+  (:require (cljam [bam :as bam]
+                   [util :refer [reg->bin]])))
 
 (def bai-magic "BAI\1")
 

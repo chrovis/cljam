@@ -1,17 +1,17 @@
 (ns cljam.io
   (:refer-clojure :exclude [slurp spit])
-  (:use [clojure.java.io :only [reader writer file]]
-        [cljam.util :only [reg->bin string->bytes]])
   (:require [clojure.string :as str]
-            [cljam.sam :as sam]
-            [cljam.bam :as bam]
-            [cljam.lsb :as lsb]
-            [cljam.indexer :as indexer])
+            [clojure.java.io :refer [reader writer file]]
+            (cljam [sam :as sam]
+                   [bam :as bam]
+                   [lsb :as lsb]
+                   [indexer :as indexer]
+                   [util :refer [reg->bin string->bytes]]))
   (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream RandomAccessFile IOException]
-           [java.nio ByteBuffer ByteOrder]
-           [net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream]
-           [cljam.sam Sam SamHeader SamAlignment]))
+           (java.io DataInputStream DataOutputStream RandomAccessFile IOException)
+           (java.nio ByteBuffer ByteOrder)
+           (net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream)
+           (cljam.sam Sam SamHeader SamAlignment)))
 
 ;;; sam
 
@@ -26,8 +26,8 @@
         sam
         (recur
          (if (= (first line) \@)
-           (assoc sam :header (conj (:header sam) (sam/parse-header line)))
-           (assoc sam :alignments (conj (:alignments sam) (sam/parse-alignment line))))
+           (update-in sam [:header] conj (sam/parse-header line))
+           (update-in sam [:alignments] conj (sam/parse-alignment line)))
          (.readLine r))))))
 
 (defn spit-sam
@@ -87,35 +87,34 @@
   (loop [alignments []]
     (if (zero? (.available r))
       alignments
-      (do
-        (let [block-size (lsb/read-int r)]
-          (if (< block-size bam/fixed-block-size)
-            (throw (Exception. (str "Invalid block size:" block-size))))
-          (let [ref-id (lsb/read-int r)
-                rname (:name (nth refs ref-id))
-                pos (inc (lsb/read-int r))
-                l-read-name (lsb/read-ubyte r)
-                mapq (lsb/read-ubyte r)
-                bin (lsb/read-ushort r)
-                n-cigar-op (lsb/read-ushort r)
-                flag (lsb/read-ushort r)
-                l-seq (lsb/read-int r)
-                rnext (bam/decode-next-ref-id (lsb/read-int r) refs)
-                pnext (inc (lsb/read-int r))
-                tlen (lsb/read-int r)
-                qname (lsb/read-string r (dec (int l-read-name)))
-                _ (lsb/read-bytes r 1)
-                cigar (bam/decode-cigar (lsb/read-bytes r (* n-cigar-op 4)))
-                seq (bam/decode-seq (lsb/read-bytes r (/ (inc l-seq) 2)) l-seq)
-                qual (bam/decode-qual (lsb/read-bytes r (count seq))) ;todo
-                rest (lsb/read-bytes r (- block-size
-                                          bam/fixed-block-size
-                                          (int l-read-name)
-                                          (* n-cigar-op 4)
-                                          (/ (inc l-seq) 2)
-                                          (count seq)))
-                options (parse-options rest)]
-            (recur (conj alignments (SamAlignment. qname flag rname pos mapq cigar rnext pnext tlen seq qual options)))))))))
+      (let [block-size (lsb/read-int r)]
+        (if (< block-size bam/fixed-block-size)
+          (throw (Exception. (str "Invalid block size:" block-size))))
+        (let [ref-id      (lsb/read-int r)
+              rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+              pos         (inc (lsb/read-int r))
+              l-read-name (lsb/read-ubyte r)
+              mapq        (lsb/read-ubyte r)
+              bin         (lsb/read-ushort r)
+              n-cigar-op  (lsb/read-ushort r)
+              flag        (lsb/read-ushort r)
+              l-seq       (lsb/read-int r)
+              rnext       (bam/decode-next-ref-id (lsb/read-int r) refs)
+              pnext       (inc (lsb/read-int r))
+              tlen        (lsb/read-int r)
+              qname       (lsb/read-string r (dec (int l-read-name)))
+              _           (lsb/read-bytes r 1)
+              cigar       (bam/decode-cigar (lsb/read-bytes r (* n-cigar-op 4)))
+              seq         (bam/decode-seq (lsb/read-bytes r (/ (inc l-seq) 2)) l-seq)
+              qual        (bam/decode-qual (lsb/read-bytes r (count seq))) ;todo
+              rest        (lsb/read-bytes r (- block-size
+                                               bam/fixed-block-size
+                                               (int l-read-name)
+                                               (* n-cigar-op 4)
+                                               (/ (inc l-seq) 2)
+                                               (count seq)))
+              options (parse-options rest)]
+          (recur (conj alignments (SamAlignment. qname flag rname pos mapq cigar rnext pnext tlen seq qual options))))))))
 
 (defn slurp-bam
   "Opens a reader on bam-file and reads all its headers and alignments,
@@ -138,8 +137,8 @@
       (Sam. header (parse-alignments r refs)))))
 
 (defn- stringify-header [headers]
-  (->> (map #(sam/stringify %) headers)
-       (str/join \newline)))
+  (str/join \newline
+            (map sam/stringify headers)))
 
 (defn- write-tag-value [writer val-type value]
   (condp = val-type
@@ -269,7 +268,7 @@
   "Opens a reader on sam/bam-file and reads all its headers and alignments,
   returning a map about sam records."
   [f]
-  (condp #(re-find %1 %2) f
+  (condp re-find f
       #"\.sam$" (slurp-sam f)
       #"\.bam$" (slurp-bam f)
       (throw (IllegalArgumentException. "Invalid file type"))))
@@ -278,7 +277,7 @@
   "Opposite of slurp. Opens sam/bam-file with writer, writes sam headers and
   alignments, then closes the sam/bam-file."
   [f sam]
-  (condp #(re-find %1 %2) f
+  (condp re-find f
       #"\.sam$" (spit-sam f sam)
       #"\.bam$" (spit-bam f sam)
       (throw (IllegalArgumentException. "Invalid file type"))))

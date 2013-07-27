@@ -1,4 +1,5 @@
 (ns cljam.util
+  (:require [clojure.string :refer [join]])
   (:import net.sf.samtools.util.StringUtil))
 
 (defn ubyte
@@ -22,19 +23,19 @@
   (let [end (dec end)]
     (cond
      (= (bit-shift-right beg 14) (bit-shift-right end 14))
-     (+ (/ (- (bit-shift-left 1 15) 1) 7) (bit-shift-right beg 14))
+     (+ (/ (dec (bit-shift-left 1 15)) 7) (bit-shift-right beg 14))
 
      (= (bit-shift-right beg 17) (bit-shift-right end 17))
-     (+ (/ (- (bit-shift-left 1 12) 1) 7) (bit-shift-right beg 17))
+     (+ (/ (dec (bit-shift-left 1 12)) 7) (bit-shift-right beg 17))
 
      (= (bit-shift-right beg 20) (bit-shift-right end 20))
-     (+ (/ (- (bit-shift-left 1 9) 1) 7) (bit-shift-right beg 20))
+     (+ (/ (dec (bit-shift-left 1 9)) 7) (bit-shift-right beg 20))
 
      (= (bit-shift-right beg 23) (bit-shift-right end 23))
-     (+ (/ (- (bit-shift-left 1 6) 1) 7) (bit-shift-right beg 23))
+     (+ (/ (dec (bit-shift-left 1 6)) 7) (bit-shift-right beg 23))
 
      (= (bit-shift-right beg 26) (bit-shift-right end 26))
-     (+ (/ (- (bit-shift-left 1 3) 1) 7) (bit-shift-right beg 26))
+     (+ (/ (dec (bit-shift-left 1 3)) 7) (bit-shift-right beg 26))
 
      :else 0)))
 
@@ -176,11 +177,11 @@
      (byte-array bases))))
 
 (defn compressed-bases->chars [length compressed-bases compressed-offset]
-  (let [bases (->> (for [i (range 1 length) :when (odd? i)]
-                     (let [cidx (+ (/ i 2) compressed-offset)]
-                       [(compressed-base->char-high (nth compressed-bases cidx))
-                        (compressed-base->char-low  (nth compressed-bases cidx))]))
-                   (apply concat))]
+  (let [bases (apply concat
+                     (for [i (range 1 length) :when (odd? i)]
+                       (let [cidx (+ (/ i 2) compressed-offset)]
+                         [(compressed-base->char-high (nth compressed-bases cidx))
+                          (compressed-base->char-low  (nth compressed-bases cidx))])))]
     (if (odd? length)
       (conj (vec bases) (compressed-base->char-high (nth compressed-bases (+ (/ length 2) compressed-offset))))
       bases)))
@@ -200,9 +201,8 @@
 (defmethod fastq->phred String
   [fastq]
   (let [length (count fastq)]
-    (-> (for [i (range length)]
-          (fastq->phred (.charAt fastq i)))
-        (byte-array))))
+    (byte-array (for [i (range length)]
+                  (fastq->phred (.charAt fastq i))))))
 
 (defmethod fastq->phred Character
   [ch]
@@ -213,10 +213,8 @@
 
 (defmethod phred->fastq (class (byte-array nil))
   [b]
-  (if (nil? b)
-    nil
-    (apply str
-           (map #(phred->fastq (int (bit-and % 0xff))) b))))
+  (when-not (nil? b)
+    (join (map #(phred->fastq (int (bit-and % 0xff))) b))))
 
 (def max-phred-score 93)
 

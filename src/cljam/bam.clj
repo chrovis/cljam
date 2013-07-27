@@ -1,12 +1,12 @@
 (ns cljam.bam
-  (:use [cljam.util :only [string->bytes normalize-bases ubyte
-                           fastq->phred phred->fastq
-                           bytes->compressed-bases compressed-bases->chars]])
-  (:require [clojure.string :as str]
-            [cljam.binary-cigar-codec :as bcc])
-  (:import [net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator]
-           [java.nio ByteBuffer ByteOrder]
-           java.util.Arrays))
+  (:require [clojure.string :refer [split join]]
+            [cljam.binary-cigar-codec :as bcc]
+            [cljam.util :refer [string->bytes normalize-bases ubyte
+                                fastq->phred phred->fastq
+                                bytes->compressed-bases compressed-bases->chars]])
+  (:import java.util.Arrays
+           (java.nio ByteBuffer ByteOrder)
+           (net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)))
 
 (def fixed-block-size 32)
 
@@ -29,7 +29,7 @@
                  \i 4
                  \f 4
                  \Z (inc (count (:value value)))
-                 \B (let [[array-type & array] (str/split (:value value) #",")]
+                 \B (let [[array-type & array] (split (:value value) #",")]
                       (+ fixed-binary-array-tag-size
                          (* (count array)
                             (condp = (first array-type)
@@ -58,9 +58,9 @@
   (dec (:pos sam-alignment)))
 
 (defn get-end [sam-alignment]
-  (- (+ (:pos sam-alignment)
-        (.getReferenceLength (.decode (TextCigarCodec/getSingleton) (:cigar sam-alignment))))
-     1))
+  (dec
+   (+ (:pos sam-alignment)
+      (.. TextCigarCodec getSingleton (decode (:cigar sam-alignment)) getReferenceLength))))
 
 (defn get-l-seq [sam-alignment]
   (count (:seq sam-alignment)))
@@ -95,14 +95,14 @@
     (str (bcc/decode byte-buffer))))
 
 (defn get-cigar [sam-alignment]
-  (let [cigar (.decode (TextCigarCodec/getSingleton) (:cigar sam-alignment))]
+  (let [cigar (.. TextCigarCodec getSingleton (decode (:cigar sam-alignment)))]
     (encode-cigar cigar)))
 
 (defn get-seq [sam-alignment]
   (bytes->compressed-bases (normalize-bases (string->bytes (:seq sam-alignment)))))
 
 (defn decode-seq [seq-bytes length]
-  (apply str (compressed-bases->chars length seq-bytes 0)))
+  (join (compressed-bases->chars length seq-bytes 0)))
 
 (defn encode-qual [sam-alignment]
   (if (= (:qual sam-alignment "*"))

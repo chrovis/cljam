@@ -1,13 +1,13 @@
 (ns cljam.core
   (:refer-clojure :exclude [sort merge])
-  (:use [clojure.contrib.command-line :only (with-command-line)]
-        clj-sub-command.core)
-  (:require [cljam.io :as io]
-            [cljam.sam :as sam]
-            [cljam.bam :as bam]
-            [cljam.sorter :as sorter]
-            [cljam.indexer :as indexer])
-  (:import [net.sf.picard.sam BuildBamIndex BamIndexStats]))
+  (:require [clojure.contrib.command-line :refer [with-command-line]]
+            [clj-sub-command.core :refer [do-sub-command]]
+            (cljam [io :as io]
+                   [sam :as sam]
+                   [bam :as bam]
+                   [sorter :as sorter]
+                   [indexer :as indexer]))
+  (:import (net.sf.picard.sam BuildBamIndex BamIndexStats)))
 
 (defn view [& args]
   (with-command-line args
@@ -61,9 +61,9 @@
       (println "Invalid arguments")
       (System/exit 1))
     ;; TODO: Should not use Picard
-    (-> (BuildBamIndex.)
-        (.instanceMain (into-array String [(str "I=" (first files)),
-                                           (str "O=" (first files) ".bai")])))))
+    (.. (BuildBamIndex.)
+        (instanceMain (into-array String [(str "I=" (first files)),
+                                          (str "O=" (first files) ".bai")])))))
 
 (defn idxstats [& args]
   (with-command-line args
@@ -73,8 +73,8 @@
       (println "Invalid arguments")
       (System/exit 1))
     ;; TODO: Should not use Picard
-    (-> (BamIndexStats.)
-        (.instanceMain (into-array String [(str "I=" (first files))])))))
+    (.. (BamIndexStats.)
+        (instanceMain (into-array String [(str "I=" (first files))])))))
 
 (defn merge [& args]
   (with-command-line args

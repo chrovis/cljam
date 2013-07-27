@@ -1,7 +1,7 @@
 (ns cljam.lsb
   (:refer-clojure :exclude [read-string])
-  (:use [cljam.util :only [string->bytes bytes->string]])
-  (:import [java.nio ByteBuffer ByteOrder]))
+  (:require [cljam.util :refer [string->bytes bytes->string]])
+  (:import (java.nio ByteBuffer ByteOrder)))
 
 (defn- gen-byte-buffer []
   (.order (ByteBuffer/allocate 8) ByteOrder/LITTLE_ENDIAN))
@@ -15,12 +15,11 @@
        ba))
   ([r buffer offset l]
      (loop [total-read 0]
-       (if (>= total-read l) nil
-           (do
-             (let [num-read (.read r buffer (+ offset total-read) (- l total-read))]
-               (if (neg? num-read)
-                 (throw (Exception. "Premature EOF"))
-                 (recur (+ total-read num-read)))))))))
+       (when-not (>= total-read l)
+         (let [num-read (.read r buffer (+ offset total-read) (- l total-read))]
+           (if (neg? num-read)
+             (throw (Exception. "Premature EOF"))
+             (recur (+ total-read num-read))))))))
 
 (defn- read-byte-buffer [r bb l]
   {:pre (< l (.capacity bb))}

@@ -4,10 +4,9 @@
   (:import [cljam.sam Sam SamHeader SamAlignment]))
 
 (def test-sam-file "test/resources/test.sam")
-
 (def test-bam-file "test/resources/test.bam")
-
-(def test-fa-file "test/resources/test.fa")
+(def test-fa-file  "test/resources/test.fa")
+(def test-fai-file "test/resources/test.fa.fai")
 
 (def test-sam
   (Sam. [(assoc (SamHeader.) :SQ {:SN "ref",  :LN "45"})
@@ -60,8 +59,8 @@
          (SamAlignment. "x6"   0   "ref2" 14 30 "23M"                "*" 0  0   "TAATTAAGTCTACAGAGCAACTA"    "???????????????????????"    [])]))
 
 (def test-fa
-  [{:ref "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"}
-   {:ref "ref2", :offset 57, :seq "aggttttataaaacaattaagtctacagagcaactacgcg"}])
+  [{:ref "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}
+   {:ref "ref2", :offset 57, :seq "aggttttataaaacaattaagtctacagagcaactacgcg",      :blen 40}])
 
 (def temp-dir (str (System/getProperty "java.io.tmpdir") "cljam-test"))
 

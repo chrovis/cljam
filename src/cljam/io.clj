@@ -236,6 +236,8 @@
 ;;; fasta, fai
 
 (defn slurp-fasta
+  "Opens a reader on a fasta-file and reads all its contents, returning a map
+  about the data."
   [fa-file]
   (with-open [r (RandomAccessFile. fa-file "r")]
     (loop [fa []
@@ -243,22 +245,29 @@
       (if (nil? line)
         fa
         (if (= (first line) \>)
-          (recur (conj fa {:ref (subs line 1)
-                           :offset (.getFilePointer r)
-                           :seq (.readLine r)})
-                 (.readLine r))
+          (let [ref    (subs line 1)
+                offset (.getFilePointer r)
+                seq    (.readLine r)
+                blen   (count (filter (partial not= \space) seq))]
+            (recur (conj fa {:ref ref, :offset offset, :seq seq, :blen blen})
+                   (.readLine r)))
           (recur fa (.readLine r)))))))
 
 (defn spit-fai
+  "Opens a fai-file with writer, writes fasta index data, then closes the
+  fai-file."
   [fai-file fa]
   (with-open [w (writer fai-file)]
     (doseq [ref fa]
       (.write w (:ref ref))
-      (.write w \tab)
-      (.write w (count (:seq ref)))
-      (.write w \tab)
-      (.write w (:offset ref))
-      ;; todo
+      (.write w "\t")
+      (.write w (str (count (:seq ref))))
+      (.write w "\t")
+      (.write w (str (:offset ref)))
+      (.write w "\t")
+      (.write w (str (:blen ref)))
+      (.write w "\t")
+      (.write w (str (inc (count (:seq ref)))))
       (.newLine w))
     nil))
 

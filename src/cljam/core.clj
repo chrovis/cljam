@@ -94,7 +94,11 @@
   (with-command-line args
     "Usage: cljam faidx <ref.fasta>"
     [files]
-    nil))
+    (when-not (= (count files) 1)
+      (println "Invalid arguments")
+      (System/exit 1))
+    (io/spit-fai (str (first files) ".fai")
+                 (io/slurp-fasta (first files)))))
 
 (defn -main [& args]
   (do-sub-command args
@@ -106,4 +110,4 @@
     [:idxstats cljam.core/idxstats "Retrieve  and print stats in the index file."]
     [:merge    cljam.core/merge    "Merge multiple SAM/BAM."]
     [:pileup   cljam.core/pileup   "todo"]
-    [:faidx    cljam.core/faidx    "todo"]))
+    [:faidx    cljam.core/faidx    "Index reference sequence in the FASTA format."]))

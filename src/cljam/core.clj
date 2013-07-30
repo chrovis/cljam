@@ -6,7 +6,8 @@
                    [sam :as sam]
                    [bam :as bam]
                    [sorter :as sorter]
-                   [indexer :as indexer]))
+                   [indexer :as indexer]
+                   [pileup :as pileup]))
   (:import (net.sf.picard.sam BuildBamIndex BamIndexStats)))
 
 (defn view [& args]
@@ -86,9 +87,16 @@
 
 (defn pileup [& args]
   (with-command-line args
-    "Usage: todo"
-    [[foo "foo" 1]]
-    (println "index " foo)))
+    "Usage: cljam pileup <in.bam>"
+    [files]
+    (when-not (= (count files) 1)
+      (println "Invalid arguments")
+      (System/exit 1))
+    (let [sam (io/slurp-bam (first files))]
+      (doseq [p (pileup/pileup (if-not (sorter/sorted? sam)
+                                 (sorter/sort sam)
+                                 sam))]
+        (println p)))))
 
 (defn faidx [& args]
   (with-command-line args

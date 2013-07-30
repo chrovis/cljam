@@ -1,6 +1,7 @@
 (ns cljam.pileup
   (:require [cljam.sorter :as sorter]))
 
+;;; FIXME: incorrect algorithm
 (defn pileup
   [sam]
   (if-not (sorter/sorted? sam)

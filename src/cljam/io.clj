@@ -184,7 +184,7 @@
     (doseq [sa (:alignments sam)]
       (lsb/write-int w (bam/get-block-size sa))
 
-      (lsb/write-int w (bam/get-ref-id sa))
+      (lsb/write-int w (bam/get-ref-id sa (sam/make-refs sam)))
 
       (lsb/write-int w (bam/get-pos sa))
 
@@ -197,7 +197,7 @@
 
       (lsb/write-int w (bam/get-l-seq sa))
 
-      (lsb/write-int w (bam/get-next-ref-id sa))
+      (lsb/write-int w (bam/get-next-ref-id sa (sam/make-refs sam)))
 
       (lsb/write-int w (bam/get-next-pos sa))
 

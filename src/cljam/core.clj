@@ -61,7 +61,7 @@
     (when-not (= (count files) 1)
       (println "Invalid arguments")
       (System/exit 1))
-    ;; TODO: Should not use Picard
+    ;; HACK: Should not use Picard
     (.. (BuildBamIndex.)
         (instanceMain (into-array String [(str "I=" (first files)),
                                           (str "O=" (first files) ".bai")])))))
@@ -73,7 +73,7 @@
     (when-not (= (count files) 1)
       (println "Invalid arguments")
       (System/exit 1))
-    ;; TODO: Should not use Picard
+    ;; HACK: Should not use Picard
     (.. (BamIndexStats.)
         (instanceMain (into-array String [(str "I=" (first files))])))))
 

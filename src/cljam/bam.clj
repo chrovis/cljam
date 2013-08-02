@@ -52,7 +52,9 @@
        read-length
        (get-options-size sam-alignment))))
 
-(defn get-ref-id [sam-alignment] -1)
+(defn get-ref-id [sa refs]
+  (some #(when (= (:name (second %)) (:rname sa)) (first %))
+        (map-indexed vector refs)))
 
 (defn get-pos [sam-alignment]
   (dec (:pos sam-alignment)))
@@ -65,7 +67,12 @@
 (defn get-l-seq [sam-alignment]
   (count (:seq sam-alignment)))
 
-(defn get-next-ref-id [sam-alignment] -1)
+(defn get-next-ref-id [sa refs]
+  (condp = (:rnext sa)
+    "*" -1
+    "=" 0
+    (some #(when (= (:name (second %)) (:rnext sa)) (first %))
+          (map-indexed vector refs))))
 
 (defn decode-next-ref-id [n refs]
   (condp = n
@@ -105,7 +112,7 @@
   (join (compressed-bases->chars length seq-bytes 0)))
 
 (defn encode-qual [sam-alignment]
-  (if (= (:qual sam-alignment "*"))
+  (if (= (:qual sam-alignment) "*")
     (byte-array (count (:seq sam-alignment)) (ubyte 0xff))
     (fastq->phred (:qual sam-alignment))))
 

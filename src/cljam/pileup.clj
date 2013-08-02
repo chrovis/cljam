@@ -30,7 +30,6 @@
              (recur cursor (rest matches) ret)))
          ret)))))
 
-;;; FIXME: incorrect algorithm
 (defn pileup
   [sam]
   (if-not (sorter/sorted? sam)
@@ -55,11 +54,3 @@
                      tmp2))
                  (rest sas)))
         (concat ret (map #(assoc (second %) :pos (first %)) (sort tmp)))))))
-
-
-;; 7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
-;; T  T  A  G  A  T  A  A  A  G  A  G  G  A  T  A  *  C  T  G
-;;       A  A  A  A  G  A  T  A  A  *  G  *  G  G  A  T  A  A  A
-;;       A  G  C  T  A  A
-;;                            A  T  A  G  C  T  C  T  C  A  G  C
-;;                                                                   T  A  G  G  C

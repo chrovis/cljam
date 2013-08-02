@@ -93,3 +93,7 @@
 
 (defn hd-header [sam]
   (some #(when-not (nil? (:HD %)) %) (:header sam)))
+
+(defn make-refs [sam]
+  (for [h (filter :SQ (:header sam))]
+    {:name (:SN (:SQ h)), :len (:LN (:SQ h))}))

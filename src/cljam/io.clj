@@ -99,14 +99,14 @@
               n-cigar-op  (lsb/read-ushort r)
               flag        (lsb/read-ushort r)
               l-seq       (lsb/read-int r)
-              rnext       (bam/decode-next-ref-id (lsb/read-int r) refs)
+              rnext       (bam/decode-next-ref-id refs (lsb/read-int r) rname)
               pnext       (inc (lsb/read-int r))
               tlen        (lsb/read-int r)
               qname       (lsb/read-string r (dec (int l-read-name)))
               _           (lsb/read-bytes r 1)
               cigar       (bam/decode-cigar (lsb/read-bytes r (* n-cigar-op 4)))
               seq         (bam/decode-seq (lsb/read-bytes r (/ (inc l-seq) 2)) l-seq)
-              qual        (bam/decode-qual (lsb/read-bytes r (count seq))) ;todo
+              qual        (bam/decode-qual (lsb/read-bytes r (count seq)))
               rest        (lsb/read-bytes r (- block-size
                                                bam/fixed-block-size
                                                (int l-read-name)

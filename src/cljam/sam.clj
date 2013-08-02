@@ -89,11 +89,26 @@
           (:qual  sa)
           (stringify-optional-fields (:options sa))])))
 
+;;; Reference functions
+
+(defn make-refs [sam]
+  "Return a reference sequence from the sam."
+  (for [h (filter :SQ (:header sam))]
+    {:name (:SN (:SQ h)), :len (:LN (:SQ h))}))
+
+(defn ref-id [refs name]
+  "Returns reference ID from the reference sequence and the specified reference
+  name. If not found, return nil."
+  (some #(when (= name (:name (second %))) (first %))
+        (map-indexed vector refs)))
+
+(defn ref-name [refs id]
+  "Returns a reference name from the reference ID. Returns nil if id is not
+  mapped."
+  (if (<= 0 id (dec (count refs)))
+    (:name (nth refs id))))
+
 ;;; Utilities
 
 (defn hd-header [sam]
   (some #(when-not (nil? (:HD %)) %) (:header sam)))
-
-(defn make-refs [sam]
-  (for [h (filter :SQ (:header sam))]
-    {:name (:SN (:SQ h)), :len (:LN (:SQ h))}))

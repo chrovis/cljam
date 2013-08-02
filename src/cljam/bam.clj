@@ -1,9 +1,10 @@
 (ns cljam.bam
   (:require [clojure.string :refer [split join]]
-            [cljam.binary-cigar-codec :as bcc]
-            [cljam.util :refer [string->bytes normalize-bases ubyte
-                                fastq->phred phred->fastq
-                                bytes->compressed-bases compressed-bases->chars]])
+            (cljam [sam :as sam]
+                   [binary-cigar-codec :as bcc]
+                   [util :refer [string->bytes normalize-bases ubyte
+                                 fastq->phred phred->fastq
+                                 bytes->compressed-bases compressed-bases->chars]]))
   (:import java.util.Arrays
            (java.nio ByteBuffer ByteOrder)
            (net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)))
@@ -53,8 +54,7 @@
        (get-options-size sam-alignment))))
 
 (defn get-ref-id [sa refs]
-  (some #(when (= (:name (second %)) (:rname sa)) (first %))
-        (map-indexed vector refs)))
+  (if-let [id (sam/ref-id refs (:rname sa))] id -1))
 
 (defn get-pos [sam-alignment]
   (dec (:pos sam-alignment)))
@@ -70,15 +70,14 @@
 (defn get-next-ref-id [sa refs]
   (condp = (:rnext sa)
     "*" -1
-    "=" 0
-    (some #(when (= (:name (second %)) (:rnext sa)) (first %))
-          (map-indexed vector refs))))
+    "=" (if-let [id (sam/ref-id refs (:rname sa))] id -1)
+    (if-let [id (sam/ref-id refs (:rnext sa))] id -1)))
 
-(defn decode-next-ref-id [n refs]
-  (condp = n
-    -1 "*"
-    0  "="
-    (:name (nth refs n))))
+(defn decode-next-ref-id [refs n rname]
+  (cond
+    (= n -1) "*"
+    (= (sam/ref-name refs n) rname) "="
+    :else (sam/ref-name refs n)))
 
 (defn get-next-pos [sam-alignment]
   (dec (:pnext sam-alignment)))

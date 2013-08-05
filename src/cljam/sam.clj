@@ -1,5 +1,7 @@
 (ns cljam.sam
-  (:require [clojure.string :as str :refer [split join trim upper-case]]))
+  (:require [clojure.string :as str :refer [split join trim upper-case]]
+            [cljam.util :refer [ra-line-seq]])
+  (:import java.io.RandomAccessFile))
 
 ;;; Define records
 
@@ -112,3 +114,27 @@
 
 (defn hd-header [sam]
   (some #(when-not (nil? (:HD %)) %) (:header sam)))
+
+;;; I/O
+
+(deftype ^:private SamReader [header reader]
+  java.io.Closeable
+  (close [this] (.. this reader close)))
+
+(defn- read-header* [rdr]
+  (when-let [line (.readLine rdr)]
+    (if (= (first line) \@)
+      (cons (parse-header line) (read-header* rdr)))))
+
+(defn reader [f]
+  (let [header (with-open [r (clojure.java.io/reader f)]
+                 (read-header* r))]
+    (->SamReader header (clojure.java.io/reader f))))
+
+(defn read-header
+  [^SamReader rdr]
+  (.header rdr))
+
+(defn read-alignments
+  [^SamReader rdr]
+  (map parse-alignment (filter #(not= (first %) \@) (ra-line-seq (.reader rdr)))))

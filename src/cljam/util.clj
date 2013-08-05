@@ -16,6 +16,11 @@
 (defn bytes->string [b]
   (String. b 0 (count b)))
 
+(defn ra-line-seq
+  [rdr]
+  (when-let [line (.readLine rdr)]
+    (cons line (lazy-seq (ra-line-seq rdr)))))
+
 (defn reg->bin
   "Calculates bin given an alignment covering [beg,end) (zero-based, half-close-half-open),
   the same as reg2bin on samtools."

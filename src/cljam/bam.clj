@@ -1,13 +1,18 @@
 (ns cljam.bam
   (:require [clojure.string :refer [split join]]
+            [clojure.java.io :refer [file]]
             (cljam [sam :as sam]
+                   [lsb :as lsb]
                    [binary-cigar-codec :as bcc]
                    [util :refer [string->bytes normalize-bases ubyte
                                  fastq->phred phred->fastq
                                  bytes->compressed-bases compressed-bases->chars]]))
   (:import java.util.Arrays
+           (java.io DataInputStream IOException)
            (java.nio ByteBuffer ByteOrder)
-           (net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)))
+           (net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)
+           (net.sf.samtools.util BlockCompressedInputStream)
+           (cljam.sam SamHeader SamAlignment)))
 
 (def fixed-block-size 32)
 
@@ -119,3 +124,104 @@
   (if (Arrays/equals b (byte-array (count b) (ubyte 0xff)))
     "*"
     (phred->fastq b)))
+
+;;; I/O
+
+(deftype ^:private BamReader [header refs reader]
+  java.io.Closeable
+  (close [this] (.. this reader close)))
+
+(defn- parse-header [header]
+  (map #(sam/parse-header %) (split header #"\n")))
+
+(defn reader [f]
+  (let [rdr (DataInputStream. (BlockCompressedInputStream. (file f)))]
+    (if-not (Arrays/equals (lsb/read-bytes rdr 4) (.getBytes bam-magic))
+      (throw (IOException. "Invalid BAM file header")))
+    (let [header (parse-header (lsb/read-string rdr (lsb/read-int rdr)))
+          n-ref  (lsb/read-int rdr)
+          refs   (loop [i n-ref, ret []]
+                   (if (zero? i)
+                     ret
+                     (let [l-name (lsb/read-int rdr)
+                           name   (lsb/read-string rdr l-name)
+                           l-ref  (lsb/read-int rdr)]
+                       (recur (dec i)
+                              (conj ret {:name (subs name 0 (dec l-name))
+                                         :len  l-ref})))))]
+      (->BamReader header refs rdr))))
+
+(defn read-header
+  [^BamReader rdr]
+  (.header rdr))
+
+(defn- parse-option [bb]
+  (let [a (.get bb)
+        b (.get bb)
+        tag (str (char b) (char a))
+        tag-type (char (.get bb))]
+    {(keyword tag)
+     {:type  (str tag-type)
+      :value (condp = tag-type
+               \A (.get bb)
+               \i (.getInt bb)
+               \f (.getFloat bb)
+               \Z nil                   ; todo
+               ;; \H nil
+               \B (let [array-type (char (.get bb))
+                        length (.getInt bb)]
+                    (->> (for [i (range length)]
+                           (condp = array-type ; BinaryTagCodec.java
+                             \c (int (.get bb))
+                             \C (bit-and (int (.get bb)) 0xff)
+                             \s (int (.getShort bb))
+                             \S (bit-and (.getShort bb) 0xffff)
+                             \i (.getInt bb)
+                             \I nil     ; todo
+                             \f (.getFloat bb)))
+                         (cons array-type)
+                         (join \,))))}}))
+
+(defn- parse-options [rest]
+  (let [bb (ByteBuffer/wrap rest)]
+    (.order bb ByteOrder/LITTLE_ENDIAN)
+    (loop [options []]
+      (if-not (.hasRemaining bb)
+        options
+        (recur (conj options (parse-option bb)))))))
+
+(defn- read-alignment [rdr refs]
+  (let [block-size (lsb/read-int rdr)]
+    (if (< block-size fixed-block-size)
+      (throw (Exception. (str "Invalid block size:" block-size))))
+    (let [ref-id      (lsb/read-int rdr)
+          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+          pos         (inc (lsb/read-int rdr))
+          l-read-name (lsb/read-ubyte rdr)
+          mapq        (lsb/read-ubyte rdr)
+          bin         (lsb/read-ushort rdr)
+          n-cigar-op  (lsb/read-ushort rdr)
+          flag        (lsb/read-ushort rdr)
+          l-seq       (lsb/read-int rdr)
+          rnext       (decode-next-ref-id refs (lsb/read-int rdr) rname)
+          pnext       (inc (lsb/read-int rdr))
+          tlen        (lsb/read-int rdr)
+          qname       (lsb/read-string rdr (dec (int l-read-name)))
+          _           (lsb/read-bytes rdr 1)
+          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
+          seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
+          qual        (decode-qual (lsb/read-bytes rdr (count seq)))
+          rest        (lsb/read-bytes rdr (- block-size
+                                             fixed-block-size
+                                             (int l-read-name)
+                                             (* n-cigar-op 4)
+                                             (/ (inc l-seq) 2)
+                                             (count seq)))
+          options (parse-options rest)]
+      (SamAlignment. qname flag rname pos mapq cigar rnext pnext tlen seq qual options))))
+
+(defn read-alignments
+  [^BamReader rdr]
+  (when-not (zero? (.available (.reader rdr)))
+    (cons (read-alignment (.reader rdr) (.refs rdr))
+          (lazy-seq (read-alignments rdr)))))

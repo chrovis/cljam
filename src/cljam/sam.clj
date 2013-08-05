@@ -1,4 +1,5 @@
 (ns cljam.sam
+  (:refer-clojure :exclude [slurp spit])
   (:require [clojure.string :as str :refer [split join trim upper-case]]
             [cljam.util :refer [ra-line-seq]])
   (:import java.io.RandomAccessFile))
@@ -138,3 +139,32 @@
 (defn read-alignments
   [^SamReader rdr]
   (map parse-alignment (filter #(not= (first %) \@) (ra-line-seq (.reader rdr)))))
+
+(defn writer [f]
+  (clojure.java.io/writer f))
+
+(defn write-header [wrtr hdr]
+  (doseq [h hdr]
+    (.write wrtr (stringify h))
+    (.newLine wrtr)))
+
+(defn write-alignments [wrtr alns]
+  (doseq [a alns]
+    (.write wrtr (stringify a))
+    (.newLine wrtr)))
+
+(defn slurp
+  "Opens a reader on sam-file and reads all its headers and alignments,
+  returning a map about sam records."
+  [f]
+  (with-open [r (reader f)]
+    (Sam. (read-header r)
+          (doall (read-alignments r)))))
+
+(defn spit
+  "Opposite of slurp-sam. Opens sam-file with writer, writes sam headers and
+  alignments, then closes the sam-file."
+  [f ^Sam sam]
+  (with-open [w (writer f)]
+    (write-header w (:header sam))
+    (write-alignments w (:alignments sam))))

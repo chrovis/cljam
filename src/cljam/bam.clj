@@ -1,18 +1,19 @@
 (ns cljam.bam
+  (:refer-clojure :exclude [slurp spit])
   (:require [clojure.string :refer [split join]]
             [clojure.java.io :refer [file]]
             (cljam [sam :as sam]
                    [lsb :as lsb]
                    [binary-cigar-codec :as bcc]
-                   [util :refer [string->bytes normalize-bases ubyte
+                   [util :refer [reg->bin string->bytes normalize-bases ubyte
                                  fastq->phred phred->fastq
                                  bytes->compressed-bases compressed-bases->chars]]))
   (:import java.util.Arrays
-           (java.io DataInputStream IOException)
+           (java.io DataInputStream DataOutputStream IOException)
            (java.nio ByteBuffer ByteOrder)
            (net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)
-           (net.sf.samtools.util BlockCompressedInputStream)
-           (cljam.sam SamHeader SamAlignment)))
+           (net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream)
+           (cljam.sam Sam SamHeader SamAlignment)))
 
 (def fixed-block-size 32)
 
@@ -225,3 +226,106 @@
   (when-not (zero? (.available (.reader rdr)))
     (cons (read-alignment (.reader rdr) (.refs rdr))
           (lazy-seq (read-alignments rdr)))))
+
+(defn- stringify-header [headers]
+  (join \newline
+        (map sam/stringify headers)))
+
+(defn- write-tag-value [writer val-type value]
+  (condp = val-type
+    \A (lsb/write-bytes  writer (char value))
+    \i (lsb/write-int    writer (Integer/parseInt value))
+    \f (lsb/write-float  writer (Float/parseFloat value))
+    \Z (lsb/write-string writer value)
+    ;; \H nil
+    \B (let [[array-type & array] (split value #",")]
+         (condp = (first array-type)
+           \c nil
+           \C nil
+           \s nil
+           \S (do
+                (lsb/write-bytes writer (byte-array 1 (byte \S)))
+                (lsb/write-int writer (count array))
+                (doseq [v array]
+                 (lsb/write-short writer (Short/parseShort v))))
+           \i nil
+           \I nil
+           \f nil))))
+
+(defn writer [f]
+  (DataOutputStream. (BlockCompressedOutputStream. f)))
+
+(defn write-header [wrtr hdr]
+  (lsb/write-bytes wrtr (.getBytes bam-magic)) ; magic
+  (let [header (str (stringify-header hdr) \newline)]
+    (lsb/write-int wrtr (count header))
+    (lsb/write-string wrtr header))
+  (lsb/write-int wrtr (count hdr)))
+
+(defn write-refs [wrtr hdr]
+  (doseq [h hdr]
+    (lsb/write-int wrtr (inc (count (:SN (:SQ h)))))
+    (lsb/write-string wrtr (:SN (:SQ h)))
+    (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
+    (lsb/write-int wrtr (Integer/parseInt (:LN (:SQ h))))))
+
+(defn write-alignment [wrtr aln refs]
+  ;; block_size
+  (lsb/write-int wrtr (get-block-size aln))
+  ;; refID
+  (lsb/write-int wrtr (get-ref-id aln refs))
+  ;; pos
+  (lsb/write-int wrtr (get-pos aln))
+  ;; bin_mq_nl
+  (lsb/write-ubyte wrtr (short (inc (count (:qname aln)))))
+  (lsb/write-ubyte wrtr (short (:mapq aln)))
+  (lsb/write-ushort wrtr (reg->bin (:pos aln) (get-end aln)))
+  ;; flag_nc
+  (lsb/write-ushort wrtr (count-cigar aln))
+  (lsb/write-ushort wrtr (:flag aln))
+  ;; l_seq
+  (lsb/write-int wrtr (get-l-seq aln))
+  ;; next_refID
+  (lsb/write-int wrtr (get-next-ref-id aln refs))
+  ;; next_pos
+  (lsb/write-int wrtr (get-next-pos aln))
+  ;; tlen
+  (lsb/write-int wrtr (get-tlen aln))
+  ;; read_name
+  (lsb/write-string wrtr (get-read-name aln))
+  (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
+  ;; cigar
+  (doseq [cigar (get-cigar aln)]
+    (lsb/write-int wrtr cigar))
+  ;; seq
+  (lsb/write-bytes wrtr (get-seq aln))
+  ;; qual
+  (lsb/write-bytes wrtr (encode-qual aln))
+  ;; options
+  (doseq [op (:options aln)]
+    (let [[tag value] (first (seq op))]
+      (lsb/write-short wrtr (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
+                                           (byte (first (name tag))))))
+      (lsb/write-bytes wrtr (.getBytes (:type value)))
+      (write-tag-value wrtr (first (:type value)) (:value value)))))
+
+(defn write-alignments [wrtr alns refs]
+  (doseq [a alns]
+    (write-alignment wrtr a refs)))
+
+(defn slurp
+  "Opens a reader on bam-file and reads all its headers and alignments,
+  returning a map about sam records."
+  [f]
+  (with-open [r (reader f)]
+    (Sam. (read-header r)
+          (doall (read-alignments r)))))
+
+(defn spit
+  "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and
+  alignments, then closes the bam-file."
+  [f sam]
+  (with-open [w (writer f)]
+    (write-header w (:header sam))
+    (write-refs w (:header sam))
+    (write-alignments w (:alignments sam) (sam/make-refs sam))))

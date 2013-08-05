@@ -1,14 +1,28 @@
 (ns cljam.core
-  (:refer-clojure :exclude [sort merge])
+  (:refer-clojure :exclude [sort merge slurp spit])
   (:require [clojure.contrib.command-line :refer [with-command-line]]
             [clj-sub-command.core :refer [do-sub-command]]
-            (cljam [io :as io]
-                   [sam :as sam]
+            (cljam [sam :as sam]
                    [bam :as bam]
                    [sorter :as sorter]
-                   [indexer :as indexer]
-                   [pileup :as pileup]))
-  (:import (net.sf.picard.sam BuildBamIndex BamIndexStats)))
+                   [indexer :as idxr]
+                   [fasta :as fa]
+                   [fasta-indexer :as fai]
+                   [pileup :as pileup])))
+
+(defn- slurp
+  [f]
+  (condp re-find f
+    #"\.sam$" (sam/slurp f)
+    #"\.bam$" (bam/slurp f)
+    (throw (IllegalArgumentException. "Invalid file type"))))
+
+(defn- spit
+  [f sam]
+  (condp re-find f
+    #"\.sam$" (sam/spit f sam)
+    #"\.bam$" (bam/spit f sam)
+    (throw (IllegalArgumentException. "Invalid file type"))))
 
 (defn view [& args]
   (with-command-line args
@@ -20,9 +34,9 @@
       (println "Invalid arguments")
       (System/exit 1))
     (let [asam (condp = format
-                   "auto" (io/slurp     (first files))
-                   "sam"  (io/slurp-sam (first files))
-                   "bam"  (io/slurp-bam (first files)))]
+                   "auto" (slurp     (first files))
+                   "sam"  (sam/slurp (first files))
+                   "bam"  (bam/slurp (first files)))]
       (when header?
         (doseq [sh (:header asam)]
           (println (sam/stringify sh))))
@@ -38,8 +52,8 @@
     (when-not (= (count files) 2)
       (println "Invalid arguments")
       (System/exit 1))
-    (let [asam (io/slurp (first files))]
-      (io/spit (second files) asam))))
+    (let [asam (slurp (first files))]
+      (spit (second files) asam))))
 
 (defn sort [& args]
   (with-command-line args
@@ -49,10 +63,10 @@
     (when-not (= (count files) 2)
       (println "Invalid arguments")
       (System/exit 1))
-    (let [asam (io/slurp (first files))]
+    (let [asam (slurp (first files))]
       (condp = order
-        "coordinate" (io/spit (second files) (sorter/sort-by-pos asam))
-        "queryname"  (io/spit (second files) (sorter/sort-by-qname asam))))))
+        "coordinate" (spit (second files) (sorter/sort-by-pos asam))
+        "queryname"  (spit (second files) (sorter/sort-by-qname asam))))))
 
 (defn index [& args]
   (with-command-line args
@@ -61,10 +75,7 @@
     (when-not (= (count files) 1)
       (println "Invalid arguments")
       (System/exit 1))
-    ;; HACK: Should not use Picard
-    (.. (BuildBamIndex.)
-        (instanceMain (into-array String [(str "I=" (first files)),
-                                          (str "O=" (first files) ".bai")])))))
+    (idxr/build-bam-index (first files) (str (first files) ".bai"))))
 
 (defn idxstats [& args]
   (with-command-line args
@@ -73,9 +84,7 @@
     (when-not (= (count files) 1)
       (println "Invalid arguments")
       (System/exit 1))
-    ;; HACK: Should not use Picard
-    (.. (BamIndexStats.)
-        (instanceMain (into-array String [(str "I=" (first files))])))))
+    (idxr/bam-index-stats (first files))))
 
 (defn merge [& args]
   (with-command-line args
@@ -92,7 +101,7 @@
     (when-not (= (count files) 1)
       (println "Invalid arguments")
       (System/exit 1))
-    (let [sam (io/slurp-bam (first files))]
+    (let [sam (bam/slurp (first files))]
       (doseq [p (pileup/pileup (if-not (sorter/sorted? sam)
                                  (sorter/sort sam)
                                  sam))]
@@ -105,17 +114,17 @@
     (when-not (= (count files) 1)
       (println "Invalid arguments")
       (System/exit 1))
-    (io/spit-fai (str (first files) ".fai")
-                 (io/slurp-fasta (first files)))))
+    (fai/spit (str (first files) ".fai")
+              (fa/slurp (first files)))))
 
 (defn -main [& args]
   (do-sub-command args
-    "Usage: cljam [-h] {view,convert,sort,index,idxstats,merge,pileup} ..."
+    "Usage: cljam [-h] {view,convert,sort,index,idxstats,merge,pileup,faidx} ..."
     [:view     cljam.core/view     "Extract/print all or sub alignments in SAM or BAM format."]
     [:convert  cljam.core/convert  "Convert SAM to BAM or BAM to SAM."]
     [:sort     cljam.core/sort     "Sort alignments by leftmost coordinates."]
     [:index    cljam.core/index    "Index sorted alignment for fast random access."]
     [:idxstats cljam.core/idxstats "Retrieve  and print stats in the index file."]
     [:merge    cljam.core/merge    "Merge multiple SAM/BAM."]
-    [:pileup   cljam.core/pileup   "todo"]
+    [:pileup   cljam.core/pileup   "Generate pileup for the BAM file."]
     [:faidx    cljam.core/faidx    "Index reference sequence in the FASTA format."]))

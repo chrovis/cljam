@@ -23,3 +23,13 @@
   (sam/ref-name refs 0) => "ref"
   (sam/ref-name refs 1) => "ref2"
   (sam/ref-name refs 9) => nil?)
+
+(fact "about slurp-sam"
+  (sam/slurp test-sam-file) => test-sam)
+
+(with-state-changes [(before :facts (mk-temp-dir!))
+                     (after  :facts (rm-temp-dir!))]
+  (fact "about spit-sam"
+    (let [temp-file (str temp-dir "/test.sam")]
+     (sam/spit temp-file test-sam) => nil?
+     (sam/slurp temp-file) => test-sam)))

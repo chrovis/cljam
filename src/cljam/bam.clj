@@ -12,8 +12,7 @@
            (java.io DataInputStream DataOutputStream IOException)
            (java.nio ByteBuffer ByteOrder)
            (net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)
-           (net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream)
-           (cljam.sam Sam SamHeader SamAlignment)))
+           (net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream)))
 
 (def fixed-block-size 32)
 
@@ -59,8 +58,8 @@
        read-length
        (get-options-size sam-alignment))))
 
-(defn get-ref-id [sa refs]
-  (if-let [id (sam/ref-id refs (:rname sa))] id -1))
+(defn get-ref-id [aln refs]
+  (if-let [id (sam/ref-id refs (:rname aln))] id -1))
 
 (defn get-pos [sam-alignment]
   (dec (:pos sam-alignment)))
@@ -132,14 +131,11 @@
   java.io.Closeable
   (close [this] (.. this reader close)))
 
-(defn- parse-header [header]
-  (map #(sam/parse-header %) (split header #"\n")))
-
 (defn reader [f]
   (let [rdr (DataInputStream. (BlockCompressedInputStream. (file f)))]
     (if-not (Arrays/equals (lsb/read-bytes rdr 4) (.getBytes bam-magic))
       (throw (IOException. "Invalid BAM file header")))
-    (let [header (parse-header (lsb/read-string rdr (lsb/read-int rdr)))
+    (let [header (sam/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
           n-ref  (lsb/read-int rdr)
           refs   (loop [i n-ref, ret []]
                    (if (zero? i)
@@ -153,7 +149,7 @@
       (->BamReader header refs rdr))))
 
 (defn read-header
-  [^BamReader rdr]
+  [rdr]
   (.header rdr))
 
 (defn- parse-option [bb]
@@ -219,17 +215,15 @@
                                              (/ (inc l-seq) 2)
                                              (count seq)))
           options (parse-options rest)]
-      (SamAlignment. qname flag rname pos mapq cigar rnext pnext tlen seq qual options))))
+      {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
+       :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
+       :qual qual, :options options})))
 
 (defn read-alignments
-  [^BamReader rdr]
+  [rdr]
   (when-not (zero? (.available (.reader rdr)))
     (cons (read-alignment (.reader rdr) (.refs rdr))
           (lazy-seq (read-alignments rdr)))))
-
-(defn- stringify-header [headers]
-  (join \newline
-        (map sam/stringify headers)))
 
 (defn- write-tag-value [writer val-type value]
   (condp = val-type
@@ -257,17 +251,17 @@
 
 (defn write-header [wrtr hdr]
   (lsb/write-bytes wrtr (.getBytes bam-magic)) ; magic
-  (let [header (str (stringify-header hdr) \newline)]
+  (let [header (str (sam/stringify-header hdr) \newline)]
     (lsb/write-int wrtr (count header))
-    (lsb/write-string wrtr header))
-  (lsb/write-int wrtr (count hdr)))
+    (lsb/write-string wrtr header)))
 
-(defn write-refs [wrtr hdr]
-  (doseq [h hdr]
-    (lsb/write-int wrtr (inc (count (:SN (:SQ h)))))
-    (lsb/write-string wrtr (:SN (:SQ h)))
+(defn write-refs [wrtr refs]
+  (lsb/write-int wrtr (count refs))
+  (doseq [ref refs]
+    (lsb/write-int wrtr (inc (count (:name ref))))
+    (lsb/write-string wrtr (:name ref))
     (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
-    (lsb/write-int wrtr (Integer/parseInt (:LN (:SQ h))))))
+    (lsb/write-int wrtr (:len ref))))
 
 (defn write-alignment [wrtr aln refs]
   ;; block_size
@@ -318,14 +312,15 @@
   returning a map about sam records."
   [f]
   (with-open [r (reader f)]
-    (Sam. (read-header r)
-          (doall (read-alignments r)))))
+    {:header (read-header r)
+     :alignments (doall (read-alignments r))}))
 
 (defn spit
   "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and
   alignments, then closes the bam-file."
   [f sam]
   (with-open [w (writer f)]
-    (write-header w (:header sam))
-    (write-refs w (:header sam))
-    (write-alignments w (:alignments sam) (sam/make-refs sam))))
+    (let [refs (sam/make-refs (:header sam))]
+      (write-header w (:header sam))
+      (write-refs w refs)
+      (write-alignments w (:alignments sam) refs))))

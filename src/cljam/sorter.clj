@@ -1,10 +1,9 @@
 (ns cljam.sorter
   (:refer-clojure :exclude [sort sorted?])
-  (:require [cljam.sam :as sam])
-  (:import cljam.sam.SamHeader))
+  (:require [cljam.sam :as sam]))
 
 (defn- rnames [sam]
-  (map #(:SN (:SQ %)) (seq (:header sam))))
+  (map :SN (:SQ (:header sam))))
 
 (defn- sort-alignments-by-pos [sam]
   (let [get-order #(.indexOf (vec (rnames sam)) %)]
@@ -17,7 +16,7 @@
         (assoc sam :alignments))))
 
 (defn- add-hd [sam vn so]
-  (assoc sam :header (cons (assoc (SamHeader.) :HD {:VN vn, :SO so}) (:header sam))))
+  (update-in sam [:header] conj {:HD {:VN vn, :SO so}}))
 
 (defn sort-by-pos [sam]
   (-> (sort-alignments-by-pos sam)
@@ -31,11 +30,11 @@
   (sort-by-pos sam))
 
 (defn sorted? [sam]
-  (let [so (:SO (:HD (sam/hd-header sam)))]
+  (let [so (:SO (:HD (:header sam)))]
     (or (= so "queryname")
         (= so "coordinate"))))
 
 (defn sort-order [sam]
-  (if-let [so (:SO (:HD (sam/hd-header sam)))]
+  (if-let [so (:SO (:HD (:header sam)))]
     so
     "unknown"))

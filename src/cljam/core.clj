@@ -34,14 +34,13 @@
       (println "Invalid arguments")
       (System/exit 1))
     (let [asam (condp = format
-                   "auto" (slurp     (first files))
-                   "sam"  (sam/slurp (first files))
-                   "bam"  (bam/slurp (first files)))]
+                 "auto" (slurp     (first files))
+                 "sam"  (sam/slurp (first files))
+                 "bam"  (bam/slurp (first files)))]
       (when header?
-        (doseq [sh (:header asam)]
-          (println (sam/stringify sh))))
-      (doseq [sa (:alignments asam)]
-        (println (sam/stringify sa))))))
+        (println (sam/stringify-header (:header asam))))
+      (doseq [a (:alignments asam)]
+        (println (sam/stringify-alignment a))))))
 
 (defn convert [& args]
   (with-command-line args

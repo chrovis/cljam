@@ -1,18 +1,7 @@
 (ns cljam.sam
   (:refer-clojure :exclude [slurp spit])
   (:require [clojure.string :as str :refer [split join trim upper-case]]
-            [cljam.util :refer [ra-line-seq]])
-  (:import java.io.RandomAccessFile))
-
-;;; Define records
-
-(defrecord SamHeader [])
-
-(defrecord SamAlignment
-    [qname flag rname pos mapq cigar rnext pnext tlen seq qual options])
-
-(defrecord Sam
-    [header alignments])
+            [cljam.util :refer [ra-line-seq]]))
 
 ;;; Parse
 
@@ -22,12 +11,18 @@
                         {(keyword k) v}))
                     keyvalues)))
 
-(defn parse-header [line]
-  "Parse a line, returning a SamHeader record."
+(defn- parse-header-line [line]
   (let [[type & keyvalues] (split line #"\t")]
-    (assoc (SamHeader.)
-      (keyword (subs type 1))
-      (parse-header-keyvalues keyvalues))))
+    {(keyword (subs type 1)) (vector (parse-header-keyvalues keyvalues))}))
+
+(defn- parse-header* [col]
+  (when (seq col)
+    (merge-with concat (parse-header-line (first col)) (parse-header* (rest col)))))
+
+(defn parse-header
+  "Parse a header string, returning a map of the header."
+  [s]
+  (parse-header* (split s #"\n")))
 
 (defn- parse-optional-fields [options]
   (map (fn [op]
@@ -38,21 +33,22 @@
 (defn- parse-seq-text [s]
   (upper-case s))
 
-(defn parse-alignment [line]
-  "Parse a line, returning a SamAlignment record."
+(defn parse-alignment
+  "Parse an alignment line, returning a map of the alignment."
+  [line]
   (let [fields (split line #"\t")]
-    (SamAlignment. (first fields)
-                   (Integer/parseInt (nth fields 1))
-                   (nth fields 2)
-                   (Integer/parseInt (nth fields 3))
-                   (Integer/parseInt (nth fields 4))
-                   (nth fields 5)
-                   (nth fields 6)
-                   (Integer/parseInt (nth fields 7))
-                   (Integer/parseInt (nth fields 8))
-                   (parse-seq-text (nth fields 9))
-                   (nth fields 10)
-                   (vec (parse-optional-fields (drop 11 fields))))))
+    {:qname   (first fields)
+     :flag    (Integer/parseInt (nth fields 1))
+     :rname   (nth fields 2)
+     :pos     (Integer/parseInt (nth fields 3))
+     :mapq    (Integer/parseInt (nth fields 4))
+     :cigar   (nth fields 5)
+     :rnext   (nth fields 6)
+     :pnext   (Integer/parseInt (nth fields 7))
+     :tlen    (Integer/parseInt (nth fields 8))
+     :seq     (parse-seq-text (nth fields 9))
+     :qual    (nth fields 10)
+     :options (vec (parse-optional-fields (drop 11 fields)))}))
 
 ;;; Stringify
 
@@ -70,13 +66,17 @@
                  (str (name tag) \: (:type entity) \: (:value entity))))
              options)))
 
-(defmulti stringify class)
+(defn stringify-header [hdr]
+  (join \newline
+        (map (fn [h]
+               (let [[typ kvs] h]
+                 (if (= typ :HD)
+                   (str "@HD" \tab (stringify-header-keyvalues kvs))
+                   (join \newline
+                         (map #(str \@ (name typ) \tab (stringify-header-keyvalues %)) kvs)))))
+             (seq hdr))))
 
-(defmethod stringify SamHeader [sh]
-  (let [[type keyvalues] (first (seq sh))]
-    (str \@ (name type) \tab (stringify-header-keyvalues keyvalues))))
-
-(defmethod stringify SamAlignment [sa]
+(defn stringify-alignment [sa]
   (trim
    (join \tab
          [(:qname sa)
@@ -94,10 +94,10 @@
 
 ;;; Reference functions
 
-(defn make-refs [sam]
+(defn make-refs [hdr]
   "Return a reference sequence from the sam."
-  (for [h (filter :SQ (:header sam))]
-    {:name (:SN (:SQ h)), :len (:LN (:SQ h))}))
+  (for [sq (:SQ hdr)]
+    {:name (:SN sq), :len (Integer/parseInt (:LN sq))}))
 
 (defn ref-id [refs name]
   "Returns reference ID from the reference sequence and the specified reference
@@ -111,11 +111,6 @@
   (if (<= 0 id (dec (count refs)))
     (:name (nth refs id))))
 
-;;; Utilities
-
-(defn hd-header [sam]
-  (some #(when-not (nil? (:HD %)) %) (:header sam)))
-
 ;;; I/O
 
 (deftype ^:private SamReader [header reader]
@@ -125,7 +120,7 @@
 (defn- read-header* [rdr]
   (when-let [line (.readLine rdr)]
     (if (= (first line) \@)
-      (cons (parse-header line) (read-header* rdr)))))
+      (merge-with concat (parse-header-line line) (read-header* rdr)))))
 
 (defn reader [f]
   (let [header (with-open [r (clojure.java.io/reader f)]
@@ -133,24 +128,23 @@
     (->SamReader header (clojure.java.io/reader f))))
 
 (defn read-header
-  [^SamReader rdr]
+  [rdr]
   (.header rdr))
 
 (defn read-alignments
-  [^SamReader rdr]
+  [rdr]
   (map parse-alignment (filter #(not= (first %) \@) (ra-line-seq (.reader rdr)))))
 
 (defn writer [f]
   (clojure.java.io/writer f))
 
 (defn write-header [wrtr hdr]
-  (doseq [h hdr]
-    (.write wrtr (stringify h))
-    (.newLine wrtr)))
+  (.write wrtr (stringify-header hdr))
+  (.newLine wrtr))
 
 (defn write-alignments [wrtr alns]
   (doseq [a alns]
-    (.write wrtr (stringify a))
+    (.write wrtr (stringify-alignment a))
     (.newLine wrtr)))
 
 (defn slurp
@@ -158,13 +152,13 @@
   returning a map about sam records."
   [f]
   (with-open [r (reader f)]
-    (Sam. (read-header r)
-          (doall (read-alignments r)))))
+    {:header (read-header r)
+     :alignments (doall (read-alignments r))}))
 
 (defn spit
   "Opposite of slurp-sam. Opens sam-file with writer, writes sam headers and
   alignments, then closes the sam-file."
-  [f ^Sam sam]
+  [f sam]
   (with-open [w (writer f)]
     (write-header w (:header sam))
     (write-alignments w (:alignments sam))))

@@ -5,15 +5,15 @@
   (:import (cljam.sam Sam SamHeader SamAlignment)))
 
 (def test-sam
-  (Sam. [(assoc (SamHeader.) :HD {:VN "1.4",  :SO "coordinate"})
-         (assoc (SamHeader.) :SQ {:SN "ref",  :LN "45"})
-         (assoc (SamHeader.) :SQ {:SN "ref2", :LN "40"})]
-        [(SamAlignment. "r001" 163 "ref"  7  30 "8M4I4M1D3M"         "=" 37 39  "TTAGATAAAGAGGATACTG"        "*"                          [{:XX {:type "B", :value "S,12561,2,20,112"}}])
-         (SamAlignment. "r002" 0   "ref"  9  30 "1S2I6M1P1I1P1I4M2I" "*" 0  0   "AAAAGATAAGGGATAAA"          "*"                          [])
-         (SamAlignment. "r003" 0   "ref"  9  30 "5H6M"               "*" 0  0   "AGCTAA"                     "*"                          [])
-         (SamAlignment. "x1"   0   "ref2" 1  30 "20M"                "*" 0  0   "AGGTTTTATAAAACAAATAA"       "????????????????????"       [])
-         (SamAlignment. "x2"   0   "ref2" 2  30 "21M"                "*" 0  0   "GGTTTTATAAAACAAATAATT"      "?????????????????????"      [])
-         (SamAlignment. "x3"   0   "ref2" 6  30 "9M4I13M"            "*" 0  0   "TTATAAAACAAATAATTAAGTCTACA" "??????????????????????????" [])]))
+  {:header {:HD {:VN "1.4",  :SO "coordinate"}
+            :SQ '({:SN "ref",  :LN "45"} {:SN "ref2", :LN "40"})}
+   :alignments
+   '({:qname "r001", :flag 163, :rname "ref" , :pos 7, :mapq 30, :cigar "8M4I4M1D3M"        , :rnext "=", :pnext 37, :tlen 39, :seq  "TTAGATAAAGAGGATACTG"       , :qual "*"                         , :options [{:XX {:type "B", :value "S,12561,2,20,112"}}]}
+     {:qname "r002", :flag 0  , :rname "ref" , :pos 9, :mapq 30, :cigar "1S2I6M1P1I1P1I4M2I", :rnext "*", :pnext 0 , :tlen 0 , :seq  "AAAAGATAAGGGATAAA"         , :qual "*"                         , :options []}
+     {:qname "r003", :flag 0  , :rname "ref" , :pos 9, :mapq 30, :cigar "5H6M"              , :rnext "*", :pnext 0 , :tlen 0 , :seq  "AGCTAA"                    , :qual "*"                         , :options []}
+     {:qname "x1"  , :flag 0  , :rname "ref2", :pos 1, :mapq 30, :cigar "20M"               , :rnext "*", :pnext 0 , :tlen 0 , :seq  "AGGTTTTATAAAACAAATAA"      , :qual "????????????????????"      , :options []}
+     {:qname "x2"  , :flag 0  , :rname "ref2", :pos 2, :mapq 30, :cigar "21M"               , :rnext "*", :pnext 0 , :tlen 0 , :seq  "GGTTTTATAAAACAAATAATT"     , :qual "?????????????????????"     , :options []}
+     {:qname "x3"  , :flag 0  , :rname "ref2", :pos 6, :mapq 30, :cigar "9M4I13M"           , :rnext "*", :pnext 0 , :tlen 0 , :seq  "TTATAAAACAAATAATTAAGTCTACA", :qual "??????????????????????????", :options []})})
 
 (fact "about pileup"
   (pileup/pileup test-sam) => '({:rname "ref",  :pos 7,  :n 1}

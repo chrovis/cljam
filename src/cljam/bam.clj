@@ -313,7 +313,7 @@
   [f]
   (with-open [r (reader f)]
     {:header (read-header r)
-     :alignments (doall (read-alignments r))}))
+     :alignments (vec (read-alignments r))}))
 
 (defn spit
   "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and

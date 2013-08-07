@@ -10,6 +10,7 @@
    (->> (sort-by #(vec [(get-order (:rname %)) (:pos %)]) (:alignments sam))
         (assoc sam :alignments))))
 
+;;; FIXME: Invalid sorting algorithm
 (defn- sort-alignments-by-qname [sam]
   (let [get-order #(.indexOf (vec (rnames sam)) %)]
    (->> (sort-by #(vec [(get-order (:rname %)) (:qname %)]) (:alignments sam))

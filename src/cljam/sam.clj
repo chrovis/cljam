@@ -5,10 +5,12 @@
 
 ;;; Parse
 
-(defn- parse-header-keyvalues [keyvalues]
+(defn- parse-header-keyvalues
+  "e.g. \"LN:45 SN:ref\" -> {:LN 45, :SN \"ref\"}"
+  [keyvalues]
   (apply merge (map (fn [kv]
                       (let [[k v] (split kv #":")]
-                        {(keyword k) v}))
+                        {(keyword k) (if (= k "LN") (Integer/parseInt v) v)}))
                     keyvalues)))
 
 (defn- parse-header-line [line]
@@ -17,7 +19,7 @@
 
 (defn- parse-header* [col]
   (when (seq col)
-    (merge-with concat (parse-header-line (first col)) (parse-header* (rest col)))))
+    (merge-with #(into [] (concat %1 %2)) (parse-header-line (first col)) (parse-header* (rest col)))))
 
 (defn parse-header
   "Parse a header string, returning a map of the header."
@@ -97,7 +99,7 @@
 (defn make-refs [hdr]
   "Return a reference sequence from the sam."
   (for [sq (:SQ hdr)]
-    {:name (:SN sq), :len (Integer/parseInt (:LN sq))}))
+    {:name (:SN sq), :len (:LN sq)}))
 
 (defn ref-id [refs name]
   "Returns reference ID from the reference sequence and the specified reference
@@ -120,7 +122,7 @@
 (defn- read-header* [rdr]
   (when-let [line (.readLine rdr)]
     (if (= (first line) \@)
-      (merge-with concat (parse-header-line line) (read-header* rdr)))))
+      (merge-with #(into [] (concat %1 %2)) (parse-header-line line) (read-header* rdr)))))
 
 (defn reader [f]
   (let [header (with-open [r (clojure.java.io/reader f)]
@@ -153,7 +155,7 @@
   [f]
   (with-open [r (reader f)]
     {:header (read-header r)
-     :alignments (doall (read-alignments r))}))
+     :alignments (vec (read-alignments r))}))
 
 (defn spit
   "Opposite of slurp-sam. Opens sam-file with writer, writes sam headers and

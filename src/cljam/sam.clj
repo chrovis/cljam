@@ -14,8 +14,10 @@
                     keyvalues)))
 
 (defn- parse-header-line [line]
-  (let [[type & keyvalues] (split line #"\t")]
-    {(keyword (subs type 1)) (vector (parse-header-keyvalues keyvalues))}))
+  (let [[typ & kvs] (split line #"\t")]
+    {(keyword (subs typ 1)) (if (= typ "@HD")
+                              (parse-header-keyvalues kvs)
+                              (vector (parse-header-keyvalues kvs)))}))
 
 (defn- parse-header* [col]
   (when (seq col)

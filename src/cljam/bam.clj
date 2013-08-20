@@ -127,7 +127,7 @@
 
 ;;; I/O
 
-(deftype ^:private BamReader [header refs reader]
+(deftype BamReader [header refs reader]
   java.io.Closeable
   (close [this] (.. this reader close)))
 
@@ -153,22 +153,25 @@
   (.header rdr))
 
 (defn- parse-option [bb]
-  (let [a (.get bb)
-        b (.get bb)
-        tag (str (char b) (char a))
+  (let [tag (str (char (.get bb)) (char (.get bb)))
         tag-type (char (.get bb))]
     {(keyword tag)
      {:type  (str tag-type)
       :value (condp = tag-type
+               \Z (lsb/read-null-terminated-string bb)
                \A (.get bb)
+               \I nil                   ; TODO
                \i (.getInt bb)
+               \s (int (.getShort bb))
+               \S (bit-and (.getShort bb) 0xffff)
+               \c (int (.get bb))
+               \C (bit-and (int (.get bb)) 0xff)
                \f (.getFloat bb)
-               \Z nil                   ; todo
-               ;; \H nil
+               ;; \H nil ; TODO
                \B (let [array-type (char (.get bb))
                         length (.getInt bb)]
                     (->> (for [i (range length)]
-                           (condp = array-type ; BinaryTagCodec.java
+                           (condp = array-type ; NOTE: BinaryTagCodec.java
                              \c (int (.get bb))
                              \C (bit-and (int (.get bb)) 0xff)
                              \s (int (.getShort bb))
@@ -207,13 +210,13 @@
           _           (lsb/read-bytes rdr 1)
           cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
           seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
-          qual        (decode-qual (lsb/read-bytes rdr (count seq)))
+          qual        (decode-qual (lsb/read-bytes rdr l-seq))
           rest        (lsb/read-bytes rdr (- block-size
                                              fixed-block-size
                                              (int l-read-name)
                                              (* n-cigar-op 4)
-                                             (/ (inc l-seq) 2)
-                                             (count seq)))
+                                             (int (/ (inc l-seq) 2))
+                                             l-seq))
           options (parse-options rest)]
       {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
        :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,

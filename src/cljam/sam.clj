@@ -117,7 +117,7 @@
 
 ;;; I/O
 
-(deftype ^:private SamReader [header reader]
+(deftype SamReader [header reader]
   java.io.Closeable
   (close [this] (.. this reader close)))
 

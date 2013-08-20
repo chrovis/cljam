@@ -6,7 +6,7 @@
                    [lsb :as lsb]
                    [binary-cigar-codec :as bcc]
                    [util :refer [reg->bin string->bytes normalize-bases ubyte
-                                 fastq->phred phred->fastq
+                                 hex-string->bytes fastq->phred phred->fastq
                                  bytes->compressed-bases compressed-bases->chars]]))
   (:import java.util.Arrays
            (java.io DataInputStream DataOutputStream IOException)
@@ -152,35 +152,51 @@
   [rdr]
   (.header rdr))
 
+(defn- options-size
+  [block-size l-read-name n-cigar-op l-seq]
+  (- block-size
+     fixed-block-size
+     (int l-read-name)
+     (* n-cigar-op 4)
+     (int (/ (inc l-seq) 2))
+     l-seq))
+
+(defn- parse-tag-single [tag-type bb]
+  (case tag-type
+    \Z (lsb/read-null-terminated-string bb)
+    \A (.get bb)
+    \I (bit-and (.getInt bb) 0xffffffff)
+    \i (.getInt bb)
+    \s (int (.getShort bb))
+    \S (bit-and (.getShort bb) 0xffff)
+    \c (int (.get bb))
+    \C (bit-and (int (.get bb)) 0xff)
+    \f (.getFloat bb)
+    \H (hex-string->bytes (lsb/read-null-terminated-string bb))
+    (throw (Exception. "Unrecognized tag type"))))
+
+(defn- parse-tag-array [bb]
+  (let [array-type (char (.get bb))
+        length (.getInt bb)]
+    (->> (for [i (range length)]
+           (condp = array-type ; NOTE: BinaryTagCodec.java
+             \c (int (.get bb))
+             \C (bit-and (int (.get bb)) 0xff)
+             \s (int (.getShort bb))
+             \S (bit-and (.getShort bb) 0xffff)
+             \i (.getInt bb)
+             \I nil     ; todo
+             \f (.getFloat bb)))
+         (cons array-type)
+         (join \,))))
+
 (defn- parse-option [bb]
   (let [tag (str (char (.get bb)) (char (.get bb)))
-        tag-type (char (.get bb))]
-    {(keyword tag)
-     {:type  (str tag-type)
-      :value (condp = tag-type
-               \Z (lsb/read-null-terminated-string bb)
-               \A (.get bb)
-               \I nil                   ; TODO
-               \i (.getInt bb)
-               \s (int (.getShort bb))
-               \S (bit-and (.getShort bb) 0xffff)
-               \c (int (.get bb))
-               \C (bit-and (int (.get bb)) 0xff)
-               \f (.getFloat bb)
-               ;; \H nil ; TODO
-               \B (let [array-type (char (.get bb))
-                        length (.getInt bb)]
-                    (->> (for [i (range length)]
-                           (condp = array-type ; NOTE: BinaryTagCodec.java
-                             \c (int (.get bb))
-                             \C (bit-and (int (.get bb)) 0xff)
-                             \s (int (.getShort bb))
-                             \S (bit-and (.getShort bb) 0xffff)
-                             \i (.getInt bb)
-                             \I nil     ; todo
-                             \f (.getFloat bb)))
-                         (cons array-type)
-                         (join \,))))}}))
+        typ (char (.get bb))]
+    {(keyword tag) {:type  (str typ)
+                    :value (if (= typ \B)
+                             (parse-tag-array bb)
+                             (parse-tag-single typ bb))}}))
 
 (defn- parse-options [rest]
   (let [bb (ByteBuffer/wrap rest)]
@@ -211,13 +227,11 @@
           cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
           seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
           qual        (decode-qual (lsb/read-bytes rdr l-seq))
-          rest        (lsb/read-bytes rdr (- block-size
-                                             fixed-block-size
-                                             (int l-read-name)
-                                             (* n-cigar-op 4)
-                                             (int (/ (inc l-seq) 2))
-                                             l-seq))
-          options (parse-options rest)]
+          rest        (lsb/read-bytes rdr (options-size block-size
+                                                        l-read-name
+                                                        n-cigar-op
+                                                        l-seq))
+          options     (parse-options rest)]
       {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
        :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
        :qual qual, :options options})))

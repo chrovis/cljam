@@ -8,10 +8,14 @@
 (defn- parse-header-keyvalues
   "e.g. \"LN:45 SN:ref\" -> {:LN 45, :SN \"ref\"}"
   [keyvalues]
-  (apply merge (map (fn [kv]
-                      (let [[k v] (split kv #":")]
-                        {(keyword k) (if (= k "LN") (Integer/parseInt v) v)}))
-                    keyvalues)))
+  (apply merge
+         (map (fn [kv]
+                (let [[k v] (split kv #":")]
+                  {(keyword k) (case k
+                                 "LN" (Integer/parseInt v)
+                                 "PI" (Integer/parseInt v)
+                                 v)}))
+              keyvalues)))
 
 (defn- parse-header-line [line]
   (let [[typ & kvs] (split line #"\t")]
@@ -21,7 +25,7 @@
 
 (defn- parse-header* [col]
   (when (seq col)
-    (merge-with #(into [] (concat %1 %2)) (parse-header-line (first col)) (parse-header* (rest col)))))
+    (merge-with #(vec (concat %1 %2)) (parse-header-line (first col)) (parse-header* (rest col)))))
 
 (defn parse-header
   "Parse a header string, returning a map of the header."
@@ -124,7 +128,7 @@
 (defn- read-header* [rdr]
   (when-let [line (.readLine rdr)]
     (if (= (first line) \@)
-      (merge-with #(into [] (concat %1 %2)) (parse-header-line line) (read-header* rdr)))))
+      (merge-with #(vec (concat %1 %2)) (parse-header-line line) (read-header* rdr)))))
 
 (defn reader [f]
   (let [header (with-open [r (clojure.java.io/reader f)]

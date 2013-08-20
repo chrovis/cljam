@@ -16,6 +16,19 @@
 (defn bytes->string [b]
   (String. b 0 (count b)))
 
+(defn from-hex-digit [c]
+  (let [d (Character/digit c 16)]
+    (when (= d -1)
+      (throw (NumberFormatException. (str "Invalid hex digit: " c))))
+    d))
+
+(defn hex-string->bytes [s]
+  {:pre [(even? (count s))]}
+  (byte-array
+   (map #(byte (bit-or (bit-shift-left (from-hex-digit (nth s (* % 2))) 4)
+                       from-hex-digit (nth s (inc (* % 2)))))
+        (range 0 (count s)))))
+
 (defn ra-line-seq
   [rdr]
   (when-let [line (.readLine rdr)]

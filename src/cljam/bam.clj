@@ -176,18 +176,19 @@
     (throw (Exception. "Unrecognized tag type"))))
 
 (defn- parse-tag-array [bb]
-  (let [array-type (char (.get bb))
-        length (.getInt bb)]
-    (->> (for [i (range length)]
-           (condp = array-type ; NOTE: BinaryTagCodec.java
+  (let [typ (char (.get bb))
+        len (.getInt bb)]
+    (->> (for [i (range len)]
+           (case typ
              \c (int (.get bb))
              \C (bit-and (int (.get bb)) 0xff)
              \s (int (.getShort bb))
              \S (bit-and (.getShort bb) 0xffff)
              \i (.getInt bb)
-             \I nil     ; todo
-             \f (.getFloat bb)))
-         (cons array-type)
+             \I (bit-and (.getInt bb) 0xffffffff)
+             \f (.getFloat bb)
+             (throw (Exception. (str "Unrecognized tag array type: " typ)))))
+         (cons typ)
          (join \,))))
 
 (defn- parse-option [bb]

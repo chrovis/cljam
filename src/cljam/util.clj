@@ -27,7 +27,7 @@
   (byte-array
    (map #(byte (bit-or (bit-shift-left (from-hex-digit (nth s (* % 2))) 4)
                        from-hex-digit (nth s (inc (* % 2)))))
-        (range 0 (count s)))))
+        (range (count s)))))
 
 (defn ra-line-seq
   [rdr]

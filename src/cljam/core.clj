@@ -8,7 +8,8 @@
                    [indexer :as idxr]
                    [fasta :as fa]
                    [fasta-indexer :as fai]
-                   [pileup :as pileup])))
+                   [pileup :as pileup]))
+  (:gen-class))
 
 (defn- slurp
   [f]

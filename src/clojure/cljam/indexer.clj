@@ -3,8 +3,8 @@
                    [lsb :as lsb]
                    [util :refer [reg->bin]]))
   (:import java.io.DataOutputStream
-           (net.sf.picard.sam BuildBamIndex BamIndexStats)
-           net.sf.samtools.util.BlockCompressedOutputStream))
+           ;(net.sf.picard.sam BuildBamIndex BamIndexStats)
+           cljam.stream.BlockCompressedOutputStream))
 
 (def bai-magic "BAI\1")
 
@@ -29,10 +29,10 @@
 ;;; Picard interop
 ;;; HACK: Should not use Picard
 
-(defn build-bam-index [in out]
-  (.. (BuildBamIndex.)
-      (instanceMain (into-array String [(str "I=" in), (str "O=" out)]))))
+;; (defn build-bam-index [in out]
+;;   (.. (BuildBamIndex.)
+;;       (instanceMain (into-array String [(str "I=" in), (str "O=" out)]))))
 
-(defn bam-index-stats [in]
-  (.. (BamIndexStats.)
-      (instanceMain (into-array String [(str "I=" in)]))))
+;; (defn bam-index-stats [in]
+;;   (.. (BamIndexStats.)
+;;       (instanceMain (into-array String [(str "I=" in)]))))

@@ -1,5 +1,5 @@
 (ns cljam.binary-cigar-codec
-  (:import (net.sf.samtools Cigar CigarElement CigarOperator)))
+  (:import (cljam.cigar Cigar CigarElement CigarOperator)))
 
 (defn binary-cigar->cigar-element [cigarette]
   (let [binary-op (bit-and cigarette 0xf)

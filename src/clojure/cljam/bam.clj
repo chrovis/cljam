@@ -11,8 +11,8 @@
   (:import java.util.Arrays
            (java.io DataInputStream DataOutputStream IOException)
            (java.nio ByteBuffer ByteOrder)
-           (net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)
-           (net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream)))
+           (cljam.cigar TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)
+           (cljam.stream BlockCompressedInputStream BlockCompressedOutputStream)))
 
 (def fixed-block-size 32)
 

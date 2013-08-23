@@ -30,13 +30,13 @@
              (recur cursor (rest matches) ret)))
          ret)))))
 
-(defn- calc-pos
-  [alns rname pos]
+(defn- calc-pos #^Long
+  [alns #^String rname #^Long pos]
   (loop [alns2 alns
          val 0]
     (let [[aln & rst] alns2]
       (if (or (nil? aln) (not= rname (:rname aln)) (< pos (:pos aln)))
-        {:n val, :rname rname, :pos pos}
+        val
         (if (< pos (+ (:pos aln) (count (substantial-seq aln))))
           (recur rst (inc val))
           (recur rst val))))))
@@ -49,21 +49,20 @@
       (pileup* alns rname (:pos (first alns)))))
   ([alns rname pos]
      (when (seq alns)
-       (let [ans (calc-pos alns rname pos)]
-         (if (zero? (:n ans))
-           (if (< pos (+ (:pos (first alns)) (count (substantial-seq (first alns)))))
-             (pileup* alns rname (inc pos))
-             (if (= rname (:rname (first (rest alns))))
-               (pileup* (rest alns) rname (inc pos))
-               (pileup* (rest alns) (:rname (first (rest alns))) (:pos (first (rest alns))))))
+       (let [val (calc-pos alns rname pos)
+             [aln & rst] alns]
+         (if (zero? val)
+           (if (= rname (:rname (first rst)))
+             (pileup* rst rname (inc pos))
+             (pileup* rst (:rname (first rst)) (:pos (first rst))))
            (lazy-seq
             (cons
-             ans
-             (if (< pos (+ (:pos (first alns)) (count (substantial-seq (first alns)))))
+             {:rname rname, :pos pos, :n val}
+             (if (< pos (+ (:pos aln) (count (substantial-seq aln))))
                (pileup* alns rname (inc pos))
-               (if (= rname (:rname (first (rest alns))))
-                 (pileup* (rest alns) rname (inc pos))
-                 (pileup* (rest alns) (:rname (first (rest alns))) (:pos (first (rest alns)))))))))))))
+               (if (= rname (:rname (first rst)))
+                 (pileup* rst rname (inc pos))
+                 (pileup* rst (:rname (first rst)) (:pos (first rst))))))))))))
 
 ;;; OPTIMIZE: This is implemented by pure Clojure, but it is too slow...
 (defn pileup

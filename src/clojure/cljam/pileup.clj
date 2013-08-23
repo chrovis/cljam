@@ -2,8 +2,8 @@
   (:require [clojure.string :refer [join]]
             (cljam [sorter :as sorter])))
 
-(defn substantial-seq [sa]
-  (let [{seq :seq, cigar :cigar} sa]
+(defn substantial-seq [aln]
+  (let [{seq :seq, cigar :cigar} aln]
     (join
      (loop [cursor  0
             matches (re-seq #"([0-9]*)([MIDNSHP=X])" cigar)
@@ -12,7 +12,7 @@
          (let [n  (Integer/parseInt (second (first matches)))
                op (last (first matches))]
            (condp #(not (nil? (%1 %2))) op
-             #{"M"  "=" "X"}
+             #{"M" "=" "X"}
              (recur (+ cursor n)
                     (rest matches)
                     (conj ret (subs seq cursor (+ cursor n))))
@@ -30,27 +30,43 @@
              (recur cursor (rest matches) ret)))
          ret)))))
 
+(defn- calc-pos #^Long
+  [alns #^String rname #^Long pos]
+  (loop [alns2 alns
+         val 0]
+    (let [[aln & rst] alns2]
+      (if (or (nil? aln) (not= rname (:rname aln)) (< pos (:pos aln)))
+        val
+        (if (< pos (+ (:pos aln) (count (substantial-seq aln))))
+          (recur rst (inc val))
+          (recur rst val))))))
+
+(defn- pileup*
+  ([alns]
+     (pileup* alns (:rname (first alns)) (:pos (first alns))))
+  ([alns rname]
+     (let [alns (filter #(= (:rname %) rname) alns)]
+      (pileup* alns rname (:pos (first alns)))))
+  ([alns rname pos]
+     (when (seq alns)
+       (let [val (calc-pos alns rname pos)
+             [aln & rst] alns]
+         (if (zero? val)
+           (if (= rname (:rname (first rst)))
+             (pileup* rst rname (inc pos))
+             (pileup* rst (:rname (first rst)) (:pos (first rst))))
+           (lazy-seq
+            (cons
+             {:rname rname, :pos pos, :n val}
+             (if (< pos (+ (:pos aln) (count (substantial-seq aln))))
+               (pileup* alns rname (inc pos))
+               (if (= rname (:rname (first rst)))
+                 (pileup* rst rname (inc pos))
+                 (pileup* rst (:rname (first rst)) (:pos (first rst))))))))))))
+
+;;; OPTIMIZE: This is implemented by pure Clojure, but it is too slow...
 (defn pileup
-  [sam]
-  (if-not (sorter/sorted? sam)
-    (throw (Exception. "Not sorted"))
-    (loop [ret []
-           tmp {}
-           sas (:alignments sam)]
-      (if (seq sas)
-        (let [sa (first sas)
-              [fin res] (if (= (:rname (second (first tmp))) (:rname sa))
-                          (split-with #(< (first %) (:pos sa)) (sort tmp))
-                          [(sort tmp) []])]
-          (recur (concat ret (map #(assoc (second %) :pos (first %)) fin))
-                 (loop [tmp2 (zipmap (map first res) (map second res))
-                        pos  (:pos sa)]
-                   (if (< pos (+ (:pos sa) (count (substantial-seq sa))))
-                     (recur (assoc tmp2 pos
-                                   (if-let [coll (tmp2 pos)]
-                                     (update-in coll [:n] inc)
-                                     {:rname (:rname sa), :n 1}))
-                            (inc pos))
-                     tmp2))
-                 (rest sas)))
-        (concat ret (map #(assoc (second %) :pos (first %)) (sort tmp)))))))
+  ([sam]
+     (pileup* (:alignments sam)))
+  ([sam rname]
+     (pileup* (:alignments sam) rname)))

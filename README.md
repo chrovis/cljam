@@ -25,6 +25,17 @@ Run all test.
 
     $ lein midje
 
+## Benchmark
+
+Use criterium.
+
+e.g.
+
+    cljam.pileup> (use 'criterium.core)
+    cljam.pileup> (with-progress-reporting
+                   (bench
+                    (pileup (cljam.bam/slurp "test/resources/test.sorted.bam"))))
+
 ## License
 
 Copyright © 2013 FIXME

@@ -11,7 +11,8 @@
   :javac-options ["-target" "1.7" "-source" "1.7"]
   :plugins [[lein-midje "3.0.1"]
             [lein-bin "0.3.4"]]
-  :profiles {:dev {:dependencies [[midje "1.5.1"]]}}
+  :profiles {:dev {:dependencies [[midje "1.5.1"]
+                                  [criterium "0.4.1"]]}}
   :main cljam.core
   :aot [cljam.core]
   :bin {:name "cljam"})

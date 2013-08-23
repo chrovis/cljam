@@ -4,7 +4,7 @@
                    [util :refer [reg->bin]]))
   (:import java.io.DataOutputStream
            ;(net.sf.picard.sam BuildBamIndex BamIndexStats)
-           cljam.stream.BlockCompressedOutputStream))
+           cljam.lib.stream.BlockCompressedOutputStream))
 
 (def bai-magic "BAI\1")
 

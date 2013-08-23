@@ -1,6 +1,6 @@
 (ns cljam.util
   (:require [clojure.string :refer [join]])
-  (:import cljam.util.StringUtil))
+  (:import cljam.lib.util.StringUtil))
 
 (defn ubyte
   "Casts to byte avoiding an error about out of range for byte."

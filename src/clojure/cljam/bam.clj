@@ -11,9 +11,9 @@
   (:import java.util.Arrays
            (java.io DataInputStream DataOutputStream IOException)
            (java.nio ByteBuffer ByteOrder)
-           (cljam.cigar TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)
-           (cljam.stream BlockCompressedInputStream BlockCompressedOutputStream)
-           (cljam.bam SAMSequenceDictionary SAMSequenceRecord BAMFileIndex)))
+           (cljam.lib.cigar TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)
+           (cljam.lib.stream BlockCompressedInputStream BlockCompressedOutputStream)
+           (cljam.lib.bam SAMSequenceDictionary SAMSequenceRecord BAMFileIndex)))
 
 (def fixed-block-size 32)
 

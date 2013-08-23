@@ -69,22 +69,24 @@
         "queryname"  (spit (second files) (sorter/sort-by-qname asam))))))
 
 (defn index [& args]
-  (with-command-line args
-    "Usage: cljam index <in.bam>"
-    [files]
-    (when-not (= (count files) 1)
-      (println "Invalid arguments")
-      (System/exit 1))
-    (idxr/build-bam-index (first files) (str (first files) ".bai"))))
+  ;; (with-command-line args
+  ;;   "Usage: cljam index <in.bam>"
+  ;;   [files]
+  ;;   (when-not (= (count files) 1)
+  ;;     (println "Invalid arguments")
+  ;;     (System/exit 1))
+  ;;   (idxr/build-bam-index (first files) (str (first files) ".bai")))
+  )
 
 (defn idxstats [& args]
-  (with-command-line args
-    "Usage: cljam idxstats <aln.bam>"
-    [files]
-    (when-not (= (count files) 1)
-      (println "Invalid arguments")
-      (System/exit 1))
-    (idxr/bam-index-stats (first files))))
+  ;; (with-command-line args
+  ;;   "Usage: cljam idxstats <aln.bam>"
+  ;;   [files]
+  ;;   (when-not (= (count files) 1)
+  ;;     (println "Invalid arguments")
+  ;;     (System/exit 1))
+  ;;   (idxr/bam-index-stats (first files)))
+  )
 
 (defn merge [& args]
   (with-command-line args

@@ -1,8 +1,7 @@
 (ns cljam.t-pileup
   (:use midje.sweet)
   (:require (cljam sam
-                   [pileup :as pileup]))
-  (:import (cljam.sam Sam SamHeader SamAlignment)))
+                   [pileup :as pileup])))
 
 (def test-sam
   {:header {:HD {:VN "1.4",  :SO "coordinate"}

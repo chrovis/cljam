@@ -12,7 +12,8 @@
            (java.io DataInputStream DataOutputStream IOException)
            (java.nio ByteBuffer ByteOrder)
            (cljam.cigar TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)
-           (cljam.stream BlockCompressedInputStream BlockCompressedOutputStream)))
+           (cljam.stream BlockCompressedInputStream BlockCompressedOutputStream)
+           (cljam.bam SAMSequenceDictionary SAMSequenceRecord BAMFileIndex)))
 
 (def fixed-block-size 32)
 
@@ -132,7 +133,8 @@
   (close [this] (.. this reader close)))
 
 (defn reader [f]
-  (let [rdr (DataInputStream. (BlockCompressedInputStream. (file f)))]
+  (let [data-rdr (DataInputStream. (BlockCompressedInputStream. (file f)))
+        rdr (BlockCompressedInputStream. (file f))]
     (if-not (Arrays/equals (lsb/read-bytes rdr 4) (.getBytes bam-magic))
       (throw (IOException. "Invalid BAM file header")))
     (let [header (sam/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
@@ -237,12 +239,6 @@
        :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
        :qual qual, :options options})))
 
-(defn read-alignments
-  [rdr]
-  (when-not (zero? (.available (.reader rdr)))
-    (cons (read-alignment (.reader rdr) (.refs rdr))
-          (lazy-seq (read-alignments rdr)))))
-
 (defn- write-tag-value [writer val-type value]
   (condp = val-type
     \A (lsb/write-bytes  writer (char value))
@@ -325,13 +321,78 @@
   (doseq [a alns]
     (write-alignment wrtr a refs)))
 
+(defn- make-sequence-dicionary
+  [sequences]
+  (new SAMSequenceDictionary
+       (map (fn [s] (new SAMSequenceRecord (:SN s) (:LN s)))
+            sequences)))
+
+(deftype BamIndex [f sequences]
+  java.io.Closeable
+  (close [this] (.. this f close)))
+
+(defn bam-index
+  [f header]
+  (let [bai-f (str f ".bai")]
+    (when-not (.exists (file bai-f))
+      (throw (IOException. "Could not find BAM Index file")))
+    (let [sequences (:SQ header)
+          seq-dict (make-sequence-dicionary sequences)
+          bai (new BAMFileIndex (file bai-f) seq-dict)]
+      (->BamIndex bai sequences))))
+
+(defn- get-sequnce-index
+  [bai chr]
+  (let [sequences (.sequences bai)
+        indexed (map-indexed vector sequences)
+        filtered (filter #(= (:SN (second %)) chr) indexed)]
+    (first (map first filtered))))
+
+(defn get-spans
+  [bai chr start end]
+  (let [seq-index (get-sequnce-index bai chr)
+        span-array (.getSpanOverlapping (.f bai) seq-index start end)
+        spans (partition 2 (.toCoordinateArray span-array))]
+    spans))
+
+(defn- read-to-finish
+  [rdr finish]
+  (when (and (not (zero? (.available (.reader rdr))))
+             (> finish (.getFilePointer (.reader rdr))))
+    (cons (read-alignment (.reader rdr) (.refs rdr))
+          (lazy-seq (read-to-finish rdr finish)))))
+
+(defn read-alignments
+  ([rdr]
+      (when-not (zero? (.available (.reader rdr)))
+        (cons (read-alignment (.reader rdr) (.refs rdr))
+              (lazy-seq (read-alignments rdr)))))
+  ([rdr bai chr start end]
+     (let [spans (get-spans bai chr start end)
+           window (fn [a]
+                    (and (= chr (:rname a))
+                         (<= start (:pos a))
+                         (>= end (:pos a))))
+           candidates (flatten (map (fn [[begin finish]]
+                                      (.seek (.reader rdr) begin)
+                                      (doall (read-to-finish rdr finish))) spans))]
+       (filter window candidates))))
+
 (defn slurp
   "Opens a reader on bam-file and reads all its headers and alignments,
   returning a map about sam records."
-  [f]
-  (with-open [r (reader f)]
-    {:header (read-header r)
-     :alignments (vec (read-alignments r))}))
+  [f & options]
+  (let [{:keys [chr start end] :or {chr nil
+                                    start 0
+                                    end -1}} options]
+    (with-open [r (reader f)]
+      (let [header (read-header r)]
+        (if (nil? chr)
+          {:header header
+           :alignments (vec (read-alignments r))}
+          (with-open [i (bam-index f header)]
+            {:header header
+             :alignments (vec (read-alignments r i chr start end))}))))))
 
 (defn spit
   "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and

@@ -14,7 +14,7 @@
      {:qname "x3"  , :flag 0  , :rname "ref2", :pos 6, :mapq 30, :cigar "9M4I13M"           , :rnext "*", :pnext 0 , :tlen 0 , :seq  "TTATAAAACAAATAATTAAGTCTACA", :qual "??????????????????????????", :options []})})
 
 (fact "pileup returns LazySeq"
-  (instance? clojure.lang.LazySeq (plp/pileup test-sam)) => truthy)
+  (type (plp/pileup test-sam)) => clojure.lang.LazySeq)
 
 (fact "about pileup"
   (plp/pileup test-sam) => '({:rname "ref",  :pos 7,  :n 1}

@@ -49,7 +49,7 @@ public class BAMIndexMetaData {
      * Constructor used when writing an index
      * construct one instance for each index generated
      */
-    BAMIndexMetaData() {
+    public BAMIndexMetaData() {
         noCoordinateRecords = 0;
         newReference();
     }
@@ -58,7 +58,7 @@ public class BAMIndexMetaData {
      * Constructor used when reading an index
      * construct one instance for each index generated
      */
-    BAMIndexMetaData(List<Chunk> chunkList) {
+    public BAMIndexMetaData(List<Chunk> chunkList) {
         noCoordinateRecords = 0;
 
         if (chunkList == null || chunkList.size() == 0) {
@@ -102,13 +102,14 @@ public class BAMIndexMetaData {
     /**
      * Call for each new reference sequence encountered
      */
-    void newReference() {
+    public void newReference() {
         firstOffset = -1;
         lastOffset = 0;
         alignedRecords = 0;
         unAlignedRecords = 0;
     }
 
+// FIXME
 //    /**
 //     * Extract relevant metaData from the record and its filePointer
 //     * Call only once per record in the file being indexed
@@ -163,21 +164,21 @@ public class BAMIndexMetaData {
      * Not public, since only used by BAMIndexer when writing bam index.
      * Readers of bam index should use AbstractBAMFileIndex.getNoCoordinateRecordCount.
      */
-    long getNoCoordinateRecordCount() {
+    public long getNoCoordinateRecordCount() {
         return noCoordinateRecords;
     }
 
     /**
      * @return the first virtual file offset used by this reference
      */
-    long getFirstOffset() {
+    public long getFirstOffset() {
         return firstOffset;
     }
 
     /**
      * @return the last virtual file offset used by this reference
      */
-    long getLastOffset() {
+    public long getLastOffset() {
         return lastOffset;
     }
 

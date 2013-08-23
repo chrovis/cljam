@@ -23,7 +23,11 @@
  */
 package cljam.lib.bam;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * Represents the contents of a bam index file for one reference.
@@ -31,7 +35,7 @@ import java.util.*;
  * This class describes the data present in the index file for one of these references;
  * including the bins, chunks, and linear index.
  */
-class BAMIndexContent {
+public class BAMIndexContent {
     /**
      * The reference sequence for the data currently loaded.
      */
@@ -60,7 +64,7 @@ class BAMIndexContent {
      * @param metaData          Extra information about the reference in this index
      * @param linearIndex       Additional index used to optimize queries
      */
-    BAMIndexContent(final int referenceSequence, final Bin[] bins, final int numberOfBins, final BAMIndexMetaData metaData, final LinearIndex linearIndex) {
+    public BAMIndexContent(final int referenceSequence, final Bin[] bins, final int numberOfBins, final BAMIndexMetaData metaData, final LinearIndex linearIndex) {
         this.mReferenceSequence = referenceSequence;
         this.mBinList = new BinList(bins, numberOfBins);
         this.mMetaData = metaData;
@@ -91,7 +95,7 @@ class BAMIndexContent {
     /**
      * @return the number of non-null bins represented by this content
      */
-    int getNumberOfNonNullBins() {
+    public int getNumberOfNonNullBins() {
         return mBinList.getNumberOfNonNullBins();
     }
 
@@ -125,7 +129,7 @@ class BAMIndexContent {
      * This class is used to encapsulate the list of Bins store in the BAMIndexContent
      * While it is currently represented as an array, we may decide to change it to an ArrayList or other structure
      */
-    class BinList implements Iterable<Bin> {
+    public class BinList implements Iterable<Bin> {
 
         private final Bin[] mBinArray;
         public final int numberOfNonNullBins;
@@ -155,6 +159,7 @@ class BAMIndexContent {
          *
          * @return An iterator over all bins.
          */
+        @Override
         public Iterator<Bin> iterator() {
             return new BinIterator();
         }
@@ -174,6 +179,7 @@ class BAMIndexContent {
              *
              * @return True if more bins are remaining.
              */
+            @Override
             public boolean hasNext() {
                 while (nextBin <= maxBinNumber) {
                     if (getBin(nextBin) != null) return true;
@@ -187,6 +193,7 @@ class BAMIndexContent {
              *
              * @return the next available bin in the BinList.
              */
+            @Override
             public Bin next() {
                 if (!hasNext())
                     throw new NoSuchElementException("This BinIterator is currently empty");
@@ -195,6 +202,7 @@ class BAMIndexContent {
                 return result;
             }
 
+            @Override
             public void remove() {
                 throw new UnsupportedOperationException("Unable to remove from a bin iterator");
             }

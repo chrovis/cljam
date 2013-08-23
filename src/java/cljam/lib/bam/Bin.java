@@ -64,7 +64,7 @@ public class Bin implements Comparable<Bin> {
         return referenceSequence;
     }
 
-    protected int getBinNumber() {
+    public int getBinNumber() {
         return binNumber;
     }
 
@@ -105,6 +105,7 @@ public class Bin implements Comparable<Bin> {
      * @param other Other bin to which this bin should be compared.
      * @return -1 if this < other, 0 if this == other, 1 if this > other.
      */
+    @Override
     public int compareTo(Bin other) {
         if(other == null)
             throw new ClassCastException("Cannot compare to a null object");

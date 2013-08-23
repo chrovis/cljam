@@ -74,7 +74,7 @@ public class LinearIndex {
     }
 
     /**
-     * Gets the minimum offset of any alignment start appearing in this index, according to the linear index. 
+     * Gets the minimum offset of any alignment start appearing in this index, according to the linear index.
      * @param startPos Starting position for this query.
      * @return The minimum offset, in chunk format, of any read appearing in this position.
      */
@@ -92,11 +92,11 @@ public class LinearIndex {
      * Direct access to the array.  Be careful!
      * @return The elements of the linear index.
      */
-    protected long[] getIndexEntries() {
+    public long[] getIndexEntries() {
         return mIndexEntries;
     }
 
-     protected int getIndexStart() {
+    public int getIndexStart() {
         return mIndexStart;
     }
 }

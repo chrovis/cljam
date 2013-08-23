@@ -14,7 +14,7 @@ import cljam.lib.stream.BlockCompressedFilePointerUtil;
  *
  * See the SAM/BAM spec for more details.
  */
-class Chunk implements Cloneable, Serializable,Comparable<Chunk> {
+public class Chunk implements Cloneable, Serializable,Comparable<Chunk> {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -35,26 +35,28 @@ class Chunk implements Cloneable, Serializable,Comparable<Chunk> {
         mChunkEnd = end;
     }
 
+    @Override
     public Chunk clone() {
         return new Chunk(mChunkStart,mChunkEnd);
     }
 
-    protected long getChunkStart() {
+    public long getChunkStart() {
         return mChunkStart;
     }
 
-    protected void setChunkStart(final long value) {
+    public void setChunkStart(final long value) {
         mChunkStart = value;
     }
 
-    protected long getChunkEnd() {
+    public long getChunkEnd() {
         return mChunkEnd;
     }
 
-    protected void setChunkEnd(final long value) {
+    public void setChunkEnd(final long value) {
         mChunkEnd = value;
     }
 
+    @Override
     public int compareTo(final Chunk chunk) {
         int result = Long.signum(mChunkStart - chunk.mChunkStart);
         if (result == 0) {
@@ -114,7 +116,7 @@ class Chunk implements Cloneable, Serializable,Comparable<Chunk> {
      */
     public boolean isAdjacentTo(final Chunk other) {
         // Simpler implementation would be to == the chunk end of one to the chunk start of the other.  Chose this implementation to ensure that all chunk
-        // comparisons point directly to the 
+        // comparisons point directly to the
         return (BlockCompressedFilePointerUtil.getBlockAddress(this.getChunkEnd()) == BlockCompressedFilePointerUtil.getBlockAddress(other.getChunkStart()) &&
                 BlockCompressedFilePointerUtil.getBlockOffset(this.getChunkEnd()) == BlockCompressedFilePointerUtil.getBlockOffset(other.getChunkStart())) ||
                (BlockCompressedFilePointerUtil.getBlockAddress(this.getChunkStart()) == BlockCompressedFilePointerUtil.getBlockAddress(other.getChunkEnd()) &&

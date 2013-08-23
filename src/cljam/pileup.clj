@@ -12,7 +12,7 @@
          (let [n  (Integer/parseInt (second (first matches)))
                op (last (first matches))]
            (condp #(not (nil? (%1 %2))) op
-             #{"M"  "=" "X"}
+             #{"M" "=" "X"}
              (recur (+ cursor n)
                     (rest matches)
                     (conj ret (subs seq cursor (+ cursor n))))

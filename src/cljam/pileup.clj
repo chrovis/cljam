@@ -52,17 +52,19 @@
        (let [val (calc-pos alns rname pos)
              [aln & rst] alns]
          (if (zero? val)
-           (if (= rname (:rname (first rst)))
-             (pileup* rst rname (inc pos))
-             (pileup* rst (:rname (first rst)) (:pos (first rst))))
+           (if-not (or (nil? rst) (= rname (:rname (first rst))))
+             (pileup* rst (:rname (first rst)) (:pos (first rst)))
+             (if (< pos (:pos aln))
+               (pileup* alns rname (:pos aln))
+               (pileup* rst rname (inc pos))))
            (lazy-seq
             (cons
              {:rname rname, :pos pos, :n val}
-             (if (< pos (+ (:pos aln) (count (substantial-seq aln))))
-               (pileup* alns rname (inc pos))
-               (if (= rname (:rname (first rst)))
-                 (pileup* rst rname (inc pos))
-                 (pileup* rst (:rname (first rst)) (:pos (first rst))))))))))))
+             (if-not (or (nil? rst) (= rname (:rname (first rst))))
+               (pileup* rst (:rname (first rst)) (:pos (first rst)))
+               (if (< pos (+ (:pos aln) (count (substantial-seq aln))))
+                 (pileup* alns rname (inc pos))
+                 (pileup* rst rname (inc pos)))))))))))
 
 ;;; OPTIMIZE: This is implemented by pure Clojure, but it is too slow...
 (defn pileup

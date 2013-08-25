@@ -345,8 +345,9 @@
   [bai chr]
   (let [sequences (.sequences bai)
         indexed (map-indexed vector sequences)
-        filtered (filter #(= (:SN (second %)) chr) indexed)]
-    (first (map first filtered))))
+        filtered (filter #(= (:SN (second %)) chr) indexed)
+        idx (first (map first filtered))]
+    (if (nil? idx) -1 idx)))
 
 (defn get-spans
   [bai chr start end]

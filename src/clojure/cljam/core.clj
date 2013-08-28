@@ -8,8 +8,34 @@
                    [indexer :as idxr]
                    [fasta :as fa]
                    [fasta-indexer :as fai]
-                   [pileup :as pileup]))
+                   [pileup :as plp]))
   (:gen-class))
+
+(defn reader [f]
+  (condp re-find f
+    #"\.sam$" (sam/reader f)
+    #"\.bam$" (bam/reader f)
+    (throw (IllegalArgumentException. "Invalid file type"))))
+
+(defmulti read-header (comp str class))
+
+(defmethod read-header "class cljam.sam.SamReader"
+  [rdr]
+  (sam/read-header rdr))
+
+(defmethod read-header "class cljam.bam.BamReader"
+  [rdr]
+  (bam/read-header rdr))
+
+(defmulti read-alignments (comp str class))
+
+(defmethod read-alignments "class cljam.sam.SamReader"
+  [rdr]
+  (sam/read-alignments rdr))
+
+(defmethod read-alignments "class cljam.bam.BamReader"
+  [rdr]
+  (bam/read-alignments rdr))
 
 (defn- slurp
   [f]
@@ -34,14 +60,14 @@
     (when-not (= (count files) 1)
       (println "Invalid arguments")
       (System/exit 1))
-    (let [asam (condp = format
-                 "auto" (slurp     (first files))
-                 "sam"  (sam/slurp (first files))
-                 "bam"  (bam/slurp (first files)))]
+    (with-open [r (condp = format
+                    "auto" (reader     (first files))
+                    "sam"  (sam/reader (first files))
+                    "bam"  (bam/reader (first files)))]
       (when header?
-        (println (sam/stringify-header (:header asam))))
-      (doseq [a (:alignments asam)]
-        (println (sam/stringify-alignment a))))))
+        (println (sam/stringify-header (read-header r))))
+      (doseq [aln (read-alignments r)]
+        (println (sam/stringify-alignment aln))))))
 
 (defn convert [& args]
   (with-command-line args
@@ -103,11 +129,14 @@
     (when-not (= (count files) 1)
       (println "Invalid arguments")
       (System/exit 1))
-    (let [sam (bam/slurp (first files))]
-      (doseq [p (pileup/pileup (if-not (sorter/sorted? sam)
-                                 (sorter/sort sam)
-                                 sam))]
-        (println p)))))
+    (with-open [r (bam/reader (first files))]
+      (let [sam {:header (bam/read-header r)
+                 :alignments (bam/read-alignments r)}]
+        (when-not (sorter/sorted? sam)
+          (println "Not sorted")
+          (System/exit 1))
+        (doseq [p (plp/pileup sam)]
+          (println p))))))
 
 (defn faidx [& args]
   (with-command-line args

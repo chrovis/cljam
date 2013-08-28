@@ -30,16 +30,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import cljam.lib.exception.FileTruncatedException;
-import cljam.lib.seekablestream.SeekableBufferedStream;
 import cljam.lib.seekablestream.SeekableFileStream;
 import cljam.lib.seekablestream.SeekableStream;
-//import cljam.seekablestream.SeekableHTTPStream;
 
 /*
  * Utility class for reading BGZF block compressed files.  The caller can treat this file like any other InputStream.
@@ -65,11 +62,11 @@ public class BlockCompressedInputStream extends InputStream {
      */
     public BlockCompressedInputStream(final InputStream stream) {
     	if (stream instanceof BufferedInputStream) {
-            mStream = (BufferedInputStream) stream;
+            mStream = stream;
         } else {
         	mStream = new BufferedInputStream(stream, 1024 * 128);
         }
-    	
+
 //        mStream = IOUtil.toBufferedStream(stream);
         mFile = null;
     }
@@ -114,6 +111,7 @@ public class BlockCompressedInputStream extends InputStream {
      * Note that although the next caller can read this many bytes without blocking, the available() method call itself
      * may block in order to fill an internal buffer if it has been exhausted.
      */
+    @Override
     public int available()
         throws IOException {
         if (mCurrentBlock == null || mCurrentOffset == mCurrentBlock.length) {
@@ -128,6 +126,7 @@ public class BlockCompressedInputStream extends InputStream {
     /**
      * Closes the underlying InputStream or RandomAccessFile
      */
+    @Override
     public void close()
         throws IOException {
         if (mFile != null) {
@@ -149,6 +148,7 @@ public class BlockCompressedInputStream extends InputStream {
 
      * @return the next byte of data, or -1 if the end of the stream is reached.
      */
+    @Override
     public int read()
         throws IOException {
         return (available() > 0) ? (mCurrentBlock[mCurrentOffset++] & 0xFF) : -1;
@@ -165,6 +165,7 @@ public class BlockCompressedInputStream extends InputStream {
      * @return the total number of bytes read into the buffer, or -1 is there is no more data because the end of
      * the stream has been reached.
      */
+    @Override
     public int read(final byte[] buffer)
         throws IOException {
         return read(buffer, 0, buffer.length);
@@ -238,6 +239,7 @@ public class BlockCompressedInputStream extends InputStream {
      * @return the total number of bytes read into the buffer, or -1 if there is no more data because the end of
      * the stream has been reached.
      */
+    @Override
     public int read(final byte[] buffer, int offset, int length)
         throws IOException {
         final int originalLength = length;

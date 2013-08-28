@@ -211,15 +211,15 @@ public class BAMFileSpan implements Serializable {
 //        return chunkList;
 //    }
 
-    /**
-     * Validates the list of chunks to ensure that they appear in sorted order.
-     */
-    private void validateSorted() {
-        for(int i = 1; i < chunks.size(); i++) {
-            if(chunks.get(i).getChunkStart() < chunks.get(i-1).getChunkEnd())
-                throw new SAMException(String.format("Chunk list is unsorted; chunk %s is before chunk %s",chunks.get(i-1),chunks.get(i)));
-        }
-    }
+//    /**
+//     * Validates the list of chunks to ensure that they appear in sorted order.
+//     */
+//    private void validateSorted() {
+//        for(int i = 1; i < chunks.size(); i++) {
+//            if(chunks.get(i).getChunkStart() < chunks.get(i-1).getChunkEnd())
+//                throw new SAMException(String.format("Chunk list is unsorted; chunk %s is before chunk %s",chunks.get(i-1),chunks.get(i)));
+//        }
+//    }
 
     /**
      * Creates a string representation of this chunk list.

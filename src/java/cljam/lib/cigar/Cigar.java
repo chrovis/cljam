@@ -23,9 +23,9 @@
  */
 package cljam.lib.cigar;
 
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import cljam.lib.SAMValidationError;
 
@@ -81,6 +81,8 @@ public class Cigar {
                 case EQ:
                 case X:
                     length += element.getLength();
+                default:
+                    break;
             }
         }
         return length;
@@ -100,6 +102,8 @@ public class Cigar {
                 case X:
                 case P:
                     length += element.getLength();
+                default:
+                    break;
             }
         }
         return length;
@@ -230,7 +234,7 @@ public class Cigar {
     }
 
     private static boolean isRealOperator(final CigarOperator op) {
-        return op == CigarOperator.M || op == CigarOperator.EQ || op == CigarOperator.X || 
+        return op == CigarOperator.M || op == CigarOperator.EQ || op == CigarOperator.X ||
                op == CigarOperator.I || op == CigarOperator.D || op == CigarOperator.N;
     }
 
@@ -264,6 +268,7 @@ public class Cigar {
         return cigarElements != null ? cigarElements.hashCode() : 0;
     }
 
+    @Override
     public String toString() {
         return TextCigarCodec.getSingleton().encode(this);
     }

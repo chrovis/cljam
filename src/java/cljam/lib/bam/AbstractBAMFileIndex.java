@@ -439,7 +439,7 @@ public abstract class AbstractBAMFileIndex implements BAMIndex {
             final int nBins = readInteger();
             // System.out.println("# nBins: " + nBins);
             for (int j = 0; j < nBins; j++) {
-                final int bin = readInteger();
+//                final int bin = readInteger();
                 final int nChunks = readInteger();
                 // System.out.println("# bin[" + j + "] = " + bin + ", nChunks = " + nChunks);
                 skipBytes(16 * nChunks);

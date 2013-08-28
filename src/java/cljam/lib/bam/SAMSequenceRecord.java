@@ -25,8 +25,6 @@ package cljam.lib.bam;
 
 
 import java.math.BigInteger;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -96,14 +94,14 @@ public class SAMSequenceRecord extends AbstractSAMHeaderRecord implements Clonea
     public String getSequenceName() { return mSequenceName; }
     // We don't think this method should ever really be used, but we left it here
     // in case we forget and go to implement it later!
-    private void setSequenceName(final String name) {
-        if (name != null) {
-            mSequenceName = name.intern();
-        }
-        else {
-            mSequenceName = null;
-        }
-    }
+//    private void setSequenceName(final String name) {
+//        if (name != null) {
+//            mSequenceName = name.intern();
+//        }
+//        else {
+//            mSequenceName = null;
+//        }
+//    }
 
     public int getSequenceLength() { return mSequenceLength; }
     public void setSequenceLength(final int value) { mSequenceLength = value; }
@@ -149,13 +147,13 @@ public class SAMSequenceRecord extends AbstractSAMHeaderRecord implements Clonea
         return true;
     }
 
-    private URI makeURI(final String s) throws URISyntaxException {
-        URI uri = new URI(s);
-        if (uri.getScheme() == null) {
-            uri = new URI("file", uri.getUserInfo(), uri.getHost(), uri.getPort(), uri.getPath(), uri.getQuery(), uri.getFragment());
-        }
-        return uri;
-    }
+//    private URI makeURI(final String s) throws URISyntaxException {
+//        URI uri = new URI(s);
+//        if (uri.getScheme() == null) {
+//            uri = new URI("file", uri.getUserInfo(), uri.getHost(), uri.getPort(), uri.getPath(), uri.getQuery(), uri.getFragment());
+//        }
+//        return uri;
+//    }
 
     @Override
     public boolean equals(final Object o) {

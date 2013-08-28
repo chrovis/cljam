@@ -24,8 +24,6 @@
 
 package cljam.lib.util;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Arrays;
 
 /**
@@ -33,35 +31,6 @@ import java.util.Arrays;
  */
 public class StringUtil {
     private static final byte UPPER_CASE_OFFSET = 'A' - 'a';
-
-    /**
-     * @param separator String to interject between each string in strings arg
-     * @param objs List of objs to be joined
-     * @return String that concatenates the result of each item's to String method for all items in objs, with separator between each of them.
-     */
-    public static <T> String join(final String separator, final Collection<T> objs) {
-        if (objs.size() == 0) {
-            return "";
-        }
-
-        boolean notFirst = false;
-
-        final StringBuilder ret = new StringBuilder();
-        for (final Object obj : objs) {
-            if(notFirst) {
-                ret.append(separator);
-            }
-            ret.append(obj.toString());
-            notFirst = true;
-        }
-        return ret.toString();
-    }
-
-    public static <T> String join(final String separator, final T... objs) {
-        final List<T> values = Arrays.asList(objs);
-        return join(separator, values);
-    }
-
 
     /**
      * Split the string into tokens separated by the given delimiter.  Profiling has

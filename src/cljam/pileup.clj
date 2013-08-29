@@ -1,6 +1,7 @@
 (ns cljam.pileup
   (:require [clojure.string :refer [join]]
-            (cljam [sorter :as sorter])))
+            [cljam [cigar :as cgr]
+                   [sorter :as sorter]]))
 
 (defn substantial-seq [aln]
   (let [{seq :seq, cigar :cigar} aln]
@@ -37,7 +38,7 @@
     (let [[aln & rst] alns2]
       (if (or (nil? aln) (not= rname (:rname aln)) (< pos (:pos aln)))
         val
-        (if (< pos (+ (:pos aln) (count (substantial-seq aln))))
+        (if (< pos (+ (:pos aln) (cgr/count-ref (:cigar aln))))
           (recur rst (inc val))
           (recur rst val))))))
 
@@ -62,7 +63,7 @@
              {:rname rname, :pos pos, :n val}
              (if-not (or (nil? rst) (= rname (:rname (first rst))))
                (pileup* rst (:rname (first rst)) (:pos (first rst)))
-               (if (< pos (+ (:pos aln) (count (substantial-seq aln))))
+               (if (< pos (+ (:pos aln) (cgr/count-ref (:cigar aln))))
                  (pileup* alns rname (inc pos))
                  (pileup* rst rname (inc pos)))))))))))
 

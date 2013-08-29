@@ -224,7 +224,7 @@
 
 (defmethod fastq->phred Character
   [ch]
-  {:pre [(>= (int ch) 33) (<= (int ch) 126)]}
+  {:pre [(<= 33 (int ch) 126)]}
   (byte (- (int ch) 33)))
 
 (defmulti phred->fastq class)
@@ -238,5 +238,5 @@
 
 (defmethod phred->fastq Integer
   [n]
-  {:pre [(>= n 0) (<= n max-phred-score)]}
+  {:pre [(<= 0 n max-phred-score)]}
   (char (+ n 33)))

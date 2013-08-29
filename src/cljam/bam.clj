@@ -9,7 +9,8 @@
                                  hex-string->bytes fastq->phred phred->fastq
                                  bytes->compressed-bases compressed-bases->chars]]])
   (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException]
+           [java.io DataInputStream DataOutputStream BufferedInputStream FileInputStream
+                    IOException EOFException]
            [java.nio ByteBuffer ByteOrder]
            [net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream]))
 
@@ -155,9 +156,13 @@
   java.io.Closeable
   (close [this] (.. this reader close)))
 
+(def ^:private buffer-size (* 1024 128))
+
 (defn reader [f]
-  (let [rdr (DataInputStream. (BlockCompressedInputStream. (file f)))]
-    (if-not (Arrays/equals (lsb/read-bytes rdr 4) (.getBytes bam-magic))
+  (let [rdr (DataInputStream.
+             (BlockCompressedInputStream.
+              (BufferedInputStream. (FileInputStream. (file f)) buffer-size)))]
+    (when-not (Arrays/equals (lsb/read-bytes rdr 4) (.getBytes bam-magic))
       (throw (IOException. "Invalid BAM file header")))
     (let [header (sam/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
           n-ref  (lsb/read-int rdr)
@@ -233,7 +238,7 @@
 
 (defn- read-alignment [rdr refs]
   (let [block-size (lsb/read-int rdr)]
-    (if (< block-size fixed-block-size)
+    (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size:" block-size))))
     (let [ref-id      (lsb/read-int rdr)
           rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
@@ -263,9 +268,10 @@
 
 (defn read-alignments
   [rdr]
-  (when-not (zero? (.available (.reader rdr)))
+  (try
     (cons (read-alignment (.reader rdr) (.refs rdr))
-          (lazy-seq (read-alignments rdr)))))
+          (lazy-seq (read-alignments rdr)))
+    (catch EOFException e nil)))
 
 (defn- write-tag-value [writer val-type value]
   (condp = val-type

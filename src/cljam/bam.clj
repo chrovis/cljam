@@ -2,17 +2,17 @@
   (:refer-clojure :exclude [slurp spit])
   (:require [clojure.string :refer [split join]]
             [clojure.java.io :refer [file]]
-            (cljam [sam :as sam]
+            [cljam [sam :as sam]
+                   [cigar :as cgr]
                    [lsb :as lsb]
                    [binary-cigar-codec :as bcc]
                    [util :refer [reg->bin string->bytes normalize-bases ubyte
                                  hex-string->bytes fastq->phred phred->fastq
-                                 bytes->compressed-bases compressed-bases->chars]]))
+                                 bytes->compressed-bases compressed-bases->chars]]])
   (:import java.util.Arrays
-           (java.io DataInputStream DataOutputStream IOException)
-           (java.nio ByteBuffer ByteOrder)
-           (net.sf.samtools TextCigarCodec BinaryCigarCodec CigarElement CigarOperator)
-           (net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream)))
+           [java.io DataInputStream DataOutputStream IOException]
+           [java.nio ByteBuffer ByteOrder]
+           [net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream]))
 
 (def fixed-block-size 32)
 
@@ -21,9 +21,6 @@
 (def fixed-binary-array-tag-size 5)
 
 (def bam-magic "BAM\1")
-
-(defn count-cigar [sam-alignment]
-  (.numCigarElements (.decode (TextCigarCodec/getSingleton) (:cigar sam-alignment))))
 
 (defn- get-options-size [sam-alignment]
   (->> (map
@@ -49,25 +46,25 @@
         (:options sam-alignment))
        (reduce +)))
 
-(defn get-block-size [sam-alignment]
-  (let [read-length (count (normalize-bases (string->bytes (:seq sam-alignment))))
-        cigar-length (count-cigar sam-alignment)]
-    (+ fixed-block-size (count (:qname sam-alignment)) 1
+(defn get-block-size [aln]
+  (let [read-length (count (normalize-bases (string->bytes (:seq aln))))
+        cigar-length (cgr/count-op (:cigar aln))]
+    (+ fixed-block-size (count (:qname aln)) 1
        (* cigar-length 4)
        (int (/ (inc read-length) 2))
        read-length
-       (get-options-size sam-alignment))))
+       (get-options-size aln))))
 
 (defn get-ref-id [aln refs]
   (if-let [id (sam/ref-id refs (:rname aln))] id -1))
 
-(defn get-pos [sam-alignment]
-  (dec (:pos sam-alignment)))
+(defn get-pos [aln]
+  (dec (:pos aln)))
 
-(defn get-end [sam-alignment]
+(defn get-end [aln]
   (dec
-   (+ (:pos sam-alignment)
-      (.. TextCigarCodec getSingleton (decode (:cigar sam-alignment)) getReferenceLength))))
+   (+ (:pos aln)
+      (cgr/count-ref (:cigar aln)))))
 
 (defn get-l-seq [sam-alignment]
   (count (:seq sam-alignment)))
@@ -93,21 +90,30 @@
 (defn get-read-name [sam-alignment]
   (:qname sam-alignment))
 
+(defn- encode-cigar-op [op]
+  (case op
+    \M (byte 0)
+    \I (byte 1)
+    \D (byte 2)
+    \N (byte 3)
+    \S (byte 4)
+    \H (byte 5)
+    \P (byte 6)
+    \= (byte 7)
+    \X (byte 8)))
+
 (defn- encode-cigar [cigar]
-  (map-indexed (fn [idx _]
-         (let [cigar-element (.getCigarElement cigar idx)
-               op (CigarOperator/enumToBinary (.getOperator cigar-element))]
-           (bit-or (bit-shift-left (.getLength cigar-element) 4) op)))
-       (range (.numCigarElements cigar))))
+  (map #(bit-or (bit-shift-left (first %) 4)
+                (encode-cigar-op (second %)))
+       (cgr/parse cigar)))
 
 (defn decode-cigar [cigar-bytes]
   (let [byte-buffer (ByteBuffer/wrap cigar-bytes)]
     (.order byte-buffer ByteOrder/LITTLE_ENDIAN)
     (str (bcc/decode byte-buffer))))
 
-(defn get-cigar [sam-alignment]
-  (let [cigar (.. TextCigarCodec getSingleton (decode (:cigar sam-alignment)))]
-    (encode-cigar cigar)))
+(defn get-cigar [aln]
+  (encode-cigar (:cigar aln)))
 
 (defn get-seq [sam-alignment]
   (bytes->compressed-bases (normalize-bases (string->bytes (:seq sam-alignment)))))
@@ -293,7 +299,7 @@
   (lsb/write-ubyte wrtr (short (:mapq aln)))
   (lsb/write-ushort wrtr (reg->bin (:pos aln) (get-end aln)))
   ;; flag_nc
-  (lsb/write-ushort wrtr (count-cigar aln))
+  (lsb/write-ushort wrtr (cgr/count-op (:cigar aln)))
   (lsb/write-ushort wrtr (:flag aln))
   ;; l_seq
   (lsb/write-int wrtr (get-l-seq aln))

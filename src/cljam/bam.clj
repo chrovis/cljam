@@ -5,7 +5,6 @@
             [cljam [sam :as sam]
                    [cigar :as cgr]
                    [lsb :as lsb]
-                   [binary-cigar-codec :as bcc]
                    [util :refer [reg->bin string->bytes normalize-bases ubyte
                                  hex-string->bytes fastq->phred phred->fastq
                                  bytes->compressed-bases compressed-bases->chars]]])
@@ -107,10 +106,29 @@
                 (encode-cigar-op (second %)))
        (cgr/parse cigar)))
 
+(defn- decode-cigar-op [op]
+  (condp = op
+    (byte 0) \M
+    (byte 1) \I
+    (byte 2) \D
+    (byte 3) \N
+    (byte 4) \S
+    (byte 5) \H
+    (byte 6) \P
+    (byte 7) \=
+    (byte 8) \X))
+
+(defn- decode-cigar* [buf]
+  (when (.hasRemaining buf)
+    (let [b  (.getInt buf)
+          op (bit-and b 0xf)
+          n  (bit-shift-right b 4)]
+      (concat [n (decode-cigar-op op)] (decode-cigar* buf)))))
+
 (defn decode-cigar [cigar-bytes]
-  (let [byte-buffer (ByteBuffer/wrap cigar-bytes)]
-    (.order byte-buffer ByteOrder/LITTLE_ENDIAN)
-    (str (bcc/decode byte-buffer))))
+  (let [buf (ByteBuffer/wrap cigar-bytes)]
+    (.order buf ByteOrder/LITTLE_ENDIAN)
+    (apply str (decode-cigar* buf))))
 
 (defn get-cigar [aln]
   (encode-cigar (:cigar aln)))

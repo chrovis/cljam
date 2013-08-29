@@ -435,17 +435,19 @@ public abstract class AbstractBAMFileIndex implements BAMIndex {
 
     private void skipToSequence(final int sequenceIndex) {
         for (int i = 0; i < sequenceIndex; i++) {
-            // System.out.println("# Sequence TID: " + i);
+//            System.out.println("# Sequence TID: " + i);
             final int nBins = readInteger();
-            // System.out.println("# nBins: " + nBins);
+//            System.out.println("# nBins: " + nBins);
             for (int j = 0; j < nBins; j++) {
-//                final int bin = readInteger();
+                @SuppressWarnings("unused")
+                final int bin = readInteger();
+
                 final int nChunks = readInteger();
-                // System.out.println("# bin[" + j + "] = " + bin + ", nChunks = " + nChunks);
+//                System.out.println("# bin[" + j + "] = " + bin + ", nChunks = " + nChunks);
                 skipBytes(16 * nChunks);
             }
             final int nLinearBins = readInteger();
-            // System.out.println("# nLinearBins: " + nLinearBins);
+//            System.out.println("# nLinearBins: " + nLinearBins);
             skipBytes(8 * nLinearBins);
         }
     }

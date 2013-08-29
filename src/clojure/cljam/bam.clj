@@ -345,7 +345,7 @@
   (doseq [a alns]
     (write-alignment wrtr a refs)))
 
-(defn- make-sequence-dicionary
+(defn- make-sequence-dictionary
   [sequences]
   (new SAMSequenceDictionary
        (map (fn [s] (new SAMSequenceRecord (:SN s) (:LN s)))
@@ -361,11 +361,11 @@
     (when-not (.exists (file bai-f))
       (throw (IOException. "Could not find BAM Index file")))
     (let [sequences (:SQ header)
-          seq-dict (make-sequence-dicionary sequences)
+          seq-dict (make-sequence-dictionary sequences)
           bai (new BAMFileIndex (file bai-f) seq-dict)]
       (->BamIndex bai sequences))))
 
-(defn- get-sequnce-index
+(defn- get-sequence-index
   [bai chr]
   (let [sequences (.sequences bai)
         indexed (map-indexed vector sequences)
@@ -375,7 +375,7 @@
 
 (defn get-spans
   [bai chr start end]
-  (let [seq-index (get-sequnce-index bai chr)
+  (let [seq-index (get-sequence-index bai chr)
         span-array (.getSpanOverlapping (.f bai) seq-index start end)
         spans (partition 2 (.toCoordinateArray span-array))]
     spans))

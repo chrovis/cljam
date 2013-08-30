@@ -5,7 +5,7 @@
 (defn ubyte
   "Casts to byte avoiding an error about out of range for byte."
   [n]
-  {:pre [(>= n 0) (<= n 255)]}
+  {:pre [(<= 0 n 255)]}
   (byte (if (< n 0x80) n (- n 0x100))))
 
 (defn string->bytes [s]
@@ -98,8 +98,7 @@
 (defn char->compressed-base-low
   "Convert from a char to BAM nybble representation of a base in low-order nybble."
   [base]
-  (condp (fn [case-vec ch]
-           (some #(= ch %) case-vec)) base
+  (condp #(some #{%2} %1) base
     [\=]       (:eq compressed-bases-low)
     [\a \A]    (:a  compressed-bases-low)
     [\c \C]    (:c  compressed-bases-low)
@@ -121,8 +120,7 @@
 (defn char->compressed-base-high
   "Convert from a char to BAM nybble representation of a base in high-order nybble."
   [base]
-  (condp (fn [case-vec ch]
-           (some #(= ch %) case-vec)) base
+  (condp #(some #{%2} %1) base
     [\=]       (:eq compressed-bases-high)
     [\a \A]    (:a  compressed-bases-high)
     [\c \C]    (:c  compressed-bases-high)

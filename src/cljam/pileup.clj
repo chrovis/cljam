@@ -31,8 +31,8 @@
              (recur cursor (rest matches) ret)))
          ret)))))
 
-(defn- calc-pos #^Long
-  [alns #^String rname #^Long pos]
+(defn- calc-pos
+  [alns rname pos]
   (loop [alns2 alns
          val 0]
     (let [[aln & rst] alns2]

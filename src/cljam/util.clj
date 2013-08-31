@@ -23,15 +23,15 @@
     b
     (byte (+ b upper-case-offset))))
 
-(defn string->bytes [s]
+(defn string->bytes [^String s]
   (let [buf (byte-array (count s))]
     (.getBytes s 0 (count buf) buf 0)
     buf))
 
-(defn bytes->string [b]
+(defn ^String bytes->string [^bytes b]
   (String. b 0 (count b)))
 
-(defn from-hex-digit [c]
+(defn from-hex-digit [^Character c]
   (let [d (Character/digit c 16)]
     (when (= d -1)
       (throw (NumberFormatException. (str "Invalid hex digit: " c))))
@@ -214,11 +214,11 @@
       (conj (vec bases) (compressed-base->char-high (nth compressed-bases (+ (/ length 2) compressed-offset))))
       bases)))
 
-(defn normalize-bases [bases]
+(defn normalize-bases [^bytes bases]
   (map-indexed (fn [idx _]
-                 (aset bases idx (upper-case (nth bases idx)))
+                 (aset bases idx ^byte (upper-case (nth bases idx)))
                  (if (= (nth bases idx) \.)
-                   (aset bases idx \N)))
+                   (aset bases idx (byte \N))))
                bases)
   bases)
 
@@ -227,7 +227,7 @@
 (defmulti fastq->phred class)
 
 (defmethod fastq->phred String
-  [fastq]
+  [^String fastq]
   (let [length (count fastq)]
     (byte-array (for [i (range length)]
                   (fastq->phred (.charAt fastq i))))))

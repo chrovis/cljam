@@ -20,7 +20,7 @@
 
 (def fixed-binary-array-tag-size 5)
 
-(def bam-magic "BAM\1")
+(def ^String bam-magic "BAM\1")
 
 (defn- get-options-size [sam-alignment]
   (->> (map
@@ -119,7 +119,8 @@
     (byte 7) \=
     (byte 8) \X))
 
-(defn- decode-cigar* [buf]
+(defn- decode-cigar*
+  [^ByteBuffer buf]
   (when (.hasRemaining buf)
     (let [b  (.getInt buf)
           op (bit-and b 0xf)
@@ -145,7 +146,7 @@
     (byte-array (count (:seq sam-alignment)) (ubyte 0xff))
     (fastq->phred (:qual sam-alignment))))
 
-(defn decode-qual [b]
+(defn decode-qual [^bytes b]
   (if (Arrays/equals b (byte-array (count b) (ubyte 0xff)))
     "*"
     (phred->fastq b)))
@@ -162,7 +163,7 @@
   (let [rdr (DataInputStream.
              (BlockCompressedInputStream.
               (BufferedInputStream. (FileInputStream. (file f)) buffer-size)))]
-    (when-not (Arrays/equals (lsb/read-bytes rdr 4) (.getBytes bam-magic))
+    (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes bam-magic))
       (throw (IOException. "Invalid BAM file header")))
     (let [header (sam/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
           n-ref  (lsb/read-int rdr)
@@ -190,7 +191,7 @@
      (int (/ (inc l-seq) 2))
      l-seq))
 
-(defn- parse-tag-single [tag-type bb]
+(defn- parse-tag-single [tag-type ^ByteBuffer bb]
   (case tag-type
     \Z (lsb/read-null-terminated-string bb)
     \A (.get bb)
@@ -204,7 +205,7 @@
     \H (hex-string->bytes (lsb/read-null-terminated-string bb))
     (throw (Exception. "Unrecognized tag type"))))
 
-(defn- parse-tag-array [bb]
+(defn- parse-tag-array [^ByteBuffer bb]
   (let [typ (char (.get bb))
         len (.getInt bb)]
     (->> (for [i (range len)]
@@ -220,7 +221,7 @@
          (cons typ)
          (join \,))))
 
-(defn- parse-option [bb]
+(defn- parse-option [^ByteBuffer bb]
   (let [tag (str (char (.get bb)) (char (.get bb)))
         typ (char (.get bb))]
     {(keyword tag) {:type  (str typ)
@@ -295,7 +296,7 @@
            \f nil))))
 
 (defn writer [f]
-  (DataOutputStream. (BlockCompressedOutputStream. f)))
+  (DataOutputStream. (BlockCompressedOutputStream. (file f))))
 
 (defn write-header [wrtr hdr]
   (lsb/write-bytes wrtr (.getBytes bam-magic)) ; magic
@@ -348,7 +349,7 @@
     (let [[tag value] (first (seq op))]
       (lsb/write-short wrtr (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
                                            (byte (first (name tag))))))
-      (lsb/write-bytes wrtr (.getBytes (:type value)))
+      (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
       (write-tag-value wrtr (first (:type value)) (:value value)))))
 
 (defn write-alignments [wrtr alns refs]

@@ -1,12 +1,27 @@
 (ns cljam.util
-  (:require [clojure.string :refer [join]])
-  (:import net.sf.samtools.util.StringUtil))
+  (:require [clojure.string :refer [join]]))
 
 (defn ubyte
   "Casts to byte avoiding an error about out of range for byte."
   [n]
   {:pre [(<= 0 n 255)]}
   (byte (if (< n 0x80) n (- n 0x100))))
+
+(defn ra-line-seq
+  [rdr]
+  (when-let [line (.readLine rdr)]
+    (cons line (lazy-seq (ra-line-seq rdr)))))
+
+;;; string utils
+
+(def ^:private upper-case-offset (- (byte \A) (byte \a)))
+
+(defn upper-case
+  "Converts a lower case letter to upper case."
+  [b]
+  (if (or (< b \a) (> b \z))
+    b
+    (byte (+ b upper-case-offset))))
 
 (defn string->bytes [s]
   (let [buf (byte-array (count s))]
@@ -29,10 +44,7 @@
                        from-hex-digit (nth s (inc (* % 2)))))
         (range (count s)))))
 
-(defn ra-line-seq
-  [rdr]
-  (when-let [line (.readLine rdr)]
-    (cons line (lazy-seq (ra-line-seq rdr)))))
+;;;
 
 (defn reg->bin
   "Calculates bin given an alignment covering [beg,end) (zero-based, half-close-half-open),
@@ -204,7 +216,7 @@
 
 (defn normalize-bases [bases]
   (map-indexed (fn [idx _]
-                 (aset bases idx (StringUtil/toUpperCase (nth bases idx)))
+                 (aset bases idx (upper-case (nth bases idx)))
                  (if (= (nth bases idx) \.)
                    (aset bases idx \N)))
                bases)

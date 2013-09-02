@@ -30,12 +30,18 @@
 (defn sort [sam]
   (sort-by-pos sam))
 
-(defn sorted? [sam]
+(defn sorted?
+  "Returns true if the sam is sorted, false if not. It is detected by
+  `@HD SO:***` tag in the header."
+  [sam]
   (let [so (:SO (:HD (:header sam)))]
     (or (= so "queryname")
         (= so "coordinate"))))
 
-(defn sort-order [sam]
+(defn sort-order
+  "Returns sorting order of the sam as String. Returning order is one of the
+  following: \"queryname\", \"coordinate\", \"unsorted\", \"unknown\"."
+  [sam]
   (if-let [so (:SO (:HD (:header sam)))]
     so
     "unknown"))

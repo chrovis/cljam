@@ -7,11 +7,6 @@
   {:pre [(<= 0 n 255)]}
   (byte (if (< n 0x80) n (- n 0x100))))
 
-(defn ra-line-seq
-  [rdr]
-  (when-let [line (.readLine rdr)]
-    (cons line (lazy-seq (ra-line-seq rdr)))))
-
 ;;; string utils
 
 (def ^:private upper-case-offset (- (byte \A) (byte \a)))

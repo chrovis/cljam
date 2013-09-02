@@ -1,7 +1,7 @@
 (ns cljam.sam
   (:refer-clojure :exclude [slurp spit])
-  (:require [clojure.string :as str :refer [split join trim upper-case]]
-            [cljam.util :refer [ra-line-seq]]))
+  (:require [clojure.string :as str :refer [split join trim upper-case]])
+  (:import [java.io BufferedReader BufferedWriter]))
 
 ;;; Parse
 
@@ -125,7 +125,7 @@
   java.io.Closeable
   (close [this] (.. this reader close)))
 
-(defn- read-header* [rdr]
+(defn- read-header* [^BufferedReader rdr]
   (when-let [line (.readLine rdr)]
     (if (= (first line) \@)
       (merge-with #(vec (concat %1 %2)) (parse-header-line line) (read-header* rdr)))))
@@ -141,18 +141,21 @@
 
 (defn read-alignments
   [rdr]
-  (map parse-alignment (filter #(not= (first %) \@) (ra-line-seq (.reader rdr)))))
+  (when-let [line (.readLine ^BufferedReader (.reader rdr))]
+    (if-not (= (first line) \@)
+      (cons (parse-alignment line) (lazy-seq (read-alignments rdr)))
+      (lazy-seq (read-alignments rdr)))))
 
 (defn writer [f]
   (clojure.java.io/writer f))
 
-(defn write-header [wrtr hdr]
-  (.write wrtr (stringify-header hdr))
+(defn write-header [^BufferedWriter wrtr hdr]
+  (.write wrtr ^String (stringify-header hdr))
   (.newLine wrtr))
 
-(defn write-alignments [wrtr alns]
+(defn write-alignments [^BufferedWriter wrtr alns]
   (doseq [a alns]
-    (.write wrtr (stringify-alignment a))
+    (.write wrtr ^String (stringify-alignment a))
     (.newLine wrtr)))
 
 (defn slurp

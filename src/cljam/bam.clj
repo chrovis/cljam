@@ -12,7 +12,7 @@
            [java.io DataInputStream DataOutputStream BufferedInputStream FileInputStream
                     IOException EOFException]
            [java.nio ByteBuffer ByteOrder]
-           [net.sf.samtools.util BlockCompressedInputStream BlockCompressedOutputStream]))
+           [chrovis.bgzf4j BGZFInputStream BGZFOutputStream]))
 
 (def fixed-block-size 32)
 
@@ -161,7 +161,7 @@
 
 (defn reader [f]
   (let [rdr (DataInputStream.
-             (BlockCompressedInputStream.
+             (BGZFInputStream.
               (BufferedInputStream. (FileInputStream. (file f)) buffer-size)))]
     (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes bam-magic))
       (throw (IOException. "Invalid BAM file header")))
@@ -296,7 +296,7 @@
            \f nil))))
 
 (defn writer [f]
-  (DataOutputStream. (BlockCompressedOutputStream. (file f))))
+  (DataOutputStream. (BGZFOutputStream. (file f))))
 
 (defn write-header [wrtr hdr]
   (lsb/write-bytes wrtr (.getBytes bam-magic)) ; magic

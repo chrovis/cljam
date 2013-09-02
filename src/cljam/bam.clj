@@ -27,7 +27,7 @@
         (fn [op]
           (let [[tag value] (first (seq op))]
             (+ fixed-tag-size
-               (condp = (first (:type value))
+               (case (first (:type value))
                  \A 1
                  \i 4
                  \f 4
@@ -35,7 +35,7 @@
                  \B (let [[array-type & array] (split (:value value) #",")]
                       (+ fixed-binary-array-tag-size
                          (* (count array)
-                            (condp = (first array-type)
+                            (case (first array-type)
                               \c 1
                               \C 1
                               \s 2
@@ -275,14 +275,14 @@
     (catch EOFException e nil)))
 
 (defn- write-tag-value [writer val-type value]
-  (condp = val-type
+  (case val-type
     \A (lsb/write-bytes  writer (char value))
     \i (lsb/write-int    writer (Integer/parseInt value))
     \f (lsb/write-float  writer (Float/parseFloat value))
     \Z (lsb/write-string writer value)
     ;; \H nil
     \B (let [[array-type & array] (split value #",")]
-         (condp = (first array-type)
+         (case (first array-type)
            \c nil
            \C nil
            \s nil

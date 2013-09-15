@@ -454,3 +454,40 @@
       (write-header w (:header sam))
       (write-refs w refs)
       (write-alignments w (:alignments sam) refs))))
+
+(deftype BamSequentialReader [r refs]
+  java.io.Closeable
+  (close [this]
+    (.. this r close)))
+
+(defprotocol ISequentialReader
+  (refs [this])
+  (read-next [this]))
+
+(extend-type BamSequentialReader
+  ISequentialReader
+  (refs [this] (.refs this))
+  (read-next [this]
+    (try
+      (read-alignment (.r this) (.refs this))
+      (catch EOFException e nil))))
+
+(defn open-bam
+  [f]
+  (let [rdr (DataInputStream.
+             (BGZFInputStream.
+              (BufferedInputStream. (FileInputStream. (file f)) buffer-size)))]
+    (if-not (Arrays/equals (lsb/read-bytes rdr 4) (.getBytes bam-magic))
+      (throw (IOException. "Invalid BAM file header")))
+    (let [header (sam/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
+          n-ref  (lsb/read-int rdr)
+          refs   (loop [i n-ref, ret []]
+                   (if (zero? i)
+                     ret
+                     (let [l-name (lsb/read-int rdr)
+                           name   (lsb/read-string rdr l-name)
+                           l-ref  (lsb/read-int rdr)]
+                       (recur (dec i)
+                              (conj ret {:name (subs name 0 (dec l-name))
+                                         :len  l-ref})))))]
+      (->BamSequentialReader rdr refs))))

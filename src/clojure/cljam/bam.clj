@@ -155,31 +155,33 @@
 
 ;;; I/O
 
-(deftype BamReader [header refs reader]
+(deftype BamReader [header refs reader seq-reader]
   java.io.Closeable
-  (close [this] (.. this reader close)))
+  (close [this]
+    (.. this reader close)
+    (.. this seq-reader close)))
 
 (def ^:private buffer-size (* 1024 128))
 
 (defn reader [f]
-  (let [data-rdr (DataInputStream. (BlockCompressedInputStream. (file f)))
-        rdr (DataInputStream.
-             (BGZFInputStream.
-              (BufferedInputStream. (FileInputStream. (file f)) buffer-size)))]
-    (if-not (Arrays/equals (lsb/read-bytes rdr 4) (.getBytes bam-magic))
+  (let [rdr (BlockCompressedInputStream. (file f))
+        data-rdr (DataInputStream.
+                  (BGZFInputStream.
+                   (BufferedInputStream. (FileInputStream. (file f)) buffer-size)))]
+    (if-not (Arrays/equals (lsb/read-bytes data-rdr 4) (.getBytes bam-magic))
       (throw (IOException. "Invalid BAM file header")))
-    (let [header (sam/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
-          n-ref  (lsb/read-int rdr)
+    (let [header (sam/parse-header (lsb/read-string data-rdr (lsb/read-int data-rdr)))
+          n-ref  (lsb/read-int data-rdr)
           refs   (loop [i n-ref, ret []]
                    (if (zero? i)
                      ret
-                     (let [l-name (lsb/read-int rdr)
-                           name   (lsb/read-string rdr l-name)
-                           l-ref  (lsb/read-int rdr)]
+                     (let [l-name (lsb/read-int data-rdr)
+                           name   (lsb/read-string data-rdr l-name)
+                           l-ref  (lsb/read-int data-rdr)]
                        (recur (dec i)
                               (conj ret {:name (subs name 0 (dec l-name))
                                          :len  l-ref})))))]
-      (->BamReader header refs rdr))))
+      (->BamReader header refs rdr data-rdr))))
 
 (defn read-header
   [rdr]
@@ -241,41 +243,35 @@
         (recur (conj options (parse-option bb)))))))
 
 (defn- read-alignment [rdr refs]
-  (let [block-size (lsb/read-int rdr)]
-    (when (< block-size fixed-block-size)
-      (throw (Exception. (str "Invalid block size:" block-size))))
-    (let [ref-id      (lsb/read-int rdr)
-          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
-          pos         (inc (lsb/read-int rdr))
-          l-read-name (lsb/read-ubyte rdr)
-          mapq        (lsb/read-ubyte rdr)
-          bin         (lsb/read-ushort rdr)
-          n-cigar-op  (lsb/read-ushort rdr)
-          flag        (lsb/read-ushort rdr)
-          l-seq       (lsb/read-int rdr)
-          rnext       (decode-next-ref-id refs (lsb/read-int rdr) rname)
-          pnext       (inc (lsb/read-int rdr))
-          tlen        (lsb/read-int rdr)
-          qname       (lsb/read-string rdr (dec (int l-read-name)))
-          _           (lsb/read-bytes rdr 1)
-          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
-          seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
-          qual        (decode-qual (lsb/read-bytes rdr l-seq))
-          rest        (lsb/read-bytes rdr (options-size block-size
-                                                        l-read-name
-                                                        n-cigar-op
-                                                        l-seq))
-          options     (parse-options rest)]
-      {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
-       :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
-       :qual qual, :options options})))
-
-(defn read-alignments
-  [rdr]
-  (try
-    (cons (read-alignment (.reader rdr) (.refs rdr))
-          (lazy-seq (read-alignments rdr)))
-    (catch EOFException e nil)))
+  (locking rdr
+    (let [block-size (lsb/read-int rdr)]
+      (when (< block-size fixed-block-size)
+        (throw (Exception. (str "Invalid block size:" block-size))))
+      (let [ref-id      (lsb/read-int rdr)
+            rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+            pos         (inc (lsb/read-int rdr))
+            l-read-name (lsb/read-ubyte rdr)
+            mapq        (lsb/read-ubyte rdr)
+            bin         (lsb/read-ushort rdr)
+            n-cigar-op  (lsb/read-ushort rdr)
+            flag        (lsb/read-ushort rdr)
+            l-seq       (lsb/read-int rdr)
+            rnext       (decode-next-ref-id refs (lsb/read-int rdr) rname)
+            pnext       (inc (lsb/read-int rdr))
+            tlen        (lsb/read-int rdr)
+            qname       (lsb/read-string rdr (dec (int l-read-name)))
+            _           (lsb/read-bytes rdr 1)
+            cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
+            seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
+            qual        (decode-qual (lsb/read-bytes rdr l-seq))
+            rest        (lsb/read-bytes rdr (options-size block-size
+                                                          l-read-name
+                                                          n-cigar-op
+                                                          l-seq))
+            options     (parse-options rest)]
+        {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
+         :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
+         :qual qual, :options options}))))
 
 (defn- write-tag-value [writer val-type value]
   (case val-type
@@ -398,14 +394,28 @@
   [rdr finish]
   (when (and (not (zero? (.available (.reader rdr))))
              (> finish (.getFilePointer (.reader rdr))))
-    (cons (read-alignment (.reader rdr) (.refs rdr))
+    (cons (read-alignment (DataInputStream. (.reader rdr)) (.refs rdr))
           (lazy-seq (read-to-finish rdr finish)))))
 
+(defn- read-all
+  ([r refs offset length] (read-all r refs offset (+ offset length) 0 []))
+  ([^BamReader r ^clojure.lang.PersistentArrayMap refs
+    ^Integer start ^Integer end ^Integer n
+    ^clojure.lang.PersistentArrayMap alignments]
+     (if (>= n end)
+       alignments
+       (let [a (read-alignment r refs)
+             new-alignments (if (and (<= start n) (< n end))
+                              (conj alignments a)
+                              alignments)]
+         (recur r refs start end (inc n) new-alignments)))))
+
 (defn read-alignments
-  ([rdr]
-      (when-not (zero? (.available (.reader rdr)))
-        (cons (read-alignment (.reader rdr) (.refs rdr))
-              (lazy-seq (read-alignments rdr)))))
+  ([rdr offset length]
+     (let [r (.seq-reader rdr)
+           refs (.refs rdr)]
+       (when-not (zero? (.available (.reader rdr)))
+         (read-all r refs offset length))))
   ([rdr bai chr start end]
      (let [spans (get-spans bai chr start end)
            window (fn [a]
@@ -421,17 +431,19 @@
   "Opens a reader on bam-file and reads all its headers and alignments,
   returning a map about sam records."
   [f & options]
-  (let [{:keys [chr start end] :or {chr nil
-                                    start 0
-                                    end -1}} options]
+  (let [{:keys [chr start end offset length] :or {chr nil
+                                                  start 0
+                                                  end -1
+                                                  offset 0
+                                                  length 0}} options]
     (with-open [r (reader f)]
       (let [header (read-header r)]
-        (if (nil? chr)
-          {:header header
-           :alignments (vec (read-alignments r))}
-          (with-open [i (bam-index f header)]
-            {:header header
-             :alignments (vec (read-alignments r i chr start end))}))))))
+        (cond
+         (not (nil? chr)) (with-open [i (bam-index f header)]
+                            {:header header
+                             :alignments (vec (read-alignments r i chr start end))})
+         (pos? length) {:header header
+                        :alignments (vec (read-alignments r offset length))})))))
 
 (defn spit
   "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and

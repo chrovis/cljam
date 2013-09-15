@@ -2,13 +2,13 @@
   (:refer-clojure :exclude [sort merge slurp spit])
   (:require [clojure.contrib.command-line :refer [with-command-line]]
             [clj-sub-command.core :refer [do-sub-command]]
-            (cljam [sam :as sam]
+            [cljam [sam :as sam]
                    [bam :as bam]
                    [sorter :as sorter]
                    [indexer :as idxr]
                    [fasta :as fa]
                    [fasta-indexer :as fai]
-                   [pileup :as plp]))
+                   [pileup :as plp]])
   (:gen-class))
 
 (defn reader [f]

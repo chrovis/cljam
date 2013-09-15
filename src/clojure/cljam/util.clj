@@ -1,22 +1,32 @@
 (ns cljam.util
-  (:require [clojure.string :refer [join]])
-  (:import cljam.lib.util.StringUtil))
+  (:require [clojure.string :refer [join]]))
 
 (defn ubyte
   "Casts to byte avoiding an error about out of range for byte."
   [n]
-  {:pre [(>= n 0) (<= n 255)]}
+  {:pre [(<= 0 n 255)]}
   (byte (if (< n 0x80) n (- n 0x100))))
 
-(defn string->bytes [s]
+;;; string utils
+
+(def ^:private upper-case-offset (- (byte \A) (byte \a)))
+
+(defn upper-case
+  "Converts a lower case letter to upper case."
+  [b]
+  (if (or (< b \a) (> b \z))
+    b
+    (byte (+ b upper-case-offset))))
+
+(defn string->bytes [^String s]
   (let [buf (byte-array (count s))]
     (.getBytes s 0 (count buf) buf 0)
     buf))
 
-(defn bytes->string [b]
+(defn ^String bytes->string [^bytes b]
   (String. b 0 (count b)))
 
-(defn from-hex-digit [c]
+(defn from-hex-digit [^Character c]
   (let [d (Character/digit c 16)]
     (when (= d -1)
       (throw (NumberFormatException. (str "Invalid hex digit: " c))))
@@ -29,10 +39,7 @@
                        from-hex-digit (nth s (inc (* % 2)))))
         (range (count s)))))
 
-(defn ra-line-seq
-  [rdr]
-  (when-let [line (.readLine rdr)]
-    (cons line (lazy-seq (ra-line-seq rdr)))))
+;;;
 
 (defn reg->bin
   "Calculates bin given an alignment covering [beg,end) (zero-based, half-close-half-open),
@@ -98,8 +105,7 @@
 (defn char->compressed-base-low
   "Convert from a char to BAM nybble representation of a base in low-order nybble."
   [base]
-  (condp (fn [case-vec ch]
-           (some #(= ch %) case-vec)) base
+  (condp #(some #{%2} %1) base
     [\=]       (:eq compressed-bases-low)
     [\a \A]    (:a  compressed-bases-low)
     [\c \C]    (:c  compressed-bases-low)
@@ -121,8 +127,7 @@
 (defn char->compressed-base-high
   "Convert from a char to BAM nybble representation of a base in high-order nybble."
   [base]
-  (condp (fn [case-vec ch]
-           (some #(= ch %) case-vec)) base
+  (condp #(some #{%2} %1) base
     [\=]       (:eq compressed-bases-high)
     [\a \A]    (:a  compressed-bases-high)
     [\c \C]    (:c  compressed-bases-high)
@@ -204,11 +209,11 @@
       (conj (vec bases) (compressed-base->char-high (nth compressed-bases (+ (/ length 2) compressed-offset))))
       bases)))
 
-(defn normalize-bases [bases]
+(defn normalize-bases [^bytes bases]
   (map-indexed (fn [idx _]
-                 (aset bases idx (StringUtil/toUpperCase (nth bases idx)))
+                 (aset bases idx ^byte (upper-case (nth bases idx)))
                  (if (= (nth bases idx) \.)
-                   (aset bases idx \N)))
+                   (aset bases idx (byte \N))))
                bases)
   bases)
 
@@ -217,14 +222,14 @@
 (defmulti fastq->phred class)
 
 (defmethod fastq->phred String
-  [fastq]
+  [^String fastq]
   (let [length (count fastq)]
     (byte-array (for [i (range length)]
                   (fastq->phred (.charAt fastq i))))))
 
 (defmethod fastq->phred Character
   [ch]
-  {:pre [(>= (int ch) 33) (<= (int ch) 126)]}
+  {:pre [(<= 33 (int ch) 126)]}
   (byte (- (int ch) 33)))
 
 (defmulti phred->fastq class)
@@ -238,5 +243,5 @@
 
 (defmethod phred->fastq Integer
   [n]
-  {:pre [(>= n 0) (<= n max-phred-score)]}
+  {:pre [(<= 0 n max-phred-score)]}
   (char (+ n 33)))

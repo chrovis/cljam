@@ -9,10 +9,12 @@
                                  hex-string->bytes fastq->phred phred->fastq
                                  bytes->compressed-bases compressed-bases->chars]]])
   (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException]
+           [java.io DataInputStream DataOutputStream BufferedInputStream FileInputStream
+                    IOException EOFException]
            [java.nio ByteBuffer ByteOrder]
            [cljam.lib.stream BlockCompressedInputStream BlockCompressedOutputStream]
-           [cljam.lib.bam SAMSequenceDictionary SAMSequenceRecord BAMFileIndex]))
+           [cljam.lib.bam SAMSequenceDictionary SAMSequenceRecord BAMFileIndex]
+           [chrovis.bgzf4j BGZFInputStream BGZFOutputStream]))
 
 (def fixed-block-size 32)
 
@@ -20,14 +22,14 @@
 
 (def fixed-binary-array-tag-size 5)
 
-(def bam-magic "BAM\1")
+(def ^String bam-magic "BAM\1")
 
 (defn- get-options-size [sam-alignment]
   (->> (map
         (fn [op]
           (let [[tag value] (first (seq op))]
             (+ fixed-tag-size
-               (condp = (first (:type value))
+               (case (first (:type value))
                  \A 1
                  \i 4
                  \f 4
@@ -35,7 +37,7 @@
                  \B (let [[array-type & array] (split (:value value) #",")]
                       (+ fixed-binary-array-tag-size
                          (* (count array)
-                            (condp = (first array-type)
+                            (case (first array-type)
                               \c 1
                               \C 1
                               \s 2
@@ -119,7 +121,8 @@
     (byte 7) \=
     (byte 8) \X))
 
-(defn- decode-cigar* [buf]
+(defn- decode-cigar*
+  [^ByteBuffer buf]
   (when (.hasRemaining buf)
     (let [b  (.getInt buf)
           op (bit-and b 0xf)
@@ -145,7 +148,7 @@
     (byte-array (count (:seq sam-alignment)) (ubyte 0xff))
     (fastq->phred (:qual sam-alignment))))
 
-(defn decode-qual [b]
+(defn decode-qual [^bytes b]
   (if (Arrays/equals b (byte-array (count b) (ubyte 0xff)))
     "*"
     (phred->fastq b)))
@@ -156,9 +159,13 @@
   java.io.Closeable
   (close [this] (.. this reader close)))
 
+(def ^:private buffer-size (* 1024 128))
+
 (defn reader [f]
   (let [data-rdr (DataInputStream. (BlockCompressedInputStream. (file f)))
-        rdr (BlockCompressedInputStream. (file f))]
+        rdr (DataInputStream.
+             (BGZFInputStream.
+              (BufferedInputStream. (FileInputStream. (file f)) buffer-size)))]
     (if-not (Arrays/equals (lsb/read-bytes rdr 4) (.getBytes bam-magic))
       (throw (IOException. "Invalid BAM file header")))
     (let [header (sam/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
@@ -187,7 +194,7 @@
      (int (/ (inc l-seq) 2))
      l-seq))
 
-(defn- parse-tag-single [tag-type bb]
+(defn- parse-tag-single [tag-type ^ByteBuffer bb]
   (case tag-type
     \Z (lsb/read-null-terminated-string bb)
     \A (.get bb)
@@ -201,7 +208,7 @@
     \H (hex-string->bytes (lsb/read-null-terminated-string bb))
     (throw (Exception. "Unrecognized tag type"))))
 
-(defn- parse-tag-array [bb]
+(defn- parse-tag-array [^ByteBuffer bb]
   (let [typ (char (.get bb))
         len (.getInt bb)]
     (->> (for [i (range len)]
@@ -217,7 +224,7 @@
          (cons typ)
          (join \,))))
 
-(defn- parse-option [bb]
+(defn- parse-option [^ByteBuffer bb]
   (let [tag (str (char (.get bb)) (char (.get bb)))
         typ (char (.get bb))]
     {(keyword tag) {:type  (str typ)
@@ -235,7 +242,7 @@
 
 (defn- read-alignment [rdr refs]
   (let [block-size (lsb/read-int rdr)]
-    (if (< block-size fixed-block-size)
+    (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size:" block-size))))
     (let [ref-id      (lsb/read-int rdr)
           rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
@@ -263,15 +270,22 @@
        :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
        :qual qual, :options options})))
 
+(defn read-alignments
+  [rdr]
+  (try
+    (cons (read-alignment (.reader rdr) (.refs rdr))
+          (lazy-seq (read-alignments rdr)))
+    (catch EOFException e nil)))
+
 (defn- write-tag-value [writer val-type value]
-  (condp = val-type
+  (case val-type
     \A (lsb/write-bytes  writer (char value))
     \i (lsb/write-int    writer (Integer/parseInt value))
     \f (lsb/write-float  writer (Float/parseFloat value))
     \Z (lsb/write-string writer value)
     ;; \H nil
     \B (let [[array-type & array] (split value #",")]
-         (condp = (first array-type)
+         (case (first array-type)
            \c nil
            \C nil
            \s nil
@@ -285,7 +299,7 @@
            \f nil))))
 
 (defn writer [f]
-  (DataOutputStream. (BlockCompressedOutputStream. f)))
+  (DataOutputStream. (BGZFOutputStream. (file f))))
 
 (defn write-header [wrtr hdr]
   (lsb/write-bytes wrtr (.getBytes bam-magic)) ; magic
@@ -338,7 +352,7 @@
     (let [[tag value] (first (seq op))]
       (lsb/write-short wrtr (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
                                            (byte (first (name tag))))))
-      (lsb/write-bytes wrtr (.getBytes (:type value)))
+      (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
       (write-tag-value wrtr (first (:type value)) (:value value)))))
 
 (defn write-alignments [wrtr alns refs]

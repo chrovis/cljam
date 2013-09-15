@@ -1,38 +1,9 @@
 (ns cljam.pileup
-  (:require [clojure.string :refer [join]]
-            [cljam [cigar :as cgr]
-                   [sorter :as sorter]]))
+  (:require [cljam [cigar :as cgr]]))
 
-(defn substantial-seq [aln]
-  (let [{seq :seq, cigar :cigar} aln]
-    (join
-     (loop [cursor  0
-            matches (re-seq #"([0-9]*)([MIDNSHP=X])" cigar)
-            ret     []]
-       (if (first matches)
-         (let [n  (Integer/parseInt (second (first matches)))
-               op (last (first matches))]
-           (condp #(not (nil? (%1 %2))) op
-             #{"M" "=" "X"}
-             (recur (+ cursor n)
-                    (rest matches)
-                    (conj ret (subs seq cursor (+ cursor n))))
-
-             #{"D"}
-             (recur cursor
-                    (rest matches)
-                    (conj ret (join (repeat n "*"))))
-
-             #{"N"}
-             (recur cursor
-                    (rest matches)
-                    (conj ret (join (repeat n ">"))))
-
-             (recur cursor (rest matches) ret)))
-         ret)))))
-
-(defn- calc-pos #^Long
-  [alns #^String rname #^Long pos]
+(defn- calc-pos
+  "Returns a histogram value of the specified position."
+  [alns rname pos]
   (loop [alns2 alns
          val 0]
     (let [[aln & rst] alns2]

@@ -9,10 +9,8 @@
                                  hex-string->bytes fastq->phred phred->fastq
                                  bytes->compressed-bases compressed-bases->chars]]])
   (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream BufferedInputStream FileInputStream
-                    IOException EOFException]
+           [java.io DataInputStream DataOutputStream IOException EOFException]
            [java.nio ByteBuffer ByteOrder]
-           [cljam.lib.stream BlockCompressedInputStream BlockCompressedOutputStream]
            [cljam.lib.bam SAMSequenceDictionary SAMSequenceRecord BAMFileIndex]
            [chrovis.bgzf4j BGZFInputStream BGZFOutputStream]))
 

@@ -39,9 +39,13 @@
                  val))]
     (bam/read-alignments rdr rname left right)))
 
+(defn- search-ref
+  [refs rname]
+  (first
+   (filter (fn [r] (= (:name r) rname))
+           refs)))
+
 (defn- pileup*
-  ([rdr]
-     nil)
   ([rdr rname rlength]
      (flatten
       (map (fn [positions]
@@ -58,12 +62,10 @@
 ;;; OPTIMIZE: This is implemented by pure Clojure, but it is too slow...
 (defn pileup
   ([rdr]
-     (pileup* rdr)
-     ;(pileup* (:alignments sam))
+     ;; TODO
      )
   ([rdr ^String rname]
-     (let [r (first (filter (fn [r]
-                              (= (:name r) rname)) (.refs rdr)))]
+     (let [r (search-ref (.refs rdr) rname)]
        (if (nil? r)
          nil
          (pileup* rdr rname (:len r))))))

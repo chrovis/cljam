@@ -194,7 +194,7 @@
 (defn reader [f]
   (let [rdr (BGZFInputStream. (file f))
         data-rdr (DataInputStream. rdr)]
-    (if-not (Arrays/equals (lsb/read-bytes data-rdr 4) (.getBytes bam-magic))
+    (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes bam-magic))
       (throw (IOException. "Invalid BAM file header")))
     (let [header (sam/parse-header (lsb/read-string data-rdr (lsb/read-int data-rdr)))
           n-ref  (lsb/read-int data-rdr)

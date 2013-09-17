@@ -155,19 +155,45 @@
 
 ;;; I/O
 
-(deftype BamReader [header refs reader seq-reader]
+(deftype BAMReader [header refs reader index]
   java.io.Closeable
   (close [this]
-    (.. this reader close)
-    (.. this seq-reader close)))
+    (.. this reader close)))
 
-(def ^:private buffer-size (* 1024 128))
+(defprotocol ISAMReader
+  (header [this])
+  (refs [this]))
+
+(extend-type BAMReader
+  ISAMReader
+  (header [this]
+    (.header this))
+  (refs [this]
+    (.refs this)))
+
+(defn- make-sequence-dictionary
+  [sequences]
+  (new SAMSequenceDictionary
+       (map (fn [s] (new SAMSequenceRecord (:SN s) (:LN s)))
+            sequences)))
+
+(deftype BamIndex [f sequences]
+  java.io.Closeable
+  (close [this] (.. this f close)))
+
+(defn bam-index
+  [f header]
+  (let [bai-f (str f ".bai")]
+    (when-not (.exists (file bai-f))
+      (throw (IOException. "Could not find BAM Index file")))
+    (let [sequences (:SQ header)
+          seq-dict (make-sequence-dictionary sequences)
+          bai (new BAMFileIndex (file bai-f) seq-dict)]
+      (->BamIndex bai sequences))))
 
 (defn reader [f]
-  (let [rdr (BlockCompressedInputStream. (file f))
-        data-rdr (DataInputStream.
-                  (BGZFInputStream.
-                   (BufferedInputStream. (FileInputStream. (file f)) buffer-size)))]
+  (let [rdr (BGZFInputStream. (file f))
+        data-rdr (DataInputStream. rdr)]
     (if-not (Arrays/equals (lsb/read-bytes data-rdr 4) (.getBytes bam-magic))
       (throw (IOException. "Invalid BAM file header")))
     (let [header (sam/parse-header (lsb/read-string data-rdr (lsb/read-int data-rdr)))
@@ -180,12 +206,9 @@
                            l-ref  (lsb/read-int data-rdr)]
                        (recur (dec i)
                               (conj ret {:name (subs name 0 (dec l-name))
-                                         :len  l-ref})))))]
-      (->BamReader header refs rdr data-rdr))))
-
-(defn read-header
-  [rdr]
-  (.header rdr))
+                                         :len  l-ref})))))
+          index (bam-index f header)]
+      (->BAMReader header refs rdr index))))
 
 (defn- options-size
   [block-size l-read-name n-cigar-op l-seq]
@@ -355,26 +378,6 @@
   (doseq [a alns]
     (write-alignment wrtr a refs)))
 
-(defn- make-sequence-dictionary
-  [sequences]
-  (new SAMSequenceDictionary
-       (map (fn [s] (new SAMSequenceRecord (:SN s) (:LN s)))
-            sequences)))
-
-(deftype BamIndex [f sequences]
-  java.io.Closeable
-  (close [this] (.. this f close)))
-
-(defn bam-index
-  [f header]
-  (let [bai-f (str f ".bai")]
-    (when-not (.exists (file bai-f))
-      (throw (IOException. "Could not find BAM Index file")))
-    (let [sequences (:SQ header)
-          seq-dict (make-sequence-dictionary sequences)
-          bai (new BAMFileIndex (file bai-f) seq-dict)]
-      (->BamIndex bai sequences))))
-
 (defn- get-sequence-index
   [bai chr]
   (let [sequences (.sequences bai)
@@ -391,59 +394,40 @@
     spans))
 
 (defn- read-to-finish
-  [rdr finish]
+  [rdr ^Integer finish]
   (when (and (not (zero? (.available (.reader rdr))))
              (> finish (.getFilePointer (.reader rdr))))
     (cons (read-alignment (DataInputStream. (.reader rdr)) (.refs rdr))
           (lazy-seq (read-to-finish rdr finish)))))
 
-(defn- read-all
-  ([r refs offset length] (read-all r refs offset (+ offset length) 0 []))
-  ([^BamReader r ^clojure.lang.PersistentArrayMap refs
-    ^Integer start ^Integer end ^Integer n
-    ^clojure.lang.PersistentArrayMap alignments]
-     (if (>= n end)
-       alignments
-       (let [a (read-alignment r refs)
-             new-alignments (if (and (<= start n) (< n end))
-                              (conj alignments a)
-                              alignments)]
-         (recur r refs start end (inc n) new-alignments)))))
-
 (defn read-alignments
-  ([rdr offset length]
-     (let [r (.seq-reader rdr)
-           refs (.refs rdr)]
-       (when-not (zero? (.available (.reader rdr)))
-         (read-all r refs offset length))))
-  ([rdr bai chr start end]
-     (let [spans (get-spans bai chr start end)
-           window (fn [a]
-                    (and (= chr (:rname a))
-                         (<= start (:pos a))
-                         (>= end (:pos a))))
-           candidates (flatten (map (fn [[begin finish]]
-                                      (.seek (.reader rdr) begin)
-                                      (doall (read-to-finish rdr finish))) spans))]
-       (filter window candidates))))
+  [^BAMReader rdr chr start end]
+  (let [bai (.index rdr)
+        spans (get-spans bai chr start end)
+        window (fn [a]
+                 (let [left (:pos a)
+                       right (+ (:pos a) (cgr/count-op (:cigar a)))]
+                   (and (= chr (:rname a))
+                        (<= start right)
+                        (>= end left))))
+        candidates (flatten (map (fn [[begin finish]]
+                                   (.seek (.reader rdr) begin)
+                                   (doall (read-to-finish rdr finish))) spans))]
+    (filter window candidates)))
 
 (defn slurp
   "Opens a reader on bam-file and reads all its headers and alignments,
   returning a map about sam records."
   [f & options]
-  (let [{:keys [chr start end offset length] :or {chr nil
-                                                  start 0
-                                                  end -1
-                                                  offset 0
-                                                  length 0}} options]
+  (let [{:keys [chr start end] :or {chr nil
+                                    start 0
+                                    end -1}} options]
     (with-open [r (reader f)]
-      (let [header (read-header r)]
-        (cond
-         (not (nil? chr)) (with-open [i (bam-index f header)]
-                            {:header header
-                             :alignments (vec (read-alignments r i chr start end))})
-         (pos? length) {:header header
-                        :alignments (vec (read-alignments r offset length))})))))
+      (let [h (header r)]
+        {:header h
+         :alignments (if (nil? chr)
+                       nil
+                       (vec (read-alignments r chr start end)))}))))
 
 (defn spit
   "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and
@@ -454,40 +438,3 @@
       (write-header w (:header sam))
       (write-refs w refs)
       (write-alignments w (:alignments sam) refs))))
-
-(deftype BamSequentialReader [r refs]
-  java.io.Closeable
-  (close [this]
-    (.. this r close)))
-
-(defprotocol ISequentialReader
-  (refs [this])
-  (read-next [this]))
-
-(extend-type BamSequentialReader
-  ISequentialReader
-  (refs [this] (.refs this))
-  (read-next [this]
-    (try
-      (read-alignment (.r this) (.refs this))
-      (catch EOFException e nil))))
-
-(defn open-bam
-  [f]
-  (let [rdr (DataInputStream.
-             (BGZFInputStream.
-              (BufferedInputStream. (FileInputStream. (file f)) buffer-size)))]
-    (if-not (Arrays/equals (lsb/read-bytes rdr 4) (.getBytes bam-magic))
-      (throw (IOException. "Invalid BAM file header")))
-    (let [header (sam/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
-          n-ref  (lsb/read-int rdr)
-          refs   (loop [i n-ref, ret []]
-                   (if (zero? i)
-                     ret
-                     (let [l-name (lsb/read-int rdr)
-                           name   (lsb/read-string rdr l-name)
-                           l-ref  (lsb/read-int rdr)]
-                       (recur (dec i)
-                              (conj ret {:name (subs name 0 (dec l-name))
-                                         :len  l-ref})))))]
-      (->BamSequentialReader rdr refs))))

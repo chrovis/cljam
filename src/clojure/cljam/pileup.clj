@@ -1,46 +1,69 @@
 (ns cljam.pileup
-  (:require [cljam [cigar :as cgr]]))
+  (:require (cljam [cigar :as cgr]
+                   [bam :as bam])))
 
-(defn- calc-pos
+(def ^:private window-width 500) ;; TODO: estiamte from actual data
+(def ^:private step 100) ;; TODO: estiamte from actual data
+(def ^:private center 50) ;; TODO: estiamte from actual data
+
+(defn- count-for-pos
   "Returns a histogram value of the specified position."
   [alns rname pos]
   (loop [alns2 alns
          val 0]
     (let [[aln & rst] alns2]
-      (if (or (nil? aln) (not= rname (:rname aln)) (< pos (:pos aln)))
+      (if (nil? aln)
         val
-        (if (< pos (+ (:pos aln) (cgr/count-ref (:cigar aln))))
+        (if (and (= rname (:rname aln))
+                 (>= pos (:pos aln))
+                 (<= pos (+ (:pos aln) (cgr/count-ref (:cigar aln)))))
           (recur rst (inc val))
           (recur rst val))))))
 
+(defn- rpositions
+  ([len] (rpositions 0 len))
+  ([n len] (if (>= len n)
+             (cons n
+                   (lazy-seq (rpositions (inc n) len)))
+             nil)))
+
+(defn- read-alignments
+  [rdr rname rlength pos]
+  (let [left (let [val (- pos window-width)]
+               (if (< val 0)
+                 0
+                 val))
+        right (let [val (+ pos window-width)]
+               (if (< rlength val)
+                 rlength
+                 val))]
+    (bam/read-alignments rdr rname left right)))
+
 (defn- pileup*
-  ([alns]
-     (pileup* alns (:rname (first alns)) (:pos (first alns))))
-  ([alns rname]
-     (let [alns (filter #(= (:rname %) rname) alns)]
-      (pileup* alns rname (:pos (first alns)))))
-  ([alns rname pos]
-     (when (seq alns)
-       (let [val (calc-pos alns rname pos)
-             [aln & rst] alns]
-         (if (zero? val)
-           (if-not (or (nil? rst) (= rname (:rname (first rst))))
-             (pileup* rst (:rname (first rst)) (:pos (first rst)))
-             (if (< pos (:pos aln))
-               (pileup* alns rname (:pos aln))
-               (pileup* rst rname (inc pos))))
-           (lazy-seq
-            (cons
-             {:rname rname, :pos pos, :n val}
-             (if-not (or (nil? rst) (= rname (:rname (first rst))))
-               (pileup* rst (:rname (first rst)) (:pos (first rst)))
-               (if (< pos (+ (:pos aln) (cgr/count-ref (:cigar aln))))
-                 (pileup* alns rname (inc pos))
-                 (pileup* rst rname (inc pos)))))))))))
+  ([rdr]
+     nil)
+  ([rdr rname rlength]
+     (flatten
+      (map (fn [positions]
+             (let [pos (nth positions center)
+                   alns (read-alignments rdr rname rlength pos)]
+               (map
+                (fn [p]
+                  {:rname rname
+                   :pos p
+                   :n (count-for-pos alns rname p)})
+                positions)))
+           (partition step (rpositions rlength))))))
 
 ;;; OPTIMIZE: This is implemented by pure Clojure, but it is too slow...
 (defn pileup
-  ([sam]
-     (pileup* (:alignments sam)))
-  ([sam rname]
-     (pileup* (:alignments sam) rname)))
+  ([rdr]
+     (pileup* rdr)
+     ;(pileup* (:alignments sam))
+     )
+  ([rdr ^String rname]
+     (let [r (first (filter (fn [r]
+                              (= (:name r) rname)) (.refs rdr)))]
+       (if (nil? r)
+         nil
+         (pileup* rdr rname (:len r))))))

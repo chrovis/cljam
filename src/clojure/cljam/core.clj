@@ -25,7 +25,7 @@
 
 (defmethod read-header "class cljam.bam.BamReader"
   [rdr]
-  (bam/read-header rdr))
+  (bam/header rdr))
 
 (defmulti read-alignments (comp str class))
 
@@ -130,7 +130,7 @@
       (println "Invalid arguments")
       (System/exit 1))
     (with-open [r (bam/reader (first files))]
-      (let [sam {:header (bam/read-header r)
+      (let [sam {:header (bam/header r)
                  :alignments (bam/read-alignments r)}]
         (when-not (sorter/sorted? sam)
           (println "Not sorted")

@@ -20,12 +20,14 @@
           (recur rst (inc val))
           (recur rst val))))))
 
-(defn- rpositions
-  ([len] (rpositions 0 len))
-  ([n len] (if (>= len n)
-             (cons n
-                   (lazy-seq (rpositions (inc n) len)))
-             nil)))
+(defn rpositions
+  ([^Long start ^Long end]
+     (rpositions start end start))
+  ([^Long start ^Long end ^Long n]
+     (if (>= end n)
+       (cons n
+             (lazy-seq (rpositions start end (inc n))))
+       nil)))
 
 (defn- read-alignments
   [rdr rname rlength pos]
@@ -46,7 +48,7 @@
            refs)))
 
 (defn- pileup*
-  ([rdr rname rlength]
+  ([rdr rname rlength start end]
      (flatten
       (map (fn [positions]
              (let [pos (nth positions center)
@@ -57,7 +59,7 @@
                    :pos p
                    :n (count-for-pos alns rname p)})
                 positions)))
-           (partition step (rpositions rlength))))))
+           (partition step (rpositions start end))))))
 
 ;;; OPTIMIZE: This is implemented by pure Clojure, but it is too slow...
 (defn pileup
@@ -65,7 +67,12 @@
      ;; TODO
      )
   ([rdr ^String rname]
+     (pileup rdr rname -1 -1))
+  ([rdr ^String rname ^Long start* ^Long end*]
      (let [r (search-ref (.refs rdr) rname)]
        (if (nil? r)
          nil
-         (pileup* rdr rname (:len r))))))
+         (pileup* rdr
+                  rname (:len r)
+                  (if (neg? start*) 0 start*)
+                  (if (neg? end*) (:len r) end*))))))

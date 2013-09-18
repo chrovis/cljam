@@ -408,9 +408,10 @@
                    (and (= chr (:rname a))
                         (<= start right)
                         (>= end left))))
-        candidates (flatten (map (fn [[begin finish]]
-                                   (.seek (.reader rdr) begin)
-                                   (doall (read-to-finish rdr finish))) spans))]
+        candidates (locking rdr
+                     (flatten (map (fn [[begin finish]]
+                                     (.seek (.reader rdr) begin)
+                                     (doall (read-to-finish rdr finish))) spans)))]
     (filter window candidates)))
 
 (defn slurp

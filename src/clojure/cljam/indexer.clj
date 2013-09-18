@@ -4,7 +4,8 @@
                    [util :refer [reg->bin]]))
   (:import java.io.DataOutputStream
            ;(net.sf.picard.sam BuildBamIndex BamIndexStats)
-           cljam.lib.stream.BlockCompressedOutputStream))
+           ;cljam.lib.stream.BlockCompressedOutputStream
+           [chrovis.bgzf4j BGZFInputStream BGZFOutputStream]))
 
 (def bai-magic "BAI\1")
 
@@ -21,7 +22,7 @@
   "Opposite of slurp. Opens sam/bam-file with writer, writes sam headers and
   alignments, then closes the sam/bam-file."
   [bai-file sam]
-  (with-open [w (DataOutputStream. (BlockCompressedOutputStream. bai-file))]
+  (with-open [w (DataOutputStream. (BGZFOutputStream. bai-file))]
     (lsb/write-bytes w (.getBytes bai-magic)) ; magic
     ;; TODO
     nil))

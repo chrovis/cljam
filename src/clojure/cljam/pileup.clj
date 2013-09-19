@@ -50,16 +50,13 @@
 (defn- pileup*
   ([rdr rname rlength start end]
      (flatten
-      (let [parts (partition step (rpositions start end))]
+      (let [parts (partition-all step (rpositions start end))]
         (map (fn [positions]
-               (let [^Long pos (nth positions center)
+               (let [^Long pos (if (= (count positions) step)
+                                 (nth positions center)
+                                 (nth positions (quot (count positions) 2)))
                      alns (read-alignments rdr rname rlength pos)]
-                 (map
-                  (fn [p]
-                    {:rname rname
-                     :pos p
-                     :n (count-for-pos alns rname p)})
-                  positions)))
+                 (map #(count-for-pos alns rname %) positions)))
              parts)))))
 
 (defn pileup

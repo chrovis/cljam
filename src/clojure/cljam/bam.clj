@@ -264,35 +264,34 @@
         (recur (conj options (parse-option bb)))))))
 
 (defn- read-alignment [rdr refs]
-  (locking rdr
-    (let [block-size (lsb/read-int rdr)]
-      (when (< block-size fixed-block-size)
-        (throw (Exception. (str "Invalid block size:" block-size))))
-      (let [ref-id      (lsb/read-int rdr)
-            rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
-            pos         (inc (lsb/read-int rdr))
-            l-read-name (lsb/read-ubyte rdr)
-            mapq        (lsb/read-ubyte rdr)
-            bin         (lsb/read-ushort rdr)
-            n-cigar-op  (lsb/read-ushort rdr)
-            flag        (lsb/read-ushort rdr)
-            l-seq       (lsb/read-int rdr)
-            rnext       (decode-next-ref-id refs (lsb/read-int rdr) rname)
-            pnext       (inc (lsb/read-int rdr))
-            tlen        (lsb/read-int rdr)
-            qname       (lsb/read-string rdr (dec (int l-read-name)))
-            _           (lsb/read-bytes rdr 1)
-            cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
-            seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
-            qual        (decode-qual (lsb/read-bytes rdr l-seq))
-            rest        (lsb/read-bytes rdr (options-size block-size
-                                                          l-read-name
-                                                          n-cigar-op
-                                                          l-seq))
-            options     (parse-options rest)]
-        {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
-         :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
-         :qual qual, :options options}))))
+  (let [block-size (lsb/read-int rdr)]
+    (when (< block-size fixed-block-size)
+      (throw (Exception. (str "Invalid block size:" block-size))))
+    (let [ref-id      (lsb/read-int rdr)
+          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+          pos         (inc (lsb/read-int rdr))
+          l-read-name (lsb/read-ubyte rdr)
+          mapq        (lsb/read-ubyte rdr)
+          bin         (lsb/read-ushort rdr)
+          n-cigar-op  (lsb/read-ushort rdr)
+          flag        (lsb/read-ushort rdr)
+          l-seq       (lsb/read-int rdr)
+          rnext       (decode-next-ref-id refs (lsb/read-int rdr) rname)
+          pnext       (inc (lsb/read-int rdr))
+          tlen        (lsb/read-int rdr)
+          qname       (lsb/read-string rdr (dec (int l-read-name)))
+          _           (lsb/read-bytes rdr 1)
+          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
+          seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
+          qual        (decode-qual (lsb/read-bytes rdr l-seq))
+          rest        (lsb/read-bytes rdr (options-size block-size
+                                                        l-read-name
+                                                        n-cigar-op
+                                                        l-seq))
+          options     (parse-options rest)]
+      {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
+       :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
+       :qual qual, :options options})))
 
 (defn- write-tag-value [writer val-type value]
   (case val-type
@@ -408,10 +407,9 @@
                    (and (= chr (:rname a))
                         (<= start right)
                         (>= end left))))
-        candidates (locking rdr
-                     (flatten (map (fn [[begin finish]]
-                                     (.seek (.reader rdr) begin)
-                                     (doall (read-to-finish rdr finish))) spans)))]
+        candidates (flatten (map (fn [[begin finish]]
+                                   (.seek (.reader rdr) begin)
+                                   (doall (read-to-finish rdr finish))) spans))]
     (filter window candidates)))
 
 (defn slurp

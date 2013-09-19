@@ -8,7 +8,7 @@
 
 (defn- count-for-pos
   "Returns a histogram value of the specified position."
-  [alns rname pos]
+  [alns ^String rname ^Long pos]
   (loop [alns2 alns
          val 0]
     (let [[aln & rst] alns2]
@@ -30,15 +30,15 @@
        nil)))
 
 (defn- read-alignments
-  [rdr rname rlength pos]
-  (let [left (let [val (- pos window-width)]
-               (if (< val 0)
-                 0
-                 val))
-        right (let [val (+ pos window-width)]
-               (if (< rlength val)
-                 rlength
-                 val))]
+  [rdr ^String rname ^Long rlength ^Long pos]
+  (let [^Long left (let [^Long val (- pos window-width)]
+                     (if (< val 0)
+                       0
+                       val))
+        ^Long right (let [^Long val (+ pos window-width)]
+                      (if (< rlength val)
+                        rlength
+                        val))]
     (bam/read-alignments rdr rname left right)))
 
 (defn- search-ref
@@ -50,18 +50,18 @@
 (defn- pileup*
   ([rdr rname rlength start end]
      (flatten
-      (map (fn [positions]
-             (let [pos (nth positions center)
-                   alns (read-alignments rdr rname rlength pos)]
-               (map
-                (fn [p]
-                  {:rname rname
-                   :pos p
-                   :n (count-for-pos alns rname p)})
-                positions)))
-           (partition step (rpositions start end))))))
+      (let [parts (partition step (rpositions start end))]
+        (map (fn [positions]
+               (let [^Long pos (nth positions center)
+                     alns (read-alignments rdr rname rlength pos)]
+                 (map
+                  (fn [p]
+                    {:rname rname
+                     :pos p
+                     :n (count-for-pos alns rname p)})
+                  positions)))
+             parts)))))
 
-;;; OPTIMIZE: This is implemented by pure Clojure, but it is too slow...
 (defn pileup
   ([rdr]
      ;; TODO

@@ -7,6 +7,11 @@
 (defn- ^ByteBuffer gen-byte-buffer []
   (.order (ByteBuffer/allocate 8) ByteOrder/LITTLE_ENDIAN))
 
+(defn skip
+  [^DataInputStream rdr ^Integer n]
+  (.skipBytes rdr n)
+  nil)
+
 ;;; reading
 
 (defn read-bytes

@@ -11,8 +11,8 @@
    ^String rname
    ^clojure.lang.LazySeq positions]
   (if (= rname (:rname aln))
-    (let [left (:pos aln)
-          right (+ (:pos aln) (cgr/count-ref (:cigar aln)))]
+    (let [^Long left (:pos aln)
+          ^Long right (+ left (cgr/count-ref (:cigar aln)))]
       (map (fn [p] (if (and (>= p left)
                             (<= p right)) 1 0)) positions))
     (take (count positions) (repeat 0))))
@@ -44,7 +44,7 @@
                       (if (< rlength val)
                         rlength
                         val))]
-    (bam/read-alignments rdr rname left right)))
+    (bam/light-read-alignments rdr rname left right)))
 
 (defn- search-ref
   [refs rname]

@@ -175,7 +175,7 @@
        (map (fn [s] (new SAMSequenceRecord (:SN s) (:LN s)))
             sequences)))
 
-(deftype BamIndex [f sequences]
+(deftype BAMIndex [f sequences]
   java.io.Closeable
   (close [this] (.. this f close)))
 
@@ -187,7 +187,7 @@
     (let [sequences (:SQ header)
           seq-dict (make-sequence-dictionary sequences)
           bai (new BAMFileIndex (file bai-f) seq-dict)]
-      (->BamIndex bai sequences))))
+      (->BAMIndex bai sequences))))
 
 (defn reader [f]
   (let [rdr (BGZFInputStream. (file f))
@@ -263,8 +263,8 @@
         options
         (recur (conj options (parse-option bb)))))))
 
-(defn- read-alignment [rdr refs]
-  (let [block-size (lsb/read-int rdr)]
+(defn- read-alignment [^DataInputStream rdr refs]
+  (let [^Integer block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size:" block-size))))
     (let [ref-id      (lsb/read-int rdr)
@@ -292,6 +292,38 @@
       {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
        :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
        :qual qual, :options options})))
+
+(defn- light-read-alignment [^DataInputStream rdr refs]
+  (let [^Integer block-size (lsb/read-int rdr)]
+    (when (< block-size fixed-block-size)
+      (throw (Exception. (str "Invalid block size:" block-size))))
+    (let [ref-id      (lsb/read-int rdr)
+          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+          pos         (inc (lsb/read-int rdr))
+          l-read-name (lsb/read-ubyte rdr)
+          ;mapq        (lsb/read-ubyte rdr)
+          ;bin         (lsb/read-ushort rdr)
+          _           (lsb/skip rdr 3)
+          n-cigar-op  (lsb/read-ushort rdr)
+          ;flag        (lsb/read-ushort rdr)
+          _           (lsb/skip rdr 2)
+          l-seq       (lsb/read-int rdr)
+          ;rnext       (decode-next-ref-id refs (lsb/read-int rdr) rname)
+          ;pnext       (inc (lsb/read-int rdr))
+          ;tlen        (lsb/read-int rdr)
+          _           (lsb/skip rdr 12)
+          qname       (lsb/skip rdr (dec (int l-read-name)))
+          _           (lsb/skip rdr 1)
+          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
+          seq         (lsb/skip rdr (/ (inc l-seq) 2))
+          lqual       (lsb/skip rdr l-seq)
+          rest        (lsb/skip rdr (options-size block-size
+                                                  l-read-name
+                                                  n-cigar-op
+                                                  l-seq))
+          ;options     (parse-options rest)
+          ]
+      {:rname rname, :pos pos, :cigar cigar})))
 
 (defn- write-tag-value [writer val-type value]
   (case val-type
@@ -376,7 +408,7 @@
     (write-alignment wrtr a refs)))
 
 (defn- get-sequence-index
-  [bai chr]
+  [^BAMIndex bai ^String chr]
   (let [sequences (.sequences bai)
         indexed (map-indexed vector sequences)
         filtered (filter #(= (:SN (second %)) chr) indexed)
@@ -384,33 +416,51 @@
     (if (nil? idx) -1 idx)))
 
 (defn get-spans
-  [bai chr start end]
+  [^BAMIndex bai
+   ^String chr ^Long start ^Long end]
   (let [seq-index (get-sequence-index bai chr)
         span-array (.getSpanOverlapping (.f bai) seq-index start end)
         spans (partition 2 (.toCoordinateArray span-array))]
     spans))
 
 (defn- read-to-finish
-  [rdr ^Integer finish]
+  [^BAMReader rdr
+   ^Long finish
+   ^clojure.lang.IFn read-fn]
   (when (and (not (zero? (.available (.reader rdr))))
              (> finish (.getFilePointer (.reader rdr))))
-    (cons (read-alignment (DataInputStream. (.reader rdr)) (.refs rdr))
-          (lazy-seq (read-to-finish rdr finish)))))
+    (cons (read-fn (DataInputStream. (.reader rdr)) (.refs rdr))
+          (lazy-seq (read-to-finish rdr finish read-fn)))))
 
-(defn read-alignments
-  [^BAMReader rdr chr start end]
-  (let [bai (.index rdr)
+(defn read-alignments*
+  [^BAMReader rdr
+   ^String chr ^Long start ^Long end
+   ^clojure.lang.Keyword light-or-heavy]
+  (let [^BAMIndex bai (.index rdr)
         spans (get-spans bai chr start end)
-        window (fn [a]
-                 (let [left (:pos a)
-                       right (+ (:pos a) (cgr/count-op (:cigar a)))]
+        window (fn [^clojure.lang.PersistentHashMap a]
+                 (let [^Long left (:pos a)
+                       ^Long right (+ left (cgr/count-ref (:cigar a)))]
                    (and (= chr (:rname a))
                         (<= start right)
                         (>= end left))))
-        candidates (flatten (map (fn [[begin finish]]
+        read-fn (cond
+                 (= :light light-or-heavy) light-read-alignment
+                 :else read-alignment)
+        candidates (flatten (map (fn [[^Long begin ^Long finish]]
                                    (.seek (.reader rdr) begin)
-                                   (doall (read-to-finish rdr finish))) spans))]
+                                   (doall (read-to-finish rdr finish read-fn))) spans))]
     (filter window candidates)))
+
+(defn light-read-alignments
+  [^BAMReader rdr
+   ^String chr ^Long start ^Long end]
+  (read-alignments* rdr chr start end :light))
+
+(defn read-alignments
+  [^BAMReader rdr
+   ^String chr ^Long start ^Long end]
+  (read-alignments* rdr chr start end :heavy))
 
 (defn slurp
   "Opens a reader on bam-file and reads all its headers and alignments,

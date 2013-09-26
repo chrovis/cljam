@@ -2,23 +2,28 @@
   (:require (cljam [cigar :as cgr]
                    [bam :as bam])))
 
-(def ^:private window-width 500) ;; TODO: estiamte from actual data
-(def ^:private step 100) ;; TODO: estiamte from actual data
-(def ^:private center 50) ;; TODO: estiamte from actual data
+(def ^:private window-width 1250) ;; TODO: estiamte from actual data
+(def ^:private step 2000) ;; TODO: estiamte from actual data
+(def ^:private center (int (/ step 2))) ;; TODO: estiamte from actual data
 
-(defn- count-for-pos
+(defn- count-for-alignment
+  [^clojure.lang.PersistentHashMap aln
+   ^String rname
+   ^clojure.lang.LazySeq positions]
+  (if (= rname (:rname aln))
+    (let [left (:pos aln)
+          right (+ (:pos aln) (cgr/count-ref (:cigar aln)))]
+      (map (fn [p] (if (and (>= p left)
+                            (<= p right)) 1 0)) positions))
+    (take (count positions) (repeat 0))))
+
+(defn- count-for-positions
   "Returns a histogram value of the specified position."
-  [alns ^String rname ^Long pos]
-  (loop [alns2 alns
-         val 0]
-    (let [[aln & rst] alns2]
-      (if (nil? aln)
-        val
-        (if (and (= rname (:rname aln))
-                 (>= pos (:pos aln))
-                 (<= pos (+ (:pos aln) (cgr/count-ref (:cigar aln)))))
-          (recur rst (inc val))
-          (recur rst val))))))
+  [^clojure.lang.LazySeq alns
+   ^String rname positions]
+  (if (pos? (count alns))
+    (apply map + (map #(count-for-alignment % rname positions) alns))
+    (take (count positions) (repeat 0))))
 
 (defn rpositions
   ([^Long start ^Long end]
@@ -48,15 +53,15 @@
            refs)))
 
 (defn- pileup*
-  ([rdr rname rlength start end]
+  ([rdr ^String rname ^Long rlength ^Long start ^Long end]
      (flatten
       (let [parts (partition-all step (rpositions start end))]
         (map (fn [positions]
                (let [^Long pos (if (= (count positions) step)
                                  (nth positions center)
                                  (nth positions (quot (count positions) 2)))
-                     alns (read-alignments rdr rname rlength pos)]
-                 (map #(count-for-pos alns rname %) positions)))
+                     ^clojure.lang.LazySeq alns (read-alignments rdr rname rlength pos)]
+                 (count-for-positions alns rname positions)))
              parts)))))
 
 (defn pileup

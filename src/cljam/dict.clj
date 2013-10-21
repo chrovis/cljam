@@ -24,8 +24,8 @@
     (md5-hash bases)))
 
 (defn- write-header [wrtr]
-  (.write w (str "@HD\tVN:" sam/version "\tSO:unsorted"))
-  (.newLine w))
+  (.write wrtr (str "@HD\tVN:" sam/version "\tSO:unsorted"))
+  (.newLine wrtr))
 
 (defn- write-sq [wrtr ref seq ur]
   (let [blen (count (filter (partial not= \space) seq))
@@ -41,5 +41,5 @@
    (with-open [r (fasta/reader fasta)
                w (writer out-dict)]
      (write-header w)
-     (doseq [sq (read r)]
+     (doseq [sq (fasta/read r)]
        (write-sq w (:ref sq) (:seq sq) ur)))))

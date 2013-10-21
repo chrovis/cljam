@@ -8,6 +8,7 @@
                    [indexer :as idxr]
                    [fasta :as fa]
                    [fasta-indexer :as fai]
+                   [dict :as dict]
                    [pileup :as plp]])
   (:gen-class))
 
@@ -146,6 +147,15 @@
     (fai/spit (str (first files) ".fai")
               (fa/slurp (first files)))))
 
+(defn dict [& args]
+  (with-command-line args
+    "Usage: cljam dict <ref.fasta> <out.dict>"
+    [files]
+    (when-not (= (count files) 2)
+      (println "Invalid arguments")
+      (System/exit 1))
+    (dict/create-dict (first files) (second files))))
+
 (defn -main [& args]
   (do-sub-command args
     "Usage: cljam [-h] {view,convert,sort,index,idxstats,merge,pileup,faidx} ..."
@@ -156,4 +166,5 @@
     [:idxstats cljam.core/idxstats "Retrieve  and print stats in the index file."]
     [:merge    cljam.core/merge    "Merge multiple SAM/BAM."]
     [:pileup   cljam.core/pileup   "Generate pileup for the BAM file."]
-    [:faidx    cljam.core/faidx    "Index reference sequence in the FASTA format."]))
+    [:faidx    cljam.core/faidx    "Index reference sequence in the FASTA format."]
+    [:dict     cljam.core/dict     "Create a FASTA sequence dictionary file."]))

@@ -62,19 +62,9 @@
   "fasta -> dict"
   [fasta out-dict]
   (let [ur (.toString (.toURI (file fasta)))]
-   (with-open [r (clojure.java.io/reader fasta)
+   (with-open [r (reader fasta)
                w (writer out-dict)]
-     (.write w "@HD\tVN:" sam/version "\tSO:unsorted")
+     (.write w (str "@HD\tVN:" sam/version "\tSO:unsorted"))
      (.newLine w)
-     (loop [line (.readLine r)
-            ref nil
-            seq nil]
-       (if (nil? line)
-         (when-not (nil? ref)
-           (write-sq w ref seq ur))
-         (if (= (first line) \>)
-           (do
-             (when-not (nil? ref)
-               (write-sq w ref seq ur))
-             (recur (.readLine r) (subs line 1) nil))
-           (recur (.readLine r) ref (str seq line))))))))
+     (doseq [sq (read r)]
+       (write-sq w (:ref sq) (:seq sq) ur)))))

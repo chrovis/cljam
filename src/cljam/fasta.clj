@@ -1,28 +1,38 @@
 (ns cljam.fasta
-  (:refer-clojure :exclude [slurp])
-  (:require [clojure.java.io :refer [file reader writer]]
+  (:refer-clojure :exclude [read slurp])
+  (:require [clojure.java.io :refer [file writer]]
             [cljam.sam :as sam]
             [cljam.util :refer [string->bytes upper-case]])
   (:import java.io.RandomAccessFile
            java.security.MessageDigest))
 
+(defn reader [f]
+  (RandomAccessFile. f "r"))
+
+(defn- read* [line rdr]
+  (loop [line line
+         ret {}]
+    (if-not (nil? line)
+      (if (= (first line) \>)
+        (if (seq ret)
+          (cons (assoc ret :blen (count (filter (partial not= \space) (:seq ret))))
+                (lazy-seq (read* line rdr)))
+          (let [ref (subs line 1)
+                offset (.getFilePointer rdr)]
+            (recur (.readLine rdr) (assoc ret :ref ref :offset offset))))
+        (recur (.readLine rdr) (update-in ret [:seq] str line)))
+      (cons (assoc ret :blen (count (filter (partial not= \space) (:seq ret))))
+            nil))))
+
+(defn read [rdr]
+  (read* (.readLine rdr) rdr))
+
 (defn slurp
   "Opens a reader on a fasta-file and reads all its contents, returning a map
   about the data."
   [f]
-  (with-open [r (RandomAccessFile. f "r")]
-    (loop [fa []
-           line (.readLine r)]
-      (if (nil? line)
-        fa
-        (if (= (first line) \>)
-          (let [ref    (subs line 1)
-                offset (.getFilePointer r)
-                seq    (.readLine r)
-                blen   (count (filter (partial not= \space) seq))]
-            (recur (conj fa {:ref ref, :offset offset, :seq seq, :blen blen})
-                   (.readLine r)))
-          (recur fa (.readLine r)))))))
+  (with-open [r (reader f)]
+    (doall (read r))))
 
 (defn- md5-hash
   [^bytes b]
@@ -52,7 +62,7 @@
   "fasta -> dict"
   [fasta out-dict]
   (let [ur (.toString (.toURI (file fasta)))]
-   (with-open [r (reader fasta)
+   (with-open [r (clojure.java.io/reader fasta)
                w (writer out-dict)]
      (.write w "@HD\tVN:" sam/version "\tSO:unsorted")
      (.newLine w)

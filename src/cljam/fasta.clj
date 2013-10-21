@@ -1,6 +1,7 @@
 (ns cljam.fasta
   (:refer-clojure :exclude [slurp])
   (:require [clojure.java.io :refer [file reader writer]]
+            [cljam.sam :as sam]
             [cljam.util :refer [string->bytes upper-case]])
   (:import java.io.RandomAccessFile
            java.security.MessageDigest))
@@ -53,7 +54,7 @@
   (let [ur (.toString (.toURI (file fasta)))]
    (with-open [r (reader fasta)
                w (writer out-dict)]
-     (.write w "@HD\tVN:1.4\tSO:unsorted")
+     (.write w "@HD\tVN:" sam/version "\tSO:unsorted")
      (.newLine w)
      (loop [line (.readLine r)
             ref nil

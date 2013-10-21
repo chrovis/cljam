@@ -3,6 +3,8 @@
   (:require [clojure.string :as str :refer [split join trim upper-case]])
   (:import [java.io BufferedReader BufferedWriter]))
 
+(def version "SAM format version" "1.4")
+
 ;;; Parse
 
 (defn- parse-header-keyvalues

@@ -25,11 +25,11 @@
 
 (defn sort-by-pos [sam]
   (-> (sort-alignments-by-pos sam)
-      (add-hd "1.4" "coordinate")))
+      (add-hd sam/version "coordinate")))
 
 (defn sort-by-qname [sam]
   (-> (sort-alignments-by-qname sam)
-      (add-hd "1.4" "queryname")))
+      (add-hd sam/version "queryname")))
 
 (defn sort [sam]
   (sort-by-pos sam))

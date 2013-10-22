@@ -155,7 +155,7 @@
 
 (deftype BamReader [header refs reader]
   java.io.Closeable
-  (close [this] (.. this reader close)))
+  (close [this] (.close ^DataInputStream (.reader this))))
 
 (def ^:private buffer-size (* 1024 128))
 

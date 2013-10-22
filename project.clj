@@ -14,6 +14,7 @@
             [lein-bin "0.3.4"]]
   :profiles {:dev {:dependencies [[midje "1.5.1"]
                                   [criterium "0.4.1"]]}}
+  ;; :global-vars {*warn-on-reflection* true}
   :main cljam.core
   :aot [cljam.core]
   :bin {:name "cljam"})

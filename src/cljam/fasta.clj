@@ -4,10 +4,10 @@
 
 (defn reader
   "Creates a reader on a FASTA file."
-  [f]
+  [^String f]
   (RandomAccessFile. f "r"))
 
-(defn- read* [line rdr]
+(defn- read* [line ^RandomAccessFile rdr]
   (loop [line line
          ret {}]
     (if-not (nil? line)
@@ -24,12 +24,12 @@
 
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."
-  [rdr]
+  [^RandomAccessFile rdr]
   (read* (.readLine rdr) rdr))
 
 (defn slurp
   "Opens a reader on a FASTA file and reads all its contents, returning
   a sequence about the data."
   [f]
-  (with-open [r (reader f)]
+  (with-open [r ^RandomAccessFile (reader f)]
     (doall (read r))))

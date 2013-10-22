@@ -125,7 +125,7 @@
 
 (deftype SamReader [header reader]
   java.io.Closeable
-  (close [this] (.. this reader close)))
+  (close [this] (.close ^BufferedReader (.reader this))))
 
 (defn- read-header* [^BufferedReader rdr]
   (when-let [line (.readLine rdr)]

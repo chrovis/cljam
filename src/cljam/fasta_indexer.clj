@@ -1,14 +1,15 @@
 (ns cljam.fasta-indexer
   (:refer-clojure :exclude [spit])
-  (:require [clojure.java.io :refer [writer]]))
+  (:require [clojure.java.io :refer [writer]])
+  (:import java.io.BufferedWriter))
 
 (defn spit
   "Opens a fai-file with writer, writes fasta index data, then closes the
   fai-file."
   [fai-file fa]
-  (with-open [w (writer fai-file)]
+  (with-open [w ^BufferedWriter (writer fai-file)]
     (doseq [ref fa]
-      (.write w (:ref ref))
+      (.write w ^String (:ref ref))
       (.write w "\t")
       (.write w (str (count (:seq ref))))
       (.write w "\t")

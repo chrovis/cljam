@@ -3,7 +3,8 @@
             [cljam.sam :as sam]
             [cljam.fasta :as fasta]
             [cljam.util :refer [string->bytes upper-case]])
-  (:import java.security.MessageDigest))
+  (:import [java.io BufferedWriter RandomAccessFile]
+           java.security.MessageDigest))
 
 (defn- md5-hash
   [^bytes b]
@@ -19,15 +20,17 @@
   (let [bases (string->bytes seq)]
     (loop [i 0]
       (when (< i (count bases))
-        (aset bases i ^byte (upper-case (nth bases i)))
+        (aset ^bytes bases i ^byte (upper-case (nth bases i)))
         (recur (inc i))))
     (md5-hash bases)))
 
-(defn- write-header [wrtr]
+(defn- write-header
+  [^BufferedWriter wrtr]
   (.write wrtr (str "@HD\tVN:" sam/version "\tSO:unsorted"))
   (.newLine wrtr))
 
-(defn- write-sq [wrtr ref seq ur]
+(defn- write-sq
+  [^BufferedWriter wrtr ref seq ur]
   (let [blen (count (filter (partial not= \space) seq))
         m5 (make-hash seq)]
     (.write wrtr (str "@SQ\tSN:" ref "\tLN:" blen "\tUR:" ur "\tM5:" m5)))
@@ -38,8 +41,8 @@
   file (.fasta/fa)."
   [fasta out-dict]
   (let [ur (.toString (.toURI (file fasta)))]
-   (with-open [r (fasta/reader fasta)
-               w (writer out-dict)]
+   (with-open [r ^RandomAccessFile (fasta/reader fasta)
+               w ^BufferedWriter (writer out-dict)]
      (write-header w)
      (doseq [sq (fasta/read r)]
        (write-sq w (:ref sq) (:seq sq) ur)))))

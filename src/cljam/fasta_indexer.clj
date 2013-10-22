@@ -1,22 +1,31 @@
 (ns cljam.fasta-indexer
   (:refer-clojure :exclude [spit])
-  (:require [clojure.java.io :refer [writer]])
-  (:import java.io.BufferedWriter))
+  (:require [clojure.java.io :refer [writer]]
+            [clojure.string :refer [join]]
+            [cljam.fasta :as fasta])
+  (:import [java.io BufferedWriter RandomAccessFile]))
+
+(defn write-sq
+  [^BufferedWriter wrtr sq]
+  (.write wrtr (join "\t"
+                     [(:ref sq)
+                      (count (:seq sq))
+                      (:offset sq)
+                      (:blen sq)
+                      (inc (count (:seq sq)))]))
+  (.newLine wrtr))
 
 (defn spit
-  "Opens a fai-file with writer, writes fasta index data, then closes the
-  fai-file."
-  [fai-file fa]
-  (with-open [w ^BufferedWriter (writer fai-file)]
-    (doseq [ref fa]
-      (.write w ^String (:ref ref))
-      (.write w "\t")
-      (.write w (str (count (:seq ref))))
-      (.write w "\t")
-      (.write w (str (:offset ref)))
-      (.write w "\t")
-      (.write w (str (:blen ref)))
-      (.write w "\t")
-      (.write w (str (inc (count (:seq ref)))))
-      (.newLine w))
-    nil))
+  "Opens a FAI file with writer, writes fasta index data, then closes the file."
+  [fai fa-sq]
+  (with-open [w ^BufferedWriter (writer fai)]
+    (doseq [sq fa-sq]
+      (write-sq w sq))))
+
+(defn create-index
+  "Create a FAI file from the specified fasta file."
+  [fasta out-fai]
+  (with-open [r ^RandomAccessFile (fasta/reader fasta)
+              w ^BufferedWriter (writer out-fai)]
+    (doseq [sq (fasta/read r)]
+      (write-sq w sq))))

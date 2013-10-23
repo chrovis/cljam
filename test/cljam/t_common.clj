@@ -4,6 +4,7 @@
 
 (def test-sam-file "test/resources/test.sam")
 (def test-bam-file "test/resources/test.bam")
+(def test-sorted-bam-file "test/resources/test.sorted.bam")
 (def test-fa-file  "test/resources/test.fa")
 (def test-fai-file "test/resources/test.fa.fai")
 
@@ -22,6 +23,9 @@
     {:qname "x4"  , :flag 0  , :rname "ref2", :pos 10, :mapq 30, :cigar "25M"               , :rnext "*", :pnext 0 , :tlen  0  , :seq "CAAATAATTAAGTCTACAGAGCAAC" , :qual "?????????????????????????" , :options []}
     {:qname "x6"  , :flag 0  , :rname "ref2", :pos 14, :mapq 30, :cigar "23M"               , :rnext "*", :pnext 0 , :tlen  0  , :seq "TAATTAAGTCTACAGAGCAACTA"   , :qual "???????????????????????"   , :options []}
     {:qname "x5"  , :flag 0  , :rname "ref2", :pos 12, :mapq 30, :cigar "24M"               , :rnext "*", :pnext 0 , :tlen  0  , :seq "AATAATTAAGTCTACAGAGCAACT"  , :qual "????????????????????????"  , :options []}]})
+
+(def test-sam-only-header
+  (assoc test-sam :alignments nil))
 
 (def test-sam-sorted-by-pos
   {:header {:HD {:VN "1.4", :SO "coordinate"}

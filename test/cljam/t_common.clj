@@ -61,7 +61,7 @@
   [{:ref "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}
    {:ref "ref2", :offset 57, :seq "aggttttataaaacaattaagtctacagagcaactacgcg",      :blen 40}])
 
-(def temp-dir (str (System/getProperty "java.io.tmpdir") "cljam-test"))
+(def temp-dir (.getPath (file (System/getProperty "java.io.tmpdir") "cljam-test")))
 
 (defn mk-temp-dir! []
   (.mkdir (file temp-dir)))

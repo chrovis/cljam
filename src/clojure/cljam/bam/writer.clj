@@ -1,22 +1,18 @@
 (ns cljam.bam.writer
-  (:require [clojure.string :refer [split join]]
+  (:require [clojure.string :refer [split]]
             [clojure.java.io :refer [file]]
             (cljam [sam :as sam]
-                   [protocol :refer [ISAMReader]]
                    [cigar :as cgr]
                    [lsb :as lsb]
                    [util :refer [reg->bin string->bytes normalize-bases ubyte
-                                 hex-string->bytes fastq->phred phred->fastq
-                                 bytes->compressed-bases compressed-bases->chars]])
+                                 fastq->phred
+                                 bytes->compressed-bases]])
             (cljam.bam [common :refer [bam-magic fixed-block-size]]))
-  (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException EOFException]
-           [java.nio ByteBuffer ByteOrder]
-           [cljam.lib.bam SAMSequenceDictionary SAMSequenceRecord BAMFileIndex]
-           [chrovis.bgzf4j BGZFInputStream BGZFOutputStream]))
+  (:import [java.io DataOutputStream IOException EOFException]
+           [chrovis.bgzf4j BGZFOutputStream]))
 
-(def fixed-tag-size 3)
-(def fixed-binary-array-tag-size 5)
+(def ^:private fixed-tag-size 3)
+(def ^:private fixed-binary-array-tag-size 5)
 
 (defn- get-pos [aln]
   (dec (:pos aln)))

@@ -5,8 +5,6 @@
             (cljam.bam [reader :as bam-reader]
                        [writer :refer [writer write-header write-refs write-alignments]])))
 
-;(def ^:private buffer-size (* 1024 128))
-
 (defn slurp
   "Opens a reader on bam-file and reads all its headers and alignments,
   returning a map about sam records."

@@ -1,59 +1,20 @@
 (ns cljam.bam.reader
-  (:require [clojure.string :refer [split join]]
+  (:require [clojure.string :refer [join]]
             [clojure.java.io :refer [file]]
             (cljam [sam :as sam]
                    [protocol :refer [ISAMReader]]
                    [cigar :as cgr]
                    [lsb :as lsb]
-                   [util :refer [reg->bin string->bytes normalize-bases ubyte
-                                 hex-string->bytes fastq->phred phred->fastq
-                                 bytes->compressed-bases compressed-bases->chars]])
-            (cljam.bam [common :refer [bam-magic fixed-block-size]]))
+                   [util :refer [string->bytes ubyte
+                                 hex-string->bytes phred->fastq
+                                 compressed-bases->chars]])
+            (cljam.bam [index :refer [bam-index get-spans get-sequence-index]]
+                       [common :refer [bam-magic fixed-block-size]]
+                       [util :refer :all]))
   (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException EOFException]
+           [java.io DataInputStream IOException EOFException]
            [java.nio ByteBuffer ByteOrder]
-           [cljam.lib.bam SAMSequenceDictionary SAMSequenceRecord BAMFileIndex]
-           [chrovis.bgzf4j BGZFInputStream BGZFOutputStream]))
-
-;;
-;; BAMIndex
-;;
-
-(deftype BAMIndex [f sequences]
-  java.io.Closeable
-  (close [this] (.. this f close)))
-
-(defn- make-sequence-dictionary
-  [sequences]
-  (new SAMSequenceDictionary
-       (map (fn [s] (new SAMSequenceRecord (:SN s) (:LN s)))
-            sequences)))
-
-(defn bam-index
-  [f header]
-  (let [bai-f (str f ".bai")]
-    (when-not (.exists (file bai-f))
-      (throw (IOException. "Could not find BAM Index file")))
-    (let [sequences (:SQ header)
-          seq-dict (make-sequence-dictionary sequences)
-          bai (new BAMFileIndex (file bai-f) seq-dict)]
-      (->BAMIndex bai sequences))))
-
-(defn- get-sequence-index
-  [^BAMIndex bai ^String chr]
-  (let [sequences (.sequences bai)
-        indexed (map-indexed vector sequences)
-        filtered (filter #(= (:SN (second %)) chr) indexed)
-        idx (first (map first filtered))]
-    (if (nil? idx) -1 idx)))
-
-(defn- get-spans
-  [^BAMIndex bai
-   ^String chr ^Long start ^Long end]
-  (let [seq-index (get-sequence-index bai chr)
-        span-array (.getSpanOverlapping (.f bai) seq-index start end)
-        spans (partition 2 (.toCoordinateArray span-array))]
-    spans))
+           [chrovis.bgzf4j BGZFInputStream]))
 
 ;;
 ;; BAMReader

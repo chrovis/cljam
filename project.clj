@@ -1,6 +1,6 @@
 (defproject cljam "0.1.0-SNAPSHOT"
   :description "A DNA Sequence Alignment/Map (SAM) library for Clojure"
-  :url "http://example.com/FIXME"
+  :url "https://chrov.is"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :repositories [["snapshots" {:url "https://nexus.xcoo.jp/content/repositories/snapshots"}]

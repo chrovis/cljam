@@ -1,10 +1,11 @@
 (ns cljam.pileup
-  (:require (cljam [cigar :as cgr]
-                   [bam :as bam])))
+  (:require [cljam.cigar :as cgr]
+            [cljam.bam.reader :as bam-reader]))
 
-(def ^:private window-width 1250) ;; TODO: estiamte from actual data
-(def ^:private step 2000) ;; TODO: estiamte from actual data
-(def ^:private center (int (/ step 2))) ;; TODO: estiamte from actual data
+;; TODO: estiamte from actual data
+(def ^:private window-width 1250)
+(def ^:private step 2000)
+(def ^:private center (int (/ step 2)))
 
 (defn- count-for-alignment
   [^clojure.lang.PersistentHashMap aln
@@ -44,7 +45,7 @@
                       (if (< rlength val)
                         rlength
                         val))]
-    (bam/light-read-alignments rdr rname left right)))
+    (bam-reader/light-read-alignments rdr rname left right)))
 
 (defn- search-ref
   [refs rname]
@@ -65,9 +66,6 @@
              parts)))))
 
 (defn pileup
-  ([rdr]
-     ;; TODO
-     )
   ([rdr ^String rname]
      (pileup rdr rname -1 -1))
   ([rdr ^String rname ^Long start* ^Long end*]

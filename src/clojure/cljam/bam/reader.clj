@@ -48,7 +48,8 @@
                        (recur (dec i)
                               (conj ret {:name (subs name 0 (dec l-name))
                                          :len  l-ref})))))
-          index (bam-index f header)]
+          index (try (bam-index f header)
+                     (catch IOException e nil))]
       (->BAMReader header refs rdr index))))
 
 ;;
@@ -216,6 +217,8 @@
   [^BAMReader rdr
    ^String chr ^Long start ^Long end
    ^clojure.lang.Keyword light-or-heavy]
+  (when (nil? (.index rdr))
+    (throw (Exception. ("BAM index not found"))))
   (let [^BAMIndex bai (.index rdr)
         spans (get-spans bai chr start end)
         window (fn [^clojure.lang.PersistentHashMap a]

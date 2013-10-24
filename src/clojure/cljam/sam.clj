@@ -5,6 +5,13 @@
 
 (def version "SAM format version" "1.4")
 
+;;; protocol
+
+(defprotocol ISAMReader
+  (read-header [this])
+  (read-refs [this])
+  (read-alignments [this option]))
+
 ;;; Parse
 
 (defn- parse-header-keyvalues
@@ -137,16 +144,16 @@
                  (read-header* r))]
     (->SamReader header (clojure.java.io/reader f))))
 
-(defn read-header
+(defn -read-header
   [rdr]
   (.header rdr))
 
-(defn read-alignments
+(defn -read-alignments
   [rdr]
   (when-let [line (.readLine ^BufferedReader (.reader rdr))]
     (if-not (= (first line) \@)
-      (cons (parse-alignment line) (lazy-seq (read-alignments rdr)))
-      (lazy-seq (read-alignments rdr)))))
+      (cons (parse-alignment line) (lazy-seq (-read-alignments rdr)))
+      (lazy-seq (-read-alignments rdr)))))
 
 (defn writer [f]
   (clojure.java.io/writer f))
@@ -166,7 +173,7 @@
   [f]
   (with-open [r (reader f)]
     {:header (read-header r)
-     :alignments (vec (read-alignments r))}))
+     :alignments (vec (-read-alignments r))}))
 
 (defn spit
   "Opposite of slurp-sam. Opens sam-file with writer, writes sam headers and

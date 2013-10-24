@@ -26,17 +26,17 @@
 
 (defmethod read-header "class cljam.bam.BamReader"
   [rdr]
-  (bam/header rdr))
+  (sam/read-header rdr))
 
 (defmulti read-alignments (comp str class))
 
 (defmethod read-alignments "class cljam.sam.SamReader"
   [rdr]
-  (sam/read-alignments rdr))
+  (sam/read-alignments rdr {}))
 
 (defmethod read-alignments "class cljam.bam.BamReader"
   [rdr]
-  (bam/read-alignments rdr))
+  (sam/read-alignments rdr {}))
 
 (defn- slurp
   [f]
@@ -90,10 +90,12 @@
     (when-not (= (count files) 2)
       (println "Invalid arguments")
       (System/exit 1))
-    (let [asam (slurp (first files))]
+    (let [in-file (first files)
+          out-file (second files)
+          asam (slurp in-file)]
       (condp = order
-        "coordinate" (spit (second files) (sorter/sort-by-pos asam))
-        "queryname"  (spit (second files) (sorter/sort-by-qname asam))))))
+        "coordinate" (spit out-file (sorter/sort-by-pos asam))
+        "queryname"  (spit out-file (sorter/sort-by-qname asam))))))
 
 (defn index [& args]
   ;; (with-command-line args
@@ -131,8 +133,8 @@
       (println "Invalid arguments")
       (System/exit 1))
     (with-open [r (bam/reader (first files))]
-      (let [sam {:header (bam/header r)
-                 :alignments (bam/read-alignments r)}]
+      (let [sam {:header (sam/read-header r)
+                 :alignments (sam/read-alignments r {})}]
         (when-not (sorter/sorted? sam)
           (println "Not sorted")
           (System/exit 1))

@@ -1,6 +1,7 @@
 (ns cljam.sorter
   (:refer-clojure :exclude [sort sorted?])
-  (:require [cljam.sam :as sam])
+  (:require (cljam [sam :as sam]
+                   [protocol :refer [read-header read-alignments]]))
   (:import java.util.List))
 
 (defn- compkey-pos [hdr aln]

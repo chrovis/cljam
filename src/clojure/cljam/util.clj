@@ -1,5 +1,12 @@
 (ns cljam.util
-  (:require [clojure.string :refer [join]]))
+  (:require [clojure.string :refer [join]]
+            [clojure.java.io :refer [file]]))
+
+;;; disk cache
+
+(def temp-dir (.getPath (file (System/getProperty "java.io.tmpdir") "cljam")))
+
+;;; byte array
 
 (defn ubyte
   "Casts to byte avoiding an error about out of range for byte."

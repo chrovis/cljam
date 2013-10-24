@@ -1,8 +1,7 @@
 (ns cljam.bam.reader
   (:require [clojure.string :refer [join]]
             [clojure.java.io :refer [file]]
-            (cljam [sam :as sam]
-                   [protocol :refer [ISAMReader]]
+            (cljam [sam :as sam :refer [ISAMReader]]
                    [cigar :as cgr]
                    [lsb :as lsb]
                    [util :refer [string->bytes ubyte
@@ -30,7 +29,9 @@
   (read-header [this]
     (.header this))
   (read-refs [this]
-    (.refs this)))
+    (.refs this))
+  (read-alignments [this & {:keys [chr start end]}]
+    nil))
 
 (defn reader [f]
   (let [rdr (BGZFInputStream. (file f))

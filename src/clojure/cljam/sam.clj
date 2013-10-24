@@ -4,8 +4,6 @@
   (:require [clojure.string :as str :refer [split join trim upper-case]])
   (:import [java.io BufferedReader BufferedWriter]))
 
-(def version "SAM format version" "1.4")
-
 ;;; Parse
 
 (defn- parse-header-keyvalues
@@ -102,25 +100,6 @@
           (:seq   sa)
           (:qual  sa)
           (stringify-optional-fields (:options sa))])))
-
-;;; Reference functions
-
-(defn make-refs [hdr]
-  "Return a reference sequence from the sam."
-  (for [sq (:SQ hdr)]
-    {:name (:SN sq), :len (:LN sq)}))
-
-(defn ref-id [refs name]
-  "Returns reference ID from the reference sequence and the specified reference
-  name. If not found, return nil."
-  (some #(when (= name (:name (second %))) (first %))
-        (map-indexed vector refs)))
-
-(defn ref-name [refs id]
-  "Returns a reference name from the reference ID. Returns nil if id is not
-  mapped."
-  (if (<= 0 id (dec (count refs)))
-    (:name (nth refs id))))
 
 ;;; reader
 

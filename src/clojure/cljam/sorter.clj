@@ -1,14 +1,15 @@
 (ns cljam.sorter
   (:refer-clojure :exclude [sort sorted?])
-  (:require (cljam [sam :as sam]
+  (:require (cljam [common :refer [version]]
+                   [util :as util]
                    [io :as io]))
   (:import java.util.List))
 
-(defn- prepend-header [sam vn so]
-  (update-in sam [:header] conj {:HD {:VN vn, :SO so}}))
+(defn- replace-header [hdr vn so]
+  (conj hdr {:HD {:VN vn, :SO so}}))
 
 (defn- compkey-pos [hdr aln]
-  [(.indexOf ^List (map :name (sam/make-refs hdr)) (:rname aln))
+  [(.indexOf ^List (map :name (util/make-refs hdr)) (:rname aln))
    (:pos aln)])
 
 (defn- sort-alignments-by-pos [rdr]
@@ -18,7 +19,7 @@
   )
 
 (defn- compkey-qname [hdr aln]
-  [(.indexOf ^List (map :name (sam/make-refs hdr)) (:rname aln))
+  [(.indexOf ^List (map :name (util/make-refs hdr)) (:rname aln))
    (:qname aln)
    (bit-and (:flag aln) 0xc0)])
 
@@ -29,12 +30,17 @@
   )
 
 (defn sort-by-pos [rdr wtr]
-  (let [alns (sort-alignments-by-pos rdr)]
-    nil))
+  (let [alns (sort-alignments-by-pos rdr)
+        hdr (replace-header (io/read-header rdr)
+                            version "coordinate")]
+    (with-open [wtr wtr]
+      (io/write-header wtr hdr)
+      (io/write-refs wtr hdr)
+      (io/write-alignments wtr alns hdr))))
 
 (defn sort-by-qname [rdr wtr]
   (sort-alignments-by-qname rdr)
-  ;(add-hd sam/version "queryname")
+  ;(add-hd version "queryname")
   )
 
 (defn sort [rdr wtr]

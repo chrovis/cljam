@@ -7,7 +7,8 @@
                    [lsb :as lsb]
                    [util :refer [reg->bin string->bytes normalize-bases ubyte
                                  fastq->phred
-                                 bytes->compressed-bases]])
+                                 bytes->compressed-bases
+                                 make-refs ref-id]])
             (cljam.bam [common :refer [bam-magic fixed-block-size]]))
   (:import [java.io DataOutputStream IOException EOFException]
            [chrovis.bgzf4j BGZFOutputStream]))
@@ -41,11 +42,11 @@
 (defn- get-next-ref-id [sa refs]
   (condp = (:rnext sa)
     "*" -1
-    "=" (if-let [id (sam/ref-id refs (:rname sa))] id -1)
-    (if-let [id (sam/ref-id refs (:rnext sa))] id -1)))
+    "=" (if-let [id (ref-id refs (:rname sa))] id -1)
+    (if-let [id (ref-id refs (:rnext sa))] id -1)))
 
 (defn- get-ref-id [aln refs]
-  (if-let [id (sam/ref-id refs (:rname aln))] id -1))
+  (if-let [id (ref-id refs (:rname aln))] id -1))
 
 (defn- get-next-pos [sam-alignment]
   (dec (:pnext sam-alignment)))
@@ -207,7 +208,9 @@
   ISAMWriter
   (write-header [this header]
     (-write-header (.writer this) header))
-  (write-refs [this refs]
-    (-write-refs (.writer this) refs))
-  (write-alignments [this alignments refs]
-    (-write-alignments (.writer this) alignments refs)))
+  (write-refs [this header]
+    (let [refs (make-refs header)]
+      (-write-refs (.writer this) refs)))
+  (write-alignments [this alignments header]
+    (let [refs (make-refs header)]
+      (-write-alignments (.writer this) alignments refs))))

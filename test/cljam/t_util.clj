@@ -1,5 +1,6 @@
 (ns cljam.t-util
-  (:use midje.sweet)
+  (:use midje.sweet
+        cljam.t-common)
   (:require [cljam.util :as util]))
 
 (fact
@@ -94,3 +95,18 @@
  (util/compressed-base->char-high (util/ubyte 0xc0)) => \K
  (util/compressed-base->char-high (util/ubyte 0xd0)) => \D
  (util/compressed-base->char-high (util/ubyte 0xe0)) => \B)
+
+(def refs '({:name "ref", :len 45} {:name "ref2", :len 40}))
+
+(fact "about make-refs"
+  (util/make-refs (:header test-sam)) => refs)
+
+(fact "about ref-id"
+  (util/ref-id refs "ref") => 0
+  (util/ref-id refs "ref2") => 1
+  (util/ref-id refs "notfound") => nil?)
+
+(fact "about ref-name"
+  (util/ref-name refs 0) => "ref"
+  (util/ref-name refs 1) => "ref2"
+  (util/ref-name refs 9) => nil?)

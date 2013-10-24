@@ -2,13 +2,18 @@
   (:use midje.sweet
         cljam.t-common)
   (:require [cljam.sam :as sam]
+            [cljam.bam :as bam]
             [cljam.sorter :as sorter]))
 
-(def tmp-sorted-sam-file (str temp-dir "tmp.sorted.sam"))
+(def tmp-sorted-sam-file (str temp-dir "/" "tmp.sorted.sam"))
+(def tmp-sorted-bam-file (str temp-dir "/" "tmp.sorted.bam"))
 
 (fact "about sorting a sam by chromosomal positions"
       (sorter/sort-by-pos (sam/reader test-sam-file)
-                          (sam/writer tmp-sorted-sam-file)) => nil)
+                          (sam/writer tmp-sorted-sam-file)) => nil
+      ;; (sorter/sort-by-pos (bam/reader test-bam-file)
+      ;;                     (bam/writer tmp-sorted-bam-file)) => nil
+                          )
 
 ;; FIXME: failed
 ;; (fact "about sorting a sam by read names"

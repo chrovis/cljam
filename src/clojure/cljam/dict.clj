@@ -1,6 +1,6 @@
 (ns cljam.dict
   (:require [clojure.java.io :refer [file writer]]
-            [cljam.sam :as sam]
+            [cljam.common :refer [version]]
             [cljam.fasta :as fasta]
             [cljam.util :refer [string->bytes upper-case]])
   (:import [java.io BufferedWriter RandomAccessFile]
@@ -26,7 +26,7 @@
 
 (defn- write-header
   [^BufferedWriter wrtr]
-  (.write wrtr (str "@HD\tVN:" sam/version "\tSO:unsorted"))
+  (.write wrtr (str "@HD\tVN:" version "\tSO:unsorted"))
   (.newLine wrtr))
 
 (defn- write-sq

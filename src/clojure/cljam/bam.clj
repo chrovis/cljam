@@ -1,7 +1,6 @@
 (ns cljam.bam
   (:refer-clojure :exclude [slurp spit])
-  (:require [cljam.sam :as sam]
-            [cljam.io :as io]
+  (:require [cljam.io :as io]
             (cljam.bam [reader :as bam-reader]
                        [writer :as bam-writer])))
 
@@ -33,7 +32,6 @@
   alignments, then closes the bam-file."
   [f sam]
   (with-open [w (bam-writer/writer f)]
-    (let [refs (sam/make-refs (:header sam))]
-      (io/write-header w (:header sam))
-      (io/write-refs w refs)
-      (io/write-alignments w (:alignments sam) refs))))
+    (io/write-header w (:header sam))
+    (io/write-refs w (:header sam))
+    (io/write-alignments w (:alignments sam) (:header sam))))

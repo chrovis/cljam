@@ -252,3 +252,22 @@
   [n]
   {:pre [(<= 0 n max-phred-score)]}
   (char (+ n 33)))
+
+;;; Reference functions
+
+(defn make-refs [hdr]
+  "Return a reference sequence from the sam header."
+  (for [sq (:SQ hdr)]
+    {:name (:SN sq), :len (:LN sq)}))
+
+(defn ref-id [refs name]
+  "Returns reference ID from the reference sequence and the specified reference
+  name. If not found, return nil."
+  (some #(when (= name (:name (second %))) (first %))
+        (map-indexed vector refs)))
+
+(defn ref-name [refs id]
+  "Returns a reference name from the reference ID. Returns nil if id is not
+  mapped."
+  (if (<= 0 id (dec (count refs)))
+    (:name (nth refs id))))

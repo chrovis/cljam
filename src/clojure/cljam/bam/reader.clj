@@ -7,7 +7,8 @@
                    [lsb :as lsb]
                    [util :refer [string->bytes ubyte
                                  hex-string->bytes phred->fastq
-                                 compressed-bases->chars]])
+                                 compressed-bases->chars
+                                 ref-name]])
             (cljam.bam [index :refer [bam-index get-spans get-sequence-index]]
                        [common :refer [bam-magic fixed-block-size]]
                        [util :refer :all]))
@@ -120,8 +121,8 @@
 (defn- decode-next-ref-id [refs n rname]
   (cond
     (= n -1) "*"
-    (= (sam/ref-name refs n) rname) "="
-    :else (sam/ref-name refs n)))
+    (= (ref-name refs n) rname) "="
+    :else (ref-name refs n)))
 
 (defn- read-alignment [^DataInputStream rdr refs]
   (let [^Integer block-size (lsb/read-int rdr)]

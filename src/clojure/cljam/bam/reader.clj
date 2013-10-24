@@ -1,7 +1,8 @@
 (ns cljam.bam.reader
+  (:use [cljam.io])
   (:require [clojure.string :refer [join]]
             [clojure.java.io :refer [file]]
-            (cljam [sam :as sam :refer [ISAMReader]]
+            (cljam [sam :as sam]
                    [cigar :as cgr]
                    [lsb :as lsb]
                    [util :refer [string->bytes ubyte
@@ -23,35 +24,6 @@
   java.io.Closeable
   (close [this]
     (.. this reader close)))
-
-(extend-type BAMReader
-  ISAMReader
-  (read-header [this]
-    (.header this))
-  (read-refs [this]
-    (.refs this))
-  (read-alignments [this & {:keys [chr start end]}]
-    nil))
-
-(defn reader [f]
-  (let [rdr (BGZFInputStream. (file f))
-        data-rdr (DataInputStream. rdr)]
-    (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes bam-magic))
-      (throw (IOException. "Invalid BAM file header")))
-    (let [header (sam/parse-header (lsb/read-string data-rdr (lsb/read-int data-rdr)))
-          n-ref  (lsb/read-int data-rdr)
-          refs   (loop [i n-ref, ret []]
-                   (if (zero? i)
-                     ret
-                     (let [l-name (lsb/read-int data-rdr)
-                           name   (lsb/read-string data-rdr l-name)
-                           l-ref  (lsb/read-int data-rdr)]
-                       (recur (dec i)
-                              (conj ret {:name (subs name 0 (dec l-name))
-                                         :len  l-ref})))))
-          index (try (bam-index f header)
-                     (catch IOException e nil))]
-      (->BAMReader header refs rdr index))))
 
 ;;
 ;; read alignment
@@ -236,12 +208,46 @@
                                    (doall (read-to-finish rdr finish read-fn))) spans))]
     (filter window candidates)))
 
-(defn light-read-alignments
+(defn -light-read-alignments
   [^BAMReader rdr
    ^String chr ^Long start ^Long end]
   (read-alignments* rdr chr start end :light))
 
-(defn read-alignments
+(defn -read-alignments
   [^BAMReader rdr
    ^String chr ^Long start ^Long end]
   (read-alignments* rdr chr start end :heavy))
+
+;;; public
+
+(defn reader [f]
+  (let [rdr (BGZFInputStream. (file f))
+        data-rdr (DataInputStream. rdr)]
+    (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes bam-magic))
+      (throw (IOException. "Invalid BAM file header")))
+    (let [header (sam/parse-header (lsb/read-string data-rdr (lsb/read-int data-rdr)))
+          n-ref  (lsb/read-int data-rdr)
+          refs   (loop [i n-ref, ret []]
+                   (if (zero? i)
+                     ret
+                     (let [l-name (lsb/read-int data-rdr)
+                           name   (lsb/read-string data-rdr l-name)
+                           l-ref  (lsb/read-int data-rdr)]
+                       (recur (dec i)
+                              (conj ret {:name (subs name 0 (dec l-name))
+                                         :len  l-ref})))))
+          index (try (bam-index f header)
+                     (catch IOException e nil))]
+      (->BAMReader header refs rdr index))))
+
+(extend-type BAMReader
+  ISAMReader
+  (read-header [this]
+    (.header this))
+  (read-refs [this]
+    (.refs this))
+  (read-alignments [this {:keys [chr start end depth]
+                          :or {depth :deep}}]
+    (case depth
+      :shallow (-light-read-alignments this chr start end)
+      :deep (-read-alignments this chr start end))))

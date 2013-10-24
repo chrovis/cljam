@@ -1,16 +1,10 @@
 (ns cljam.sam
+  (:use [cljam.io])
   (:refer-clojure :exclude [slurp spit])
   (:require [clojure.string :as str :refer [split join trim upper-case]])
   (:import [java.io BufferedReader BufferedWriter]))
 
 (def version "SAM format version" "1.4")
-
-;;; protocol
-
-(defprotocol ISAMReader
-  (read-header [this])
-  (read-refs [this])
-  (read-alignments [this option]))
 
 ;;; Parse
 
@@ -130,9 +124,22 @@
 
 ;;; I/O
 
-(deftype SamReader [header reader]
+(deftype SAMReader [header reader]
   java.io.Closeable
-  (close [this] (.close ^BufferedReader (.reader this))))
+  (close [this]
+    (.. this reader close)))
+
+(extend-type SAMReader
+  ISAMReader
+  (read-header [this]
+    (.header this))
+  (read-refs [this]
+    nil)
+  (read-alignments [this _]
+    (when-let [line (.readLine ^BufferedReader (.reader this))]
+      (if-not (= (first line) \@)
+        (cons (parse-alignment line) (lazy-seq (read-alignments this {})))
+        (lazy-seq (read-alignments this {}))))))
 
 (defn- read-header* [^BufferedReader rdr]
   (when-let [line (.readLine rdr)]
@@ -142,18 +149,18 @@
 (defn reader [f]
   (let [header (with-open [r (clojure.java.io/reader f)]
                  (read-header* r))]
-    (->SamReader header (clojure.java.io/reader f))))
+    (->SAMReader header (clojure.java.io/reader f))))
 
-(defn -read-header
-  [rdr]
-  (.header rdr))
+;; (defn -read-header
+;;   [rdr]
+;;   (.header rdr))
 
-(defn -read-alignments
-  [rdr]
-  (when-let [line (.readLine ^BufferedReader (.reader rdr))]
-    (if-not (= (first line) \@)
-      (cons (parse-alignment line) (lazy-seq (-read-alignments rdr)))
-      (lazy-seq (-read-alignments rdr)))))
+;; (defn -read-alignments
+;;   [rdr]
+;;   (when-let [line (.readLine ^BufferedReader (.reader rdr))]
+;;     (if-not (= (first line) \@)
+;;       (cons (parse-alignment line) (lazy-seq (-read-alignments rdr)))
+;;       (lazy-seq (-read-alignments rdr)))))
 
 (defn writer [f]
   (clojure.java.io/writer f))
@@ -173,7 +180,7 @@
   [f]
   (with-open [r (reader f)]
     {:header (read-header r)
-     :alignments (vec (-read-alignments r))}))
+     :alignments (vec (read-alignments r {}))}))
 
 (defn spit
   "Opposite of slurp-sam. Opens sam-file with writer, writes sam headers and

@@ -1,6 +1,7 @@
 (ns cljam.bam
   (:refer-clojure :exclude [slurp spit])
   (:require [cljam.sam :as sam]
+            [cljam.io :as io]
             (cljam.bam [reader :as bam-reader]
                        [writer :as bam-writer])))
 
@@ -20,12 +21,12 @@
                                     start 0
                                     end -1}} options]
     (with-open [r (bam-reader/reader f)]
-      (let [h (sam/read-header r)]
+      (let [h (io/read-header r)]
         {:header h
          :alignments (if (nil? chr)
                        nil
-                       (vec (sam/read-alignments r
-                                                 {:chr chr :start start :end end})))}))))
+                       (vec (io/read-alignments r
+                                                {:chr chr :start start :end end})))}))))
 
 (defn spit
   "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and

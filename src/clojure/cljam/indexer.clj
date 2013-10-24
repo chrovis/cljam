@@ -12,8 +12,8 @@
   nil)
 
 ;;; NOTE: should move to cljam.sam...?
-(defn compute-bin [sam-alignment]
-  (reg->bin (:pos sam-alignment) (bam/get-end sam-alignment)))
+;; (defn compute-bin [sam-alignment]
+;;   (reg->bin (:pos sam-alignment) (bam/get-end sam-alignment)))
 
 ;;; I/O
 

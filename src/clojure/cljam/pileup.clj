@@ -1,6 +1,6 @@
 (ns cljam.pileup
   (:require [cljam.cigar :as cgr]
-            [cljam.bam.reader :as bam-reader]))
+            [cljam.io :as io]))
 
 ;; TODO: estiamte from actual data
 (def ^:private window-width 1250)
@@ -45,7 +45,10 @@
                       (if (< rlength val)
                         rlength
                         val))]
-    (bam-reader/light-read-alignments rdr rname left right)))
+    (io/read-alignments rdr {:chr rname
+                             :start left
+                             :end right
+                             :depth :shallow})))
 
 (defn- search-ref
   [refs rname]

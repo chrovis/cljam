@@ -2,14 +2,15 @@
   (:refer-clojure :exclude [sort merge slurp spit])
   (:require [clojure.contrib.command-line :refer [with-command-line]]
             [clj-sub-command.core :refer [do-sub-command]]
-            [cljam [sam :as sam]
+            (cljam [sam :as sam]
+                   [io :as io]
                    [bam :as bam]
                    [sorter :as sorter]
                    [indexer :as idxr]
                    [fasta :as fa]
                    [fasta-indexer :as fai]
                    [dict :as dict]
-                   [pileup :as plp]])
+                   [pileup :as plp]))
   (:gen-class))
 
 (defn reader [f]
@@ -22,21 +23,21 @@
 
 (defmethod read-header "class cljam.sam.SamReader"
   [rdr]
-  (sam/read-header rdr))
+  (io/read-header rdr))
 
 (defmethod read-header "class cljam.bam.BamReader"
   [rdr]
-  (sam/read-header rdr))
+  (io/read-header rdr))
 
 (defmulti read-alignments (comp str class))
 
 (defmethod read-alignments "class cljam.sam.SamReader"
   [rdr]
-  (sam/read-alignments rdr {}))
+  (io/read-alignments rdr {}))
 
 (defmethod read-alignments "class cljam.bam.BamReader"
   [rdr]
-  (sam/read-alignments rdr {}))
+  (io/read-alignments rdr {}))
 
 (defn- slurp
   [f]
@@ -133,8 +134,8 @@
       (println "Invalid arguments")
       (System/exit 1))
     (with-open [r (bam/reader (first files))]
-      (let [sam {:header (sam/read-header r)
-                 :alignments (sam/read-alignments r {})}]
+      (let [sam {:header (io/read-header r)
+                 :alignments (io/read-alignments r {})}]
         (when-not (sorter/sorted? sam)
           (println "Not sorted")
           (System/exit 1))
@@ -162,13 +163,13 @@
 
 (defn -main [& args]
   (do-sub-command args
-    "Usage: cljam [-h] {view,convert,sort,index,idxstats,merge,pileup,faidx} ..."
-    [:view     cljam.core/view     "Extract/print all or sub alignments in SAM or BAM format."]
-    [:convert  cljam.core/convert  "Convert SAM to BAM or BAM to SAM."]
-    [:sort     cljam.core/sort     "Sort alignments by leftmost coordinates."]
-    [:index    cljam.core/index    "Index sorted alignment for fast random access."]
-    [:idxstats cljam.core/idxstats "Retrieve  and print stats in the index file."]
-    [:merge    cljam.core/merge    "Merge multiple SAM/BAM."]
-    [:pileup   cljam.core/pileup   "Generate pileup for the BAM file."]
-    [:faidx    cljam.core/faidx    "Index reference sequence in the FASTA format."]
-    [:dict     cljam.core/dict     "Create a FASTA sequence dictionary file."]))
+                  "Usage: cljam [-h] {view,convert,sort,index,idxstats,merge,pileup,faidx} ..."
+                  [:view     cljam.core/view     "Extract/print all or sub alignments in SAM or BAM format."]
+                  [:convert  cljam.core/convert  "Convert SAM to BAM or BAM to SAM."]
+                  [:sort     cljam.core/sort     "Sort alignments by leftmost coordinates."]
+                  [:index    cljam.core/index    "Index sorted alignment for fast random access."]
+                  [:idxstats cljam.core/idxstats "Retrieve  and print stats in the index file."]
+                  [:merge    cljam.core/merge    "Merge multiple SAM/BAM."]
+                  [:pileup   cljam.core/pileup   "Generate pileup for the BAM file."]
+                  [:faidx    cljam.core/faidx    "Index reference sequence in the FASTA format."]
+                  [:dict     cljam.core/dict     "Create a FASTA sequence dictionary file."]))

@@ -1,4 +1,5 @@
 (ns cljam.bam.writer
+  (:use [cljam.io])
   (:require [clojure.string :refer [split]]
             [clojure.java.io :refer [file]]
             (cljam [sam :as sam]

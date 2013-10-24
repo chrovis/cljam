@@ -11,6 +11,18 @@
             (cljam.bam [common :refer [bam-magic fixed-block-size]]))
   (:import [java.io DataOutputStream IOException EOFException]
            [chrovis.bgzf4j BGZFOutputStream]))
+;;
+;; BAMWriter
+;;
+
+(deftype BAMWriter [writer]
+  java.io.Closeable
+  (close [this]
+    (.. this writer close)))
+
+;;
+;; write
+;;
 
 (def ^:private fixed-tag-size 3)
 (def ^:private fixed-binary-array-tag-size 5)
@@ -126,16 +138,13 @@
            \I nil
            \f nil))))
 
-(defn writer [f]
-  (DataOutputStream. (BGZFOutputStream. (file f))))
-
-(defn write-header [wrtr hdr]
+(defn -write-header [wrtr hdr]
   (lsb/write-bytes wrtr (.getBytes bam-magic)) ; magic
   (let [header (str (sam/stringify-header hdr) \newline)]
     (lsb/write-int wrtr (count header))
     (lsb/write-string wrtr header)))
 
-(defn write-refs [wrtr refs]
+(defn -write-refs [wrtr refs]
   (lsb/write-int wrtr (count refs))
   (doseq [ref refs]
     (lsb/write-int wrtr (inc (count (:name ref))))
@@ -183,6 +192,22 @@
       (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
       (write-tag-value wrtr (first (:type value)) (:value value)))))
 
-(defn write-alignments [wrtr alns refs]
+(defn -write-alignments [wrtr alns refs]
   (doseq [a alns]
     (write-alignment wrtr a refs)))
+
+;;
+;; public
+;;
+
+(defn writer [f]
+  (->BAMWriter (DataOutputStream. (BGZFOutputStream. (file f)))))
+
+(extend-type BAMWriter
+  ISAMWriter
+  (write-header [this header]
+    (-write-header (.writer this) header))
+  (write-refs [this refs]
+    (-write-refs (.writer this) refs))
+  (write-alignments [this alignments refs]
+    (-write-alignments (.writer this) alignments refs)))

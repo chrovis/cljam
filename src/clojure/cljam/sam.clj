@@ -122,7 +122,7 @@
   (if (<= 0 id (dec (count refs)))
     (:name (nth refs id))))
 
-;;; I/O
+;;; reader
 
 (deftype SAMReader [header reader]
   java.io.Closeable
@@ -151,28 +151,26 @@
                  (read-header* r))]
     (->SAMReader header (clojure.java.io/reader f))))
 
-;; (defn -read-header
-;;   [rdr]
-;;   (.header rdr))
+;;; writer
 
-;; (defn -read-alignments
-;;   [rdr]
-;;   (when-let [line (.readLine ^BufferedReader (.reader rdr))]
-;;     (if-not (= (first line) \@)
-;;       (cons (parse-alignment line) (lazy-seq (-read-alignments rdr)))
-;;       (lazy-seq (-read-alignments rdr)))))
+(deftype SAMWriter [writer]
+  java.io.Closeable
+  (close [this]
+    (.. this writer close)))
 
 (defn writer [f]
-  (clojure.java.io/writer f))
+  (->SAMWriter (clojure.java.io/writer f)))
 
-(defn write-header [^BufferedWriter wrtr hdr]
-  (.write wrtr ^String (stringify-header hdr))
-  (.newLine wrtr))
-
-(defn write-alignments [^BufferedWriter wrtr alns]
-  (doseq [a alns]
-    (.write wrtr ^String (stringify-alignment a))
-    (.newLine wrtr)))
+(extend-type SAMWriter
+  ISAMWriter
+  (write-header [this header]
+    (.write (.writer this) ^String (stringify-header header))
+    (.newLine (.writer this)))
+  (write-refs [this refs])
+  (write-alignments [this alignments refs]
+    (doseq [a alignments]
+      (.write (.writer this) ^String (stringify-alignment a))
+      (.newLine (.writer this)))))
 
 (defn slurp
   "Opens a reader on sam-file and reads all its headers and alignments,
@@ -188,4 +186,4 @@
   [f sam]
   (with-open [w (writer f)]
     (write-header w (:header sam))
-    (write-alignments w (:alignments sam))))
+    (write-alignments w (:alignments sam) nil)))

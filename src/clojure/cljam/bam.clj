@@ -34,6 +34,6 @@
   [f sam]
   (with-open [w (bam-writer/writer f)]
     (let [refs (sam/make-refs (:header sam))]
-      (bam-writer/write-header w (:header sam))
-      (bam-writer/write-refs w refs)
-      (bam-writer/write-alignments w (:alignments sam) refs))))
+      (io/write-header w (:header sam))
+      (io/write-refs w refs)
+      (io/write-alignments w (:alignments sam) refs))))

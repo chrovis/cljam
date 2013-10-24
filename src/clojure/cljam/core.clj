@@ -93,10 +93,10 @@
       (System/exit 1))
     (let [in-file (first files)
           out-file (second files)
-          asam (slurp in-file)]
+          rdr (reader in-file)]
       (condp = order
-        "coordinate" (spit out-file (sorter/sort-by-pos asam))
-        "queryname"  (spit out-file (sorter/sort-by-qname asam))))))
+        "coordinate" (spit out-file (sorter/sort-by-pos rdr))
+        "queryname"  (spit out-file (sorter/sort-by-qname rdr))))))
 
 (defn index [& args]
   ;; (with-command-line args

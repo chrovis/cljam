@@ -4,36 +4,41 @@
                    [io :as io]))
   (:import java.util.List))
 
+(defn- prepend-header [sam vn so]
+  (update-in sam [:header] conj {:HD {:VN vn, :SO so}}))
+
 (defn- compkey-pos [hdr aln]
   [(.indexOf ^List (map :name (sam/make-refs hdr)) (:rname aln))
    (:pos aln)])
 
-(defn- sort-alignments-by-pos [sam]
-  (->> (sort-by (partial compkey-pos (:header sam)) (:alignments sam))
-       (assoc sam :alignments)))
+(defn- sort-alignments-by-pos [rdr]
+  (sort-by (partial compkey-pos (io/read-header rdr)) (io/read-alignments rdr {}))
+  ;; (->> (sort-by (partial compkey-pos (:header sam)) (:alignments sam))
+  ;;      (assoc sam :alignments))
+  )
 
 (defn- compkey-qname [hdr aln]
   [(.indexOf ^List (map :name (sam/make-refs hdr)) (:rname aln))
    (:qname aln)
    (bit-and (:flag aln) 0xc0)])
 
-(defn- sort-alignments-by-qname [sam]
-  (->> (sort-by (partial compkey-qname (:header sam)) (:alignments sam))
-       (assoc sam :alignments)))
+(defn- sort-alignments-by-qname [rdr]
+  ;; (->> (sort-by (partial compkey-qname (:header sam)) (:alignments sam))
+  ;;      (assoc sam :alignments))
+  ;; TODO
+  )
 
-(defn- add-hd [sam vn so]
-  (update-in sam [:header] conj {:HD {:VN vn, :SO so}}))
+(defn sort-by-pos [rdr wtr]
+  (let [alns (sort-alignments-by-pos rdr)]
+    nil))
 
-(defn sort-by-pos [sam]
-  (-> (sort-alignments-by-pos sam)
-      (add-hd sam/version "coordinate")))
+(defn sort-by-qname [rdr wtr]
+  (sort-alignments-by-qname rdr)
+  ;(add-hd sam/version "queryname")
+  )
 
-(defn sort-by-qname [sam]
-  (-> (sort-alignments-by-qname sam)
-      (add-hd sam/version "queryname")))
-
-(defn sort [sam]
-  (sort-by-pos sam))
+(defn sort [rdr wtr]
+  (sort-by-pos rdr wtr))
 
 (defn sorted?
   "Returns true if the sam is sorted, false if not. It is detected by

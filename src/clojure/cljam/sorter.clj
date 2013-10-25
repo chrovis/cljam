@@ -1,13 +1,14 @@
 (ns cljam.sorter
   (:refer-clojure :exclude [sort sorted?])
-  (:require (cljam [sam :as sam]
+  (:require [clojure.java.io :refer [file]]
+            [clojure.string :as str]
+            (cljam [sam :as sam]
                    [bam :as bam]
                    [common :refer [version]]
                    [util :as util]
-                   [io :as io]))
-  (:import java.util.List))
+                   [io :as io])))
 
-(def ^:private chunk-size 2000000)
+(def ^:private chunk-size 1500000)
 
 (def order-unknown "unknown")
 (def order-coordinate "coordinate")
@@ -113,13 +114,25 @@
 ;;
 
 (defn sort-by-pos [rdr wtr]
-  (let [blks (sort-alignments-by-pos rdr)
+  (let [filename (.getName (file (io/reader-path rdr)))
+        basename (first (str/split filename #"\.(?=[^\.]+$)"))
+        cache-name-fn (partial gen-cache-filename basename)
+        sorted-cache-name-fn (partial gen-sorted-cache-filename basename)
+        splited-files (split-sam rdr cache-name-fn)
+        num-splited (count splited-files)
         hdr (replace-header (io/read-header rdr)
                             version order-coordinate)]
-    (with-open [wtr wtr]
-      (io/write-header wtr hdr)
-      (io/write-refs wtr hdr)
-      (io/write-coordinate-blocks wtr blks))))
+    (doall
+     (pmap
+      (fn [i]
+        (let [r (bam/reader (cache-name-fn i))
+              blks (sort-alignments-by-pos r)]
+          (with-open [w (bam/writer (sorted-cache-name-fn i))]
+            (io/write-header w hdr)
+            (io/write-refs w hdr)
+            (io/write-coordinate-blocks w blks))))
+      (range num-splited)))
+    (merge-sam wtr hdr sorted-cache-name-fn num-splited)))
 
 (defn sort-by-qname [rdr wtr]
   (let [alns (sort-alignments-by-qname rdr)

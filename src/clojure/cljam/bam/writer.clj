@@ -215,7 +215,8 @@
 ;;
 
 (defn writer [f]
-  (->BAMWriter f (DataOutputStream. (BGZFOutputStream. (file f)))))
+  (->BAMWriter (.getAbsolutePath (file f))
+               (DataOutputStream. (BGZFOutputStream. (file f)))))
 
 (extend-type BAMWriter
   ISAMWriter

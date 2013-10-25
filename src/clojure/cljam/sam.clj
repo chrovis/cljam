@@ -1,7 +1,8 @@
 (ns cljam.sam
   (:use [cljam.io])
   (:refer-clojure :exclude [slurp spit])
-  (:require [clojure.string :as str :refer [split join trim upper-case]]
+  (:require [clojure.java.io :refer [file]]
+            [clojure.string :as str :refer [split join trim upper-case]]
             [clojure.tools.logging :as logging])
   (:import [java.io BufferedReader BufferedWriter]))
 
@@ -135,7 +136,8 @@
 (defn reader [f]
   (let [header (with-open [r (clojure.java.io/reader f)]
                  (read-header* r))]
-    (->SAMReader f header (clojure.java.io/reader f))))
+    (->SAMReader (.getAbsolutePath (file f))
+                 header (clojure.java.io/reader f))))
 
 ;;; writer
 
@@ -145,7 +147,8 @@
     (.. this writer close)))
 
 (defn writer [f]
-  (->SAMWriter f (clojure.java.io/writer f)))
+  (->SAMWriter (.getAbsolutePath (file f))
+               (clojure.java.io/writer f)))
 
 (extend-type SAMWriter
   ISAMWriter

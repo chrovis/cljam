@@ -289,7 +289,8 @@
                                          :len  l-ref})))))
           index (try (bam-index f header)
                      (catch IOException e nil))]
-      (->BAMReader f header refs rdr index))))
+      (->BAMReader (.getAbsolutePath (file f))
+                   header refs rdr index))))
 
 (extend-type BAMReader
   ISAMReader

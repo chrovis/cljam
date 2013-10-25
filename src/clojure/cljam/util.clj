@@ -4,7 +4,9 @@
 
 ;;; disk cache
 
-(def temp-dir (.getPath (file (System/getProperty "java.io.tmpdir") "cljam")))
+(def temp-dir (let [dir-path (.getPath (file (System/getProperty "java.io.tmpdir") "cljam"))]
+                (.mkdirs (file dir-path))
+                dir-path))
 
 ;;; byte array
 

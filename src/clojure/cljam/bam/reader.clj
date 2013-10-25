@@ -21,7 +21,7 @@
 ;; BAMReader
 ;;
 
-(deftype BAMReader [header refs reader index]
+(deftype BAMReader [f header refs reader index]
   java.io.Closeable
   (close [this]
     (.. this reader close)))
@@ -194,8 +194,9 @@
     (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size:" block-size))))
     (let [data (lsb/read-bytes rdr block-size)
-          bb (doto (lsb/gen-byte-buffer)
-               (.put data))
+          bb (doto (lsb/gen-byte-buffer block-size)
+               (.put data)
+               (.flip))
           ref-id (.getInt bb)
           pos (inc (.getInt bb))]
       {:size block-size
@@ -256,8 +257,7 @@
     (read-fn (DataInputStream. (.reader rdr)) (.refs rdr))))
 
 (defn- read-blocks-sequentially*
-  [^BAMReader rdr
-   option]
+  [^BAMReader rdr option]
   (let [read-aln-fn (case option
                       :normal read-alignment-block
                       :coordinate read-coordinate-alignment-block)
@@ -265,7 +265,7 @@
                   (let [b (try (read-aln-fn r refs)
                                (catch EOFException e nil))]
                     (if b
-                      (cons b (lazy-seq (read-fn* r)))
+                      (cons b (lazy-seq (read-fn* r refs)))
                       nil)))]
     (read-fn (DataInputStream. (.reader rdr)) (.refs rdr))))
 
@@ -289,10 +289,12 @@
                                          :len  l-ref})))))
           index (try (bam-index f header)
                      (catch IOException e nil))]
-      (->BAMReader header refs rdr index))))
+      (->BAMReader f header refs rdr index))))
 
 (extend-type BAMReader
   ISAMReader
+  (reader-path [this]
+    (.f this))
   (read-header [this]
     (.header this))
   (read-refs [this]

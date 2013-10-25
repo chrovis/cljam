@@ -3,6 +3,7 @@
 ;;; Protocol
 
 (defprotocol ISAMReader
+  (reader-path [this])
   (read-header [this])
   (read-refs [this])
   (read-alignments [this option])
@@ -10,6 +11,7 @@
   (read-coordinate-blocks [this]))
 
 (defprotocol ISAMWriter
+  (writer-path [this])
   (write-header [this header])
   (write-refs [this header])
   (write-alignments [this alignments header])

@@ -16,7 +16,7 @@
 ;; BAMWriter
 ;;
 
-(deftype BAMWriter [writer]
+(deftype BAMWriter [f writer]
   java.io.Closeable
   (close [this]
     (.. this writer close)))
@@ -215,10 +215,12 @@
 ;;
 
 (defn writer [f]
-  (->BAMWriter (DataOutputStream. (BGZFOutputStream. (file f)))))
+  (->BAMWriter f (DataOutputStream. (BGZFOutputStream. (file f)))))
 
 (extend-type BAMWriter
   ISAMWriter
+  (writer-path [this]
+    (.f this))
   (write-header [this header]
     (write-header* this header))
   (write-refs [this header]

@@ -104,13 +104,15 @@
 
 ;;; reader
 
-(deftype SAMReader [header reader]
+(deftype SAMReader [f header reader]
   java.io.Closeable
   (close [this]
     (.. this reader close)))
 
 (extend-type SAMReader
   ISAMReader
+  (reader-path [this]
+    (.f this))
   (read-header [this]
     (.header this))
   (read-refs [this]
@@ -133,20 +135,22 @@
 (defn reader [f]
   (let [header (with-open [r (clojure.java.io/reader f)]
                  (read-header* r))]
-    (->SAMReader header (clojure.java.io/reader f))))
+    (->SAMReader f header (clojure.java.io/reader f))))
 
 ;;; writer
 
-(deftype SAMWriter [writer]
+(deftype SAMWriter [f writer]
   java.io.Closeable
   (close [this]
     (.. this writer close)))
 
 (defn writer [f]
-  (->SAMWriter (clojure.java.io/writer f)))
+  (->SAMWriter f (clojure.java.io/writer f)))
 
 (extend-type SAMWriter
   ISAMWriter
+  (writer-path [this]
+    (.f this))
   (write-header [this header]
     (.write (.writer this) ^String (stringify-header header))
     (.newLine (.writer this)))

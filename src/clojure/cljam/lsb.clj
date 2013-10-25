@@ -4,8 +4,11 @@
   (:import [java.io DataInputStream DataOutputStream EOFException]
            [java.nio ByteBuffer ByteOrder]))
 
-(defn ^ByteBuffer gen-byte-buffer []
-  (.order (ByteBuffer/allocate 8) ByteOrder/LITTLE_ENDIAN))
+(defn ^ByteBuffer gen-byte-buffer
+  ([]
+     (.order (ByteBuffer/allocate 8) ByteOrder/LITTLE_ENDIAN))
+  ([size]
+     (.order (ByteBuffer/allocate size) ByteOrder/LITTLE_ENDIAN)))
 
 (defn skip
   [^DataInputStream rdr ^Integer n]

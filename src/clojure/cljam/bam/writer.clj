@@ -140,19 +140,23 @@
            \I nil
            \f nil))))
 
-(defn -write-header [wrtr hdr]
-  (lsb/write-bytes wrtr (.getBytes bam-magic)) ; magic
-  (let [header (str (sam/stringify-header hdr) \newline)]
-    (lsb/write-int wrtr (count header))
-    (lsb/write-string wrtr header)))
+(defn write-header* [^BAMWriter wtr header]
+  (let [w (.writer wtr)
+        refs (make-refs header)
+        header-string (str (sam/stringify-header header) \newline)]
+    (lsb/write-bytes w (.getBytes bam-magic)) ; magic
+    (lsb/write-int w (count header-string))
+    (lsb/write-string w header-string)))
 
-(defn -write-refs [wrtr refs]
-  (lsb/write-int wrtr (count refs))
-  (doseq [ref refs]
-    (lsb/write-int wrtr (inc (count (:name ref))))
-    (lsb/write-string wrtr (:name ref))
-    (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
-    (lsb/write-int wrtr (:len ref))))
+(defn write-refs* [^BAMWriter wtr header]
+  (let [w (.writer wtr)
+        refs (make-refs header)]
+    (lsb/write-int w (count refs))
+    (doseq [ref refs]
+      (lsb/write-int w (inc (count (:name ref))))
+      (lsb/write-string w (:name ref))
+      (lsb/write-bytes w (byte-array 1 (byte 0)))
+      (lsb/write-int w (:len ref)))))
 
 (defn- write-alignment [wrtr aln refs]
   ;; block_size
@@ -192,12 +196,19 @@
       (lsb/write-short wrtr (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
                                            (byte (first (name tag))))))
       (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
-      (write-tag-value wrtr (first (:type value)) (:value value))))
-  )
+      (write-tag-value wrtr (first (:type value)) (:value value)))))
 
-(defn -write-alignments [wrtr alns refs]
-  (doseq [a alns]
-    (write-alignment wrtr a refs)))
+(defn write-alignments* [^BAMWriter wtr alns header]
+  (let [w (.writer wtr)
+        refs (make-refs header)]
+    (doseq [a alns]
+      (write-alignment w a refs))))
+
+(defn write-blocks* [^BAMWriter wtr blocks]
+  (let [w (.writer wtr)]
+    (doseq [b blocks]
+      (lsb/write-int w (:size b))
+      (lsb/write-bytes w (:data b)))))
 
 ;;
 ;; public
@@ -209,10 +220,12 @@
 (extend-type BAMWriter
   ISAMWriter
   (write-header [this header]
-    (-write-header (.writer this) header))
+    (write-header* this header))
   (write-refs [this header]
-    (let [refs (make-refs header)]
-      (-write-refs (.writer this) refs)))
+    (write-refs* this header))
   (write-alignments [this alignments header]
-    (let [refs (make-refs header)]
-      (-write-alignments (.writer this) alignments refs))))
+    (write-alignments* this alignments header))
+  (write-blocks [this blocks]
+    (write-blocks* this blocks))
+  (write-coordinate-blocks [this blocks]
+    (write-blocks* this blocks)))

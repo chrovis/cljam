@@ -164,6 +164,7 @@
        :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
        :qual qual, :options options})))
 
+;; TODO: improve performance using ByteBuffer
 (defn- light-read-alignment [^DataInputStream rdr refs]
   (let [^Integer block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
@@ -188,6 +189,27 @@
                                                   l-seq))]
       {:rname rname, :pos pos, :cigar cigar})))
 
+(defn- read-coordinate-alignment-block [^DataInputStream rdr refs]
+  (let [^Integer block-size (lsb/read-int rdr)]
+    (when (< block-size fixed-block-size)
+      (throw (Exception. (str "Invalid block size:" block-size))))
+    (let [data (lsb/read-bytes rdr block-size)
+          bb (doto (lsb/gen-byte-buffer)
+               (.put data))
+          ref-id (.getInt bb)
+          pos (inc (.getInt bb))]
+      {:size block-size
+       :data data
+       :rname (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+       :pos pos})))
+
+(defn- read-alignment-block [^DataInputStream rdr refs]
+  (let [^Integer block-size (lsb/read-int rdr)]
+    (when (< block-size fixed-block-size)
+      (throw (Exception. (str "Invalid block size:" block-size))))
+    {:size block-size
+     :data (lsb/read-bytes rdr block-size)}))
+
 (defn- read-to-finish
   [^BAMReader rdr
    ^Long finish
@@ -200,7 +222,7 @@
 (defn- read-alignments*
   [^BAMReader rdr
    ^String chr ^Long start ^Long end
-   ^clojure.lang.Keyword light-or-heavy]
+   deep-or-shallow]
   (when (nil? (.index rdr))
     (throw (Exception. "BAM index not found")))
   (let [^BAMIndex bai (.index rdr)
@@ -211,35 +233,41 @@
                    (and (= chr (:rname a))
                         (<= start right)
                         (>= end left))))
-        read-fn (cond
-                 (= :light light-or-heavy) light-read-alignment
-                 :else read-alignment)
+        read-fn (case deep-or-shallow
+                  :shallow light-read-alignment
+                  :deep read-alignment)
         candidates (flatten (map (fn [[^Long begin ^Long finish]]
                                    (.seek (.reader rdr) begin)
                                    (doall (read-to-finish rdr finish read-fn))) spans))]
     (filter window candidates)))
 
-(defn -light-read-alignments
+(defn- read-alignments-sequentially*
+  [^BAMReader rdr deep-or-shallow]
+  (let [read-aln-fn (case deep-or-shallow
+                      :shallow light-read-alignment
+                      :deep read-alignment)
+        read-fn (fn read-fn*
+                  [^DataInputStream r ^clojure.lang.PersistentVector refs]
+                  (let [a (try (read-aln-fn r refs)
+                               (catch EOFException e nil))]
+                    (if a
+                      (cons a (lazy-seq (read-fn* r refs)))
+                      nil)))]
+    (read-fn (DataInputStream. (.reader rdr)) (.refs rdr))))
+
+(defn- read-blocks-sequentially*
   [^BAMReader rdr
-   ^String chr ^Long start ^Long end]
-  (read-alignments* rdr chr start end :light))
-
-(defn -read-alignments
-  [^BAMReader rdr
-   ^String chr ^Long start ^Long end]
-  (read-alignments* rdr chr start end :heavy))
-
-(defn read-alignments-sequentially*
-  [^DataInputStream r ^clojure.lang.PersistentVector refs]
-  (let [a (try (read-alignment r refs)
-               (catch EOFException e nil))]
-    (if a
-      (cons a (lazy-seq (read-alignments-sequentially* r refs)))
-      nil)))
-
-(defn -read-alignments-sequentially
-  [^BAMReader rdr]
-  (read-alignments-sequentially* (DataInputStream. (.reader rdr)) (.refs rdr)))
+   option]
+  (let [read-aln-fn (case option
+                      :normal read-alignment-block
+                      :coordinate read-coordinate-alignment-block)
+        read-fn (fn read-fn* [^DataInputStream r ^clojure.lang.PersistentVector refs]
+                  (let [b (try (read-aln-fn r refs)
+                               (catch EOFException e nil))]
+                    (if b
+                      (cons b (lazy-seq (read-fn* r)))
+                      nil)))]
+    (read-fn (DataInputStream. (.reader rdr)) (.refs rdr))))
 
 ;;; public
 
@@ -270,9 +298,14 @@
   (read-refs [this]
     (.refs this))
   (read-alignments [this {:keys [chr start end depth]
-                          :or {depth :deep}}]
+                          :or {chr nil
+                               start -1
+                               end -1
+                               depth :deep}}]
     (if (nil? chr)
-      (-read-alignments-sequentially this)
-      (case depth
-        :shallow (-light-read-alignments this chr start end)
-        :deep (-read-alignments this chr start end)))))
+      (read-alignments-sequentially* this depth)
+      (read-alignments* this chr start end depth)))
+  (read-blocks [this]
+    (read-blocks-sequentially* this :normal))
+  (read-coordinate-blocks [this]
+    (read-blocks-sequentially* this :coordinate)))

@@ -7,6 +7,7 @@
                  ["releases" {:url "https://nexus.xcoo.jp/content/repositories/releases"}]]
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojure-contrib "1.2.0"]
+                 [org.clojure/tools.logging "0.2.6"]
                  [clj-sub-command "0.1.0"]
                  [chrovis/bgzf4j "0.1.0-SNAPSHOT"]]
   :source-paths ["src/clojure"]

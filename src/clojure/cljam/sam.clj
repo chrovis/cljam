@@ -1,7 +1,8 @@
 (ns cljam.sam
   (:use [cljam.io])
   (:refer-clojure :exclude [slurp spit])
-  (:require [clojure.string :as str :refer [split join trim upper-case]])
+  (:require [clojure.string :as str :refer [split join trim upper-case]]
+            [clojure.tools.logging :as logging])
   (:import [java.io BufferedReader BufferedWriter]))
 
 ;;; Parse
@@ -118,7 +119,11 @@
     (when-let [line (.readLine ^BufferedReader (.reader this))]
       (if-not (= (first line) \@)
         (cons (parse-alignment line) (lazy-seq (read-alignments this {})))
-        (lazy-seq (read-alignments this {}))))))
+        (lazy-seq (read-alignments this {})))))
+  (read-blocks [this]
+    (logging/info "SAMReader does not support read-blocks"))
+  (read-coordinate-blocks [this]
+    (logging/info "SAMReader does not support read-coordinate-blocks")))
 
 (defn- read-header* [^BufferedReader rdr]
   (when-let [line (.readLine rdr)]
@@ -145,11 +150,16 @@
   (write-header [this header]
     (.write (.writer this) ^String (stringify-header header))
     (.newLine (.writer this)))
-  (write-refs [this refs])
+  (write-refs [this refs]
+    (logging/info "SAMWriter does not support write-refs"))
   (write-alignments [this alignments refs]
     (doseq [a alignments]
       (.write (.writer this) ^String (stringify-alignment a))
-      (.newLine (.writer this)))))
+      (.newLine (.writer this))))
+  (write-blocks [this blocks]
+    (logging/info "SAMWriter does not support write-blocks"))
+  (write-coordinate-blocks [this blocks]
+    (logging/info "SAMWriter does not support write-coordinate-blocks")))
 
 (defn slurp
   "Opens a reader on sam-file and reads all its headers and alignments,

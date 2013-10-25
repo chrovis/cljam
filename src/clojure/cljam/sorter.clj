@@ -15,20 +15,22 @@
 ;; split/merge
 ;;
 
+(def ^:private chunk-size 500000)
+
 (defn split-sam
   [rdr prefix]
-  (map
-   (fn [[i alns]]
-     (println i)
-     (let [f (format "%s/%s_%05d.cache" util/temp-dir prefix i)
-           hdr (io/read-header rdr)]
-       (println f)
-       (with-open [wtr (sam/writer f)]
-         (io/write-header wtr hdr)
-         (io/write-refs wtr hdr)
-         (io/write-alignments wtr alns hdr))
-       f))
-   (map-indexed vector (partition 100000 (io/read-alignments rdr {})))))
+  (doall
+   (map
+    (fn [[i blks]]
+      (let [f (format "%s/%s_%05d.cache" util/temp-dir prefix i)
+            hdr (io/read-header rdr)]
+        (println f)
+        (with-open [wtr (bam/writer f)]
+          (io/write-header wtr hdr)
+          (io/write-refs wtr hdr)
+          (io/write-blocks wtr blks))
+        f))
+    (map-indexed vector (partition-all chunk-size (io/read-blocks rdr))))))
 
 ;;
 ;; sorter

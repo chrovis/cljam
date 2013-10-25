@@ -91,7 +91,6 @@
   "Returns sorting order of the sam as String. Returning order is one of the
   following: \"queryname\", \"coordinate\", \"unsorted\", \"unknown\"."
   [rdr]
-  (println (io/read-header rdr))
   (if-let [so (:SO (:HD (io/read-header rdr)))]
     so
     order-unknown))

@@ -30,6 +30,16 @@
 ;; read alignment
 ;;
 
+(defn- validate-tag-type
+  [t]
+  (case t
+    \I \i
+    \s \i
+    \S \i
+    \c \i
+    \C \i
+    t))
+
 (defn- parse-tag-single [tag-type ^ByteBuffer bb]
   (case tag-type
     \Z (lsb/read-null-terminated-string bb)
@@ -63,7 +73,7 @@
 (defn- parse-option [^ByteBuffer bb]
   (let [tag (str (char (.get bb)) (char (.get bb)))
         typ (char (.get bb))]
-    {(keyword tag) {:type  (str typ)
+    {(keyword tag) {:type  (str (validate-tag-type typ))
                     :value (if (= typ \B)
                              (parse-tag-array bb)
                              (parse-tag-single typ bb))}}))
@@ -192,7 +202,7 @@
    ^String chr ^Long start ^Long end
    ^clojure.lang.Keyword light-or-heavy]
   (when (nil? (.index rdr))
-    (throw (Exception. ("BAM index not found"))))
+    (throw (Exception. "BAM index not found")))
   (let [^BAMIndex bai (.index rdr)
         spans (get-spans bai chr start end)
         window (fn [^clojure.lang.PersistentHashMap a]
@@ -218,6 +228,18 @@
   [^BAMReader rdr
    ^String chr ^Long start ^Long end]
   (read-alignments* rdr chr start end :heavy))
+
+(defn read-alignments-sequentially*
+  [^DataInputStream r ^clojure.lang.PersistentVector refs]
+  (let [a (try (read-alignment r refs)
+               (catch EOFException e nil))]
+    (if a
+      (cons a (lazy-seq (read-alignments-sequentially* r refs)))
+      nil)))
+
+(defn -read-alignments-sequentially
+  [^BAMReader rdr]
+  (read-alignments-sequentially* (DataInputStream. (.reader rdr)) (.refs rdr)))
 
 ;;; public
 
@@ -249,6 +271,8 @@
     (.refs this))
   (read-alignments [this {:keys [chr start end depth]
                           :or {depth :deep}}]
-    (case depth
-      :shallow (-light-read-alignments this chr start end)
-      :deep (-read-alignments this chr start end))))
+    (if (nil? chr)
+      (-read-alignments-sequentially this)
+      (case depth
+        :shallow (-light-read-alignments this chr start end)
+        :deep (-read-alignments this chr start end)))))

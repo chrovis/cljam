@@ -89,6 +89,13 @@
 
 ;;; writing
 
+(defn write-char
+  [^DataOutputStream w b]
+  (let [bb (gen-byte-buffer)]
+    (.putChar bb b)
+    (.write w (.array bb) 0 1)
+    nil))
+
 (defn write-bytes
   [^DataOutputStream w ^bytes b]
   (.write w b 0 (count b))

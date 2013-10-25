@@ -100,7 +100,8 @@
                               \S 2
                               \i 4
                               \I 4
-                              \f 4))))))))
+                              \f 4
+                              0))))))))
         (:options sam-alignment))
        (reduce +)))
 
@@ -120,9 +121,9 @@
 
 (defn- write-tag-value [writer val-type value]
   (case val-type
-    \A (lsb/write-bytes  writer (char value))
-    \i (lsb/write-int    writer (Integer/parseInt value))
-    \f (lsb/write-float  writer (Float/parseFloat value))
+    \A (lsb/write-char writer (char value))
+    \i (lsb/write-int    writer (int value))
+    \f (lsb/write-float  writer (float value))
     \Z (lsb/write-string writer value)
     ;; \H nil
     \B (let [[array-type & array] (split value #",")]
@@ -191,7 +192,8 @@
       (lsb/write-short wrtr (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
                                            (byte (first (name tag))))))
       (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
-      (write-tag-value wrtr (first (:type value)) (:value value)))))
+      (write-tag-value wrtr (first (:type value)) (:value value))))
+  )
 
 (defn -write-alignments [wrtr alns refs]
   (doseq [a alns]

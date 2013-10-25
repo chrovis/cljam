@@ -1,9 +1,38 @@
 (ns cljam.sorter
   (:refer-clojure :exclude [sort sorted?])
-  (:require (cljam [common :refer [version]]
+  (:require (cljam [sam :as sam]
+                   [bam :as bam]
+                   [common :refer [version]]
                    [util :as util]
                    [io :as io]))
   (:import java.util.List))
+
+(def order-unknown "unknown")
+(def order-coordinate "coordinate")
+(def order-queryname "queryname")
+
+;;
+;; split/merge
+;;
+
+(defn split-sam
+  [rdr prefix]
+  (map
+   (fn [[i alns]]
+     (println i)
+     (let [f (format "%s/%s_%05d.cache" util/temp-dir prefix i)
+           hdr (io/read-header rdr)]
+       (println f)
+       (with-open [wtr (sam/writer f)]
+         (io/write-header wtr hdr)
+         (io/write-refs wtr hdr)
+         (io/write-alignments wtr alns hdr))
+       f))
+   (map-indexed vector (partition 100000 (io/read-alignments rdr {})))))
+
+;;
+;; sorter
+;;
 
 (defn- replace-header [hdr vn so]
   (conj hdr {:HD {:VN vn, :SO so}}))
@@ -32,16 +61,20 @@
 (defn sort-by-pos [rdr wtr]
   (let [alns (sort-alignments-by-pos rdr)
         hdr (replace-header (io/read-header rdr)
-                            version "coordinate")]
+                            version order-coordinate)]
     (with-open [wtr wtr]
       (io/write-header wtr hdr)
       (io/write-refs wtr hdr)
       (io/write-alignments wtr alns hdr))))
 
 (defn sort-by-qname [rdr wtr]
-  (sort-alignments-by-qname rdr)
-  ;(add-hd version "queryname")
-  )
+  (let [alns (sort-alignments-by-qname rdr)
+        hdr (replace-header (io/read-header rdr)
+                            version order-queryname)]
+    (with-open [wtr wtr]
+      (io/write-header wtr hdr)
+      (io/write-refs wtr hdr)
+      (io/write-alignments wtr alns hdr))))
 
 (defn sort [rdr wtr]
   (sort-by-pos rdr wtr))
@@ -49,15 +82,16 @@
 (defn sorted?
   "Returns true if the sam is sorted, false if not. It is detected by
   `@HD SO:***` tag in the header."
-  [sam]
-  (let [so (:SO (:HD (:header sam)))]
-    (or (= so "queryname")
-        (= so "coordinate"))))
+  [rdr]
+  (let [so (:SO (:HD (io/read-header rdr)))]
+    (or (= so order-queryname)
+        (= so order-coordinate))))
 
 (defn sort-order
   "Returns sorting order of the sam as String. Returning order is one of the
   following: \"queryname\", \"coordinate\", \"unsorted\", \"unknown\"."
-  [sam]
-  (if-let [so (:SO (:HD (:header sam)))]
+  [rdr]
+  (println (io/read-header rdr))
+  (if-let [so (:SO (:HD (io/read-header rdr)))]
     so
-    "unknown"))
+    order-unknown))

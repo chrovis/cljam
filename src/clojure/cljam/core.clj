@@ -19,6 +19,12 @@
     #"\.bam$" (bam/reader f)
     (throw (IllegalArgumentException. "Invalid file type"))))
 
+(defn writer [f]
+  (condp re-find f
+    #"\.sam$" (sam/writer f)
+    #"\.bam$" (bam/writer f)
+    (throw (IllegalArgumentException. "Invalid file type"))))
+
 (defmulti read-header (comp str class))
 
 (defmethod read-header "class cljam.sam.SamReader"
@@ -91,12 +97,11 @@
     (when-not (= (count files) 2)
       (println "Invalid arguments")
       (System/exit 1))
-    (let [in-file (first files)
-          out-file (second files)
-          rdr (reader in-file)]
+    (let [rdr (reader (first files))
+          wtr (writer (second files))]
       (condp = order
-        "coordinate" (spit out-file (sorter/sort-by-pos rdr))
-        "queryname"  (spit out-file (sorter/sort-by-qname rdr))))))
+        sorter/order-coordinate (sorter/sort-by-pos rdr wtr)
+        sorter/order-queryname (sorter/sort-by-qname rdr wtr)))))
 
 (defn index [& args]
   ;; (with-command-line args

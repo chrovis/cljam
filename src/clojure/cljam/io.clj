@@ -9,5 +9,5 @@
 
 (defprotocol ISAMWriter
   (write-header [this header])
-  (write-refs [this refs])
-  (write-alignments [this alignments refs]))
+  (write-refs [this header])
+  (write-alignments [this alignments header]))

@@ -20,12 +20,11 @@
                                     start 0
                                     end -1}} options]
     (with-open [r (bam-reader/reader f)]
-      (let [h (io/read-header r)]
-        {:header h
-         :alignments (if (nil? chr)
-                       nil
-                       (vec (io/read-alignments r
-                                                {:chr chr :start start :end end})))}))))
+      {:header (io/read-header r)
+       :alignments (io/read-alignments r
+                                       (if (nil? chr)
+                                         {}
+                                         {:chr chr :start start :end end}))})))
 
 (defn spit
   "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and

@@ -109,6 +109,16 @@
                           blocks))
                       (map-indexed vector blocks-list))))))))))
 
+(defn clean-split-merge-cache
+  [name-fn sorted-name-fn count]
+  (let [clean (fn [path]
+                (let [f (file path)]
+                  (when (.exists f)
+                    (.delete f))))]
+    (doseq [i (range count)]
+      (clean (name-fn i))
+      (clean (sorted-name-fn i)))))
+
 ;;
 ;; sorter
 ;;
@@ -132,7 +142,8 @@
             (io/write-refs w hdr)
             (io/write-coordinate-blocks w blks))))
       (range num-splited)))
-    (merge-sam wtr hdr sorted-cache-name-fn num-splited)))
+    (merge-sam wtr hdr sorted-cache-name-fn num-splited)
+    (clean-split-merge-cache cache-name-fn sorted-cache-name-fn num-splited)))
 
 (defn sort-by-qname [rdr wtr]
   (let [alns (sort-alignments-by-qname rdr)

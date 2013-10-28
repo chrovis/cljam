@@ -21,7 +21,7 @@
 ;; BAMReader
 ;;
 
-(deftype BAMReader [f header refs reader index]
+(deftype BAMReader [f header refs reader data-reader index]
   java.io.Closeable
   (close [this]
     (.. this reader close)))
@@ -134,8 +134,10 @@
     (= (ref-name refs n) rname) "="
     :else (ref-name refs n)))
 
-(defn- read-alignment [^DataInputStream rdr refs]
-  (let [^Integer block-size (lsb/read-int rdr)]
+(defn- read-alignment [^BAMReader bam-reader refs]
+  (let [rdr (.data-reader bam-reader)
+        pointer-beg (.getFilePointer (.reader bam-reader))
+        ^Integer block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size:" block-size))))
     (let [ref-id      (lsb/read-int rdr)
@@ -159,14 +161,17 @@
                                                         l-read-name
                                                         n-cigar-op
                                                         l-seq))
-          options     (parse-options rest)]
+          options     (parse-options rest)
+          pointer-end (.getFilePointer (.reader bam-reader))]
       {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
        :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
-       :qual qual, :options options})))
+       :qual qual, :options options,
+       :meta {:chunk {:beg pointer-beg, :end pointer-end}}})))
 
 ;; TODO: improve performance using ByteBuffer
-(defn- light-read-alignment [^DataInputStream rdr refs]
-  (let [^Integer block-size (lsb/read-int rdr)]
+(defn- light-read-alignment [^BAMReader bam-reader refs]
+  (let [rdr (.data-reader bam-reader)
+        ^Integer block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size:" block-size))))
     (let [ref-id      (lsb/read-int rdr)
@@ -204,8 +209,9 @@
        :rname (if (= ref-id -1) "*" (:name (nth refs ref-id)))
        :pos pos})))
 
-(defn- read-alignment-block [^DataInputStream rdr refs]
-  (let [^Integer block-size (lsb/read-int rdr)]
+(defn- read-alignment-block [^BAMReader bam-reader refs]
+  (let [rdr (.data-rdr bam-reader)
+        ^Integer block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size:" block-size))))
     {:size block-size
@@ -217,7 +223,7 @@
    ^clojure.lang.IFn read-fn]
   (when (and (not (zero? (.available (.reader rdr))))
              (> finish (.getFilePointer (.reader rdr))))
-    (cons (read-fn (DataInputStream. (.reader rdr)) (.refs rdr))
+    (cons (read-fn rdr (.refs rdr))
           (lazy-seq (read-to-finish rdr finish read-fn)))))
 
 (defn- read-alignments*
@@ -248,26 +254,26 @@
                       :shallow light-read-alignment
                       :deep read-alignment)
         read-fn (fn read-fn*
-                  [^DataInputStream r ^clojure.lang.PersistentVector refs]
+                  [^BAMReader r ^clojure.lang.PersistentVector refs]
                   (let [a (try (read-aln-fn r refs)
                                (catch EOFException e nil))]
                     (if a
                       (cons a (lazy-seq (read-fn* r refs)))
                       nil)))]
-    (read-fn (DataInputStream. (.reader rdr)) (.refs rdr))))
+    (read-fn rdr (.refs rdr))))
 
 (defn- read-blocks-sequentially*
   [^BAMReader rdr option]
   (let [read-aln-fn (case option
                       :normal read-alignment-block
                       :coordinate read-coordinate-alignment-block)
-        read-fn (fn read-fn* [^DataInputStream r ^clojure.lang.PersistentVector refs]
+        read-fn (fn read-fn* [^BAMReader r ^clojure.lang.PersistentVector refs]
                   (let [b (try (read-aln-fn r refs)
                                (catch EOFException e nil))]
                     (if b
                       (cons b (lazy-seq (read-fn* r refs)))
                       nil)))]
-    (read-fn (DataInputStream. (.reader rdr)) (.refs rdr))))
+    (read-fn rdr (.refs rdr))))
 
 ;;; public
 
@@ -290,7 +296,7 @@
           index (try (bam-index f header)
                      (catch IOException e nil))]
       (->BAMReader (.getAbsolutePath (file f))
-                   header refs rdr index))))
+                   header refs rdr data-rdr index))))
 
 (extend-type BAMReader
   ISAMReader

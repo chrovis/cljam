@@ -132,6 +132,13 @@
     (.write w (.array bb) 0 4)
     nil))
 
+(defn write-long
+  [^DataOutputStream w n]
+  (let [bb (gen-byte-buffer)]
+    (.putLong bb n)
+    (.write w (.array bb) 0 8)
+    nil))
+
 (defn write-float
   [^DataOutputStream w n]
   (let [bb (gen-byte-buffer)]

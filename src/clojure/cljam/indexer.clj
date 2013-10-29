@@ -14,9 +14,6 @@
   (close [this]
     (.. this writer close)))
 
-(defn writer [f]
-  (->BAIWriter (DataOutputStream. (BGZFOutputStream. (file f)))))
-
 (def bai-magic "BAI\1")
 
 (defn- get-end [aln]

@@ -1,4 +1,5 @@
-(ns cljam.util.bgzf-util)
+(ns cljam.util.bgzf-util
+  (:refer-clojure :exclude [compare]))
 
 (def ^:private shift-amount 16)
 

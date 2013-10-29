@@ -17,3 +17,6 @@
   (write-alignments [this alignments header])
   (write-blocks [this blocks])
   (write-coordinate-blocks [this blocks]))
+
+(defprotocol IBAIWriter
+  (write-bam-index [this refs alignments]))

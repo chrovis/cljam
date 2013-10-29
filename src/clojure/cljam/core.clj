@@ -5,8 +5,8 @@
             (cljam [sam :as sam]
                    [io :as io]
                    [bam :as bam]
+                   [bam-indexer :as bai]
                    [sorter :as sorter]
-                   [indexer :as idxr]
                    [fasta :as fa]
                    [fasta-indexer :as fai]
                    [dict :as dict]
@@ -104,14 +104,13 @@
         sorter/order-queryname (sorter/sort-by-qname rdr wtr)))))
 
 (defn index [& args]
-  ;; (with-command-line args
-  ;;   "Usage: cljam index <in.bam>"
-  ;;   [files]
-  ;;   (when-not (= (count files) 1)
-  ;;     (println "Invalid arguments")
-  ;;     (System/exit 1))
-  ;;   (idxr/build-bam-index (first files) (str (first files) ".bai")))
-  )
+  (with-command-line args
+    "Usage: cljam index <in.bam>"
+    [files]
+    (when-not (= (count files) 1)
+      (println "Invalid arguments")
+      (System/exit 1))
+    (bai/create-index (first files) (str (first files) ".bai"))))
 
 (defn idxstats [& args]
   ;; (with-command-line args
@@ -173,7 +172,7 @@
                   [:convert  cljam.core/convert  "Convert SAM to BAM or BAM to SAM."]
                   [:sort     cljam.core/sort     "Sort alignments by leftmost coordinates."]
                   [:index    cljam.core/index    "Index sorted alignment for fast random access."]
-                  [:idxstats cljam.core/idxstats "Retrieve  and print stats in the index file."]
+                  ;; [:idxstats cljam.core/idxstats "Retrieve  and print stats in the index file."]
                   [:merge    cljam.core/merge    "Merge multiple SAM/BAM."]
                   [:pileup   cljam.core/pileup   "Generate pileup for the BAM file."]
                   [:faidx    cljam.core/faidx    "Index reference sequence in the FASTA format."]

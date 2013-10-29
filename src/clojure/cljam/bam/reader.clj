@@ -136,6 +136,63 @@
 
 (defn- read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
+        ^Integer block-size (lsb/read-int rdr)]
+    (when (< block-size fixed-block-size)
+      (throw (Exception. (str "Invalid block size:" block-size))))
+    (let [ref-id      (lsb/read-int rdr)
+          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+          pos         (inc (lsb/read-int rdr))
+          l-read-name (lsb/read-ubyte rdr)
+          mapq        (lsb/read-ubyte rdr)
+          bin         (lsb/read-ushort rdr)
+          n-cigar-op  (lsb/read-ushort rdr)
+          flag        (lsb/read-ushort rdr)
+          l-seq       (lsb/read-int rdr)
+          rnext       (decode-next-ref-id refs (lsb/read-int rdr) rname)
+          pnext       (inc (lsb/read-int rdr))
+          tlen        (lsb/read-int rdr)
+          qname       (lsb/read-string rdr (dec (int l-read-name)))
+          _           (lsb/read-bytes rdr 1)
+          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
+          seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
+          qual        (decode-qual (lsb/read-bytes rdr l-seq))
+          rest        (lsb/read-bytes rdr (options-size block-size
+                                                        l-read-name
+                                                        n-cigar-op
+                                                        l-seq))
+          options     (parse-options rest)]
+      {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
+       :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
+       :qual qual, :options options})))
+
+;; TODO: improve performance using ByteBuffer
+(defn- light-read-alignment [^BAMReader bam-reader refs]
+  (let [rdr (.data-reader bam-reader)
+        ^Integer block-size (lsb/read-int rdr)]
+    (when (< block-size fixed-block-size)
+      (throw (Exception. (str "Invalid block size:" block-size))))
+    (let [ref-id      (lsb/read-int rdr)
+          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+          pos         (inc (lsb/read-int rdr))
+          l-read-name (lsb/read-ubyte rdr)
+          _           (lsb/skip rdr 3)
+          n-cigar-op  (lsb/read-ushort rdr)
+          _           (lsb/skip rdr 2)
+          l-seq       (lsb/read-int rdr)
+          _           (lsb/skip rdr 12)
+          qname       (lsb/skip rdr (dec (int l-read-name)))
+          _           (lsb/skip rdr 1)
+          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
+          seq         (lsb/skip rdr (/ (inc l-seq) 2))
+          lqual       (lsb/skip rdr l-seq)
+          rest        (lsb/skip rdr (options-size block-size
+                                                  l-read-name
+                                                  n-cigar-op
+                                                  l-seq))]
+      {:rname rname, :pos pos, :cigar cigar})))
+
+(defn- full-read-alignment [^BAMReader bam-reader refs]
+  (let [rdr (.data-reader bam-reader)
         pointer-beg (.getFilePointer (.reader bam-reader))
         ^Integer block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
@@ -167,32 +224,6 @@
        :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
        :qual qual, :options options,
        :meta {:chunk {:beg pointer-beg, :end pointer-end}}})))
-
-;; TODO: improve performance using ByteBuffer
-(defn- light-read-alignment [^BAMReader bam-reader refs]
-  (let [rdr (.data-reader bam-reader)
-        ^Integer block-size (lsb/read-int rdr)]
-    (when (< block-size fixed-block-size)
-      (throw (Exception. (str "Invalid block size:" block-size))))
-    (let [ref-id      (lsb/read-int rdr)
-          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
-          pos         (inc (lsb/read-int rdr))
-          l-read-name (lsb/read-ubyte rdr)
-          _           (lsb/skip rdr 3)
-          n-cigar-op  (lsb/read-ushort rdr)
-          _           (lsb/skip rdr 2)
-          l-seq       (lsb/read-int rdr)
-          _           (lsb/skip rdr 12)
-          qname       (lsb/skip rdr (dec (int l-read-name)))
-          _           (lsb/skip rdr 1)
-          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
-          seq         (lsb/skip rdr (/ (inc l-seq) 2))
-          lqual       (lsb/skip rdr l-seq)
-          rest        (lsb/skip rdr (options-size block-size
-                                                  l-read-name
-                                                  n-cigar-op
-                                                  l-seq))]
-      {:rname rname, :pos pos, :cigar cigar})))
 
 (defn- read-coordinate-alignment-block [^DataInputStream rdr refs]
   (let [^Integer block-size (lsb/read-int rdr)]
@@ -242,7 +273,8 @@
                         (>= end left))))
         read-fn (case deep-or-shallow
                   :shallow light-read-alignment
-                  :deep read-alignment)
+                  :deep read-alignment
+                  :full full-read-alignment)
         candidates (flatten (map (fn [[^Long begin ^Long finish]]
                                    (.seek (.reader rdr) begin)
                                    (doall (read-to-finish rdr finish read-fn))) spans))]
@@ -252,7 +284,8 @@
   [^BAMReader rdr deep-or-shallow]
   (let [read-aln-fn (case deep-or-shallow
                       :shallow light-read-alignment
-                      :deep read-alignment)
+                      :deep read-alignment
+                      :full full-read-alignment)
         read-fn (fn read-fn*
                   [^BAMReader r ^clojure.lang.PersistentVector refs]
                   (let [a (try (read-aln-fn r refs)

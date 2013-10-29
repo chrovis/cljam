@@ -11,4 +11,4 @@
   [in-bam out-bai]
   (with-open [r (bam/reader in-bam)
               w (writer out-bai)]
-    (io/write-bam-index w (io/read-refs r) (io/read-alignments r {}))))
+    (io/write-bam-index w (io/read-refs r) (io/read-alignments r {:depth :full}))))

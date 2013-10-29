@@ -5,10 +5,9 @@
             [cljam.io :as io]
             [cljam.lsb :as lsb]
             [cljam.cigar :as cgr]
-            [cljam.util :refer [reg->bin]])
-  (:import [java.io DataOutputStream FileOutputStream]
-           [chrovis.bgzf4j BGZFInputStream BGZFOutputStream]
-           cljam.lib.util.BlockCompressedFilePointerUtil))
+            [cljam.util :refer [reg->bin]]
+            [cljam.util.bgzf-util :as bgzf-util])
+  (:import [java.io DataOutputStream FileOutputStream]))
 
 (deftype BAIWriter [writer]
   java.io.Closeable
@@ -100,7 +99,6 @@
         (doseq [bin bins]
           (when-not (nil? bin)
            (when-not (= (:bin-num bin) max-bins)
-             (println bin)
              (write-bin w bin))))
         ;; meta data
         (write-meta-data w meta-data)
@@ -149,12 +147,12 @@
             (do (if-not (zero? (bit-and (:flag aln) 4))
                   (swap! meta-data update-in [:unaligned-aln] inc)
                   (swap! meta-data update-in [:aligned-alns] inc))
-                (if (or (< (BlockCompressedFilePointerUtil/compare (:beg (:chunk (:meta aln)))
-                                                                   (:first-offset @meta-data)) 1)
+                (if (or (< (bgzf-util/compare (:beg (:chunk (:meta aln)))
+                                              (:first-offset @meta-data)) 1)
                         (= (:first-offset @meta-data) -1))
                   (swap! meta-data assoc :first-offset (:beg (:chunk (:meta aln)))))
-                (if (< (BlockCompressedFilePointerUtil/compare (:last-offset @meta-data)
-                                                               (:end (:chunk (:meta aln)))) 1)
+                (if (< (bgzf-util/compare (:last-offset @meta-data)
+                                          (:end (:chunk (:meta aln)))) 1)
                   (swap! meta-data assoc :last-offset (:end (:chunk (:meta aln)))))))
           ;; bin, intv
           (let [bin-num (compute-bin aln)]
@@ -166,8 +164,8 @@
                   chunk-end (:end (:chunk (:meta aln)))]
               ;; chunk
               (if (seq (:chunks bin))
-                (if (BlockCompressedFilePointerUtil/areInSameOrAdjacentBlocks (:end (last (:chunks bin)))
-                                                                              chunk-beg)
+                (if (bgzf-util/same-or-adjacent-blocks? (:end (last (:chunks bin)))
+                                                        chunk-beg)
                   (let [last-idx (dec (count (:chunks bin)))
                         last-chunk (last (:chunks bin))
                         new-chunks (assoc (:chunks bin) last-idx (assoc last-chunk :end chunk-end))

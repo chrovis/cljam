@@ -241,7 +241,7 @@
        :pos pos})))
 
 (defn- read-alignment-block [^BAMReader bam-reader refs]
-  (let [rdr (.data-rdr bam-reader)
+  (let [rdr (.data-reader bam-reader)
         ^Integer block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size:" block-size))))

@@ -225,8 +225,9 @@
        :qual qual, :options options,
        :meta {:chunk {:beg pointer-beg, :end pointer-end}}})))
 
-(defn- read-coordinate-alignment-block [^DataInputStream rdr refs]
-  (let [^Integer block-size (lsb/read-int rdr)]
+(defn- read-coordinate-alignment-block [^BAMReader bam-reader refs]
+  (let [rdr (.data-reader bam-reader)
+        ^Integer block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size:" block-size))))
     (let [data (lsb/read-bytes rdr block-size)

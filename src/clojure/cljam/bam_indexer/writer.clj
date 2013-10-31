@@ -5,7 +5,7 @@
             [cljam.io :refer [IBAIWriter] :as io]
             [cljam.lsb :as lsb]
             [cljam.cigar :as cgr]
-            [cljam.util :refer [reg->bin]]
+            [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
             [cljam.bam-indexer.common :refer [bai-magic]])
   (:import [java.io DataOutputStream FileOutputStream]))
@@ -25,17 +25,6 @@
 (defn writer
   [f]
   (->BAIWriter (DataOutputStream. (FileOutputStream. (file f)))))
-
-(defn- get-end [aln]
-  (dec
-   (+ (:pos aln)
-      (cgr/count-ref (:cigar aln)))))
-
-(defn- compute-bin [aln]
-  (let [beg (dec (:pos aln))
-        tmp-end (get-end aln)
-        end (if (<= tmp-end 0) (inc beg) tmp-end)]
-   (reg->bin beg end)))
 
 (def max-bins 37450)
 
@@ -123,7 +112,9 @@
     ;; n_ref
     (lsb/write-int w (count refs))
     (let [current-ref-idx (atom 0)
-          bins (atom (vec (repeat (inc (max-bin-num (count refs))) nil)))
+          bins (atom (vec (repeat (inc
+                                   (max-bin-num (:len (nth refs @current-ref-idx))))
+                                  nil)))
           bins-seen (atom 0)
           lidx (atom (vec (repeat max-lidx-size 0)))
           largest-lidx-seen (atom -1)
@@ -136,7 +127,9 @@
                      @bins @bins-seen (optimize-lidx lidx @largest-lidx-seen) @meta-data)
           ;; Set next ref
           (swap! current-ref-idx inc)
-          (reset! bins (vec (repeat (inc (max-bin-num (count refs))) nil)))
+          (reset! bins (vec (repeat (inc
+                                     (max-bin-num (:len (nth refs @current-ref-idx))))
+                                    nil)))
           (reset! bins-seen 0)
           (reset! lidx (vec (repeat max-lidx-size 0)))
           (reset! largest-lidx-seen -1)
@@ -155,7 +148,7 @@
                                         (:end (:chunk (:meta aln)))) 1)
                 (swap! meta-data assoc :last-offset (:end (:chunk (:meta aln)))))))
         ;; bin, intv
-        (let [bin-num (compute-bin aln)]
+        (let [bin-num (sam-util/compute-bin aln)]
           (when (nil? (nth @bins bin-num))
             (swap! bins assoc bin-num {:bin-num bin-num, :chunks nil})
             (swap! bins-seen inc))
@@ -191,7 +184,8 @@
                   (if (or (zero? (nth @lidx win))
                           (< chunk-beg (nth @lidx win)))
                     (swap! lidx assoc win chunk-beg))
-                  (recur (inc win))))))))
+                  (recur (inc win))))))
+          ))
       ;; Write data about current ref
       (write-ref w
                  @bins @bins-seen (optimize-lidx lidx @largest-lidx-seen) @meta-data)

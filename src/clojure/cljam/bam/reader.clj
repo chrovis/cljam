@@ -5,10 +5,9 @@
             (cljam [sam :as sam]
                    [cigar :as cgr]
                    [lsb :as lsb]
-                   [util :refer [string->bytes ubyte
-                                 hex-string->bytes phred->fastq
-                                 compressed-bases->chars
-                                 ref-name]])
+                   [util :refer [string->bytes ubyte hex-string->bytes ]])
+            [cljam.util.sam-util :refer [phred->fastq ref-name
+                                         compressed-bases->chars]]
             (cljam.bam [index :refer [bam-index get-spans get-sequence-index]]
                        [common :refer [bam-magic fixed-block-size]]
                        [util :refer :all]))

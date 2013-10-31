@@ -6,7 +6,8 @@
                    [bam :as bam]
                    [common :refer [version]]
                    [util :as util]
-                   [io :as io])))
+                   [io :as io])
+            [cljam.util.sam-util :as sam-util]))
 
 (def ^:private chunk-size 1500000)
 
@@ -27,7 +28,7 @@
 (defn- sort-alignments-by-pos [rdr]
   (let [ref-map (apply merge
                        (map-indexed (fn [i val] {val i})
-                                    (map :name (util/make-refs (io/read-header rdr)))))]
+                                    (map :name (sam-util/make-refs (io/read-header rdr)))))]
     (sort-by (partial compkey-pos ref-map) (io/read-coordinate-blocks rdr))))
 
 ;;
@@ -35,7 +36,7 @@
 ;;
 
 ;; (defn- compkey-qname [hdr aln]
-;;   [(.indexOf ^List (map :name (util/make-refs hdr)) (:rname aln))
+;;   [(.indexOf ^List (map :name (sam-util/make-refs hdr)) (:rname aln))
 ;;    (:qname aln)
 ;;    (bit-and (:flag aln) 0xc0)])
 
@@ -93,7 +94,7 @@
   (let [rdrs (map #(bam/reader (name-fn %)) (range n))
         ref-map (apply merge
                        (map-indexed (fn [i val] {val i})
-                                    (map :name (util/make-refs header))))]
+                                    (map :name (sam-util/make-refs header))))]
     (with-open [wtr wtr]
       (io/write-header wtr header)
       (io/write-refs wtr header)

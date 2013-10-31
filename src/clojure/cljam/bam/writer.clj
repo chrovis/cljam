@@ -5,10 +5,9 @@
             (cljam [sam :as sam]
                    [cigar :as cgr]
                    [lsb :as lsb]
-                   [util :refer [reg->bin string->bytes normalize-bases ubyte
-                                 fastq->phred
-                                 bytes->compressed-bases
-                                 make-refs ref-id]])
+                   [util :refer [string->bytes ubyte]])
+            [cljam.util.sam-util :refer [reg->bin normalize-bases fastq->phred
+                                         bytes->compressed-bases make-refs ref-id]]
             (cljam.bam [common :refer [bam-magic fixed-block-size]]))
   (:import [java.io DataOutputStream IOException EOFException]
            [chrovis.bgzf4j BGZFOutputStream]))

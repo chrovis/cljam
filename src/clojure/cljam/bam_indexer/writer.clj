@@ -1,16 +1,15 @@
 (ns cljam.bam-indexer.writer
   (:require [clojure.java.io :refer [file]]
-            [cljam.sam :as sam]
-            [cljam.bam :as bam]
             [cljam.io :refer [IBAIWriter] :as io]
             [cljam.lsb :as lsb]
             [cljam.cigar :as cgr]
+            [cljam.util :refer [gen-vec]]
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
             [cljam.bam-indexer.common :refer [bai-magic]])
   (:import [java.io DataOutputStream FileOutputStream]))
 
-(declare write-index*)
+(declare write-index)
 
 (deftype BAIWriter [writer]
   java.io.Closeable
@@ -20,7 +19,7 @@
 (extend-type BAIWriter
   IBAIWriter
   (write-bam-index [this refs alignments]
-    (write-index* this refs alignments)))
+    (write-index this refs alignments)))
 
 (defn writer
   [f]
@@ -38,9 +37,22 @@
   (+ (nth level-starts  (dec (count level-starts)))
      (bit-shift-right seq-len 14)))
 
-(defn convert-to-lidx-offset
+(defn pos->lidx-offset
   [pos]
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) bam-lidx-shift))
+
+(defn- optimize-lidx
+  [lidx largest-lidx-seen]
+  (let [new-lidx (atom (gen-vec (inc largest-lidx-seen) 0))
+        last-non-zero-offset (atom 0)]
+    (loop [i 0]
+      (when (<= i largest-lidx-seen)
+        (if (zero? (nth @lidx i))
+          (swap! lidx assoc i @last-non-zero-offset)
+          (reset! last-non-zero-offset (nth @lidx i)))
+        (swap! new-lidx assoc i (nth @lidx i))
+        (recur (inc i))))
+    @new-lidx))
 
 (defn- write-null-content
   [w]
@@ -65,19 +77,6 @@
   (lsb/write-long w (:last-offset meta-data))
   (lsb/write-long w (:aligned-alns meta-data))
   (lsb/write-long w (:unaligned-alns meta-data)))
-
-(defn- optimize-lidx
-  [lidx largest-lidx-seen]
-  (let [new-lidx (atom (vec (repeat (inc largest-lidx-seen) 0)))
-        last-non-zero-offset (atom 0)]
-    (loop [i 0]
-      (when (<= i largest-lidx-seen)
-        (if (zero? (nth @lidx i))
-          (swap! lidx assoc i @last-non-zero-offset)
-          (reset! last-non-zero-offset (nth @lidx i)))
-        (swap! new-lidx assoc i (nth @lidx i))
-        (recur (inc i))))
-    @new-lidx))
 
 (defn- write-ref
   [w bins bins-seen lidx meta-data]
@@ -104,7 +103,7 @@
   [w meta-data]
   (lsb/write-long w (:no-coordinate-alns meta-data)))
 
-(defn- write-index*
+(defn- write-index
   [^BAIWriter wtr refs alns]
   (let [w (.writer wtr)]
     ;; magic
@@ -112,11 +111,9 @@
     ;; n_ref
     (lsb/write-int w (count refs))
     (let [current-ref-idx (atom 0)
-          bins (atom (vec (repeat (inc
-                                   (max-bin-num (:len (nth refs @current-ref-idx))))
-                                  nil)))
+          bins (atom (gen-vec (inc (max-bin-num (:len (nth refs @current-ref-idx))))))
           bins-seen (atom 0)
-          lidx (atom (vec (repeat max-lidx-size 0)))
+          lidx (atom (gen-vec max-lidx-size 0))
           largest-lidx-seen (atom -1)
           meta-data (atom {:first-offset -1, :last-offset 0, :aligned-alns 0, :unaligned-alns 0,
                            :no-coordinate-alns 0})]
@@ -127,15 +124,13 @@
                      @bins @bins-seen (optimize-lidx lidx @largest-lidx-seen) @meta-data)
           ;; Set next ref
           (swap! current-ref-idx inc)
-          (reset! bins (vec (repeat (inc
-                                     (max-bin-num (:len (nth refs @current-ref-idx))))
-                                    nil)))
+          (reset! bins (gen-vec (inc (max-bin-num (:len (nth refs @current-ref-idx))))))
           (reset! bins-seen 0)
-          (reset! lidx (vec (repeat max-lidx-size 0)))
+          (reset! lidx (gen-vec max-lidx-size 0))
           (reset! largest-lidx-seen -1)
           (swap! meta-data assoc :first-offset -1, :last-offset 0, :aligned-alns 0, :unaligned-alns 0))
         ;; meta data
-        (if (= (:pos aln) 0)
+        (if (zero? (:pos aln))
           (swap! meta-data update-in [:no-coordinate-alns] inc)
           (do (if-not (zero? (bit-and (:flag aln) 4))
                 (swap! meta-data update-in [:unaligned-aln] inc)
@@ -172,11 +167,11 @@
             (let [aln-beg (:pos aln)
                   aln-end (+ aln-beg (cgr/count-ref (:cigar aln)))
                   window-beg (if (zero? aln-end)
-                               (convert-to-lidx-offset (dec aln-beg))
-                               (convert-to-lidx-offset aln-beg))
+                               (pos->lidx-offset (dec aln-beg))
+                               (pos->lidx-offset aln-beg))
                   window-end (if (zero? aln-end)
                                window-beg
-                               (convert-to-lidx-offset aln-end))]
+                               (pos->lidx-offset aln-end))]
               (if (> window-end @largest-lidx-seen)
                 (reset! largest-lidx-seen window-end))
               (loop [win window-beg]
@@ -184,9 +179,8 @@
                   (if (or (zero? (nth @lidx win))
                           (< chunk-beg (nth @lidx win)))
                     (swap! lidx assoc win chunk-beg))
-                  (recur (inc win))))))
-          ))
-      ;; Write data about current ref
+                  (recur (inc win))))))))
+      ;; Write data about last ref
       (write-ref w
                  @bins @bins-seen (optimize-lidx lidx @largest-lidx-seen) @meta-data)
       (write-no-coordinate-alns-count w @meta-data))))

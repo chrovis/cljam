@@ -46,3 +46,11 @@
    (map #(byte (bit-or (bit-shift-left (from-hex-digit (nth s (* % 2))) 4)
                        from-hex-digit (nth s (inc (* % 2)))))
         (range (count s)))))
+
+;;; seq utils
+
+(defn gen-vec
+  ([n]
+     (gen-vec n nil))
+  ([n ini]
+     (vec (repeat n ini))))

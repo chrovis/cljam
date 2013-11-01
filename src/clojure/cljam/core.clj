@@ -1,7 +1,7 @@
 (ns cljam.core
   (:refer-clojure :exclude [sort merge slurp spit])
-  (:require [clojure.contrib.command-line :refer [with-command-line]]
-            [clj-sub-command.core :refer [do-sub-command]]
+  (:require [clj-sub-command.core :refer [do-sub-command]]
+            [clojure.tools.cli :refer [cli]]
             (cljam [sam :as sam]
                    [io :as io]
                    [bam :as bam]
@@ -27,21 +27,21 @@
 
 (defmulti read-header (comp str class))
 
-(defmethod read-header "class cljam.sam.SamReader"
+(defmethod read-header "class cljam.sam.SAMReader"
   [rdr]
   (io/read-header rdr))
 
-(defmethod read-header "class cljam.bam.BamReader"
+(defmethod read-header "class cljam.bam.reader.BAMReader"
   [rdr]
   (io/read-header rdr))
 
 (defmulti read-alignments (comp str class))
 
-(defmethod read-alignments "class cljam.sam.SamReader"
+(defmethod read-alignments "class cljam.sam.SAMReader"
   [rdr]
   (io/read-alignments rdr {}))
 
-(defmethod read-alignments "class cljam.bam.BamReader"
+(defmethod read-alignments "class cljam.bam.reader.BAMReader"
   [rdr]
   (io/read-alignments rdr {}))
 
@@ -60,57 +60,57 @@
     (throw (IllegalArgumentException. "Invalid file type"))))
 
 (defn view [& args]
-  (with-command-line args
-    "Usage: cljam view [--header] [--format <auto|sam|bam>] <in.bam|sam>"
-    [[header? "Include header in the output" false]
-     [format "Specify input file format from <auto|sam|bam>" "auto"]
-     files]
-    (when-not (= (count files) 1)
-      (println "Invalid arguments")
-      (System/exit 1))
-    (with-open [r (condp = format
-                    "auto" (reader     (first files))
-                    "sam"  (sam/reader (first files))
-                    "bam"  (bam/reader (first files)))]
-      (when header?
+  (let [[opt [f _] help] (cli args
+                              "Usage: cljam view [--header] [--format <auto|sam|bam>] <in.bam|sam>"
+                              ["-h" "--help" "Print help" :default false :flag true]
+                              ["--header" "Include header" :default false :flag true]
+                              ["-f" "--format" "Input file format <auto|sam|bam>" :default "auto"])]
+    (when (:help opt)
+      (println help)
+      (System/exit 0))
+    (with-open [r (condp = (:format opt)
+                    "auto" (reader     f)
+                    "sam"  (sam/reader f)
+                    "bam"  (bam/reader f))]
+      (when (:header opt)
         (println (sam/stringify-header (read-header r))))
       (doseq [aln (read-alignments r)]
         (println (sam/stringify-alignment aln))))))
 
 (defn convert [& args]
-  (with-command-line args
-    "Usage: cljam convert [--src-format <auto|sam|bam>] [--dst-format <auto|sam|bam>] <in.bam|sam> <out.bam|sam>"
-    [[src-format "Specify input file format from <auto|sam|bam>" "auto"]
-     [dst-format "Specify output file format from <auto|sam|bam>" "auto"]
-     files]
-    (when-not (= (count files) 2)
-      (println "Invalid arguments")
-      (System/exit 1))
-    (let [asam (slurp (first files))]
-      (spit (second files) asam))))
+  (let [[opt [in out _] help] (cli args
+                                    "Usage: cljam convert [--input-format <auto|sam|bam>] [--output-format <auto|sam|bam>] <in.bam|sam> <out.bam|sam>"
+                                    ["-h" "--help" "Print help" :default false :flag true]
+                                    ["-if" "--input-format" "Input file format <auto|sam|bam>" :default "auto"]
+                                    ["-of" "--output-format" "Output file format <auto|sam|bam>" :default "auto"])]
+    (when (:help opt)
+      (println help)
+      (System/exit 0))
+    (let [asam (slurp in)]
+      (spit out asam))))
 
 (defn sort [& args]
-  (with-command-line args
-    "Usage: cljam sort [--order <coordinate|queryname>] <in.bam|sam> <out.bam|sam>"
-    [[order "Specify sorting order of alignments from <coordinate|queryname>" "coordinate"]
-     files]
-    (when-not (= (count files) 2)
-      (println "Invalid arguments")
-      (System/exit 1))
-    (let [rdr (reader (first files))
-          wtr (writer (second files))]
-      (condp = order
-        sorter/order-coordinate (sorter/sort-by-pos rdr wtr)
-        sorter/order-queryname (sorter/sort-by-qname rdr wtr)))))
+  (let [[opt [in out _] help] (cli args
+                                   "Usage: cljam sort [--order <coordinate|queryname>] <in.bam|sam> <out.bam|sam>"
+                                   ["-h" "--help" "Print help" :default false :flag true]
+                                   ["-o" "--order" "Sorting order of alignments <coordinate|queryname>" :default "coordinate"])]
+    (when (:help opt)
+      (println help)
+      (System/exit 0))
+    (let [r (reader in)
+          w (writer out)]
+      (condp = (:order opt)
+        sorter/order-coordinate (sorter/sort-by-pos r w)
+        sorter/order-queryname (sorter/sort-by-qname r w)))))
 
 (defn index [& args]
-  (with-command-line args
-    "Usage: cljam index <in.bam>"
-    [files]
-    (when-not (= (count files) 1)
-      (println "Invalid arguments")
-      (System/exit 1))
-    (bai/create-index (first files) (str (first files) ".bai"))))
+  (let [[opt [f _] help] (cli args
+                              "Usage: cljam index <in.bam>"
+                              ["-h" "--help" "Print help" :default false :flag true])]
+    (when (:help opt)
+      (println help)
+      (System/exit 0))
+    (bai/create-index f (str f ".bai"))))
 
 (defn idxstats [& args]
   ;; (with-command-line args
@@ -123,21 +123,22 @@
   )
 
 (defn merge [& args]
-  (with-command-line args
-    "Usage: cljam merge <in1.bam|sam> <in2.bam|sam> ... <out.bam|sam>"
-    [files]
-    (when (< (count files) 2)
-      (println "Invalid arguments")
-      (System/exit 1))))
+  ;; (with-command-line args
+  ;;   "Usage: cljam merge <in1.bam|sam> <in2.bam|sam> ... <out.bam|sam>"
+  ;;   [files]
+  ;;   (when (< (count files) 2)
+  ;;     (println "Invalid arguments")
+  ;;     (System/exit 1)))
+  )
 
 (defn pileup [& args]
-  (with-command-line args
-    "Usage: cljam pileup <in.bam>"
-    [files]
-    (when-not (= (count files) 1)
-      (println "Invalid arguments")
-      (System/exit 1))
-    (with-open [r (bam/reader (first files))]
+  (let [[opt [f _] help] (cli args
+                              "Usage: cljam pileup <in.bam>"
+                              ["-h" "--help" "Print help" :default false :flag true])]
+    (when (:help opt)
+      (println help)
+      (System/exit 0))
+    (with-open [r (bam/reader f)]
       (let [sam {:header (io/read-header r)
                  :alignments (io/read-alignments r {})}]
         (when-not (sorter/sorted? sam)
@@ -147,33 +148,33 @@
           (println p))))))
 
 (defn faidx [& args]
-  (with-command-line args
-    "Usage: cljam faidx <ref.fasta>"
-    [files]
-    (when-not (= (count files) 1)
-      (println "Invalid arguments")
-      (System/exit 1))
-    (fai/spit (str (first files) ".fai")
-              (fa/slurp (first files)))))
+  (let [[opt [f _] help] (cli args
+                              "Usage: cljam faidx <ref.fasta>"
+                              ["-h" "--help" "Print help" :default false :flag true])]
+    (when (:help opt)
+      (println help)
+      (System/exit 0))
+    (fai/spit (str f ".fai")
+              (fa/slurp f))))
 
 (defn dict [& args]
-  (with-command-line args
-    "Usage: cljam dict <ref.fasta> <out.dict>"
-    [files]
-    (when-not (= (count files) 2)
-      (println "Invalid arguments")
-      (System/exit 1))
-    (dict/create-dict (first files) (second files))))
+  (let [[opt [in out _] help] (cli args
+                                   "Usage: cljam dict <ref.fasta> <out.dict>"
+                                   ["-h" "--help" "Print help" :default false :flag true])]
+    (when (:help opt)
+      (println help)
+      (System/exit 0))
+    (dict/create-dict in out)))
 
 (defn -main [& args]
   (do-sub-command args
-                  "Usage: cljam [-h] {view,convert,sort,index,idxstats,merge,pileup,faidx} ..."
+                  "Usage: cljam {view,convert,sort,index,idxstats,merge,pileup,faidx} ..."
                   [:view     cljam.core/view     "Extract/print all or sub alignments in SAM or BAM format."]
                   [:convert  cljam.core/convert  "Convert SAM to BAM or BAM to SAM."]
                   [:sort     cljam.core/sort     "Sort alignments by leftmost coordinates."]
                   [:index    cljam.core/index    "Index sorted alignment for fast random access."]
                   ;; [:idxstats cljam.core/idxstats "Retrieve  and print stats in the index file."]
-                  [:merge    cljam.core/merge    "Merge multiple SAM/BAM."]
+                  ;; [:merge    cljam.core/merge    "Merge multiple SAM/BAM."]
                   [:pileup   cljam.core/pileup   "Generate pileup for the BAM file."]
                   [:faidx    cljam.core/faidx    "Index reference sequence in the FASTA format."]
                   [:dict     cljam.core/dict     "Create a FASTA sequence dictionary file."]))

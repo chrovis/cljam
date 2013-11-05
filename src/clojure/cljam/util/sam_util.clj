@@ -1,7 +1,104 @@
 (ns cljam.util.sam-util
   (:require [clojure.string :as str]
             [cljam.cigar :refer [count-ref]]
-            [cljam.util :refer [ubyte upper-case]]))
+            [cljam.util :refer [ubyte]]))
+
+;;; parse
+
+(defn- parse-header-keyvalues
+  "e.g. \"LN:45 SN:ref\" -> {:LN 45, :SN \"ref\"}"
+  [keyvalues]
+  (apply merge
+         (map (fn [kv]
+                (let [[k v] (str/split kv #":")]
+                  {(keyword k) (case k
+                                 "LN" (Integer/parseInt v)
+                                 "PI" (Integer/parseInt v)
+                                 v)}))
+              keyvalues)))
+
+(defn parse-header-line [line]
+  (let [[typ & kvs] (str/split line #"\t")]
+    {(keyword (subs typ 1)) (if (= typ "@HD")
+                              (parse-header-keyvalues kvs)
+                              (vector (parse-header-keyvalues kvs)))}))
+
+(defn- parse-header* [col]
+  (when (seq col)
+    (merge-with #(vec (concat %1 %2)) (parse-header-line (first col)) (parse-header* (rest col)))))
+
+(defn parse-header
+  "Parse a header string, returning a map of the header."
+  [s]
+  (parse-header* (str/split s #"\n")))
+
+(defn- parse-optional-fields [options]
+  (map (fn [op]
+         (let [[tag type value] (str/split op #":")]
+           {(keyword tag) {:type type :value value}}))
+       options))
+
+(defn- parse-seq-text [s]
+  (str/upper-case s))
+
+(defn parse-alignment
+  "Parse an alignment line, returning a map of the alignment."
+  [line]
+  (let [fields (str/split line #"\t")]
+    {:qname   (first fields)
+     :flag    (Integer/parseInt (nth fields 1))
+     :rname   (nth fields 2)
+     :pos     (Integer/parseInt (nth fields 3))
+     :mapq    (Integer/parseInt (nth fields 4))
+     :cigar   (nth fields 5)
+     :rnext   (nth fields 6)
+     :pnext   (Integer/parseInt (nth fields 7))
+     :tlen    (Integer/parseInt (nth fields 8))
+     :seq     (parse-seq-text (nth fields 9))
+     :qual    (nth fields 10)
+     :options (vec (parse-optional-fields (drop 11 fields)))}))
+
+;;; stringify
+
+(defn- stringify-header-keyvalues [kv-map]
+  (str/join \tab
+        (map (fn [kv]
+               (let [[k v] (seq kv)]
+                 (str (name k) \: v)))
+             kv-map)))
+
+(defn- stringify-optional-fields [options]
+  (str/join \tab
+        (map (fn [op]
+               (let [[tag entity] (first (seq op))]
+                 (str (name tag) \: (:type entity) \: (:value entity))))
+             options)))
+
+(defn stringify-header [hdr]
+  (str/join \newline
+        (map (fn [h]
+               (let [[typ kvs] h]
+                 (if (= typ :HD)
+                   (str "@HD" \tab (stringify-header-keyvalues kvs))
+                   (str/join \newline
+                         (map #(str \@ (name typ) \tab (stringify-header-keyvalues %)) kvs)))))
+             (seq hdr))))
+
+(defn stringify-alignment [sa]
+  (str/trim
+   (str/join \tab
+         [(:qname sa)
+          (:flag  sa)
+          (:rname sa)
+          (:pos   sa)
+          (:mapq  sa)
+          (:cigar sa)
+          (:rnext sa)
+          (:pnext sa)
+          (:tlen  sa)
+          (:seq   sa)
+          (:qual  sa)
+          (stringify-optional-fields (:options sa))])))
 
 ;;; indexing bin
 
@@ -188,7 +285,7 @@
 
 (defn normalize-bases [^bytes bases]
   (map-indexed (fn [idx _]
-                 (aset bases idx ^byte (upper-case (nth bases idx)))
+                 (aset bases idx ^byte (str/upper-case (nth bases idx)))
                  (if (= (nth bases idx) \.)
                    (aset bases idx (byte \N))))
                bases)

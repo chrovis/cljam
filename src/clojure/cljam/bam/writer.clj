@@ -2,12 +2,12 @@
   (:use [cljam.io])
   (:require [clojure.string :refer [split]]
             [clojure.java.io :refer [file]]
-            (cljam [sam :as sam]
-                   [cigar :as cgr]
+            (cljam [cigar :as cgr]
                    [lsb :as lsb]
                    [util :refer [string->bytes ubyte]])
             [cljam.util.sam-util :refer [reg->bin normalize-bases fastq->phred
-                                         bytes->compressed-bases make-refs ref-id]]
+                                         bytes->compressed-bases make-refs ref-id
+                                         stringify-header]]
             (cljam.bam [common :refer [bam-magic fixed-block-size]]))
   (:import [java.io DataOutputStream IOException EOFException]
            [chrovis.bgzf4j BGZFOutputStream]))
@@ -142,7 +142,7 @@
 (defn write-header* [^BAMWriter wtr header]
   (let [w (.writer wtr)
         refs (make-refs header)
-        header-string (str (sam/stringify-header header) \newline)]
+        header-string (str (stringify-header header) \newline)]
     (lsb/write-bytes w (.getBytes bam-magic)) ; magic
     (lsb/write-int w (count header-string))
     (lsb/write-string w header-string)))

@@ -1,8 +1,9 @@
 (ns cljam.dict
   (:require [clojure.java.io :refer [file writer]]
+            [clojure.string :as str]
             [cljam.common :refer [version]]
             [cljam.fasta :as fasta]
-            [cljam.util :refer [string->bytes upper-case]])
+            [cljam.util :refer [string->bytes]])
   (:import [java.io BufferedWriter RandomAccessFile]
            java.security.MessageDigest))
 
@@ -20,7 +21,7 @@
   (let [bases (string->bytes seq)]
     (loop [i 0]
       (when (< i (count bases))
-        (aset ^bytes bases i ^byte (upper-case (nth bases i)))
+        (aset ^bytes bases i ^byte (str/upper-case (nth bases i)))
         (recur (inc i))))
     (md5-hash bases)))
 

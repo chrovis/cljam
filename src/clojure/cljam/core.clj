@@ -10,7 +10,8 @@
                    [fasta :as fa]
                    [fasta-indexer :as fai]
                    [dict :as dict]
-                   [pileup :as plp]))
+                   [pileup :as plp])
+            [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
   (:gen-class))
 
 (defn reader [f]
@@ -73,9 +74,9 @@
                     "sam"  (sam/reader f)
                     "bam"  (bam/reader f))]
       (when (:header opt)
-        (println (sam/stringify-header (read-header r))))
+        (println (stringify-header (read-header r))))
       (doseq [aln (read-alignments r)]
-        (println (sam/stringify-alignment aln))))))
+        (println (stringify-alignment aln))))))
 
 (defn convert [& args]
   (let [[opt [in out _] help] (cli args

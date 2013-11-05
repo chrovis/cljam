@@ -17,15 +17,6 @@
 
 ;;; string utils
 
-(def ^:private upper-case-offset (byte (- (byte \A) (byte \a))))
-
-(defn upper-case
-  "Converts a lower case letter to upper case."
-  [b]
-  (if (or (< b (byte \a)) (> b (byte \z)))
-    b
-    (byte (+ b upper-case-offset))))
-
 (defn string->bytes [^String s]
   (let [buf (byte-array (count s))]
     (.getBytes s 0 (count buf) buf 0)

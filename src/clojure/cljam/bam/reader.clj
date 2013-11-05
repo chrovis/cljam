@@ -2,12 +2,12 @@
   (:use [cljam.io])
   (:require [clojure.string :refer [join]]
             [clojure.java.io :refer [file]]
-            (cljam [sam :as sam]
-                   [cigar :as cgr]
+            (cljam [cigar :as cgr]
                    [lsb :as lsb]
                    [util :refer [string->bytes ubyte hex-string->bytes ]])
             [cljam.util.sam-util :refer [phred->fastq ref-name
-                                         compressed-bases->chars]]
+                                         compressed-bases->chars
+                                         parse-header]]
             (cljam.bam [index :refer [bam-index get-spans get-sequence-index]]
                        [common :refer [bam-magic fixed-block-size]]
                        [util :refer :all]))
@@ -315,7 +315,7 @@
         data-rdr (DataInputStream. rdr)]
     (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes bam-magic))
       (throw (IOException. "Invalid BAM file header")))
-    (let [header (sam/parse-header (lsb/read-string data-rdr (lsb/read-int data-rdr)))
+    (let [header (parse-header (lsb/read-string data-rdr (lsb/read-int data-rdr)))
           n-ref  (lsb/read-int data-rdr)
           refs   (loop [i n-ref, ret []]
                    (if (zero? i)

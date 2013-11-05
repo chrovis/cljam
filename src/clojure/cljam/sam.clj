@@ -3,7 +3,8 @@
   (:refer-clojure :exclude [slurp spit])
   (:require [clojure.java.io :refer [file]]
             [clojure.string :as str :refer [split join trim upper-case]]
-            [clojure.tools.logging :as logging])
+            [clojure.tools.logging :as logging]
+            [cljam.util.sam-util :refer [make-refs]])
   (:import [java.io BufferedReader BufferedWriter]))
 
 ;;; Parse
@@ -117,7 +118,7 @@
   (read-header [this]
     (.header this))
   (read-refs [this]
-    nil)
+    (vec (make-refs (.header this))))
   (read-alignments [this _]
     (when-let [line (.readLine ^BufferedReader (.reader this))]
       (if-not (= (first line) \@)

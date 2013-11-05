@@ -17,3 +17,8 @@
      (with-open [r (bam/reader test-bam-file)]
        {:header (io/read-header r)
         :alignments (doall (io/read-alignments r {}))}) => test-sam)))
+
+(fact "about BAMReader"
+      (let [temp-file (str temp-dir "/test.bam")
+            rdr (bam/reader temp-file)]
+        (io/read-refs rdr) => test-sam-refs))

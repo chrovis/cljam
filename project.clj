@@ -20,4 +20,5 @@
   ;; :global-vars {*warn-on-reflection* true}
   :main cljam.core
   :aot [cljam.core]
-  :bin {:name "cljam"})
+  :bin {:name "cljam"}
+  :repl-options {:init-ns user})

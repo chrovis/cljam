@@ -26,23 +26,23 @@
     #"\.bam$" (bam/writer f)
     (throw (IllegalArgumentException. "Invalid file type"))))
 
-(defmulti read-header (comp str class))
+(defmulti read-header type)
 
-(defmethod read-header "class cljam.sam.SAMReader"
+(defmethod read-header cljam.sam.reader.SAMReader
   [rdr]
   (io/read-header rdr))
 
-(defmethod read-header "class cljam.bam.reader.BAMReader"
+(defmethod read-header cljam.bam.reader.BAMReader
   [rdr]
   (io/read-header rdr))
 
-(defmulti read-alignments (comp str class))
+(defmulti read-alignments type)
 
-(defmethod read-alignments "class cljam.sam.SAMReader"
+(defmethod read-alignments cljam.sam.reader.SAMReader
   [rdr]
   (io/read-alignments rdr {}))
 
-(defmethod read-alignments "class cljam.bam.reader.BAMReader"
+(defmethod read-alignments cljam.bam.reader.BAMReader
   [rdr]
   (io/read-alignments rdr {}))
 

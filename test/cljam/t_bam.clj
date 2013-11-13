@@ -9,8 +9,8 @@
         {:header (io/read-header r)
          :alignments (doall (io/read-alignments r {}))}) => test-sam)
 
-(with-state-changes [(before :facts (mk-temp-dir!))
-                     (after  :facts (rm-temp-dir!))]
+(with-state-changes [(before :facts (prepare-cache!))
+                     (after  :facts (clean-cache!))]
   (fact "about spit-bam"
     (let [temp-file (str temp-dir "/test.bam")]
      (bam/spit temp-file test-sam) => nil?
@@ -18,7 +18,10 @@
        {:header (io/read-header r)
         :alignments (doall (io/read-alignments r {}))}) => test-sam)))
 
-(fact "about BAMReader"
-      (let [temp-file (str temp-dir "/test.bam")
-            rdr (bam/reader temp-file)]
-        (io/read-refs rdr) => test-sam-refs))
+(with-state-changes [(before :facts (do (prepare-cache!)
+                                        (bam/spit (str temp-dir "/test.bam") test-sam)))
+                     (after  :facts (clean-cache!))]
+  (fact "about BAMReader"
+        (let [temp-file (str temp-dir "/test.bam")
+              rdr (bam/reader temp-file)]
+          (io/read-refs rdr) => test-sam-refs)))

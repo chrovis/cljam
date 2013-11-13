@@ -11,9 +11,9 @@
 
 (def ^:private chunk-size 1500000)
 
-(def order-unknown "unknown")
-(def order-coordinate "coordinate")
-(def order-queryname "queryname")
+(def order-unknown :unknown)
+(def order-coordinate :coordinate)
+(def order-queryname :queryname)
 
 ;;
 ;; coordinate sorter
@@ -132,7 +132,8 @@
         splited-files (split-sam rdr cache-name-fn)
         num-splited (count splited-files)
         hdr (replace-header (io/read-header rdr)
-                            version order-coordinate)]
+                            version
+                            (name order-coordinate))]
     (doall
      (pmap
       (fn [i]
@@ -149,7 +150,8 @@
 (defn sort-by-qname [rdr wtr]
   (let [alns (sort-alignments-by-qname rdr)
         hdr (replace-header (io/read-header rdr)
-                            version order-queryname)]
+                            version
+                            (name order-queryname))]
     (with-open [wtr wtr]
       (io/write-header wtr hdr)
       (io/write-refs wtr hdr)
@@ -163,13 +165,13 @@
   `@HD SO:***` tag in the header."
   [rdr]
   (let [so (:SO (:HD (io/read-header rdr)))]
-    (or (= so order-queryname)
-        (= so order-coordinate))))
+    (or (= so (name order-queryname))
+        (= so (name order-coordinate)))))
 
 (defn sort-order
   "Returns sorting order of the sam as String. Returning order is one of the
   following: \"queryname\", \"coordinate\", \"unsorted\", \"unknown\"."
   [rdr]
   (if-let [so (:SO (:HD (io/read-header rdr)))]
-    so
+    (keyword so)
     order-unknown))

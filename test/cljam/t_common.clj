@@ -69,8 +69,14 @@
 
 (def temp-dir (.getPath (file (System/getProperty "java.io.tmpdir") "cljam-test")))
 
-(defn mk-temp-dir! []
+(defn prepare-cache!
+  []
   (.mkdir (file temp-dir)))
 
-(defn rm-temp-dir! []
-  (.delete (file temp-dir)))
+(defn clean-cache!
+  []
+  (let [dir (file temp-dir)]
+    (when (.exists dir)
+      (doseq [f (seq (.list dir))]
+        (.delete (file (str temp-dir "/" f))))
+      (.delete dir))))

@@ -7,14 +7,17 @@
 (fact "about slurp-sam"
   (sam/slurp test-sam-file) => test-sam)
 
-(with-state-changes [(before :facts (mk-temp-dir!))
-                     (after  :facts (rm-temp-dir!))]
+(with-state-changes [(before :facts (prepare-cache!))
+                     (after  :facts (clean-cache!))]
   (fact "about spit-sam"
     (let [temp-file (str temp-dir "/test.sam")]
      (sam/spit temp-file test-sam) => nil?
      (sam/slurp temp-file) => test-sam)))
 
-(fact "about SAMReader"
-      (let [temp-file (str temp-dir "/test.sam")
-            rdr (sam/reader temp-file)]
-        (io/read-refs rdr) => test-sam-refs))
+(with-state-changes [(before :facts (do (prepare-cache!)
+                                        (sam/spit (str temp-dir "/test.sam") test-sam)))
+                     (after  :facts (clean-cache!))]
+  (fact "about SAMReader"
+        (let [temp-file (str temp-dir "/test.sam")
+              rdr (sam/reader temp-file)]
+          (io/read-refs rdr) => test-sam-refs)))

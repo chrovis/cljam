@@ -3,8 +3,8 @@
         cljam.t-common)
   (:require [cljam.fasta-indexer :as fai]))
 
-(with-state-changes [(before :facts (mk-temp-dir!))
-                     (after  :facts (rm-temp-dir!))]
+(with-state-changes [(before :facts (prepare-cache!))
+                     (after  :facts (clean-cache!))]
   (fact "about spit"
     (let [temp-file (str temp-dir "/test.fai")]
       (fai/spit temp-file test-fa) => nil?

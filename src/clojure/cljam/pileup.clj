@@ -72,10 +72,12 @@
   ([rdr ^String rname]
      (pileup rdr rname -1 -1))
   ([rdr ^String rname ^Long start* ^Long end*]
-     (let [r (search-ref (.refs rdr) rname)]
-       (if (nil? r)
-         nil
-         (pileup* rdr
-                  rname (:len r)
-                  (if (neg? start*) 0 start*)
-                  (if (neg? end*) (:len r) end*))))))
+     (try
+       (let [r (search-ref (.refs rdr) rname)]
+         (if (nil? r)
+           nil
+           (pileup* rdr
+                    rname (:len r)
+                    (if (neg? start*) 0 start*)
+                    (if (neg? end*) (:len r) end*))))
+       (catch chrovis.bgzf4j.BGZFException e (throw (RuntimeException. "Invalid file format"))))))

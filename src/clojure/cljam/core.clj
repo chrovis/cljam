@@ -86,7 +86,8 @@
       (when (:header opt)
         (println (stringify-header (read-header r))))
       (doseq [aln (read-alignments r)]
-        (println (stringify-alignment aln))))))
+        (println (stringify-alignment aln))))
+    nil))
 
 (defn convert [& args]
   (let [[opt [in out _] help] (cli args
@@ -98,7 +99,8 @@
       (println help)
       (System/exit 0))
     (let [asam (slurp in)]
-      (spit out asam))))
+      (spit out asam))
+    nil))
 
 (defn sort [& args]
   (let [[opt [in out _] help] (cli args
@@ -111,8 +113,9 @@
     (let [r (reader in)
           w (writer out)]
       (condp = (:order opt)
-        sorter/order-coordinate (sorter/sort-by-pos r w)
-        sorter/order-queryname (sorter/sort-by-qname r w)))))
+        (name sorter/order-coordinate) (sorter/sort-by-pos r w)
+        (name sorter/order-queryname) (sorter/sort-by-qname r w)))
+    nil))
 
 (defn index [& args]
   (let [[opt [f _] help] (cli args
@@ -121,7 +124,8 @@
     (when (:help opt)
       (println help)
       (System/exit 0))
-    (bai/create-index f (str f ".bai"))))
+    (bai/create-index f (str f ".bai"))
+    nil))
 
 (defn idxstats [& args]
   ;; (with-command-line args
@@ -149,13 +153,17 @@
     (when (:help opt)
       (println help)
       (System/exit 0))
-    (with-open [r (bam/reader f)]
+    (with-open [r (reader f)]
+      (when (= (type r) cljam.sam.reader.SAMReader)
+        (println "Not support SAM file")
+        (System/exit 1))
       (when-not (sorter/sorted? r)
         (println "Not sorted")
         (System/exit 1))
       (doseq [ref (map :name (read-refs r))
               p (plp/pileup r ref)]
-        (println p)))))
+        (println p)))
+    nil))
 
 (defn faidx [& args]
   (let [[opt [f _] help] (cli args
@@ -165,7 +173,8 @@
       (println help)
       (System/exit 0))
     (fai/spit (str f ".fai")
-              (fa/slurp f))))
+              (fa/slurp f))
+    nil))
 
 (defn dict [& args]
   (let [[opt [in out _] help] (cli args
@@ -174,7 +183,8 @@
     (when (:help opt)
       (println help)
       (System/exit 0))
-    (dict/create-dict in out)))
+    (dict/create-dict in out)
+    nil))
 
 (defn -main [& args]
   (do-sub-command args

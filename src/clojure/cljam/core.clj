@@ -46,6 +46,16 @@
   [rdr]
   (io/read-alignments rdr {}))
 
+(defmulti read-refs type)
+
+(defmethod read-refs cljam.sam.reader.SAMReader
+  [rdr]
+  (io/read-refs rdr))
+
+(defmethod read-refs cljam.bam.reader.BAMReader
+  [rdr]
+  (io/read-refs rdr))
+
 (defn- slurp
   [f]
   (condp re-find f
@@ -140,13 +150,12 @@
       (println help)
       (System/exit 0))
     (with-open [r (bam/reader f)]
-      (let [sam {:header (io/read-header r)
-                 :alignments (io/read-alignments r {})}]
-        (when-not (sorter/sorted? sam)
-          (println "Not sorted")
-          (System/exit 1))
-        (doseq [p (plp/pileup sam)]
-          (println p))))))
+      (when-not (sorter/sorted? r)
+        (println "Not sorted")
+        (System/exit 1))
+      (doseq [ref (map :name (read-refs r))
+              p (plp/pileup r ref)]
+        (println p)))))
 
 (defn faidx [& args]
   (let [[opt [f _] help] (cli args
@@ -169,7 +178,7 @@
 
 (defn -main [& args]
   (do-sub-command args
-                  "Usage: cljam {view,convert,sort,index,idxstats,merge,pileup,faidx} ..."
+                  "Usage: cljam {view,convert,sort,index,pileup,faidx} ..."
                   [:view     cljam.core/view     "Extract/print all or sub alignments in SAM or BAM format."]
                   [:convert  cljam.core/convert  "Convert SAM to BAM or BAM to SAM."]
                   [:sort     cljam.core/sort     "Sort alignments by leftmost coordinates."]

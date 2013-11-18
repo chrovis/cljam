@@ -13,7 +13,7 @@
    ^clojure.lang.LazySeq positions]
   (if (= rname (:rname aln))
     (let [^Long left (:pos aln)
-          ^Long right (+ left (cgr/count-ref (:cigar aln)))]
+          ^Long right (dec (+ left (cgr/count-ref (:cigar aln))))]
       (map (fn [p] (if (and (>= p left)
                             (<= p right)) 1 0)) positions))
     (take (count positions) (repeat 0))))

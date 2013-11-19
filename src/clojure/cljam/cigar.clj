@@ -25,27 +25,19 @@
 
 (defn substantial-seq [cigar seq]
   (join
-   (loop [cursor  0
-          matches (re-seq #"([0-9]*)([MIDNSHP=X])" cigar)
+   (loop [matches (parse cigar)
+          cursor  0
           ret     []]
-     (if (first matches)
-       (let [n  (Integer/parseInt (second (first matches)))
-             op (last (first matches))]
-         (condp #(not (nil? (%1 %2))) op
-           #{"M" "=" "X"}
-           (recur (+ cursor n)
-                  (rest matches)
-                  (conj ret (subs seq cursor (+ cursor n))))
-
-           #{"D"}
-           (recur cursor
-                  (rest matches)
-                  (conj ret (join (repeat n "*"))))
-
-           #{"N"}
-           (recur cursor
-                  (rest matches)
-                  (conj ret (join (repeat n ">"))))
-
-           (recur cursor (rest matches) ret)))
+     (if-let [[n op]  (first matches)]
+       (let [[cursor* ret*] (condp #(not (nil? (%1 %2))) op
+                              #{\M \= \X} [(+ cursor n)
+                                           (conj ret (subs seq cursor (+ cursor n)))]
+                              #{\D}       [cursor
+                                           (conj ret (join (repeat n "*")))]
+                              #{\N}       [cursor
+                                           (conj ret (join (repeat n ">")))]
+                              #{\S \I}    [(+ cursor n)
+                                           ret]
+                              [cursor ret])]
+         (recur (rest matches) cursor* ret*))
        ret))))

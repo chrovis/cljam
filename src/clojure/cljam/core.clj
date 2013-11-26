@@ -10,7 +10,8 @@
                    [fasta :as fa]
                    [fasta-indexer :as fai]
                    [dict :as dict]
-                   [pileup :as plp])
+                   [pileup :as plp]
+                   [mpileup :as mplp])
             [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
   (:gen-class))
 
@@ -161,8 +162,9 @@
         (println "Not sorted")
         (System/exit 1))
       (doseq [ref (map :name (read-refs r))
-              p (plp/pileup r ref)]
-        (println p)))
+              {:keys [rname pos ref count seq qual]} (mplp/mpileup r ref)]
+        (if-not (zero? count)
+         (println (clojure.string/join \tab [rname pos ref count seq qual])))))
     nil))
 
 (defn faidx [& args]

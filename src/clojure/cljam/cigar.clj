@@ -41,3 +41,18 @@
                               [cursor ret])]
          (recur (rest matches) cursor* ret*))
        ret))))
+
+(defn- parse-seq* [cigar seq*]
+  (when (seq cigar)
+   (let [[[n op] & rest-cigar] cigar
+         [ret rest-seq] (condp #(not (nil? (%1 %2))) op
+                          #{\M \= \X} [{:n n, :op op, :seq (vec (take n seq*))} (drop n seq*)]
+                          #{\D}       [{:n n, :op op, :seq (vec (repeat n \*))} seq*]
+                          #{\N}       [{:n n, :op op, :seq (vec (repeat n \>))} seq*]
+                          #{\S \I}    [{:n n, :op op, :seq (vec (take n seq*))} (drop n seq*)]
+                          #{\H}       [{:n n, :op op, :seq nil} seq*]
+                          [{:n n, :op op, :seq (vec (take n seq*))} (drop n seq*)])]
+     (cons ret (parse-seq* rest-cigar rest-seq)))))
+
+(defn parse-seq [cigar seq*]
+  (parse-seq* (parse cigar) seq*))

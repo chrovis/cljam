@@ -37,21 +37,37 @@
 
  )
 
+(defn- encode-seq [seq*]
+  (let [seq** (loop [[f & r] seq*
+                     ret     []]
+                (if-not (nil? f)
+                 (case (:op f)
+                   \M (recur r (apply conj ret (map str (:seq f))))
+                   \I (recur r (if (seq ret)
+                                (update-in ret [(dec (count ret))] str "+" (:n f) (apply str (:seq f)))
+                                ret))
+                   \D (recur r (apply conj ret (map str (:seq f))))
+                   \N (recur r (apply conj ret (map str (:seq f))))
+                   (recur r ret))
+                 ret))]
+    (-> (update-in seq** [(dec (count seq**))] str "$")
+        (update-in [0] #(str "^?" %)))))
+
 (defn- count-for-alignment
   [^clojure.lang.PersistentHashMap aln
    ^String rname
    ^clojure.lang.LazySeq positions]
   (if (= rname (:rname aln))
-    (let [^Long left (:pos aln)
-          ^Long right (dec (+ left (cgr/count-ref (:cigar aln))))
-          subs-seq (cgr/substantial-seq (:cigar aln) (:seq aln))]
+    (let [left  (:pos aln)
+          right (dec (+ left (cgr/count-ref (:cigar aln))))
+          seq*  (encode-seq (cgr/parse-seq (:cigar aln) (:seq aln)))]
       (map (fn [p]
              (if (and (>= p left) (<= p right))
                {:count 1
-                :seq (nth subs-seq (- p left))
-                :qual (pickup-qual aln (- p left))
-                :head (= p left)
-                :tail (= p right)}
+                :seq   (nth seq* (- p left))
+                :qual  (pickup-qual aln (- p left))
+                :head  (= p left)
+                :tail  (= p right)}
                {:count 0, :seq nil, :qual nil}))
            positions))
     (take (count positions) (repeat {:count 0, :seq nil, :qual nil}))))
@@ -65,11 +81,7 @@
                          (reduce + (map :count args))) cfas)
             (apply map (fn [& args]
                          (str/join
-                          (map (fn [a]
-                                 (str (if (:head a) (str "^" (:qual a)))
-                                      (:seq a)
-                                      (if (:tail a) "$")))
-                               args)))
+                          (map :seq args)))
                    cfas)
             (apply map (fn [& args]
                          (str/join

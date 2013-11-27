@@ -51,7 +51,7 @@
                           #{\N}       [{:n n, :op op, :seq (vec (repeat n \>))} seq*]
                           #{\S \I}    [{:n n, :op op, :seq (vec (take n seq*))} (drop n seq*)]
                           #{\H}       [{:n n, :op op, :seq nil} seq*]
-                          [{:n n, :op op, :seq (vec (take n seq*))} (drop n seq*)])]
+                          #{\P}       [{:n n, :op op, :seq nil} seq*])]
      (cons ret (parse-seq* rest-cigar rest-seq)))))
 
 (defn parse-seq [cigar seq*]

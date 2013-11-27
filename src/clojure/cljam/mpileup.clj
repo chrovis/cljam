@@ -38,18 +38,35 @@
  )
 
 (defn- encode-seq [seq*]
-  (let [seq** (loop [[f & r] seq*
-                     ret     []]
-                (if-not (nil? f)
-                 (case (:op f)
-                   \M (recur r (apply conj ret (map str (:seq f))))
-                   \I (recur r (if (seq ret)
-                                (update-in ret [(dec (count ret))] str "+" (:n f) (apply str (:seq f)))
-                                ret))
-                   \D (recur r (apply conj ret (map str (:seq f))))
-                   \N (recur r (apply conj ret (map str (:seq f))))
-                   (recur r ret))
-                 ret))]
+  (let [seq** (loop [[f & r] (filter #(nil? (#{\P} (:op %))) seq*)
+                     ret     []
+                     op      nil
+                     tmp     {:n 0, :op nil, :seq nil}]
+                (if (nil? f)
+                  (case op
+                    \M (apply conj ret (map str (:seq tmp)))
+                    \I (if (seq ret)
+                         (update-in ret [(dec (count ret))] str "+" (:n tmp) (apply str (:seq tmp)))
+                         ret)
+                    \D (apply conj ret (map str (:seq tmp)))
+                    \N (apply conj ret (map str (:seq tmp)))
+                    ret)
+                  (if (nil? op)
+                    (recur r ret (:op f) f)
+                    (if (= (:op f) op)
+                      (recur r ret (:op f) (-> tmp
+                                               (update-in [:n] + (:n f))
+                                               (assoc :op (:op f))
+                                               (update-in [:seq] (partial apply conj) (:seq f))))
+                      (let [new-ret (case op
+                                      \M (apply conj ret (map str (:seq tmp)))
+                                      \I (if (seq ret)
+                                           (update-in ret [(dec (count ret))] str "+" (:n tmp) (apply str (:seq tmp)))
+                                           ret)
+                                      \D (apply conj ret (map str (:seq tmp)))
+                                      \N (apply conj ret (map str (:seq tmp)))
+                                      ret)]
+                        (recur r new-ret (:op f) f))))))]
     (-> (update-in seq** [(dec (count seq**))] str "$")
         (update-in [0] #(str "^?" %)))))
 

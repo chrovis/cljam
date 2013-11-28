@@ -1,15 +1,12 @@
-(ns cljam.mpileup
+(ns cljam.pileup.mpileup
   (:require [clojure.string :as str]
             [cljam.cigar :as cgr]
             [cljam.sequence :as cseq]
             [cljam.io :as io]
             [cljam.util :refer [ubyte]]
-            [cljam.util.sam-util :refer [phred->fastq fastq->phred]]))
-
-;; TODO: estiamte from actual data
-(def ^:private window-width 1250)
-(def ^:private step 2000)
-(def ^:private center (int (/ step 2)))
+            [cljam.util.sam-util :refer [phred->fastq fastq->phred]]
+            [cljam.pileup.common :refer [window-width step center]]
+            [cljam.pileup.pileup :refer [rpositions]]))
 
 (defn- wrap
   [rname positions counts seq qual]
@@ -30,13 +27,6 @@
   (if (= (:qual aln) "*")
     \~
     (nth (:qual aln) pos)))
-
-(comment
-
- (with-open [r (cljam.bam/reader "test/resources/test.sorted.bam")]
-   (mpileup r "ref"))
-
- )
 
 (defn- encode-seq [seq*]
   (let [seq** (loop [[f & r] (filter #(nil? (#{\P} (:op %))) seq*)
@@ -109,15 +99,6 @@
           (take (count positions) (repeat 0))
           nil nil)))
 
-(defn rpositions
-  ([^Long start ^Long end]
-     (rpositions start end start))
-  ([^Long start ^Long end ^Long n]
-     (if (>= end n)
-       (cons n
-             (lazy-seq (rpositions start end (inc n))))
-       nil)))
-
 (defn- read-alignments
   [rdr ^String rname ^Long rlength ^Long pos]
   (let [^Long left (let [^Long val (- pos window-width)]
@@ -139,7 +120,7 @@
    (filter (fn [r] (= (:name r) rname))
            refs)))
 
-(defn- mpileup*
+(defn- pileup*
   ([rdr ^String rname ^Long rlength ^Long start ^Long end]
      (flatten
       (let [parts (partition-all step (rpositions start end))]
@@ -151,14 +132,14 @@
                  (count-for-positions alns rname positions)))
              parts)))))
 
-(defn mpileup
+(defn pileup
   ([rdr ^String rname]
-     (mpileup rdr rname -1 -1))
+     (pileup rdr rname -1 -1))
   ([rdr ^String rname ^Long start* ^Long end*]
      (let [r (search-ref (.refs rdr) rname)]
        (if (nil? r)
          nil
-         (mpileup* rdr
+         (pileup* rdr
                   rname (:len r)
                   (if (neg? start*) 0 start*)
                   (if (neg? end*) (:len r) end*))))))

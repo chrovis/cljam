@@ -1,5 +1,5 @@
 (ns cljam.cigar
-  (:require [clojure.string :refer [join]]))
+  (:require [clojure.string :as str]))
 
 (defn parse
   "Parses CIGAR text, returns seq of lengths and operations."
@@ -24,7 +24,7 @@
   (memoize count-ref*))
 
 (defn substantial-seq [cigar seq]
-  (join
+  (str/join
    (loop [matches (parse cigar)
           cursor  0
           ret     []]
@@ -33,26 +33,11 @@
                               #{\M \= \X} [(+ cursor n)
                                            (conj ret (subs seq cursor (+ cursor n)))]
                               #{\D}       [cursor
-                                           (conj ret (join (repeat n "*")))]
+                                           (conj ret (str/join (repeat n "*")))]
                               #{\N}       [cursor
-                                           (conj ret (join (repeat n ">")))]
+                                           (conj ret (str/join (repeat n ">")))]
                               #{\S \I}    [(+ cursor n)
                                            ret]
                               [cursor ret])]
          (recur (rest matches) cursor* ret*))
        ret))))
-
-(defn- parse-seq* [cigar seq*]
-  (when (seq cigar)
-   (let [[[n op] & rest-cigar] cigar
-         [ret rest-seq] (condp #(not (nil? (%1 %2))) op
-                          #{\M \= \X} [{:n n, :op op, :seq (vec (take n seq*))} (drop n seq*)]
-                          #{\D}       [{:n n, :op op, :seq (vec (repeat n \*))} seq*]
-                          #{\N}       [{:n n, :op op, :seq (vec (repeat n \>))} seq*]
-                          #{\S \I}    [{:n n, :op op, :seq (vec (take n seq*))} (drop n seq*)]
-                          #{\H}       [{:n n, :op op, :seq nil} seq*]
-                          #{\P}       [{:n n, :op op, :seq nil} seq*])]
-     (cons ret (parse-seq* rest-cigar rest-seq)))))
-
-(defn parse-seq [cigar seq*]
-  (parse-seq* (parse cigar) seq*))

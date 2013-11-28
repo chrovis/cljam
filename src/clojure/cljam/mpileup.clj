@@ -1,6 +1,7 @@
 (ns cljam.mpileup
   (:require [clojure.string :as str]
             [cljam.cigar :as cgr]
+            [cljam.sequence :as cseq]
             [cljam.io :as io]
             [cljam.util :refer [ubyte]]
             [cljam.util.sam-util :refer [phred->fastq fastq->phred]]))
@@ -77,7 +78,7 @@
   (if (= rname (:rname aln))
     (let [left  (:pos aln)
           right (dec (+ left (cgr/count-ref (:cigar aln))))
-          seq*  (encode-seq (cgr/parse-seq (:cigar aln) (:seq aln)))]
+          seq*  (encode-seq (cseq/parse (:seq aln) (:cigar aln)))]
       (map (fn [p]
              (if (and (>= p left) (<= p right))
                {:count 1

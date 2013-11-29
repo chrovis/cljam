@@ -161,10 +161,10 @@
       (when-not (sorter/sorted? r)
         (println "Not sorted")
         (System/exit 1))
-      (doseq [ref (map :name (read-refs r))
-              {:keys [rname pos ref count seq qual]} (mplp/mpileup r ref)]
-        (if-not (zero? count)
-         (println (clojure.string/join \tab [rname pos ref count seq qual])))))
+      (doseq [rname (map :name (read-refs r))
+              line  (mplp/mpileup r rname)]
+        (if-not (zero? (:count line))
+         (println (clojure.string/join \tab (map val line))))))
     nil))
 
 (defn faidx [& args]

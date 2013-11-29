@@ -28,38 +28,44 @@
     \~
     (nth (:qual aln) pos)))
 
-(defn- encode-seq [seq*]
-  (let [seq** (loop [[f & r] (filter #(nil? (#{\P} (:op %))) seq*)
-                     ret     []
-                     op      nil
-                     tmp     {:n 0, :op nil, :seq nil}]
-                (if (nil? f)
-                  (case op
-                    \M (apply conj ret (map str (:seq tmp)))
-                    \I (if (seq ret)
-                         (update-in ret [(dec (count ret))] str "+" (:n tmp) (apply str (:seq tmp)))
-                         ret)
-                    \D (apply conj ret (map str (:seq tmp)))
-                    \N (apply conj ret (map str (:seq tmp)))
-                    ret)
-                  (if (nil? op)
-                    (recur r ret (:op f) f)
-                    (if (= (:op f) op)
-                      (recur r ret (:op f) (-> tmp
-                                               (update-in [:n] + (:n f))
-                                               (assoc :op (:op f))
-                                               (update-in [:seq] (partial apply conj) (:seq f))))
-                      (let [new-ret (case op
-                                      \M (apply conj ret (map str (:seq tmp)))
-                                      \I (if (seq ret)
-                                           (update-in ret [(dec (count ret))] str "+" (:n tmp) (apply str (:seq tmp)))
-                                           ret)
-                                      \D (apply conj ret (map str (:seq tmp)))
-                                      \N (apply conj ret (map str (:seq tmp)))
-                                      ret)]
-                        (recur r new-ret (:op f) f))))))]
-    (-> (update-in seq** [(dec (count seq**))] str "$")
-        (update-in [0] #(str "^?" %)))))
+(defn- encode-seq* [seq*]
+  (loop [[f & r] (filter #(nil? (#{\P} (:op %))) seq*)
+         ret     []
+         op      nil
+         tmp     {:n 0, :op nil, :seq nil}]
+    (if (nil? f)
+      (case op
+        \M (apply conj ret (map str (:seq tmp)))
+        \I (if (seq ret)
+             (update-in ret [(dec (count ret))] str "+" (:n tmp) (apply str (:seq tmp)))
+             ret)
+        \D (apply conj ret (map str (:seq tmp)))
+        \N (apply conj ret (map str (:seq tmp)))
+        ret)
+      (if (nil? op)
+        (recur r ret (:op f) f)
+        (if (= (:op f) op)
+          (recur r ret (:op f) (-> tmp
+                                   (update-in [:n] + (:n f))
+                                   (assoc :op (:op f))
+                                   (update-in [:seq] (partial apply conj) (:seq f))))
+          (let [new-ret (case op
+                          \M (apply conj ret (map str (:seq tmp)))
+                          \I (if (seq ret)
+                               (update-in ret [(dec (count ret))] str "+" (:n tmp) (apply str (:seq tmp)))
+                               ret)
+                          \D (apply conj ret (map str (:seq tmp)))
+                          \N (apply conj ret (map str (:seq tmp)))
+                          ret)]
+            (recur r new-ret (:op f) f)))))))
+
+(defn- encode-seq
+  "Encode sequence strings for mpileup output.
+  e.g. ({:n 2, :op \\M :seq [\\T \\A]} ...) => \"^?TA...$\""
+  [seq*]
+  (let [seq** (encode-seq* seq*)]
+    (-> (update-in seq** [(dec (count seq**))] str "$") ; Append "$" to the end
+        (update-in [0] #(str "^?" %)))))                ; Insert "^?" before the begin
 
 (defn- count-for-alignment
   [^clojure.lang.PersistentHashMap aln

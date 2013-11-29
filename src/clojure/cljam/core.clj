@@ -1,6 +1,6 @@
 (ns cljam.core
   (:refer-clojure :exclude [sort merge slurp spit])
-  (:require [clj-sub-command.core :refer [do-sub-command]]
+  (:require [clj-sub-command.core :refer [sub-command]]
             [clojure.tools.cli :refer [cli]]
             (cljam [sam :as sam]
                    [io :as io]
@@ -70,7 +70,7 @@
     #"\.bam$" (bam/spit f sam)
     (throw (IllegalArgumentException. "Invalid file type"))))
 
-(defn view [& args]
+(defn view [args]
   (let [[opt [f _] help] (cli args
                               "Usage: cljam view [--header] [--format <auto|sam|bam>] <in.bam|sam>"
                               ["-h" "--help" "Print help" :default false :flag true]
@@ -89,7 +89,7 @@
         (println (stringify-alignment aln))))
     nil))
 
-(defn convert [& args]
+(defn convert [args]
   (let [[opt [in out _] help] (cli args
                                     "Usage: cljam convert [--input-format <auto|sam|bam>] [--output-format <auto|sam|bam>] <in.bam|sam> <out.bam|sam>"
                                     ["-h" "--help" "Print help" :default false :flag true]
@@ -102,7 +102,7 @@
       (spit out asam))
     nil))
 
-(defn sort [& args]
+(defn sort [args]
   (let [[opt [in out _] help] (cli args
                                    "Usage: cljam sort [--order <coordinate|queryname>] <in.bam|sam> <out.bam|sam>"
                                    ["-h" "--help" "Print help" :default false :flag true]
@@ -117,7 +117,7 @@
         (name sorter/order-queryname) (sorter/sort-by-qname r w)))
     nil))
 
-(defn index [& args]
+(defn index [args]
   (let [[opt [f _] help] (cli args
                               "Usage: cljam index <in.bam>"
                               ["-h" "--help" "Print help" :default false :flag true])]
@@ -127,26 +127,7 @@
     (bai/create-index f (str f ".bai"))
     nil))
 
-(defn idxstats [& args]
-  ;; (with-command-line args
-  ;;   "Usage: cljam idxstats <aln.bam>"
-  ;;   [files]
-  ;;   (when-not (= (count files) 1)
-  ;;     (println "Invalid arguments")
-  ;;     (System/exit 1))
-  ;;   (idxr/bam-index-stats (first files)))
-  )
-
-(defn merge [& args]
-  ;; (with-command-line args
-  ;;   "Usage: cljam merge <in1.bam|sam> <in2.bam|sam> ... <out.bam|sam>"
-  ;;   [files]
-  ;;   (when (< (count files) 2)
-  ;;     (println "Invalid arguments")
-  ;;     (System/exit 1)))
-  )
-
-(defn pileup [& args]
+(defn pileup [args]
   (let [[opt [f _] help] (cli args
                               "Usage: cljam pileup <in.bam>"
                               ["-h" "--help" "Print help" :default false :flag true])]
@@ -166,7 +147,7 @@
          (println (clojure.string/join \tab (map val line))))))
     nil))
 
-(defn faidx [& args]
+(defn faidx [args]
   (let [[opt [f _] help] (cli args
                               "Usage: cljam faidx <ref.fasta>"
                               ["-h" "--help" "Print help" :default false :flag true])]
@@ -177,7 +158,7 @@
               (fa/slurp f))
     nil))
 
-(defn dict [& args]
+(defn dict [args]
   (let [[opt [in out _] help] (cli args
                                    "Usage: cljam dict <ref.fasta> <out.dict>"
                                    ["-h" "--help" "Print help" :default false :flag true])]
@@ -188,14 +169,25 @@
     nil))
 
 (defn -main [& args]
-  (do-sub-command args
-                  "Usage: cljam {view,convert,sort,index,pileup,faidx} ..."
-                  [:view     cljam.core/view     "Extract/print all or sub alignments in SAM or BAM format."]
-                  [:convert  cljam.core/convert  "Convert SAM to BAM or BAM to SAM."]
-                  [:sort     cljam.core/sort     "Sort alignments by leftmost coordinates."]
-                  [:index    cljam.core/index    "Index sorted alignment for fast random access."]
-                  ;; [:idxstats cljam.core/idxstats "Retrieve  and print stats in the index file."]
-                  ;; [:merge    cljam.core/merge    "Merge multiple SAM/BAM."]
-                  [:pileup   cljam.core/pileup   "Generate pileup for the BAM file."]
-                  [:faidx    cljam.core/faidx    "Index reference sequence in the FASTA format."]
-                  [:dict     cljam.core/dict     "Create a FASTA sequence dictionary file."]))
+  (let [[opts cmd args help] (sub-command args
+                                          "Usage: cljam {view,convert,sort,index,pileup,faidx,dict} ..."
+                                          :options  [["-h" "--help" "Show help" :default false :flag true]]
+                                          :commands [["view"    "Extract/print all or sub alignments in SAM or BAM format."]
+                                                     ["convert" "Convert SAM to BAM or BAM to SAM."]
+                                                     ["sort"    "Sort alignments by leftmost coordinates."]
+                                                     ["index"   "Index sorted alignment for fast random access."]
+                                                     ["pileup"  "Generate pileup for the BAM file."]
+                                                     ["faidx"   "Index reference sequence in the FASTA format."]
+                                                     ["dict"    "Create a FASTA sequence dictionary file."]])]
+    (when (:help opts)
+      (println help)
+      (System/exit 0))
+    (case cmd
+      :view    (view args)
+      :convert (convert args)
+      :sort    (sort args)
+      :index   (index args)
+      :pileup  (pileup args)
+      :faidx   (faidx args)
+      :dict    (dict args)
+      (println help))))

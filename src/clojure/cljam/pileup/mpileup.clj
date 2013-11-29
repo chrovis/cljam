@@ -60,12 +60,15 @@
             (recur r new-ret (:op f) f)))))))
 
 (defn- encode-seq
-  "Encode sequence strings for mpileup output.
-  e.g. ({:n 2, :op \\M :seq [\\T \\A]} ...) => \"^?TA...$\""
+  "Encode sequence strings, returning string sequence for mpileup output.
+  e.g. ({:n 2, :op \\M :seq [\\T \\A]} ... {:n 1, :op \\M :seq [\\C]})
+       => (\"^?TA\" ... \"C$\")"
   [seq*]
   (let [seq** (encode-seq* seq*)]
     (-> (update-in seq** [(dec (count seq**))] str "$") ; Append "$" to the end
         (update-in [0] #(str "^?" %)))))                ; Insert "^?" before the begin
+
+(defrecord ^:private PileupStatus [count seq qual])
 
 (defn- count-for-alignment
   [^clojure.lang.PersistentHashMap aln
@@ -76,15 +79,10 @@
           right (dec (+ left (cgr/count-ref (:cigar aln))))
           seq*  (encode-seq (cseq/parse (:seq aln) (:cigar aln)))]
       (map (fn [p]
-             (if (and (>= p left) (<= p right))
-               {:count 1
-                :seq   (nth seq* (- p left))
-                :qual  (pickup-qual aln (- p left))
-                :head  (= p left)
-                :tail  (= p right)}
-               {:count 0, :seq nil, :qual nil}))
-           positions))
-    (take (count positions) (repeat {:count 0, :seq nil, :qual nil}))))
+             (if (<= left p right)
+               (PileupStatus. 1 (nth seq* (- p left)) (pickup-qual aln (- p left)))
+               (PileupStatus. 0 nil nil))) positions))
+    (repeat (count positions) (PileupStatus. 0 nil nil))))
 
 (defn- count-for-positions
   [alns rname positions]
@@ -102,7 +100,7 @@
                           (map :qual args)))
                    cfas)))
     (wrap rname positions
-          (take (count positions) (repeat 0))
+          (repeat (count positions) 0)
           nil nil)))
 
 (defn- read-alignments

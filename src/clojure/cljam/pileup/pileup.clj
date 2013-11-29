@@ -10,9 +10,9 @@
   (if (= rname (:rname aln))
     (let [^Long left (:pos aln)
           ^Long right (dec (+ left (cgr/count-ref (:cigar aln))))]
-      (map (fn [p] (if (and (>= p left)
-                            (<= p right)) 1 0)) positions))
-    (take (count positions) (repeat 0))))
+      (map (fn [p]
+             (if (<= left p right) 1 0)) positions))
+    (repeat (count positions) 0)))
 
 (defn- count-for-positions
   "Returns a histogram value of the specified position."
@@ -20,7 +20,7 @@
    ^String rname positions]
   (if (pos? (count alns))
     (apply map + (map #(count-for-alignment % rname positions) alns))
-    (take (count positions) (repeat 0))))
+    (repeat (count positions) 0)))
 
 (defn rpositions
   ([^Long start ^Long end]

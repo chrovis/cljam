@@ -2,10 +2,18 @@
   (:refer-clojure :exclude [read slurp])
   (:import java.io.RandomAccessFile))
 
-(defn reader
-  "Creates a reader on a FASTA file."
-  [^String f]
-  (RandomAccessFile. f "r"))
+;;;
+;;; FASTAReader
+;;;
+
+(deftype FASTAReader [reader f]
+  java.io.Closeable
+  (close [this]
+    (.. this reader close)))
+
+;;;
+;;; Read
+;;;
 
 (defn- read* [line ^RandomAccessFile rdr]
   (loop [line line
@@ -22,14 +30,24 @@
       (cons (assoc ret :blen (count (filter (partial not= \space) (:seq ret))))
             nil))))
 
+;;;
+;;; Public
+;;;
+
+(defn reader
+  "Creates a reader on a FASTA file."
+  [f]
+  (->FASTAReader (RandomAccessFile. f "r") f))
+
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."
-  [^RandomAccessFile rdr]
-  (read* (.readLine rdr) rdr))
+  [^FASTAReader rdr]
+  (let [r (.reader rdr)]
+    (read* (.readLine r) r)))
 
 (defn slurp
   "Opens a reader on a FASTA file and reads all its contents, returning
   a sequence about the data."
   [f]
-  (with-open [r ^RandomAccessFile (reader f)]
+  (with-open [r (reader f)]
     (doall (read r))))

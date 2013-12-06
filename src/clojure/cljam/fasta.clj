@@ -25,7 +25,7 @@
                 (lazy-seq (read* line rdr)))
           (let [ref (subs line 1)
                 offset (.getFilePointer rdr)]
-            (recur (.readLine rdr) (assoc ret :ref ref :offset offset))))
+            (recur (.readLine rdr) (assoc ret :rname ref :offset offset))))
         (recur (.readLine rdr) (update-in ret [:seq] str line)))
       (cons (assoc ret :blen (count (filter (partial not= \space) (:seq ret))))
             nil))))

@@ -8,7 +8,7 @@
 (defn write-sq
   [^BufferedWriter wrtr sq]
   (.write wrtr (join "\t"
-                     [(:ref sq)
+                     [(:rname sq)
                       (count (:seq sq))
                       (:offset sq)
                       (:blen sq)

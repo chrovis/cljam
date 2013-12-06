@@ -64,8 +64,8 @@
 (def test-sam-refs [{:name "ref", :len 45} {:name "ref2", :len 40}])
 
 (def test-fa
-  [{:ref "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}
-   {:ref "ref2", :offset 57, :seq "aggttttataaaacaattaagtctacagagcaactacgcg",      :blen 40}])
+  [{:rname "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}
+   {:rname "ref2", :offset 57, :seq "aggttttataaaacaattaagtctacagagcaactacgcg",      :blen 40}])
 
 (def temp-dir (.getPath (file (System/getProperty "java.io.tmpdir") "cljam-test")))
 

@@ -14,6 +14,11 @@
             [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
   (:gen-class))
 
+(defmacro ^:private exit-with
+  [status & body]
+  `(do (eval (conj (vec '~body) '(System/exit ~status)))
+       nil))
+
 (defn reader [f]
   (condp re-find f
     #"\.sam$" (sam/reader f)
@@ -77,8 +82,7 @@
                               ["--header" "Include header" :default false :flag true]
                               ["-f" "--format" "Input file format <auto|sam|bam>" :default "auto"])]
     (when (:help opt)
-      (println help)
-      (System/exit 0))
+      (exit-with 0 (println help)))
     (with-open [r (condp = (:format opt)
                     "auto" (reader     f)
                     "sam"  (sam/reader f)
@@ -96,8 +100,7 @@
                                     ["-if" "--input-format" "Input file format <auto|sam|bam>" :default "auto"]
                                     ["-of" "--output-format" "Output file format <auto|sam|bam>" :default "auto"])]
     (when (:help opt)
-      (println help)
-      (System/exit 0))
+      (exit-with 0 (println help)))
     (let [asam (slurp in)]
       (spit out asam))
     nil))
@@ -108,8 +111,7 @@
                                    ["-h" "--help" "Print help" :default false :flag true]
                                    ["-o" "--order" "Sorting order of alignments <coordinate|queryname>" :default "coordinate"])]
     (when (:help opt)
-      (println help)
-      (System/exit 0))
+      (exit-with 0 (println help)))
     (let [r (reader in)
           w (writer out)]
       (condp = (:order opt)
@@ -122,8 +124,7 @@
                               "Usage: cljam index <in.bam>"
                               ["-h" "--help" "Print help" :default false :flag true])]
     (when (:help opt)
-      (println help)
-      (System/exit 0))
+      (exit-with 0 (println help)))
     (bai/create-index f (str f ".bai"))
     nil))
 
@@ -132,19 +133,16 @@
                               "Usage: cljam pileup <in.bam>"
                               ["-h" "--help" "Print help" :default false :flag true])]
     (when (:help opt)
-      (println help)
-      (System/exit 0))
+      (exit-with 0 (println help)))
     (with-open [r (reader f)]
       (when (= (type r) cljam.sam.reader.SAMReader)
-        (println "Not support SAM file")
-        (System/exit 1))
+        (exit-with 1 (println "Not support SAM file")))
       (when-not (sorter/sorted? r)
-        (println "Not sorted")
-        (System/exit 1))
+        (exit-with 1 (println "Not sorted")))
       (doseq [rname (map :name (read-refs r))
               line  (plp/mpileup r rname)]
         (if-not (zero? (:count line))
-         (println (clojure.string/join \tab (map val line))))))
+          (println (clojure.string/join \tab (map val line))))))
     nil))
 
 (defn faidx [args]
@@ -152,8 +150,7 @@
                               "Usage: cljam faidx <ref.fasta>"
                               ["-h" "--help" "Print help" :default false :flag true])]
     (when (:help opt)
-      (println help)
-      (System/exit 0))
+      (exit-with 0 (println help)))
     (fai/spit (str f ".fai")
               (fa/slurp f))
     nil))
@@ -163,8 +160,7 @@
                                    "Usage: cljam dict <ref.fasta> <out.dict>"
                                    ["-h" "--help" "Print help" :default false :flag true])]
     (when (:help opt)
-      (println help)
-      (System/exit 0))
+      (exit-with 0 (println help)))
     (dict/create-dict in out)
     nil))
 
@@ -180,8 +176,7 @@
                                                      ["faidx"   "Index reference sequence in the FASTA format."]
                                                      ["dict"    "Create a FASTA sequence dictionary file."]])]
     (when (:help opts)
-      (println help)
-      (System/exit 0))
+      (exit-with 0 (println help)))
     (case cmd
       :view    (view args)
       :convert (convert args)

@@ -128,10 +128,26 @@
     (bai/create-index f (str f ".bai"))
     nil))
 
+(defn- pileup-with-ref
+  [rdr ref-fa]
+  (with-open [fa-rdr (fa/reader ref-fa)]
+   (doseq [rname (map :name (read-refs rdr))
+           line  (plp/mpileup rdr rname -1 -1 :ref-fasta fa-rdr)]
+     (if-not (zero? (:count line))
+       (println (clojure.string/join \tab (map val line)))))))
+
+(defn- pileup-without-ref
+  [rdr]
+  (doseq [rname (map :name (read-refs rdr))
+          line  (plp/mpileup rdr rname)]
+    (if-not (zero? (:count line))
+      (println (clojure.string/join \tab (map val line))))))
+
 (defn pileup [args]
   (let [[opt [f _] help] (cli args
                               "Usage: cljam pileup <in.bam>"
-                              ["-h" "--help" "Print help" :default false :flag true])]
+                              ["-h" "--help" "Print help" :default false :flag true]
+                              ["-r" "--ref" "Reference file in the FASTA format."])]
     (when (:help opt)
       (exit-with 0 (println help)))
     (with-open [r (reader f)]
@@ -139,10 +155,9 @@
         (exit-with 1 (println "Not support SAM file")))
       (when-not (sorter/sorted? r)
         (exit-with 1 (println "Not sorted")))
-      (doseq [rname (map :name (read-refs r))
-              line  (plp/mpileup r rname)]
-        (if-not (zero? (:count line))
-          (println (clojure.string/join \tab (map val line))))))
+      (if (nil? (:ref opt))
+        (pileup-without-ref r)
+        (pileup-with-ref r (:ref opt))))
     nil))
 
 (defn faidx [args]

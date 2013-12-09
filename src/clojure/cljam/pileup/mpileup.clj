@@ -73,48 +73,32 @@
 
 (defn- pickup-ref
   [ref-line pos]
-  (let [idx (dec pos)]
-    (if (neg? idx)
-      \N
-      (if-let [ref (nth (:seq ref-line) idx)]
-        ref
-        \N))))
-
-(defn- wrap
-  [rname ref-line positions counts seq qual]
-  (map (fn [{:keys [pos count qual seq]}]
-         {:rname rname
-          :pos   pos
-          :ref   (if (nil? ref-line)
-                   \N
-                   (pickup-ref ref-line pos))
-          :count count
-          :seq   seq
-          :qual  qual})
-       (map merge
-            (map (partial hash-map :pos) positions)
-            (map (partial hash-map :count) counts)
-            (map (partial hash-map :qual) qual)
-            (map (partial hash-map :seq) seq))))
+  (if (nil? ref-line)
+    \N
+    (let [idx (dec pos)]
+      (if (neg? idx)
+        \N
+        (if-let [ref (nth (:seq ref-line) idx)]
+          ref
+          \N)))))
 
 (defn- count-for-positions
   [alns ref-line rname positions]
   (if (pos? (count alns))
-    (let [cfas (map #(count-for-alignment % rname positions) alns)]
-      (wrap rname ref-line positions
-            (apply map (fn [& args]
-                         (reduce + (map :count args))) cfas)
-            (apply map (fn [& args]
-                         (str/join
-                          (map :seq args)))
-                   cfas)
-            (apply map (fn [& args]
-                         (str/join
-                          (map :qual args)))
-                   cfas)))
-    (wrap rname positions
-          (repeat (count positions) 0)
-          nil nil)))
+    (let [cfas (map #(count-for-alignment % rname positions) alns)
+          plp1 (apply map (fn [& a]
+                            {:rname rname
+                             :count (reduce + (map :count a))
+                             :seq   (str/join (map :seq a))
+                             :qual  (str/join (map :qual a))}) cfas)]
+      (map #(assoc %2 :pos %1 :ref (pickup-ref ref-line %2))
+           positions plp1))
+    (let [plp1 (repeat (count positions) {:rname rname
+                                          :count 0
+                                          :seq   nil
+                                          :qual  nil})]
+      (map #(assoc %2 :pos %1 :ref (pickup-ref ref-line %2))
+           positions plp1))))
 
 (defn- read-alignments
   [rdr ^String rname ^Long rlength ^Long pos]

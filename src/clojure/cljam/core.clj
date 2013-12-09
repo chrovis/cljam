@@ -1,6 +1,7 @@
 (ns cljam.core
   (:refer-clojure :exclude [sort merge slurp spit])
-  (:require [clj-sub-command.core :refer [sub-command]]
+  (:require [clojure.string :as str]
+            [clj-sub-command.core :refer [sub-command]]
             [clojure.tools.cli :refer [cli]]
             (cljam [sam :as sam]
                    [io :as io]
@@ -131,17 +132,17 @@
 (defn- pileup-with-ref
   [rdr ref-fa]
   (with-open [fa-rdr (fa/reader ref-fa)]
-   (doseq [rname (map :name (read-refs rdr))
-           line  (plp/mpileup rdr rname -1 -1 :ref-fasta fa-rdr)]
-     (if-not (zero? (:count line))
-       (println (clojure.string/join \tab (map val line)))))))
+    (doseq [rname (map :name (read-refs rdr))
+            line  (plp/mpileup rdr rname -1 -1 :ref-fasta fa-rdr)]
+      (if-not (zero? (:count line))
+        (println (str/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
 
 (defn- pileup-without-ref
   [rdr]
   (doseq [rname (map :name (read-refs rdr))
           line  (plp/mpileup rdr rname)]
     (if-not (zero? (:count line))
-      (println (clojure.string/join \tab (map val line))))))
+      (println (str/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))
 
 (defn pileup [args]
   (let [[opt [f _] help] (cli args

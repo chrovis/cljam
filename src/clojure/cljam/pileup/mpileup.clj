@@ -73,7 +73,7 @@
 
 (defn- pickup-ref
   [ref-line pos]
-  (let [idx (- pos (:offset ref-line))]
+  (let [idx (dec pos)]
     (if (neg? idx)
       \N
       (if-let [ref (nth (:seq ref-line) idx)]

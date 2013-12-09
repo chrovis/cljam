@@ -58,9 +58,7 @@
 (defrecord ^:private PileupStatus [count seq qual])
 
 (defn- count-for-alignment
-  [^clojure.lang.PersistentHashMap aln
-   ^String rname
-   ^clojure.lang.LazySeq positions]
+  [aln rname positions]
   (if (= rname (:rname aln))
     (let [left  (:pos aln)
           right (dec (+ left (cgr/count-ref (:cigar aln))))
@@ -101,15 +99,15 @@
            positions plp1))))
 
 (defn- read-alignments
-  [rdr ^String rname ^Long rlength ^Long pos]
-  (let [^Long left (let [^Long val (- pos window-width)]
-                     (if (< val 0)
-                       0
-                       val))
-        ^Long right (let [^Long val (+ pos window-width)]
-                      (if (< rlength val)
-                        rlength
-                        val))]
+  [rdr rname rlength pos]
+  (let [left (let [val (- pos window-width)]
+               (if (< val 0)
+                 0
+                 val))
+        right (let [val (+ pos window-width)]
+                (if (< rlength val)
+                  rlength
+                  val))]
     (io/read-alignments rdr {:chr rname
                              :start left
                              :end right
@@ -128,22 +126,22 @@
            refs)))
 
 (defn- pileup*
-  ([rdr ^FASTAReader fa-rdr ^String rname ^Long rlength ^Long start ^Long end]
+  ([rdr ^FASTAReader fa-rdr rname rlength start end]
      (flatten
       (let [parts (partition-all step (rpositions start end))]
         (map (fn [positions]
-               (let [^Long pos (if (= (count positions) step)
-                                 (nth positions center)
-                                 (nth positions (quot (count positions) 2)))
-                     ^clojure.lang.LazySeq alns (read-alignments rdr rname rlength pos)
+               (let [pos (if (= (count positions) step)
+                           (nth positions center)
+                           (nth positions (quot (count positions) 2)))
+                     alns (read-alignments rdr rname rlength pos)
                      ref-line (read-ref-fasta-line fa-rdr rname)]
                  (count-for-positions alns ref-line rname positions)))
              parts)))))
 
 (defn pileup
-  ([rdr ^String rname]
+  ([rdr rname]
      (pileup rdr rname -1 -1))
-  ([rdr ^String rname ^Long start* ^Long end* & {:keys [ref-fasta] :or {ref-fasta nil}}]
+  ([rdr rname start* end* & {:keys [ref-fasta] :or {ref-fasta nil}}]
      (let [r (search-ref (.refs rdr) rname)]
        (if (nil? r)
          nil

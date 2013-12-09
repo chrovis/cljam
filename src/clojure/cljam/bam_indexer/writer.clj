@@ -175,7 +175,7 @@
       (if (zero? (:pos aln))
         (swap! meta update-in [:no-coordinate-alns] inc)
         (do (if-not (zero? (bit-and (:flag aln) 4))
-              (swap! meta update-in [:unaligned-aln] inc)
+              (swap! meta update-in [:unaligned-alns] inc)
               (swap! meta update-in [:aligned-alns] inc))
             (if (or (< (bgzf-util/compare (:beg (:chunk (:meta aln)))
                                           (:first-offset @meta)) 1)

@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [sort merge slurp spit])
   (:require [clojure.string :as str]
             [clj-sub-command.core :refer [sub-command]]
-            [clojure.tools.cli :refer [cli]]
+            [clojure.tools.cli :refer [parse-opts]]
             (cljam [sam :as sam]
                    [io :as io]
                    [bam :as bam]
@@ -14,11 +14,6 @@
                    [pileup :as plp])
             [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
   (:gen-class))
-
-(defmacro ^:private exit-with
-  [status & body]
-  `(do (eval (conj (vec '~body) '(System/exit ~status)))
-       nil))
 
 (defn reader [f]
   (condp re-find f
@@ -76,58 +71,148 @@
     #"\.bam$" (bam/spit f sam)
     (throw (IllegalArgumentException. "Invalid file type"))))
 
+;;; cli functions
+
+(defn- exit [status msg]
+  (println msg)
+  (System/exit status))
+
+(defn- error-msg [errors]
+  (str "The following errors occurred while parsing your command:\n\n"
+       (str/join \newline errors)))
+
+;;; view command
+
+(def ^:private view-cli-options
+  [[nil "--header" "Include header"]
+   ["-f" "--format FORMAT" "Input file format <auto|sam|bam>"
+    :default "auto"]
+   ["-h" "--help" "Print help"]])
+
+(defn- view-usage [options-summary]
+  (->> ["Extract/print all or sub alignments in SAM or BAM format."
+        ""
+        "Usage: cljam view [--header] [-f FORMAT] <in.bam|sam>"
+        ""
+        "Options:"
+        options-summary]
+       (str/join \newline)))
+
 (defn view [args]
-  (let [[opt [f _] help] (cli args
-                              "Usage: cljam view [--header] [--format <auto|sam|bam>] <in.bam|sam>"
-                              ["-h" "--help" "Print help" :default false :flag true]
-                              ["--header" "Include header" :default false :flag true]
-                              ["-f" "--format" "Input file format <auto|sam|bam>" :default "auto"])]
-    (when (:help opt)
-      (exit-with 0 (println help)))
-    (with-open [r (condp = (:format opt)
-                    "auto" (reader     f)
-                    "sam"  (sam/reader f)
-                    "bam"  (bam/reader f))]
-      (when (:header opt)
-        (println (stringify-header (read-header r))))
-      (doseq [aln (read-alignments r)]
-        (println (stringify-alignment aln))))
-    nil))
+  (let [{:keys [options arguments errors summary]} (parse-opts args view-cli-options)]
+    (cond
+     (:help options) (exit 0 (view-usage summary))
+     (not= (count arguments) 1) (exit 1 (view-usage summary))
+     errors (exit 1 (error-msg errors)))
+    (let [f (first arguments)]
+      (with-open [r (condp = (:format options)
+                      "auto" (reader     f)
+                      "sam"  (sam/reader f)
+                      "bam"  (bam/reader f))]
+        (when (:header options)
+          (println (stringify-header (read-header r))))
+        (doseq [aln (read-alignments r)]
+          (println (stringify-alignment aln))))))
+  nil)
+
+;;; convert command
+
+(def ^:private convert-cli-options
+  [["-if" "--input-format FORMAT" "Input file format <auto|sam|bam>"
+    :default "auto"]
+   ["-of" "--output-format FORMAT" "Output file format <auto|sam|bam>"
+    :default "auto"]
+   ["-h" "--help" "Print help"]])
+
+(defn- convert-usage [options-summary]
+  (->> ["Convert SAM to BAM or BAM to SAM."
+        ""
+        "Usage: cljam convert [-if FORMAT] [-of FORMAT] <in.bam|sam> <out.bam|sam>"
+        ""
+        "Options:"
+        options-summary]
+       (str/join \newline)))
 
 (defn convert [args]
-  (let [[opt [in out _] help] (cli args
-                                    "Usage: cljam convert [--input-format <auto|sam|bam>] [--output-format <auto|sam|bam>] <in.bam|sam> <out.bam|sam>"
-                                    ["-h" "--help" "Print help" :default false :flag true]
-                                    ["-if" "--input-format" "Input file format <auto|sam|bam>" :default "auto"]
-                                    ["-of" "--output-format" "Output file format <auto|sam|bam>" :default "auto"])]
-    (when (:help opt)
-      (exit-with 0 (println help)))
-    (let [asam (slurp in)]
-      (spit out asam))
-    nil))
+  (let [{:keys [options arguments errors summary]} (parse-opts args convert-cli-options)]
+    (cond
+     (:help options) (exit 0 (convert-usage summary))
+     (not= (count arguments) 2) (exit 1 (convert-usage summary))
+     errors (exit 1 (error-msg errors)))
+    (let [[in out] arguments
+          asam (slurp in)]              ; FIXME: make lazy for a large file
+      (spit out asam)))
+  nil)
+
+;;; sort command
+
+(def ^:private sort-cli-options
+  [["-o" "--order ORDER" "Sorting order of alignments <coordinate|queryname>"
+    :default "coordinate"]
+   ["-h" "--help" "Print help"]])
+
+(defn- sort-usage [options-summary]
+  (->> ["Sort alignments by leftmost coordinates."
+        ""
+        "Usage: cljam sort [-o ORDER] <in.bam|sam> <out.bam|sam>"
+        ""
+        "Options:"
+        options-summary]
+       (str/join \newline)))
 
 (defn sort [args]
-  (let [[opt [in out _] help] (cli args
-                                   "Usage: cljam sort [--order <coordinate|queryname>] <in.bam|sam> <out.bam|sam>"
-                                   ["-h" "--help" "Print help" :default false :flag true]
-                                   ["-o" "--order" "Sorting order of alignments <coordinate|queryname>" :default "coordinate"])]
-    (when (:help opt)
-      (exit-with 0 (println help)))
-    (let [r (reader in)
+  (let [{:keys [options arguments errors summary]} (parse-opts args sort-cli-options)]
+    (cond
+     (:help options) (exit 0 (sort-usage summary))
+     (not= (count arguments) 2) (exit 1 (sort-usage summary))
+     errors (exit 1 (error-msg errors)))
+    (let [[in out] arguments
+          r (reader in)
           w (writer out)]
-      (condp = (:order opt)
+      (condp = (:order options)
         (name sorter/order-coordinate) (sorter/sort-by-pos r w)
-        (name sorter/order-queryname) (sorter/sort-by-qname r w)))
-    nil))
+        (name sorter/order-queryname) (sorter/sort-by-qname r w))))
+  nil)
+
+;;; index command
+
+(def ^:private index-cli-options
+  [["-h" "--help"]])
+
+(defn- index-usage [options-summary]
+  (->> ["Index sorted alignment for fast random access."
+        ""
+        "Usage: cljam index <in.bam>"
+        ""
+        "Options:"
+        options-summary]
+       (str/join \newline)))
 
 (defn index [args]
-  (let [[opt [f _] help] (cli args
-                              "Usage: cljam index <in.bam>"
-                              ["-h" "--help" "Print help" :default false :flag true])]
-    (when (:help opt)
-      (exit-with 0 (println help)))
-    (bai/create-index f (str f ".bai"))
-    nil))
+  (let [{:keys [options arguments errors summary]} (parse-opts args index-cli-options)]
+    (cond
+     (:help options) (exit 0 (index-usage summary))
+     (not= (count arguments) 1) (exit 1 (index-usage summary))
+     errors (exit 1 (error-msg errors)))
+    (let [f (first arguments)]
+     (bai/create-index f (str f ".bai"))))
+  nil)
+
+;;; pileup command
+
+(def ^:private pileup-cli-options
+  [["-r" "--ref FASTA" "Reference file in the FASTA format."
+    :default nil]
+   ["-h" "--help"]])
+
+(defn- pileup-usage [options-summary]
+  (->> ["Generate pileup for the BAM file."
+        ""
+        "Usage: cljam pileup [-r FASTA] <in.bam>"
+        ""
+        "Options:"
+        options-summary]
+       (str/join \newline)))
 
 (defn- pileup-with-ref
   [rdr ref-fa]
@@ -145,40 +230,72 @@
       (println (str/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))
 
 (defn pileup [args]
-  (let [[opt [f _] help] (cli args
-                              "Usage: cljam pileup <in.bam>"
-                              ["-h" "--help" "Print help" :default false :flag true]
-                              ["-r" "--ref" "Reference file in the FASTA format."])]
-    (when (:help opt)
-      (exit-with 0 (println help)))
-    (with-open [r (reader f)]
-      (when (= (type r) cljam.sam.reader.SAMReader)
-        (exit-with 1 (println "Not support SAM file")))
-      (when-not (sorter/sorted? r)
-        (exit-with 1 (println "Not sorted")))
-      (if (nil? (:ref opt))
-        (pileup-without-ref r)
-        (pileup-with-ref r (:ref opt))))
-    nil))
+  (let [{:keys [options arguments errors summary]} (parse-opts args pileup-cli-options)]
+    (cond
+     (:help options) (exit 0 (pileup-usage summary))
+     (not= (count arguments) 1) (exit 1 (pileup-usage summary))
+     errors (exit 1 (error-msg errors)))
+    (let [f (first arguments)]
+      (with-open [r (reader f)]
+        (when (= (type r) cljam.sam.reader.SAMReader)
+          (exit 1 "Not support SAM file"))
+        (when-not (sorter/sorted? r)
+          (exit 1 "Not sorted"))
+        (if (nil? (:ref options))
+          (pileup-without-ref r)
+          (pileup-with-ref r (:ref options))))))
+  nil)
+
+;;; faidx command
+
+(def ^:private faidx-cli-options
+  [["-h" "--help"]])
+
+(defn- faidx-usage [options-summary]
+  (->> ["Index reference sequence in the FASTA format."
+        ""
+        "Usage: cljam faidx <ref.fasta>"
+        ""
+        "Options:"
+        options-summary]
+       (str/join \newline)))
 
 (defn faidx [args]
-  (let [[opt [f _] help] (cli args
-                              "Usage: cljam faidx <ref.fasta>"
-                              ["-h" "--help" "Print help" :default false :flag true])]
-    (when (:help opt)
-      (exit-with 0 (println help)))
-    (fai/spit (str f ".fai")
-              (fa/slurp f))
-    nil))
+  (let [{:keys [options arguments errors summary]} (parse-opts args faidx-cli-options)]
+    (cond
+     (:help options) (exit 0 (faidx-usage summary))
+     (not= (count arguments) 1) (exit 1 (faidx-usage summary))
+     errors (exit 1 (error-msg errors)))
+    (let [f (first arguments)]
+     (fai/spit (str f ".fai")
+               (fa/slurp f))))
+  nil)
+
+;;; dict command
+
+(def ^:private dict-cli-options
+  [["-h" "--help"]])
+
+(defn- dict-usage [options-summary]
+  (->> ["Create a FASTA sequence dictionary file."
+        ""
+        "Usage: cljam dict <ref.fasta> <out.dict>"
+        ""
+        "Options:"
+        options-summary]
+       (str/join \newline)))
 
 (defn dict [args]
-  (let [[opt [in out _] help] (cli args
-                                   "Usage: cljam dict <ref.fasta> <out.dict>"
-                                   ["-h" "--help" "Print help" :default false :flag true])]
-    (when (:help opt)
-      (exit-with 0 (println help)))
-    (dict/create-dict in out)
-    nil))
+  (let [{:keys [options arguments errors summary]} (parse-opts args dict-cli-options)]
+    (cond
+     (:help options) (exit 0 (dict-usage summary))
+     (not= (count arguments) 2) (exit 1 (dict-usage summary))
+     errors (exit 1 (error-msg errors)))
+    (let [[in out] arguments]
+      (dict/create-dict in out)))
+  nil)
+
+;;; main
 
 (defn -main [& args]
   (let [[opts cmd args help] (sub-command args
@@ -192,7 +309,7 @@
                                                      ["faidx"   "Index reference sequence in the FASTA format."]
                                                      ["dict"    "Create a FASTA sequence dictionary file."]])]
     (when (:help opts)
-      (exit-with 0 (println help)))
+      (exit 0 help))
     (case cmd
       :view    (view args)
       :convert (convert args)

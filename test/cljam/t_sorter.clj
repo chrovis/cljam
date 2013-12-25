@@ -18,9 +18,9 @@
                           (sam/writer tmp-coordinate-sorted-sam-file)) => nil
       (sorter/sort-by-pos (bam/reader test-bam-file)
                           (bam/writer tmp-coordinate-sorted-bam-file)) => nil
-      (sorter/sorted? (sam/reader test-sam-file)) => falsey
-      (sorter/sorted? (sam/reader tmp-coordinate-sorted-sam-file)) => truthy
-      (sorter/sorted? (bam/reader tmp-coordinate-sorted-bam-file)) => truthy
+      (sorter/sorted-by? (sam/reader test-sam-file)) => falsey
+      (sorter/sorted-by? (sam/reader tmp-coordinate-sorted-sam-file)) => truthy
+      (sorter/sorted-by? (bam/reader tmp-coordinate-sorted-bam-file)) => truthy
       (sorter/sort-order (sam/reader test-sam-file)) => sorter/order-unknown
       (sorter/sort-order (sam/reader tmp-coordinate-sorted-sam-file)) => sorter/order-coordinate
       (sorter/sort-order (bam/reader tmp-coordinate-sorted-bam-file)) => sorter/order-coordinate))

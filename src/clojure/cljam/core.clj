@@ -239,7 +239,7 @@
       (with-open [r (reader f)]
         (when (= (type r) cljam.sam.reader.SAMReader)
           (exit 1 "Not support SAM file"))
-        (when-not (sorter/sorted? r)
+        (when-not (sorter/sorted-by? r)
           (exit 1 "Not sorted"))
         (if (nil? (:ref options))
           (pileup-without-ref r)

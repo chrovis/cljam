@@ -1,5 +1,4 @@
 (ns cljam.sorter
-  (:refer-clojure :exclude [sort sorted?])
   (:require [clojure.java.io :refer [file]]
             [clojure.string :as str]
             (cljam [sam :as sam]
@@ -34,7 +33,7 @@
   (let [ref-map (apply merge
                        (map-indexed (fn [i val] {val i})
                                     (map :name (sam-util/make-refs (io/read-header rdr)))))]
-    (sort (compare-key-pos ref-map) (io/read-coordinate-blocks rdr))))
+    (sort (partial compare-key-pos ref-map) (io/read-coordinate-blocks rdr))))
 
 ;;
 ;; queryname sorter
@@ -163,10 +162,7 @@
       (io/write-refs wtr hdr)
       (io/write-alignments wtr alns hdr))))
 
-(defn sort [rdr wtr]
-  (sort-by-pos rdr wtr))
-
-(defn sorted?
+(defn sorted-by?
   "Returns true if the sam is sorted, false if not. It is detected by
   `@HD SO:***` tag in the header."
   [rdr]

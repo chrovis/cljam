@@ -27,7 +27,8 @@
     (cond
      (= (:rname b1) "*") 1
      (= (:rname b2) "*") -1
-     :else (compare (:rname b1) (:rname b2)))))
+     :else (compare (get ref-map (:rname b1))
+                    (get ref-map (:rname b2))))))
 
 (defn- sort-alignments-by-pos [rdr]
   (let [ref-map (apply merge

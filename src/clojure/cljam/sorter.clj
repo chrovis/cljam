@@ -22,14 +22,19 @@
 (defn- replace-header [hdr vn so]
   (conj hdr {:HD {:VN vn, :SO so}}))
 
-(defn- compkey-pos [ref-map b]
-  [(get ref-map (:rname b)) (:pos b)])
+(defn- compare-key-pos [ref-map b1 b2]
+  (if (= (:rname b1) (:rname b2))
+    (compare (:pos b1) (:pos b2))
+    (cond
+     (= (:rname b1) "*") 1
+     (= (:rname b2) "*") -1
+     :else (compare (:rname b1) (:rname b2)))))
 
 (defn- sort-alignments-by-pos [rdr]
   (let [ref-map (apply merge
                        (map-indexed (fn [i val] {val i})
                                     (map :name (sam-util/make-refs (io/read-header rdr)))))]
-    (sort-by (partial compkey-pos ref-map) (io/read-coordinate-blocks rdr))))
+    (sort (compare-key-pos ref-map) (io/read-coordinate-blocks rdr))))
 
 ;;
 ;; queryname sorter
@@ -59,18 +64,19 @@
   (format "%s/%s_%05d.sorted.cache" util/temp-dir prefix i))
 
 (defn- find-head
-  ([keyfn x] x)
-  ([keyfn x y] (case (compare (keyfn x) (keyfn y))
-                 0 x
-                 1 y
-                 -1 x))
-  ([keyfn x y & more]
-     (reduce #(find-head keyfn %1 %2) (find-head keyfn x y) more)))
+  ([keyfn l]
+     (reduce (fn [e1 e2]
+               (condp = (compare e1 e2)
+                 0 e1
+                 1 e2
+                 -1 e1))
+             l)))
 
 (defn- head
   [blocks ref-map]
-  (apply find-head
-         (fn [[idx b]] (compkey-pos ref-map b))
+  (find-head
+         (fn [[idx1 b1] [idx2 b2]]
+           (compare-key-pos ref-map b1 b2))
          (filter
           (fn [[_ b]] (not (nil? b)))
           (map-indexed vector blocks))))
@@ -102,7 +108,7 @@
         (let [candidates (map first blocks-list)]
           (when-not (every? nil? candidates)
             (let [[i b] (head candidates ref-map)]
-              (io/write-blocks wtr [b])
+              (io/write-coordinate-blocks wtr [b])
               (recur (map
                       (fn [[idx blocks]]
                         (if (= idx i)

@@ -172,8 +172,8 @@
         (= so (name order-coordinate)))))
 
 (defn sort-order
-  "Returns sorting order of the sam as String. Returning order is one of the
-  following: \"queryname\", \"coordinate\", \"unsorted\", \"unknown\"."
+  "Returns sorting order of the sam as Keyword. Returning order is one of the
+  following: :queryname, :coordinate, :unsorted, :unknown ."
   [rdr]
   (if-let [so (:SO (:HD (io/read-header rdr)))]
     (keyword so)

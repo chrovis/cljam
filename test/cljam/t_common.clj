@@ -1,6 +1,7 @@
 (ns cljam.t-common
   (:use [clojure.java.io :only [file]])
-  (:require cljam.sam))
+  (:require [cljam.sam :as sam]
+            [cljam.bam :as bam]))
 
 (def test-sam-file "test/resources/test.sam")
 (def test-bam-file "test/resources/test.bam")
@@ -23,6 +24,10 @@
     {:qname "x4"  , :flag 0  , :rname "ref2", :pos 10, :mapq 30, :cigar "25M"               , :rnext "*", :pnext 0 , :tlen  0  , :seq "CAAATAATTAAGTCTACAGAGCAAC" , :qual "?????????????????????????" , :options []}
     {:qname "x6"  , :flag 0  , :rname "ref2", :pos 14, :mapq 30, :cigar "23M"               , :rnext "*", :pnext 0 , :tlen  0  , :seq "TAATTAAGTCTACAGAGCAACTA"   , :qual "???????????????????????"   , :options []}
     {:qname "x5"  , :flag 0  , :rname "ref2", :pos 12, :mapq 30, :cigar "24M"               , :rnext "*", :pnext 0 , :tlen  0  , :seq "AATAATTAAGTCTACAGAGCAACT"  , :qual "????????????????????????"  , :options []}]})
+
+(defn get-shuffled-test-sam
+  []
+  (assoc test-sam :alignments (shuffle (:alignments test-sam))))
 
 (def test-sam-only-header
   (assoc test-sam :alignments nil))

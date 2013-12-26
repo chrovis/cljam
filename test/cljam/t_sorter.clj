@@ -14,6 +14,12 @@
 (def tmp-shuffled-sam-file (str temp-dir "/" "tmp.shuffled.sam"))
 (def tmp-shuffled-bam-file (str temp-dir "/" "tmp.shuffled.bam"))
 
+(def tmp-coordinate-sorted-sam-file-2 (str temp-dir "/" "tmp.coordinate.sorted.2.sam"))
+(def tmp-coordinate-sorted-bam-file-2 (str temp-dir "/" "tmp.coordinate.sorted.2.bam"))
+
+(def tmp-queryname-sorted-sam-file-2 (str temp-dir "/" "tmp.queryname.sorted.2.sam"))
+(def tmp-queryname-sorted-bam-file-2 (str temp-dir "/" "tmp.queryname.sorted.2.bam"))
+
 (defn- prepare-shuffled-files!
   []
   (sam/spit tmp-shuffled-sam-file (get-shuffled-test-sam))
@@ -54,20 +60,29 @@
         (with-reader sorter/sort-order tmp-queryname-sorted-sam-file) =future=> sorter/order-queryname
         (with-reader sorter/sort-order tmp-queryname-sorted-bam-file) =future=> sorter/order-queryname
         ;; tests by shuffled files (its may sorted by chance)
-        (with-reader sorter/sort-by-pos tmp-shuffled-sam-file tmp-coordinate-sorted-sam-file) => anything
-        (with-reader sorter/sort-by-pos tmp-shuffled-bam-file tmp-coordinate-sorted-bam-file) => anything
-        (with-reader sorter/sort-by-qname tmp-shuffled-sam-file tmp-coordinate-sorted-sam-file) =future=> anything
-        (with-reader sorter/sort-by-qname tmp-shuffled-bam-file tmp-coordinate-sorted-bam-file) =future=> anything
+        (with-reader sorter/sort-by-pos tmp-shuffled-sam-file tmp-coordinate-sorted-sam-file-2) => anything
+        (with-reader sorter/sort-by-pos tmp-shuffled-bam-file tmp-coordinate-sorted-bam-file-2) => anything
+        (with-reader sorter/sort-by-qname tmp-shuffled-sam-file tmp-coordinate-sorted-sam-file-2) =future=> anything
+        (with-reader sorter/sort-by-qname tmp-shuffled-bam-file tmp-coordinate-sorted-bam-file-2) =future=> anything
         (with-reader sorter/sorted-by? tmp-shuffled-sam-file) => anything
         (with-reader sorter/sorted-by? tmp-shuffled-bam-file) => anything
-        (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file) => truthy
-        (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file) => truthy
-        (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file) =future=> truthy
-        (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file) =future=> truthy
+        (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file-2) => truthy
+        (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file-2) => truthy
+        (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file-2) =future=> truthy
+        (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file-2) =future=> truthy
         (with-reader sorter/sort-order tmp-shuffled-sam-file) => #(#{:queryname :coordinate :unsorted :unknown} %)
         (with-reader sorter/sort-order tmp-shuffled-bam-file) => #(#{:queryname :coordinate :unsorted :unknown} %)
-        (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file) => sorter/order-coordinate
-        (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file) => sorter/order-coordinate
-        (with-reader sorter/sort-order tmp-queryname-sorted-sam-file) =future=> sorter/order-queryname
-        (with-reader sorter/sort-order tmp-queryname-sorted-bam-file) =future=> sorter/order-queryname
+        (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file-2) => sorter/order-coordinate
+        (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file-2) => sorter/order-coordinate
+        (with-reader sorter/sort-order tmp-queryname-sorted-sam-file-2) =future=> sorter/order-queryname
+        (with-reader sorter/sort-order tmp-queryname-sorted-bam-file-2) =future=> sorter/order-queryname
+        ;; compare generated files
+        (= (slurp tmp-coordinate-sorted-sam-file)
+           (slurp tmp-coordinate-sorted-sam-file-2)) => truthy
+        (= (slurp tmp-coordinate-sorted-bam-file)
+           (slurp tmp-coordinate-sorted-bam-file-2)) => truthy
+        (= (slurp tmp-queryname-sorted-sam-file)
+           (slurp tmp-queryname-sorted-sam-file-2)) =future=> truthy
+        (= (slurp tmp-queryname-sorted-bam-file)
+           (slurp tmp-queryname-sorted-bam-file-2)) =future=> truthy
         ))

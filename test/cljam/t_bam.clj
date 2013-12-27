@@ -41,5 +41,6 @@
           ;; generate incomplete bam file on the fly
           (bam/spit f test-sam-incomplete-alignments)
           (bai/create-index f (str f ".bai"))) => anything
-        ;; TODO: must check .bai files
+        (with-open [r (bam/reader (str temp-dir "/test.incomplete.bam"))]
+          (io/read-alignments r {:chr "ref" :start 0 :end 1000})) =future=> (filter #(= "ref" (:rname %)) (:alignments test-sam-sorted-by-pos))
         ))

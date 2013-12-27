@@ -33,6 +33,13 @@
                      (after :facts (clean-cache!))]
   (fact "about BAM indexer"
         (let [f (str temp-dir "/test.sorted.bam")]
-          (bai/create-index f (str f ".bai"))) => nil
+          (bai/create-index f (str f ".bai"))) => anything
         (with-open [r (bam/reader (str temp-dir "/test.sorted.bam"))]
-          (io/read-alignments r {:chr "ref" :start 0 :end 1000})) => (filter #(= "ref" (:rname %)) (:alignments test-sam-sorted-by-pos))))
+          (io/read-alignments r {:chr "ref" :start 0 :end 1000})) => (filter #(= "ref" (:rname %)) (:alignments test-sam-sorted-by-pos))
+        ;; incomplete alignments tests
+        (let [f (str temp-dir "/test.incomplete.bam")]
+          ;; generate incomplete bam file on the fly
+          (bam/spit f test-sam-incomplete-alignments)
+          (bai/create-index f (str f ".bai"))) => anything
+        ;; TODO: must check .bai files
+        ))

@@ -4,7 +4,8 @@
   (:require [clojure.java.io :refer [copy file]]
             [cljam.bam :as bam]
             [cljam.io :as io]
-            [cljam.bam-indexer :as bai]))
+            [cljam.bam-indexer :as bai]
+            [cljam.sorter :as sorter]))
 
 (fact "about slurp-bam"
       (with-open [r (bam/reader test-bam-file)]
@@ -37,10 +38,12 @@
         (with-open [r (bam/reader (str temp-dir "/test.sorted.bam"))]
           (io/read-alignments r {:chr "ref" :start 0 :end 1000})) => (filter #(= "ref" (:rname %)) (:alignments test-sam-sorted-by-pos))
         ;; incomplete alignments tests
-        (let [f (str temp-dir "/test.incomplete.bam")]
+        (let [f (str temp-dir "/test.incomplete.bam")
+              sorted-f (str temp-dir "/test.incomplete.sorted.bam")]
           ;; generate incomplete bam file on the fly
           (bam/spit f test-sam-incomplete-alignments)
-          (bai/create-index f (str f ".bai"))) => anything
-        (with-open [r (bam/reader (str temp-dir "/test.incomplete.bam"))]
-          (io/read-alignments r {:chr "ref" :start 0 :end 1000})) =future=> (filter #(= "ref" (:rname %)) (:alignments test-sam-sorted-by-pos))
+          (sorter/sort-by-pos (bam/reader f) (bam/writer sorted-f))
+          (bai/create-index sorted-f (str sorted-f ".bai"))) => anything
+        (with-open [r (bam/reader (str temp-dir "/test.incomplete.sorted.bam"))]
+          (io/read-alignments r {:chr "ref" :start 0 :end 1000})) => (filter #(= "ref" (:rname %)) (:alignments test-sam-incomplete-alignments-sorted-by-pos))
         ))

@@ -29,14 +29,6 @@
   []
   (assoc test-sam :alignments (shuffle (:alignments test-sam))))
 
-(def test-sam-incomplete-alignments
-  (assoc test-sam :header {:SQ [{:SN "re",   :LN 45} ; not exists in alignments
-                                {:SN "ref",  :LN 45}
-                                {:SN "ref1", :LN 40} ; not exists in alignments
-                                {:SN "ref2", :LN 40}
-                                {:SN "ref3", :LN 45} ; not exists in alignments
-                                ]}))
-
 (def test-sam-only-header
   (assoc test-sam :alignments nil))
 
@@ -79,6 +71,20 @@
 (def test-fa
   [{:rname "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}
    {:rname "ref2", :offset 57, :seq "aggttttataaaacaattaagtctacagagcaactacgcg",      :blen 40}])
+
+(def sq-incomplete-alignments
+  [{:SN "re",   :LN 45} ; not exists in alignments on test-sam
+   {:SN "ref",  :LN 45}
+   {:SN "ref1", :LN 40} ; not exists in alignments on test-sam
+   {:SN "ref2", :LN 40}
+   {:SN "ref3", :LN 45} ; not exists in alignments on test-sam
+   ])
+(def test-sam-incomplete-alignments
+  {:header (assoc (:header test-sam) :SQ sq-incomplete-alignments)
+   :alignments (:alignments test-sam)})
+(def test-sam-incomplete-alignments-sorted-by-pos
+  {:header (assoc (:header test-sam-sorted-by-pos) :SQ sq-incomplete-alignments)
+   :alignments (:alignments test-sam-sorted-by-pos)})
 
 (def temp-dir (.getPath (file (System/getProperty "java.io.tmpdir") "cljam-test")))
 

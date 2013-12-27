@@ -30,9 +30,12 @@
   (assoc test-sam :alignments (shuffle (:alignments test-sam))))
 
 (def test-sam-incomplete-alignments
-  (assoc test-sam :header {:SQ [{:SN "ref", :LN 45}
+  (assoc test-sam :header {:SQ [{:SN "re",   :LN 45} ; not exists in alignments
+                                {:SN "ref",  :LN 45}
                                 {:SN "ref1", :LN 40} ; not exists in alignments
-                                {:SN "ref2", :LN 40}]}))
+                                {:SN "ref2", :LN 40}
+                                {:SN "ref3", :LN 45} ; not exists in alignments
+                                ]}))
 
 (def test-sam-only-header
   (assoc test-sam :alignments nil))

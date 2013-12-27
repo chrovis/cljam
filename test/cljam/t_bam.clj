@@ -46,4 +46,5 @@
           (bai/create-index sorted-f (str sorted-f ".bai"))) => anything
         (with-open [r (bam/reader (str temp-dir "/test.incomplete.sorted.bam"))]
           (io/read-alignments r {:chr "ref" :start 0 :end 1000})) => (filter #(= "ref" (:rname %)) (:alignments test-sam-incomplete-alignments-sorted-by-pos))
+        ;; TODO: need more strictly check to .bai files
         ))

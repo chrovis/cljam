@@ -1,6 +1,7 @@
 (ns cljam.bam-indexer.writer
   (:require [clojure.java.io :refer [file]]
             [clojure.tools.logging :as logging]
+            [clojure.pprint :refer [pprint]] ;; TODO for debug only
             [cljam.lsb :as lsb]
             [cljam.cigar :as cgr]
             [cljam.util :refer [gen-vec]]
@@ -227,6 +228,75 @@
                 (swap! lidx assoc win chunk-beg))
               (recur (inc win)))))))))
 
+(defn- make-index*
+  [ref alns]
+  ;; TODO
+  ;; meta data
+  (let [meta (:meta s)]
+    (if (zero? (:pos aln))
+      (swap! meta update-in [:no-coordinate-alns] inc)
+      (do (if-not (zero? (bit-and (:flag aln) 4))
+            (swap! meta update-in [:unaligned-alns] inc)
+            (swap! meta update-in [:aligned-alns] inc))
+          (if (or (< (bgzf-util/compare (:beg (:chunk (:meta aln)))
+                                        (:first-offset @meta)) 1)
+                  (= (:first-offset @meta) -1))
+            (swap! meta assoc :first-offset (:beg (:chunk (:meta aln)))))
+          (if (< (bgzf-util/compare (:last-offset @meta)
+                                    (:end (:chunk (:meta aln)))) 1)
+            (swap! meta assoc :last-offset (:end (:chunk (:meta aln))))))))
+  ;; bin, intv
+  (let [bins (:bins s)
+        bins-seen (:bins-seen s)
+        lidx (:lidx s)
+        largest-lidx-seen (:largest-lidx-seen s)
+        bin-num (sam-util/compute-bin aln)]
+    (when (nil? (nth @bins bin-num))
+      (swap! bins assoc bin-num {:bin-num bin-num, :chunks nil})
+      (swap! bins-seen inc))
+    (let [bin (nth @bins bin-num)
+          chunk-beg (:beg (:chunk (:meta aln)))
+          chunk-end (:end (:chunk (:meta aln)))]
+      ;; chunk
+      (if (seq (:chunks bin))
+        (if (bgzf-util/same-or-adjacent-blocks? (:end (last (:chunks bin)))
+                                                chunk-beg)
+          (let [last-idx (dec (count (:chunks bin)))
+                last-chunk (last (:chunks bin))
+                new-chunks (assoc (:chunks bin) last-idx (assoc last-chunk :end chunk-end))
+                new-bin (assoc bin :chunks new-chunks)]
+            (swap! bins assoc bin-num new-bin))
+          (let [new-bin (update-in bin [:chunks] conj (:chunk (:meta aln)))]
+            (swap! bins assoc bin-num new-bin)))
+        (let [new-bin (assoc bin :chunks (vector (:chunk (:meta aln))))]
+          (swap! bins assoc bin-num new-bin)))
+      ;; lenear index
+      (let [aln-beg (:pos aln)
+            aln-end (+ aln-beg (cgr/count-ref (:cigar aln)))
+            window-beg (if (zero? aln-end)
+                         (pos->lidx-offset (dec aln-beg))
+                         (pos->lidx-offset aln-beg))
+            window-end (if (zero? aln-end)
+                         window-beg
+                         (pos->lidx-offset aln-end))]
+        (if (> window-end @largest-lidx-seen)
+          (reset! largest-lidx-seen window-end))
+        (loop [win window-beg]
+          (when (<= win window-end)
+            (if (or (zero? (nth @lidx win))
+                    (< chunk-beg (nth @lidx win)))
+              (swap! lidx assoc win chunk-beg))
+            (recur (inc win)))))))
+  ;; TODO end
+  {:bins []
+   :intervals []
+   :length (:len ref)})
+
+(defn- make-index
+  [refs alns]
+  (zipmap (map #(:name %) refs)
+          (map #(make-index* % alns) refs)))
+
 ;;;
 ;;; public
 ;;;
@@ -246,6 +316,8 @@
       (lsb/write-bytes w (.getBytes bai-magic))
       ;; n_ref
       (lsb/write-int w (count (:refs s)))
+      ;; TODO this is new implementation
+      (pprint (make-index (:refs s) alns))
       (doseq [aln alns] (write-index* w s aln))
       ;; Write data about last ref
       (write-ref! w s)

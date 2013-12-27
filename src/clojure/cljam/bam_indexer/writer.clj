@@ -17,51 +17,27 @@
   (+ (nth level-starts  (dec (count level-starts)))
      (bit-shift-right seq-len 14)))
 
-(def max-lidx-size (- (inc max-bins) (last level-starts)))
+(def ^:private max-lidx-size (- (inc max-bins) (last level-starts)))
 
-;;
-;; BAIWriterStatus
-;;
-
-(defrecord BAIWriterStatus
-    [valid refs ref-name max-idx idx bins bins-seen lidx largest-lidx-seen meta])
-
-(defn- current-ref
-  [^BAIWriterStatus s]
-  (nth (:refs s) @(:idx s)))
+(defn- find-ref
+  [refs name]
+  (first (filter #(= (:name %) name) refs)))
 
 (defn- bin-count
-  [refs idx]
-  (-> (nth refs idx)
-      :len
-      max-bin-num
-      inc))
+  [refs name]
+  (let [ref (find-ref refs name)]
+    (if (nil? ref)
+      (dec max-bins)
+      (-> ref
+          :len
+          max-bin-num
+          inc))))
 
-(defn- has-next?
-  [s]
-  (> (:max-idx s) @(:idx s)))
-
-(defn- writer-status
-  [refs]
-  (BAIWriterStatus. (atom true)
-                    refs
-                    (atom (:name (first refs)))
-                    (dec (count refs))
-                    (atom 0)
-                    (atom (gen-vec (bin-count refs 0)))
-                    (atom 0)
-                    (atom (gen-vec max-lidx-size 0))
-                    (atom -1)
-                    (atom {:first-offset -1
-                           :last-offset 0
-                           :aligned-alns 0
-                           :unaligned-alns 0
-                           :no-coordinate-alns 0})))
 ;;
 ;; BAIWriter
 ;;
 
-(deftype BAIWriter [writer status f]
+(deftype BAIWriter [writer refs f]
   java.io.Closeable
   (close [this]
     (.. this writer close)))
@@ -89,15 +65,9 @@
         (recur (inc i))))
     @new-lidx))
 
-(defn- write-null-content
-  [w]
-  (lsb/write-long w 0))
-
 (defn- write-bin
   [w bin]
-  {:pre (< (:bin-num bin) max-bins)}
-  ;; bin
-  (lsb/write-int w (:bin-num bin))
+  (lsb/write-int w (:idx bin))
   ;; chunks
   (lsb/write-int w (count (:chunks bin)))
   (doseq [c (:chunks bin)]
@@ -113,68 +83,43 @@
   (lsb/write-long w (:aligned-alns meta-data))
   (lsb/write-long w (:unaligned-alns meta-data)))
 
-; bins bins-seen lidx meta-data
-; @bins @bins-seen (optimize-lidx lidx @largest-lidx-seen) @meta-data
+;;
+;; index
+;;
 
-(defn- write-ref*
-  [^DataOutputStream w bins bins-seen lidx meta-data]
-  (let [size (if (seq bins) bins-seen 0)]
-    (if (zero? size)
-      (write-null-content w)
-      (do
-        ;; n_bin
-        (lsb/write-int w (inc size))
-        ;; bins
-        (doseq [bin bins]
-          (when-not (nil? bin)
-           (when-not (= (:bin-num bin) max-bins)
-             (write-bin w bin))))
-        ;; meta data
-        (write-meta-data w meta-data)
-        ;; n_intv
-        (lsb/write-int w (count lidx))
-        ;; intv
-        (doseq [l lidx]
-          (lsb/write-long w l))))))
-
-(defn- write-ref!
-  [^DataOutputStream w ^BAIWriterStatus s]
-  (write-ref* w
-              @(:bins s)
-              @(:bins-seen s)
-              (optimize-lidx (:lidx s) @(:largest-lidx-seen s))
-              @(:meta s)))
-
-(defn- next-ref!
-  [^BAIWriterStatus s]
-  (swap! (:idx s) inc)
-  (reset! (:ref-name s) (:name (current-ref s)))
-  (reset! (:bins s) (gen-vec (bin-count (:refs s) @(:idx s))))
-  (reset! (:bins-seen s) 0)
-  (reset! (:lidx s) (gen-vec max-lidx-size 0))
-  (reset! (:largest-lidx-seen s) -1)
-  (swap! (:meta s) assoc :first-offset -1, :last-offset 0, :aligned-alns 0, :unaligned-alns 0))
-
-(defn- write-no-coordinate-alns-count
-  [^DataOutputStream w meta-data]
-  (lsb/write-long w (:no-coordinate-alns meta-data)))
-
-(defn- write-index*
-  [^DataOutputStream w ^BAIWriterStatus s aln]
-  (when @(:valid s)
-    (when-not (= (:rname aln) @(:ref-name s))
-      (if (has-next? s)
-        (do
-          ;; Write data about current ref
-          (write-ref! w s)
-          ;; Set next ref
-          (next-ref! s))
-        (reset! (:valid s) false))))
-  (when @(:valid s)
+(defn- make-index!
+  [refs alns]
+  (let [indices (atom {})
+        ref-name (atom nil)
+        bins (atom nil)
+        bins-seen (atom 0)
+        lidx (atom (gen-vec max-lidx-size 0))
+        largest-lidx-seen (atom -1)
+        meta (atom {:first-offset -1
+                    :last-offset 0
+                    :aligned-alns 0
+                    :unaligned-alns 0})
+        no-coordinate-alns (atom 0)]
     ;; meta data
-    (let [meta (:meta s)]
+    (doseq [aln alns]
+      (when (nil? @ref-name)
+        (reset! ref-name (:rname aln))
+        (reset! bins (gen-vec (bin-count refs (:rname aln)))))
+      (when-not (= (:rname aln) @ref-name)
+        (swap! indices assoc @ref-name {:meta @meta
+                                        :bins @bins
+                                        :lidx (optimize-lidx lidx @largest-lidx-seen)})
+        (reset! ref-name (:rname aln))
+        (reset! bins (gen-vec (bin-count refs (:rname aln))))
+        (reset! bins-seen 0)
+        (reset! lidx (gen-vec max-lidx-size 0))
+        (reset! largest-lidx-seen -1)
+        (reset! meta {:first-offset -1
+                      :last-offset 0
+                      :aligned-alns 0
+                      :unaligned-alns 0}))
       (if (zero? (:pos aln))
-        (swap! meta update-in [:no-coordinate-alns] inc)
+        (swap! no-coordinate-alns inc)
         (do (if-not (zero? (bit-and (:flag aln) 4))
               (swap! meta update-in [:unaligned-alns] inc)
               (swap! meta update-in [:aligned-alns] inc))
@@ -184,32 +129,30 @@
               (swap! meta assoc :first-offset (:beg (:chunk (:meta aln)))))
             (if (< (bgzf-util/compare (:last-offset @meta)
                                       (:end (:chunk (:meta aln)))) 1)
-              (swap! meta assoc :last-offset (:end (:chunk (:meta aln))))))))
-    ;; bin, intv
-    (let [bins (:bins s)
-          bins-seen (:bins-seen s)
-          lidx (:lidx s)
-          largest-lidx-seen (:largest-lidx-seen s)
-          bin-num (sam-util/compute-bin aln)]
-      (when (nil? (nth @bins bin-num))
-        (swap! bins assoc bin-num {:bin-num bin-num, :chunks nil})
-        (swap! bins-seen inc))
-      (let [bin (nth @bins bin-num)
-            chunk-beg (:beg (:chunk (:meta aln)))
+              (swap! meta assoc :last-offset (:end (:chunk (:meta aln)))))))
+      ;; bins
+      (let [chunk-beg (:beg (:chunk (:meta aln)))
             chunk-end (:end (:chunk (:meta aln)))]
-        ;; chunk
-        (if (seq (:chunks bin))
-          (if (bgzf-util/same-or-adjacent-blocks? (:end (last (:chunks bin)))
-                                                  chunk-beg)
-            (let [last-idx (dec (count (:chunks bin)))
-                  last-chunk (last (:chunks bin))
-                  new-chunks (assoc (:chunks bin) last-idx (assoc last-chunk :end chunk-end))
-                  new-bin (assoc bin :chunks new-chunks)]
-              (swap! bins assoc bin-num new-bin))
-            (let [new-bin (update-in bin [:chunks] conj (:chunk (:meta aln)))]
-              (swap! bins assoc bin-num new-bin)))
-          (let [new-bin (assoc bin :chunks (vector (:chunk (:meta aln))))]
-            (swap! bins assoc bin-num new-bin)))
+        (let [bin-idx (sam-util/compute-bin aln)
+              bin (if (nil? (nth @bins bin-idx))
+                    (do
+                      (swap! bins assoc bin-idx {:idx bin-idx, :chunks nil})
+                      (swap! bins-seen inc)
+                      (nth @bins bin-idx))
+                    (nth @bins bin-idx))]
+          ;; chunk
+          (if (seq (:chunks bin))
+            (if (bgzf-util/same-or-adjacent-blocks? (:end (last (:chunks bin)))
+                                                    chunk-beg)
+              (let [last-idx (dec (count (:chunks bin)))
+                    last-chunk (last (:chunks bin))
+                    new-chunks (assoc (:chunks bin) last-idx (assoc last-chunk :end chunk-end))
+                    new-bin (assoc bin :chunks new-chunks)]
+                (swap! bins assoc bin-idx new-bin))
+              (let [new-bin (update-in bin [:chunks] conj (:chunk (:meta aln)))]
+                (swap! bins assoc bin-idx new-bin)))
+            (let [new-bin (assoc bin :chunks (vector (:chunk (:meta aln))))]
+              (swap! bins assoc bin-idx new-bin))))
         ;; lenear index
         (let [aln-beg (:pos aln)
               aln-end (+ aln-beg (cgr/count-ref (:cigar aln)))
@@ -226,76 +169,25 @@
               (if (or (zero? (nth @lidx win))
                       (< chunk-beg (nth @lidx win)))
                 (swap! lidx assoc win chunk-beg))
-              (recur (inc win)))))))))
-
-(defn- make-index*
-  [ref alns]
-  ;; TODO
-  ;; meta data
-  (let [meta (:meta s)]
-    (if (zero? (:pos aln))
-      (swap! meta update-in [:no-coordinate-alns] inc)
-      (do (if-not (zero? (bit-and (:flag aln) 4))
-            (swap! meta update-in [:unaligned-alns] inc)
-            (swap! meta update-in [:aligned-alns] inc))
-          (if (or (< (bgzf-util/compare (:beg (:chunk (:meta aln)))
-                                        (:first-offset @meta)) 1)
-                  (= (:first-offset @meta) -1))
-            (swap! meta assoc :first-offset (:beg (:chunk (:meta aln)))))
-          (if (< (bgzf-util/compare (:last-offset @meta)
-                                    (:end (:chunk (:meta aln)))) 1)
-            (swap! meta assoc :last-offset (:end (:chunk (:meta aln))))))))
-  ;; bin, intv
-  (let [bins (:bins s)
-        bins-seen (:bins-seen s)
-        lidx (:lidx s)
-        largest-lidx-seen (:largest-lidx-seen s)
-        bin-num (sam-util/compute-bin aln)]
-    (when (nil? (nth @bins bin-num))
-      (swap! bins assoc bin-num {:bin-num bin-num, :chunks nil})
-      (swap! bins-seen inc))
-    (let [bin (nth @bins bin-num)
-          chunk-beg (:beg (:chunk (:meta aln)))
-          chunk-end (:end (:chunk (:meta aln)))]
-      ;; chunk
-      (if (seq (:chunks bin))
-        (if (bgzf-util/same-or-adjacent-blocks? (:end (last (:chunks bin)))
-                                                chunk-beg)
-          (let [last-idx (dec (count (:chunks bin)))
-                last-chunk (last (:chunks bin))
-                new-chunks (assoc (:chunks bin) last-idx (assoc last-chunk :end chunk-end))
-                new-bin (assoc bin :chunks new-chunks)]
-            (swap! bins assoc bin-num new-bin))
-          (let [new-bin (update-in bin [:chunks] conj (:chunk (:meta aln)))]
-            (swap! bins assoc bin-num new-bin)))
-        (let [new-bin (assoc bin :chunks (vector (:chunk (:meta aln))))]
-          (swap! bins assoc bin-num new-bin)))
-      ;; lenear index
-      (let [aln-beg (:pos aln)
-            aln-end (+ aln-beg (cgr/count-ref (:cigar aln)))
-            window-beg (if (zero? aln-end)
-                         (pos->lidx-offset (dec aln-beg))
-                         (pos->lidx-offset aln-beg))
-            window-end (if (zero? aln-end)
-                         window-beg
-                         (pos->lidx-offset aln-end))]
-        (if (> window-end @largest-lidx-seen)
-          (reset! largest-lidx-seen window-end))
-        (loop [win window-beg]
-          (when (<= win window-end)
-            (if (or (zero? (nth @lidx win))
-                    (< chunk-beg (nth @lidx win)))
-              (swap! lidx assoc win chunk-beg))
-            (recur (inc win)))))))
-  ;; TODO end
-  {:bins []
-   :intervals []
-   :length (:len ref)})
+              (recur (inc win)))))))
+    (swap! indices assoc
+           @ref-name {:meta @meta
+                      :bins @bins
+                      :lidx (optimize-lidx lidx @largest-lidx-seen)}
+           :no-coordinate-alns @no-coordinate-alns)
+    @indices))
 
 (defn- make-index
   [refs alns]
-  (zipmap (map #(:name %) refs)
-          (map #(make-index* % alns) refs)))
+  (merge
+   (zipmap (map #(:name %) refs)
+           (map (fn [r] {:meta {:first-offset -1
+                                :last-offset 0
+                                :aligned-alns 0
+                                :unaligned-alns 0}
+                         :bins []
+                         :lidx []}) refs))
+   (make-index! refs alns)))
 
 ;;;
 ;;; public
@@ -304,24 +196,38 @@
 (defn writer
   [f refs]
   (->BAIWriter (DataOutputStream. (FileOutputStream. (file f)))
-               (writer-status refs)
+               refs
                f))
 
 (defn write-index
   [^BAIWriter wtr alns]
   (try
     (let [w (.writer wtr)
-          s (.status wtr)]
+          refs (.refs wtr)]
       ;; magic
       (lsb/write-bytes w (.getBytes bai-magic))
       ;; n_ref
-      (lsb/write-int w (count (:refs s)))
-      ;; TODO this is new implementation
-      (pprint (make-index (:refs s) alns))
-      (doseq [aln alns] (write-index* w s aln))
-      ;; Write data about last ref
-      (write-ref! w s)
-      (write-no-coordinate-alns-count w @(:meta s)))
+      (lsb/write-int w (count refs))
+      (let [indices (make-index refs alns)]
+        (doseq [ref refs]
+          (let [index (get indices (:name ref))]
+            ;; bins
+            (if (zero? (count (:bins index)))
+              (lsb/write-int w 0)
+              (do
+                (let [bins (filter #(not (nil? %)) (:bins index))]
+                  ;; # of bins
+                  (lsb/write-int w (inc (count bins)))
+                  (doseq [bin bins]
+                    (write-bin w bin))
+                  ;; meta data
+                  (write-meta-data w (:meta index)))))
+            ;; linear index
+            (lsb/write-int w (count (:lidx index)))
+            (doseq [l (:lidx index)]
+              (lsb/write-long w l))))
+        ;; no coordinate alignments
+        (lsb/write-long w (:no-coordinate-alns indices))))
     (catch Exception e (do
                          (let [f (file (.f wtr))]
                            (when (.exists f)

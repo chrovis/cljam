@@ -38,6 +38,11 @@
                        from-hex-digit (nth s (inc (* % 2)))))
         (range (count s)))))
 
+(defn str->int [str]
+  (try
+    (Integer. (re-find  #"\d+" str))
+    (catch Exception e nil)))
+
 ;;; seq utils
 
 (defn gen-vec

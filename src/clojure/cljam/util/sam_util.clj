@@ -1,7 +1,7 @@
 (ns cljam.util.sam-util
   (:require [clojure.string :as str]
             [cljam.cigar :refer [count-ref]]
-            [cljam.util :refer [ubyte]]))
+            [cljam.util :refer [ubyte str->int]]))
 
 ;;; parse
 
@@ -32,10 +32,47 @@
   [s]
   (parse-header* (str/split s #"\n")))
 
+(defn- parse-tag-single [val-type val]
+  (case val-type
+    \Z val
+    \A (first val)
+    \I (str->int val)
+    \i (str->int val)
+    \s (str->int val)
+    \S (str->int val)
+    \c (str->int val)
+    \C (str->int val)
+    \f (float (str->int val))
+    \H nil ;;FIXME
+    (throw (Exception. "Unrecognized tag type"))))
+
+(defn- parse-tag-array [val]
+  nil
+  ;; FIXME
+  ;; (let [typ (char (.get bb))
+  ;;       len (.getInt bb)]
+  ;;   (->> (for [i (range len)]
+  ;;          (case typ
+  ;;            \c (int (.get bb))
+  ;;            \C (bit-and (int (.get bb)) 0xff)
+  ;;            \s (int (.getShort bb))
+  ;;            \S (bit-and (.getShort bb) 0xffff)
+  ;;            \i (.getInt bb)
+  ;;            \I (bit-and (.getInt bb) 0xffffffff)
+  ;;            \f (.getFloat bb)
+  ;;            (throw (Exception. (str "Unrecognized tag array type: " typ)))))
+  ;;        (cons typ)
+  ;;        (join \,)))
+  )
+
 (defn- parse-optional-fields [options]
   (map (fn [op]
-         (let [[tag type value] (str/split op #":")]
-           {(keyword tag) {:type type :value value}}))
+         (let [[tag val-type-str val] (str/split op #":")
+               val-type (first val-type-str)]
+           {(keyword tag) {:type val-type-str
+                           :value (if (= val-type \B)
+                                    (parse-tag-array val)
+                                    (parse-tag-single val-type val))}}))
        options))
 
 (defn- parse-seq-text [s]

@@ -1,21 +1,28 @@
 (ns cljam.t-common
   (:use [clojure.java.io :only [file]])
   (:require [cljam.sam :as sam]
-            [cljam.bam :as bam]))
+            [cljam.bam :as bam]
+            [cljam.io :as io]
+            ))
 
 ;;; slurp / spit (for test)
 (defn slurp-sam-for-test [f]
-  ;; FIXME rewrite
-  (sam/slurp f))
+  (with-open [r (sam/reader f)]
+    {:header (io/read-header r)
+     :alignments (doall (io/read-alignments r {}))}))
 (defn slurp-bam-for-test [f]
-  ;; FIXME rewrite
-  (bam/slurp f))
-(defn spit-sam-for-test [f c]
-  ;; FIXME rewrite
-  (sam/spit f c))
-(defn spit-bam-for-test [f c]
-  ;; FIXME rewrite
-  (bam/spit f c))
+  (with-open [r (bam/reader f)]
+    {:header (io/read-header r)
+     :alignments (doall (io/read-alignments r {}))}))
+(defn spit-sam-for-test [f sam]
+  (with-open [w (sam/writer f)]
+    (io/write-header w (:header sam))
+    (io/write-alignments w (:alignments sam) nil)))
+(defn spit-bam-for-test [f sam]
+  (with-open [w (bam/writer f)]
+    (io/write-header w (:header sam))
+    (io/write-refs w (:header sam))
+    (io/write-alignments w (:alignments sam) (:header sam))))
   
 (def test-sam-file "test/resources/test.sam")
 (def test-bam-file "test/resources/test.bam")

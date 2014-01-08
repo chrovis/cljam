@@ -2,9 +2,7 @@
   (:use midje.sweet
         cljam.t-common)
   (:require [clojure.java.io :as io]
-            [cljam.core :as core]
-            [cljam.sam :as sam]
-            [cljam.bam :as bam]))
+            [cljam.core :as core]))
 
 (defmacro with-out-file
   [f & body]

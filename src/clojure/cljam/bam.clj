@@ -5,8 +5,8 @@
                        [writer :as bam-writer])))
 
 (defn reader
-  [f]
-  (bam-reader/reader f))
+  [f & option]
+  (bam-reader/reader f option))
 
 (defn writer
   [f]
@@ -19,7 +19,7 @@
   (let [{:keys [chr start end] :or {chr nil
                                     start 0
                                     end -1}} options]
-    (with-open [r (bam-reader/reader f)]
+    (with-open [r (bam-reader/reader f {})]
       {:header (io/read-header r)
        :alignments (io/read-alignments r
                                        (if (nil? chr)

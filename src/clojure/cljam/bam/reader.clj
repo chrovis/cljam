@@ -305,7 +305,8 @@
 
 ;;; public
 
-(defn reader [f]
+(defn reader [f {:keys [ignore-index]
+                 :or {ignore-index false}}]
   (let [rdr (BGZFInputStream. (file f))
         data-rdr (DataInputStream. rdr)]
     (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes bam-magic))
@@ -321,8 +322,9 @@
                        (recur (dec i)
                               (conj ret {:name (subs name 0 (dec l-name))
                                          :len  l-ref})))))
-          index (try (bam-index f header)
-                     (catch IOException e nil))]
+          index (if ignore-index
+                  nil
+                  (try (bam-index f header) (catch IOException _ nil)))]
       (->BAMReader (.getAbsolutePath (file f))
                    header refs rdr data-rdr index))))
 

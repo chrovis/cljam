@@ -1,5 +1,5 @@
 (ns cljam.core
-  (:refer-clojure :exclude [sort merge slurp spit])
+  (:refer-clojure :exclude [sort merge])
   (:require [clojure.string :as str]
             [clj-sub-command.core :refer [sub-command]]
             [clojure.tools.cli :refer [parse-opts]]
@@ -12,8 +12,7 @@
                    [fasta-indexer :as fai]
                    [dict :as dict]
                    [pileup :as plp])
-            [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
-  (:gen-class))
+            [cljam.util.sam-util :refer [stringify-header stringify-alignment]]))
 
 (defn reader [f]
   (condp re-find f
@@ -25,50 +24,6 @@
   (condp re-find f
     #"\.sam$" (sam/writer f)
     #"\.bam$" (bam/writer f)
-    (throw (IllegalArgumentException. "Invalid file type"))))
-
-(defmulti read-header type)
-
-(defmethod read-header cljam.sam.reader.SAMReader
-  [rdr]
-  (io/read-header rdr))
-
-(defmethod read-header cljam.bam.reader.BAMReader
-  [rdr]
-  (io/read-header rdr))
-
-(defmulti read-alignments type)
-
-(defmethod read-alignments cljam.sam.reader.SAMReader
-  [rdr]
-  (io/read-alignments rdr {}))
-
-(defmethod read-alignments cljam.bam.reader.BAMReader
-  [rdr]
-  (io/read-alignments rdr {}))
-
-(defmulti read-refs type)
-
-(defmethod read-refs cljam.sam.reader.SAMReader
-  [rdr]
-  (io/read-refs rdr))
-
-(defmethod read-refs cljam.bam.reader.BAMReader
-  [rdr]
-  (io/read-refs rdr))
-
-(defn- slurp
-  [f]
-  (condp re-find f
-    #"\.sam$" (sam/slurp f)
-    #"\.bam$" (bam/slurp f)
-    (throw (IllegalArgumentException. "Invalid file type"))))
-
-(defn- spit
-  [f sam]
-  (condp re-find f
-    #"\.sam$" (sam/spit f sam)
-    #"\.bam$" (bam/spit f sam)
     (throw (IllegalArgumentException. "Invalid file type"))))
 
 ;;; cli functions
@@ -110,8 +65,8 @@
                       "sam"  (sam/reader f)
                       "bam"  (bam/reader f))]
         (when (:header options)
-          (println (stringify-header (read-header r))))
-        (doseq [aln (read-alignments r)]
+          (println (stringify-header (io/read-header r))))
+        (doseq [aln (io/read-alignments r {})]
           (println (stringify-alignment aln))))))
   nil)
 
@@ -139,9 +94,14 @@
      (:help options) (exit 0 (convert-usage summary))
      (not= (count arguments) 2) (exit 1 (convert-usage summary))
      errors (exit 1 (error-msg errors)))
-    (let [[in out] arguments
-          asam (slurp in)]              ; FIXME: make lazy for a large file
-      (spit out asam)))
+    (let [[in out] arguments]
+      (with-open [wtr (writer out)]
+        (with-open [rdr (reader in)]
+          (let [hdr (io/read-header rdr)]
+            (io/write-header wtr hdr)
+            (io/write-refs wtr (io/read-refs rdr))
+            (doseq [alns (partition-all 10000 (io/read-alignments rdr {}))]
+              (io/write-alignments wtr alns hdr)))))))
   nil)
 
 ;;; sort command
@@ -217,14 +177,14 @@
 (defn- pileup-with-ref
   [rdr ref-fa]
   (with-open [fa-rdr (fa/reader ref-fa)]
-    (doseq [rname (map :name (read-refs rdr))
+    (doseq [rname (map :name (io/read-refs rdr))
             line  (plp/mpileup rdr rname -1 -1 :ref-fasta fa-rdr)]
       (if-not (zero? (:count line))
         (println (str/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
 
 (defn- pileup-without-ref
   [rdr]
-  (doseq [rname (map :name (read-refs rdr))
+  (doseq [rname (map :name (io/read-refs rdr))
           line  (plp/mpileup rdr rname)]
     (if-not (zero? (:count line))
       (println (str/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))

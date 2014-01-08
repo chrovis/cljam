@@ -12,7 +12,8 @@
   [f]
   (bam-writer/writer f))
 
-(defn slurp
+(defn ^:deprecated
+  slurp
   "Opens a reader on bam-file and reads all its headers and alignments,
   returning a map about sam records."
   [f & options]
@@ -26,7 +27,8 @@
                                          {}
                                          {:chr chr :start start :end end}))})))
 
-(defn spit
+(defn ^:deprecated
+  spit
   "Opposite of slurp-bam. Opens bam-file with writer, writes sam headers and
   alignments, then closes the bam-file."
   [f sam]

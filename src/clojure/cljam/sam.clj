@@ -12,7 +12,8 @@
   [f]
   (sam-writer/writer f))
 
-(defn slurp
+(defn ^:deprecated
+  slurp
   "Opens a reader on sam-file and reads all its headers and alignments,
   returning a map about sam records."
   [f]
@@ -20,7 +21,8 @@
     {:header (io/read-header r)
      :alignments (vec (io/read-alignments r {}))}))
 
-(defn spit
+(defn ^:deprecated
+  spit
   "Opposite of slurp-sam. Opens sam-file with writer, writes sam headers and
   alignments, then closes the sam-file."
   [f sam]

@@ -2,7 +2,9 @@
   (:use midje.sweet
         cljam.t-common)
   (:require [clojure.java.io :as io]
-            [cljam.core :as core]))
+            [cljam.core :as core]
+            [cljam.sam :as sam]
+            [cljam.bam :as bam]))
 
 (defmacro with-out-file
   [f & body]
@@ -10,6 +12,8 @@
      ~@body))
 
 (def temp-out (str temp-dir "/out"))
+(def temp-bam (str temp-dir "/out.bam"))
+(def temp-sam (str temp-dir "/out.sam"))
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]
@@ -27,3 +31,20 @@
                      (after  :facts (clean-cache!))]
   (fact "about pileup"
         (with-out-file temp-out (core/pileup [test-sorted-bam-file])) => nil))
+
+(with-state-changes [(before :facts (prepare-cache!))
+                     (after  :facts (clean-cache!))]
+  (fact "about convert"
+        ;; sam => bam
+        (core/convert [test-sam-file temp-bam]) => anything
+        (= (sam/slurp test-sam-file)
+           (bam/slurp temp-bam)) => truthy
+        (= (bam/slurp test-bam-file)
+           (bam/slurp temp-bam)) => truthy
+        ;; bam => sam
+        (core/convert [test-bam-file temp-sam]) => anything
+        (= (bam/slurp test-bam-file)
+           (sam/slurp temp-sam)) => truthy
+        (= (sam/slurp test-sam-file)
+           (sam/slurp temp-sam)) => truthy
+        ))

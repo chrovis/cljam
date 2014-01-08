@@ -5,7 +5,7 @@
 
 (defn create-index
   [in-bam out-bai]
-  (with-open [r (bam/reader in-bam)
+  (with-open [r (bam/reader in-bam :ignore-index true)
               w (bai-writer/writer out-bai (io/read-refs r))]
     (bai-writer/write-index w
                             (io/read-alignments r {:depth :pointer}))))

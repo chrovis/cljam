@@ -15,14 +15,15 @@
 (with-state-changes [(before :facts (prepare-cache!))
                      (after :facts (clean-cache!))]
   (fact "about spit-bam"
-    (let [temp-file (str temp-dir "/test.bam")]
-     (bam/spit temp-file test-sam) => nil?
-     (with-open [r (bam/reader test-bam-file)]
-       {:header (io/read-header r)
-        :alignments (doall (io/read-alignments r {}))}) => test-sam)))
+        (let [temp-file (str temp-dir "/test.bam")]
+          ;; FIXME rewrite
+          (bam/spit temp-file test-sam) => nil?
+          (with-open [r (bam/reader test-bam-file)]
+            {:header (io/read-header r)
+             :alignments (doall (io/read-alignments r {}))}) => test-sam)))
 
 (with-state-changes [(before :facts (do (prepare-cache!)
-                                        (bam/spit (str temp-dir "/test.bam") test-sam)))
+                                        (spit-bam-for-test (str temp-dir "/test.bam") test-sam)))
                      (after :facts (clean-cache!))]
   (fact "about BAMReader"
         (let [temp-file (str temp-dir "/test.bam")
@@ -41,7 +42,7 @@
         (let [f (str temp-dir "/test.incomplete.bam")
               sorted-f (str temp-dir "/test.incomplete.sorted.bam")]
           ;; generate incomplete bam file on the fly
-          (bam/spit f test-sam-incomplete-alignments)
+          (spit-bam-for-test f test-sam-incomplete-alignments)
           (sorter/sort-by-pos (bam/reader f) (bam/writer sorted-f))
           (bai/create-index sorted-f (str sorted-f ".bai"))) => anything
         (with-open [r (bam/reader (str temp-dir "/test.incomplete.sorted.bam"))]

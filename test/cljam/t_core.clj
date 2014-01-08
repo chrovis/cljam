@@ -37,14 +37,14 @@
   (fact "about convert"
         ;; sam => bam
         (core/convert [test-sam-file temp-bam]) => anything
-        (= (sam/slurp test-sam-file)
-           (bam/slurp temp-bam)) => truthy
-        (= (bam/slurp test-bam-file)
-           (bam/slurp temp-bam)) => truthy
+        (= (slurp-sam-for-test test-sam-file)
+           (slurp-bam-for-test temp-bam)) => truthy
+        (= (slurp-bam-for-test test-bam-file)
+           (slurp-bam-for-test temp-bam)) => truthy
         ;; bam => sam
         (core/convert [test-bam-file temp-sam]) => anything
-        (= (bam/slurp test-bam-file)
-           (sam/slurp temp-sam)) => truthy
-        (= (sam/slurp test-sam-file)
-           (sam/slurp temp-sam)) => truthy
+        (= (slurp-bam-for-test test-bam-file)
+           (slurp-sam-for-test temp-sam)) => truthy
+        (= (slurp-sam-for-test test-sam-file)
+           (slurp-sam-for-test temp-sam)) => truthy
         ))

@@ -3,6 +3,20 @@
   (:require [cljam.sam :as sam]
             [cljam.bam :as bam]))
 
+;;; slurp / spit (for test)
+(defn slurp-sam-for-test [f]
+  ;; FIXME rewrite
+  (sam/slurp f))
+(defn slurp-bam-for-test [f]
+  ;; FIXME rewrite
+  (bam/slurp f))
+(defn spit-sam-for-test [f c]
+  ;; FIXME rewrite
+  (sam/spit f c))
+(defn spit-bam-for-test [f c]
+  ;; FIXME rewrite
+  (bam/spit f c))
+  
 (def test-sam-file "test/resources/test.sam")
 (def test-bam-file "test/resources/test.bam")
 (def test-sorted-bam-file "test/resources/test.sorted.bam")

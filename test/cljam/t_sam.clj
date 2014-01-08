@@ -5,17 +5,19 @@
             [cljam.io :as io]))
 
 (fact "about slurp-sam"
+  ;; FIXME rewrite
   (sam/slurp test-sam-file) => test-sam)
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]
   (fact "about spit-sam"
-    (let [temp-file (str temp-dir "/test.sam")]
-     (sam/spit temp-file test-sam) => nil?
-     (sam/slurp temp-file) => test-sam)))
+        (let [temp-file (str temp-dir "/test.sam")]
+          ;; FIXME rewrite
+          (sam/spit temp-file test-sam) => nil?
+          (slurp-sam-for-test temp-file) => test-sam)))
 
 (with-state-changes [(before :facts (do (prepare-cache!)
-                                        (sam/spit (str temp-dir "/test.sam") test-sam)))
+                                        (spit-sam-for-test (str temp-dir "/test.sam") test-sam)))
                      (after  :facts (clean-cache!))]
   (fact "about SAMReader"
         (let [temp-file (str temp-dir "/test.sam")

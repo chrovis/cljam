@@ -22,8 +22,8 @@
 
 (defn- prepare-shuffled-files!
   []
-  (sam/spit tmp-shuffled-sam-file (get-shuffled-test-sam))
-  (bam/spit tmp-shuffled-bam-file (get-shuffled-test-sam)))
+  (spit-sam-for-test tmp-shuffled-sam-file (get-shuffled-test-sam))
+  (spit-bam-for-test tmp-shuffled-bam-file (get-shuffled-test-sam)))
 
 (defn- with-reader
   [target-fn src-file & [dst-file]]
@@ -77,12 +77,12 @@
         (with-reader sorter/sort-order tmp-queryname-sorted-sam-file-2) =future=> sorter/order-queryname
         (with-reader sorter/sort-order tmp-queryname-sorted-bam-file-2) =future=> sorter/order-queryname
         ;; compare generated files
-        (= (sam/slurp tmp-coordinate-sorted-sam-file)
-           (sam/slurp tmp-coordinate-sorted-sam-file-2)) => truthy
-        (= (bam/slurp tmp-coordinate-sorted-bam-file)
-           (bam/slurp tmp-coordinate-sorted-bam-file-2)) => truthy
-        (= (sam/slurp tmp-queryname-sorted-sam-file)
-           (sam/slurp tmp-queryname-sorted-sam-file-2)) =future=> truthy
-        (= (bam/slurp tmp-queryname-sorted-bam-file)
-           (bam/slurp tmp-queryname-sorted-bam-file-2)) =future=> truthy
+        (= (slurp-sam-for-test tmp-coordinate-sorted-sam-file)
+           (slurp-sam-for-test tmp-coordinate-sorted-sam-file-2)) => truthy
+        (= (slurp-bam-for-test tmp-coordinate-sorted-bam-file)
+           (slurp-bam-for-test tmp-coordinate-sorted-bam-file-2)) => truthy
+        (= (slurp-sam-for-test tmp-queryname-sorted-sam-file)
+           (slurp-sam-for-test tmp-queryname-sorted-sam-file-2)) =future=> truthy
+        (= (slurp-bam-for-test tmp-queryname-sorted-bam-file)
+           (slurp-bam-for-test tmp-queryname-sorted-bam-file-2)) =future=> truthy
         ))

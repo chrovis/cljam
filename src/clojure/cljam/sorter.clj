@@ -23,7 +23,9 @@
 
 (defn- compare-key-pos [ref-map b1 b2]
   (if (= (:rname b1) (:rname b2))
-    (compare (:pos b1) (:pos b2))
+    (if (= (:pos b1) (:pos b2))
+      (compare (:qname b1) (:qname b2))
+      (compare (:pos b1) (:pos b2)))
     (cond
      (= (:rname b1) "*") 1
      (= (:rname b2) "*") -1

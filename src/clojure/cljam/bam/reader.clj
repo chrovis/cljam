@@ -229,9 +229,27 @@
                (.put data)
                (.flip))
           ref-id (.getInt bb)
-          pos (inc (.getInt bb))]
+          pos (inc (.getInt bb))
+          bb-get-char (fn [b]
+                        (let [c (.get b)
+                              cb (lsb/gen-byte-buffer)]
+                          (.limit cb (.capacity cb))
+                          (.put cb c)
+                          (.put cb (byte 0))
+                          (.flip cb)
+                          (.getShort cb)))
+          bb-skip (fn [b l]
+                    (.position b (+ l (.position b))))
+          bb-get-string (fn [b l]
+                          (let [a (byte-array l)]
+                            (.get b a 0 l)
+                            (String. ^bytes a 0 0 l)))
+          l-read-name (int (bb-get-char bb))
+          _ (bb-skip bb 23)
+          qname (bb-get-string bb (dec l-read-name))]
       {:size block-size
        :data data
+       :qname qname
        :rname (if (= ref-id -1) "*" (:name (nth refs ref-id)))
        :pos pos})))
 

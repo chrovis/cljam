@@ -77,12 +77,8 @@
         (with-reader sorter/sort-order tmp-queryname-sorted-sam-file-2) =future=> sorter/order-queryname
         (with-reader sorter/sort-order tmp-queryname-sorted-bam-file-2) =future=> sorter/order-queryname
         ;; compare generated files
-        (= (slurp-sam-for-test tmp-coordinate-sorted-sam-file)
-           (slurp-sam-for-test tmp-coordinate-sorted-sam-file-2)) => truthy
-        (= (slurp-bam-for-test tmp-coordinate-sorted-bam-file)
-           (slurp-bam-for-test tmp-coordinate-sorted-bam-file-2)) => truthy
-        (= (slurp-sam-for-test tmp-queryname-sorted-sam-file)
-           (slurp-sam-for-test tmp-queryname-sorted-sam-file-2)) =future=> truthy
-        (= (slurp-bam-for-test tmp-queryname-sorted-bam-file)
-           (slurp-bam-for-test tmp-queryname-sorted-bam-file-2)) =future=> truthy
+        (slurp-sam-for-test tmp-coordinate-sorted-sam-file-2) => (slurp-sam-for-test tmp-coordinate-sorted-sam-file)
+        (slurp-bam-for-test tmp-coordinate-sorted-bam-file-2) => (slurp-bam-for-test tmp-coordinate-sorted-bam-file)
+        (slurp-sam-for-test tmp-queryname-sorted-sam-file-2) =future=> (slurp-sam-for-test tmp-queryname-sorted-sam-file)
+        (slurp-bam-for-test tmp-queryname-sorted-bam-file-2) =future=> (slurp-bam-for-test tmp-queryname-sorted-bam-file)
         ))

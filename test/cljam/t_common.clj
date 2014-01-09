@@ -55,6 +55,7 @@
   (assoc test-sam :alignments (shuffle (:alignments test-sam))))
 
 (def test-sam-chimeric-alignment
+  ;; add :alignments record that have same :qname, but have different :pos
   (assoc test-sam :alignments (conj (:alignments test-sam)
                                     {:qname "x5"  , :flag 0  , :rname "ref2", :pos 20, :mapq 30, :cigar "24M"               , :rnext "*", :pnext 0 , :tlen  0  , :seq "AATAATTAAGTCTACAGAGCAACT"  , :qual "????????????????????????"  , :options []})))
 

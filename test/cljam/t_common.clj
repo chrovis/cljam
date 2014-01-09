@@ -5,25 +5,29 @@
             [cljam.io :as io]
             ))
 
-;;; slurp / spit (for test)
+;;; slurp (for test)
 (defn slurp-sam-for-test [f]
   (with-open [r (sam/reader f)]
     {:header (io/read-header r)
      :alignments (doall (io/read-alignments r {}))}))
+
 (defn slurp-bam-for-test [f]
   (with-open [r (bam/reader f)]
     {:header (io/read-header r)
      :alignments (doall (io/read-alignments r {}))}))
+
+;; spit (for test)
 (defn spit-sam-for-test [f sam]
   (with-open [w (sam/writer f)]
     (io/write-header w (:header sam))
     (io/write-alignments w (:alignments sam) nil)))
+
 (defn spit-bam-for-test [f sam]
   (with-open [w (bam/writer f)]
     (io/write-header w (:header sam))
     (io/write-refs w (:header sam))
     (io/write-alignments w (:alignments sam) (:header sam))))
-  
+
 (def test-sam-file "test/resources/test.sam")
 (def test-bam-file "test/resources/test.bam")
 (def test-sorted-bam-file "test/resources/test.sorted.bam")

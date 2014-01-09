@@ -99,7 +99,7 @@
         (with-open [rdr (reader in)]
           (let [hdr (io/read-header rdr)]
             (io/write-header wtr hdr)
-            (io/write-refs wtr (io/read-refs rdr))
+            (io/write-refs wtr hdr)
             (doseq [alns (partition-all 10000 (io/read-alignments rdr {}))]
               (io/write-alignments wtr alns hdr)))))))
   nil)

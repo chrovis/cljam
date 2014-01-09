@@ -54,6 +54,10 @@
   []
   (assoc test-sam :alignments (shuffle (:alignments test-sam))))
 
+(def test-sam-chimeric-alignment
+  (assoc test-sam :alignments (conj (:alignments test-sam)
+                                    {:qname "x5"  , :flag 0  , :rname "ref2", :pos 20, :mapq 30, :cigar "24M"               , :rnext "*", :pnext 0 , :tlen  0  , :seq "AATAATTAAGTCTACAGAGCAACT"  , :qual "????????????????????????"  , :options []})))
+
 (def test-sam-only-header
   (assoc test-sam :alignments nil))
 

@@ -56,10 +56,14 @@
         (slurp-bam-for-test temp-bam) =future=> test-sam-sorted-by-qname
         ))
 
-(with-state-changes [(before :facts (prepare-cache!))
+(with-state-changes [(before :facts (do (prepare-cache!)
+                                        (io/copy (io/file test-sorted-bam-file)
+                                                 (io/file temp-bam))))
                      (after  :facts (clean-cache!))]
   (fact "about index"
-        "TODO" =future=> nil))
+        (with-out-file temp-out (core/index [temp-bam])) => anything
+        (.exists (io/file (str temp-bam ".bai"))) => truthy
+        ))
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]
@@ -68,12 +72,17 @@
         (slurp temp-out) => (slurp "test/resources/t_core.pileup")
         ))
 
-(with-state-changes [(before :facts (prepare-cache!))
+(with-state-changes [(before :facts (do (prepare-cache!)
+                                        (io/copy (io/file test-fa-file)
+                                                 (io/file temp-out))))
                      (after  :facts (clean-cache!))]
   (fact "about faidx"
-        "TODO" =future=> nil))
+        (with-out-file temp-out (core/faidx [temp-out])) => anything
+        (.exists (io/file (str temp-out ".fai"))) => truthy))
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]
-  (fact "about dict"
-        "TODO" =future=> nil))
+  (let [temp-dict (str temp-dir "/out.dict")]
+    (fact "about dict"
+          (with-out-file temp-out (core/dict [test-fa-file temp-dict])) =future=> anything
+          (.exists (io/file temp-dict)) =future=> truthy)))

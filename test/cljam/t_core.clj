@@ -38,9 +38,10 @@
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]
   (fact "about sort (by pos)"
-        (with-out-file temp-out (core/sort ["-o" "coordinate" test-sam-file temp-sam])) => anything
-        (slurp-sam-for-test temp-sam) => test-sam-sorted-by-pos
-        (check-sort-order (slurp-sam-for-test temp-sam) test-sam-sorted-by-pos) => anything
+        ;; see https://gitlab.xcoo.jp/chrovis/cljam/issues/12
+        (with-out-file temp-out (core/sort ["-o" "coordinate" test-sam-file temp-sam])) =future=> anything
+        (slurp-sam-for-test temp-sam) =future=> test-sam-sorted-by-pos
+        (check-sort-order (slurp-sam-for-test temp-sam) test-sam-sorted-by-pos) =future=> anything
         (with-out-file temp-out (core/sort ["-o" "coordinate" test-bam-file temp-bam])) => anything
         (slurp-bam-for-test temp-bam) => test-sam-sorted-by-pos
         (check-sort-order (slurp-bam-for-test temp-bam) test-sam-sorted-by-pos) => anything

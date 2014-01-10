@@ -124,3 +124,40 @@
       (doseq [f (seq (.list dir))]
         (.delete (file (str temp-dir "/" f))))
       (.delete dir))))
+
+
+(defn- uniq [coll]
+  (reduce
+    (fn [r one]
+      (if (= (first r) one)
+        r
+        (conj r one)))
+    nil
+    coll))
+
+(defn- get-rnames [sam]
+  (uniq (map :rname (:alignments sam))))
+
+(defn check-sort-order [target-sam & [contrast-sam]]
+  ;; TODO: only coordinate currently. need to test by queryname sort.
+  (let [target-rnames (get-rnames target-sam)]
+    ;; check rname groups
+    (when contrast-sam
+      (when-not (= target-rnames (get-rnames contrast-sam))
+        (throw (Exception. "not matched by rnames order"))))
+    ;; check order
+    (dorun
+      (map
+        (fn [rname]
+          (reduce
+            (fn [prev one]
+              (case (compare (:pos prev) (:pos one))
+                -1 true
+                1 (throw (Exception. "pos not sorted"))
+                (case (compare (:qname prev) (:qname one))
+                  -1 true
+                  1 (throw (Exception. "qname not sorted"))
+                  true))
+              one)
+            (filter #(= rname (:rname %)) (:alignments target-sam))))
+        target-rnames))))

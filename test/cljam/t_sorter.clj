@@ -20,41 +20,6 @@
 (def tmp-queryname-sorted-sam-file-2 (str temp-dir "/" "tmp.queryname.sorted.2.sam"))
 (def tmp-queryname-sorted-bam-file-2 (str temp-dir "/" "tmp.queryname.sorted.2.bam"))
 
-(defn- uniq [coll]
-  (reduce
-    (fn [r one]
-      (if (= (first r) one)
-        r
-        (conj r one)))
-    nil
-    coll))
-(defn- get-rnames [sam]
-  (uniq (map :rname (:alignments sam))))
-
-(defn- check-sort-order [target-sam & [contrast-sam]]
-  ;; TODO: only coordinate currently. need to test by queryname sort.
-  (let [target-rnames (get-rnames target-sam)]
-    ;; check rname groups
-    (when contrast-sam
-      (when-not (= target-rnames (get-rnames contrast-sam))
-        (throw (Exception. "not matched by rnames order"))))
-    ;; check order
-    (dorun
-      (map
-        (fn [rname]
-          (reduce
-            (fn [prev one]
-              (case (compare (:pos prev) (:pos one))
-                -1 true
-                1 (throw (Exception. "pos not sorted"))
-                (case (compare (:qname prev) (:qname one))
-                  -1 true
-                  1 (throw (Exception. "qname not sorted"))
-                  true))
-              one)
-            (filter #(= rname (:rname %)) (:alignments target-sam))))
-        target-rnames))))
-
 (defn- prepare-shuffled-files!
   []
   (spit-sam-for-test tmp-shuffled-sam-file (get-shuffled-test-sam))

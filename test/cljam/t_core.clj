@@ -37,14 +37,22 @@
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]
-  (fact "about sort"
-        ;; TODO: add test to sort by qname
-        (with-out-file temp-out (core/sort [test-sam-file temp-sam])) => nil
+  (fact "about sort (by pos)"
+        (with-out-file temp-out (core/sort ["-o" "coordinate" test-sam-file temp-sam])) => anything
         (slurp-sam-for-test temp-sam) => test-sam-sorted-by-pos
         (check-sort-order (slurp-sam-for-test temp-sam) test-sam-sorted-by-pos) => anything
-        (with-out-file temp-out (core/sort [test-bam-file temp-bam])) => nil
+        (with-out-file temp-out (core/sort ["-o" "coordinate" test-bam-file temp-bam])) => anything
         (slurp-bam-for-test temp-bam) => test-sam-sorted-by-pos
         (check-sort-order (slurp-bam-for-test temp-bam) test-sam-sorted-by-pos) => anything
+        ))
+
+(with-state-changes [(before :facts (prepare-cache!))
+                     (after  :facts (clean-cache!))]
+  (fact "about sort (by qname)"
+        (with-out-file temp-out (core/sort ["-o" "queryname" test-sam-file temp-sam])) =future=> anything
+        (slurp-sam-for-test temp-sam) =future=> test-sam-sorted-by-qname
+        (with-out-file temp-out (core/sort ["-o" "queryname" test-bam-file temp-bam])) =future=> anything
+        (slurp-bam-for-test temp-bam) =future=> test-sam-sorted-by-qname
         ))
 
 (with-state-changes [(before :facts (prepare-cache!))

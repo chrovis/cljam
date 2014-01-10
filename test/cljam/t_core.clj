@@ -64,7 +64,9 @@
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]
   (fact "about pileup"
-        (with-out-file temp-out (core/pileup [test-sorted-bam-file])) => nil))
+        (with-out-file temp-out (core/pileup [test-sorted-bam-file])) => anything
+        (slurp temp-out) => (slurp "test/resources/t_core.pileup")
+        ))
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]

@@ -16,6 +16,7 @@
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]
   (fact "about view"
+        ;; NB: "view" output format may change in future
         (with-out-file temp-out (core/view [test-sam-file])) => anything
         ;(slurp temp-out) => (slurp "test/resources/t_core.view")
         (with-out-file temp-out (core/view [test-bam-file])) => anything
@@ -68,6 +69,7 @@
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]
   (fact "about pileup"
+        ;; NB: "pileup" output format may change in future (maybe)
         (with-out-file temp-out (core/pileup [test-sorted-bam-file])) => anything
         ;(slurp temp-out) => (slurp "test/resources/t_core.pileup")
         ))

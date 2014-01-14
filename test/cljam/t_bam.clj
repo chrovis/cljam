@@ -21,6 +21,12 @@
         (spit-bam-for-test temp-file test-sam) => anything
         (slurp-bam-for-test temp-file) => test-sam))
 
+(with-state-changes [(before :facts (prepare-cache!))
+                     (after :facts (clean-cache!))]
+  (fact "about spit-bam (medium file)"
+        (spit-bam-for-test
+          temp-file (slurp-bam-for-test medium-bam-file)) => anything))
+
 (with-state-changes [(before :facts (do (prepare-cache!)
                                         (spit-bam-for-test temp-file test-sam)))
                      (after :facts (clean-cache!))]

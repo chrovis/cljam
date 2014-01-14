@@ -27,16 +27,20 @@
 
 (defn- with-reader
   [target-fn src-file & [dst-file]]
-  (cond
-    (re-find #"\.sam$" src-file) (if dst-file
-                                   (target-fn (sam/reader src-file)
-                                              (sam/writer dst-file))
-                                   (target-fn (sam/reader src-file)))
-    (re-find #"\.bam$" src-file) (if dst-file
-                                   (target-fn (bam/reader src-file)
-                                              (bam/writer dst-file))
-                                   (target-fn (bam/reader src-file)))
-    :else (throw (RuntimeException. (str "invalid file suffix " src-file)))))
+  (let [src-reader (cond
+                     (re-find #"\.sam$" src-file) sam/reader
+                     (re-find #"\.bam$" src-file) bam/reader
+                     :else (throw (RuntimeException.
+                                    (str "invalid file suffix " src-file))))
+        dst-writer (cond
+                     (not dst-file) nil
+                     (re-find #"\.sam$" dst-file) sam/writer
+                     (re-find #"\.bam$" dst-file) bam/writer
+                     :else (throw (RuntimeException.
+                                    (str "invalid file suffix " dst-file))))]
+    (if dst-file
+      (target-fn (src-reader src-file) (dst-writer dst-file))
+      (target-fn (src-reader src-file)))))
 
 
 (with-state-changes [(before :facts (do (prepare-cache!)
@@ -46,8 +50,8 @@
         ;; tests by test-sam-file and test-bam-file
         (with-reader sorter/sort-by-pos test-sam-file tmp-coordinate-sorted-sam-file) => anything
         (with-reader sorter/sort-by-pos test-bam-file tmp-coordinate-sorted-bam-file) => anything
-        (with-reader sorter/sort-by-qname test-sam-file tmp-coordinate-sorted-sam-file) =future=> anything
-        (with-reader sorter/sort-by-qname test-bam-file tmp-coordinate-sorted-bam-file) =future=> anything
+        (with-reader sorter/sort-by-qname test-sam-file tmp-queryname-sorted-sam-file) =future=> anything
+        (with-reader sorter/sort-by-qname test-bam-file tmp-queryname-sorted-bam-file) =future=> anything
         (with-reader sorter/sorted-by? test-sam-file) => falsey
         (with-reader sorter/sorted-by? test-bam-file) => falsey
         (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file) => truthy
@@ -85,4 +89,26 @@
         (slurp-bam-for-test tmp-coordinate-sorted-bam-file-2) => (slurp-bam-for-test tmp-coordinate-sorted-bam-file)
         (slurp-sam-for-test tmp-queryname-sorted-sam-file-2) =future=> (slurp-sam-for-test tmp-queryname-sorted-sam-file)
         (slurp-bam-for-test tmp-queryname-sorted-bam-file-2) =future=> (slurp-bam-for-test tmp-queryname-sorted-bam-file)
+        ))
+
+(with-state-changes [(before :facts (prepare-cache!))
+                     (after  :facts (clean-cache!))]
+  (fact "about sorting (medium file)"
+        (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-sam-file) => anything
+        (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-bam-file) => anything
+        (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-sam-file) =future=> anything
+        (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-bam-file) =future=> anything
+        (with-reader sorter/sorted-by? medium-bam-file) => falsey
+        (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file) => truthy
+        (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file) => truthy
+        (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file) =future=> truthy
+        (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file) =future=> truthy
+        (with-reader sorter/sort-order medium-bam-file) => sorter/order-unknown
+        (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file) => sorter/order-coordinate
+        (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file) => sorter/order-coordinate
+        (with-reader sorter/sort-order tmp-queryname-sorted-sam-file) =future=> sorter/order-queryname
+        (with-reader sorter/sort-order tmp-queryname-sorted-bam-file) =future=> sorter/order-queryname
+        ;; check sorting order
+        (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-file)) => anything
+        (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file)) => anything
         ))

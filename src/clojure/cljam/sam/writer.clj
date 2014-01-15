@@ -31,6 +31,8 @@
       (.write (.writer this) ^String (stringify-alignment a))
       (.newLine (.writer this))))
   (write-blocks [this blocks]
-    (logging/info "SAMWriter does not support write-blocks"))
+    ;;(logging/info "SAMWriter does not support write-blocks")
+    )
   (write-coordinate-blocks [this blocks]
-    (logging/info "SAMWriter does not support write-coordinate-blocks")))
+    ;;(logging/info "SAMWriter does not support write-coordinate-blocks")
+    ))

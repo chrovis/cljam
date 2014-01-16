@@ -3,7 +3,30 @@
   (:require [cljam.sam :as sam]
             [cljam.bam :as bam]
             [cljam.io :as io]
+            [cavy.core :as cavy :refer [defcavy]]
             ))
+
+;;; 一時メモ:
+;;; cavyを使う上で、以下を決定する必要がある
+;;; - キャッシュの保持方針
+;;;   - 扱うのは巨大ファイルなので、with-state-changes等を使わずに、
+;;;     どこかで明示的に(cavy/get)し、
+;;;     そのままcavy/cleanは実行しない方向で。
+;;; - 利用するファイルの選別
+;;;   - B6_all_bwa.sorted.bam そのままでいいと思う
+;;;     - JVM_OPTS等の指定も追加したいところ(lein midjeだけで有効にできるか？)
+;;; - 利用するtest
+;;;   - これについては、今medium.bam使ってるところ全部でいいと思う
+;;; とりあえず今は試験として、t_bam.cljにのみ導入してみる事に
+
+(defcavy mycavy
+  {:resources [{:id "large.bam"
+                :url "http://misc.tir.jp/tmp/mini-test.bam"
+                :sha1 "a5d2701e0d55e5943453890849eb2900b4b75da7"}
+               ]})
+
+(defn prepare-cavy! [] (cavy/get))
+(defn clean-cavy! [] (cavy/clean))
 
 ;;; slurp (for test)
 (defn slurp-sam-for-test [f]
@@ -171,4 +194,6 @@
 ;;; $ cat r.body | perl -ne 'print $_ if rand() < 0.001' > r.body2
 ;;; $ cat r.head r.body2 > result.sam
 ;;; $ samtools view -S -b result.sam > test/resources/medium.bam
+
+(def large-bam-file (cavy/resource "large.bam"))
 

@@ -10,9 +10,12 @@
 (def temp-file (str temp-dir "/test.bam"))
 (def temp-file-sorted (str temp-dir "/test.sorted.bam"))
 
+(prepare-cavy!)
+
 (fact "about slurp-bam"
       (slurp-bam-for-test test-bam-file) => test-sam
       (slurp-bam-for-test medium-bam-file) => anything
+      (slurp-bam-for-test large-bam-file) => anything
       )
 
 (with-state-changes [(before :facts (prepare-cache!))
@@ -26,6 +29,12 @@
   (fact "about spit-bam (medium file)"
         (spit-bam-for-test
           temp-file (slurp-bam-for-test medium-bam-file)) => anything))
+
+(with-state-changes [(before :facts (prepare-cache!))
+                     (after :facts (clean-cache!))]
+  (fact "about spit-bam (large file)"
+        (spit-bam-for-test
+          temp-file (slurp-bam-for-test large-bam-file)) => anything))
 
 (with-state-changes [(before :facts (do (prepare-cache!)
                                         (spit-bam-for-test temp-file test-sam)))
@@ -74,5 +83,12 @@
                      (after :facts (clean-cache!))]
   (fact "about BAM indexer (medium file)"
         (bai/create-index
-          temp-file-sorted (str temp-file-sorted ".bai")) => anything
-        ))
+          temp-file-sorted (str temp-file-sorted ".bai")) => anything))
+
+(with-state-changes [(before :facts (do (prepare-cache!)
+                                        (copy (file large-bam-file)
+                                              (file temp-file-sorted))))
+                     (after :facts (clean-cache!))]
+  (fact "about BAM indexer (large file)"
+        (bai/create-index
+          temp-file-sorted (str temp-file-sorted ".bai")) => anything))

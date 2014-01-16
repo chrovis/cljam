@@ -14,7 +14,8 @@
   :plugins [[lein-midje "3.1.1"]
             [lein-bin "0.3.4"]]
   :profiles {:dev {:dependencies [[midje "1.5.1"]
-                                  [criterium "0.4.2"]]}}
+                                  [criterium "0.4.2"]
+                                  [cavy/cavy "0.1.0-SNAPSHOT"]]}}
   ;; :global-vars {*warn-on-reflection* true}
   :main cljam.core
   :aot [cljam.core]

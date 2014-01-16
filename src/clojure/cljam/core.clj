@@ -12,7 +12,8 @@
                    [fasta-indexer :as fai]
                    [dict :as dict]
                    [pileup :as plp])
-            [cljam.util.sam-util :refer [stringify-header stringify-alignment]]))
+            [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
+  (:gen-class))
 
 (defn reader [f]
   (condp re-find f

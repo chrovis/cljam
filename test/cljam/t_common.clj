@@ -8,12 +8,9 @@
 
 ;;; 一時メモ:
 ;;; cavyを使う上で、以下を決定する必要がある
-;;; - キャッシュの保持方針
-;;;   - 扱うのは巨大ファイルなので、with-state-changes等を使わずに、
-;;;     どこかで明示的に(cavy/get)し、
-;;;     そのままcavy/cleanは実行しない方向で。
 ;;; - 利用するファイルの選別
 ;;;   - B6_all_bwa.sorted.bam そのままでいいと思う
+;;;     - auth対応待ち
 ;;;     - JVM_OPTS等の指定も追加したいところ(lein midjeだけで有効にできるか？)
 ;;; - 利用するtest
 ;;;   - これについては、今medium.bam使ってるところ全部でいいと思う
@@ -21,11 +18,14 @@
 
 (defcavy mycavy
   {:resources [{:id "large.bam"
+                ;:url "https://share.xcoo.jp/works/cira/ChIP-Seq2/MBD-seq/B6_all_bwa.sorted.bam"
+                ;:sha1 "de7604b60a894d8506405654f40c733879c48030"
                 :url "http://misc.tir.jp/tmp/mini-test.bam"
-                :sha1 "a5d2701e0d55e5943453890849eb2900b4b75da7"}
+                :sha1 "a5d2701e0d55e5943453890849eb2900b4b75da7"
+                }
                ]})
 
-(defn prepare-cavy! [] (cavy/get))
+(defn prepare-cavy! [] (cavy/get) (cavy/verify))
 (defn clean-cavy! [] (cavy/clean))
 
 ;;; slurp (for test)

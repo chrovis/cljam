@@ -10,15 +10,15 @@
 (def temp-file (str temp-dir "/test.bam"))
 (def temp-file-sorted (str temp-dir "/test.sorted.bam"))
 
-(prepare-cavy!)
-
 (fact "about slurp-bam"
       (slurp-bam-for-test test-bam-file) => test-sam)
 
-(fact "about slurp-bam (medium / large file)" :slow
-      (slurp-bam-for-test medium-bam-file) => anything
-      (slurp-bam-for-test large-bam-file) => anything
-      )
+(fact "about slurp-bam (medium file)" :slow
+      (slurp-bam-for-test medium-bam-file) => anything)
+
+(with-state-changes [(before :facts (prepare-cavy!))]
+  (fact "about slurp-bam (large file)" :slow
+        (slurp-bam-for-test large-bam-file) => anything))
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after :facts (clean-cache!))]
@@ -32,9 +32,10 @@
         (spit-bam-for-test
           temp-file (slurp-bam-for-test medium-bam-file)) => anything))
 
-(with-state-changes [(before :facts (prepare-cache!))
+(with-state-changes [(before :facts (do (prepare-cavy!)
+                                        (prepare-cache!)))
                      (after :facts (clean-cache!))]
-  (fact "about spit-bam (large file):slow"
+  (fact "about spit-bam (large file)" :slow
         (spit-bam-for-test
           temp-file (slurp-bam-for-test large-bam-file)) => anything))
 
@@ -87,10 +88,12 @@
         (bai/create-index
           temp-file-sorted (str temp-file-sorted ".bai")) => anything))
 
-(with-state-changes [(before :facts (do (prepare-cache!)
+(with-state-changes [(before :facts (do (prepare-cavy!)
+                                        (prepare-cache!)
                                         (copy (file large-bam-file)
                                               (file temp-file-sorted))))
                      (after :facts (clean-cache!))]
   (fact "about BAM indexer (large file)" :slow
         (bai/create-index
           temp-file-sorted (str temp-file-sorted ".bai")) => anything))
+

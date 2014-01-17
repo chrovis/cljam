@@ -25,7 +25,7 @@
                 }
                ]})
 
-(defn prepare-cavy! [] (cavy/get) (cavy/verify))
+(defn prepare-cavy! [] (cavy/without-print (cavy/get)) (cavy/verify))
 (defn clean-cavy! [] (cavy/clean))
 
 ;;; slurp (for test)

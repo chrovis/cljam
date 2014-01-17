@@ -93,7 +93,7 @@
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after  :facts (clean-cache!))]
-  (fact "about sorting (medium file)"
+  (fact "about sorting (medium file)" :slow
         (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-sam-file) => anything
         (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-bam-file) => anything
         (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-sam-file) =future=> anything

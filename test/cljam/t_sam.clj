@@ -18,7 +18,7 @@
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after :facts (clean-cache!))]
-  (fact "about spit-sam (medium file)"
+  (fact "about spit-sam (medium file)" :slow
         (spit-sam-for-test
           temp-file (slurp-bam-for-test medium-bam-file)) => anything))
 

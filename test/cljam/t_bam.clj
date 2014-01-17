@@ -13,7 +13,9 @@
 (prepare-cavy!)
 
 (fact "about slurp-bam"
-      (slurp-bam-for-test test-bam-file) => test-sam
+      (slurp-bam-for-test test-bam-file) => test-sam)
+
+(fact "about slurp-bam (medium / large file)" :slow
       (slurp-bam-for-test medium-bam-file) => anything
       (slurp-bam-for-test large-bam-file) => anything
       )
@@ -26,13 +28,13 @@
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after :facts (clean-cache!))]
-  (fact "about spit-bam (medium file)"
+  (fact "about spit-bam (medium file)" :slow
         (spit-bam-for-test
           temp-file (slurp-bam-for-test medium-bam-file)) => anything))
 
 (with-state-changes [(before :facts (prepare-cache!))
                      (after :facts (clean-cache!))]
-  (fact "about spit-bam (large file)"
+  (fact "about spit-bam (large file):slow"
         (spit-bam-for-test
           temp-file (slurp-bam-for-test large-bam-file)) => anything))
 
@@ -81,7 +83,7 @@
                                         (copy (file medium-bam-file)
                                               (file temp-file-sorted))))
                      (after :facts (clean-cache!))]
-  (fact "about BAM indexer (medium file)"
+  (fact "about BAM indexer (medium file)" :slow
         (bai/create-index
           temp-file-sorted (str temp-file-sorted ".bai")) => anything))
 
@@ -89,6 +91,6 @@
                                         (copy (file large-bam-file)
                                               (file temp-file-sorted))))
                      (after :facts (clean-cache!))]
-  (fact "about BAM indexer (large file)"
+  (fact "about BAM indexer (large file)" :slow
         (bai/create-index
           temp-file-sorted (str temp-file-sorted ".bai")) => anything))

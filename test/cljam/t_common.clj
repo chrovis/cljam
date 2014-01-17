@@ -189,8 +189,8 @@
 ;;; How to generate "medium.bam":
 ;;; $ wget https://share.xcoo.jp/works/.../B6_all_bwa.sorted.bam
 ;;; $ samtools view -h B6_all_bwa.sorted.bam > src.sam
-;;; $ grep '^@SQ' src.sam > r.head
-;;; $ grep -v '^@SQ' src.sam > r.body
+;;; $ grep '^@' src.sam > r.head
+;;; $ grep -v '^@' src.sam > r.body
 ;;; $ cat r.body | perl -ne 'print $_ if rand() < 0.001' > r.body2
 ;;; $ cat r.head r.body2 > result.sam
 ;;; $ samtools view -S -b result.sam > test/resources/medium.bam

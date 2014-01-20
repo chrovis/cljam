@@ -7,23 +7,33 @@
             ))
 
 ;;; 一時メモ:
-;;; cavyを使う上で、以下を決定する必要がある
-;;; - 利用するファイルの選別
-;;;   - B6_all_bwa.sorted.bam そのままでいいと思う
-;;;     - auth対応待ち
-;;;     - JVM_OPTS等の指定も追加したいところ(lein midjeだけで有効にできるか？)
+;;; - B6_all_bwa.sorted.bam への対応
+;;;   - 大きすぎて一部のテストでOOM的なGC例外が発生する為、
+;;;     JVM_OPTS等の指定も必要(可能ならlein midjeの時だけ有効にしたい、要調査)
 ;;; - 利用するtest
 ;;;   - これについては、今medium.bam使ってるところ全部でいいと思う
-;;; とりあえず今は試験として、t_bam.cljにのみ導入してみる事に
+;;;   - とりあえず今は試験として、t_bam.cljにのみ導入した状態
+;;; TODO: 問題なく動かせる状態になったら、全体に導入し、このメモは削除する事
 
-(defcavy mycavy
-  {:resources [{:id "large.bam"
-                ;:url "https://share.xcoo.jp/works/cira/ChIP-Seq2/MBD-seq/B6_all_bwa.sorted.bam"
-                ;:sha1 "de7604b60a894d8506405654f40c733879c48030"
-                :url "http://misc.tir.jp/tmp/mini-test.bam"
-                :sha1 "a5d2701e0d55e5943453890849eb2900b4b75da7"
-                }
-               ]})
+(defmacro defcavy-with-auth-info []
+  (let [user (System/getenv "AUTHUSER")
+        pass (System/getenv "AUTHPASS")
+        authtype (case (System/getenv "AUTHTYPE")
+                   "basic" :basic
+                   "digest" :digest
+                   :basic)
+        auth (and user pass {:type authtype, :user user, :password pass})]
+    `(defcavy mycavy
+       {:resources [{:id "large.bam"
+                     ;:url "https://share.xcoo.jp/works/cira/ChIP-Seq2/MBD-seq/B6_all_bwa.sorted.bam"
+                     ;:sha1 "de7604b60a894d8506405654f40c733879c48030"
+                     :url "https://share.xcoo.jp/tmp/testsam/reduced.bam"
+                     :sha1 "9a0457571d81e2c401b1f249de5e1f4992ae5cec"
+                     :auth ~auth
+                     }
+                    ]})))
+(defcavy-with-auth-info)
+
 
 (defn prepare-cavy! [] (cavy/without-print (cavy/get)) (cavy/verify))
 (defn clean-cavy! [] (cavy/clean))

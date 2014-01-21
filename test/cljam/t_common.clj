@@ -6,15 +6,6 @@
             [cavy.core :as cavy :refer [defcavy]]
             ))
 
-;;; 一時メモ:
-;;; - B6_all_bwa.sorted.bam への対応
-;;;   - 大きすぎて一部のテストでOOM的なGC例外が発生する為、
-;;;     JVM_OPTS等の指定も必要(可能ならlein midjeの時だけ有効にしたい、要調査)
-;;; - 利用するtest
-;;;   - これについては、今medium.bam使ってるところ全部でいいと思う
-;;;   - とりあえず今は試験として、t_bam.cljにのみ導入した状態
-;;; TODO: 問題なく動かせる状態になったら、全体に導入し、このメモは削除する事
-
 (defmacro defcavy-with-auth-info []
   (let [user (System/getenv "AUTHUSER")
         pass (System/getenv "AUTHPASS")
@@ -25,18 +16,18 @@
         auth (and user pass {:type authtype, :user user, :password pass})]
     `(defcavy mycavy
        {:resources [{:id "large.bam"
-                     ;:url "https://share.xcoo.jp/works/cira/ChIP-Seq2/MBD-seq/B6_all_bwa.sorted.bam"
-                     ;:sha1 "de7604b60a894d8506405654f40c733879c48030"
-                     :url "https://share.xcoo.jp/tmp/testsam/reduced.bam"
-                     :sha1 "9a0457571d81e2c401b1f249de5e1f4992ae5cec"
+                     :url "https://share.xcoo.jp/works/cira/ChIP-Seq2/MBD-seq/B6_all_bwa.sorted.bam"
+                     :sha1 "de7604b60a894d8506405654f40c733879c48030"
+                     ;:url "https://share.xcoo.jp/tmp/testsam/reduced.bam"
+                     ;:sha1 "9a0457571d81e2c401b1f249de5e1f4992ae5cec"
                      :auth ~auth
                      }
                     ]})))
 (defcavy-with-auth-info)
 
-
 (defn prepare-cavy! [] (cavy/without-print (cavy/get)) (cavy/verify))
 (defn clean-cavy! [] (cavy/clean))
+
 
 ;;; slurp (for test)
 (defn slurp-sam-for-test [f]
@@ -125,6 +116,31 @@
     {:qname "x6"  , :flag 0  , :rname "ref2", :pos 14, :mapq 30, :cigar "23M"               , :rnext "*", :pnext 0 , :tlen 0  , :seq "TAATTAAGTCTACAGAGCAACTA"   , :qual "???????????????????????"   , :options []}]})
 
 (def test-sam-refs [{:name "ref", :len 45} {:name "ref2", :len 40}])
+(def large-sam-refs [{:name "chr1",  :len 249250621}
+                     {:name "chr2",  :len 243199373}
+                     {:name "chr3",  :len 198022430}
+                     {:name "chr4",  :len 191154276}
+                     {:name "chr5",  :len 180915260}
+                     {:name "chr6",  :len 171115067}
+                     {:name "chr7",  :len 159138663}
+                     {:name "chr8",  :len 146364022}
+                     {:name "chr9",  :len 141213431}
+                     {:name "chr10", :len 135534747}
+                     {:name "chr11", :len 135006516}
+                     {:name "chr12", :len 133851895}
+                     {:name "chr13", :len 115169878}
+                     {:name "chr14", :len 107349540}
+                     {:name "chr15", :len 102531392}
+                     {:name "chr16", :len 90354753}
+                     {:name "chr17", :len 81195210}
+                     {:name "chr18", :len 78077248}
+                     {:name "chr19", :len 59128983}
+                     {:name "chr20", :len 63025520}
+                     {:name "chr21", :len 48129895}
+                     {:name "chr22", :len 51304566}
+                     {:name "chrX",  :len 155270560}
+                     {:name "chrY",  :len 59373566}])
+(def medium-sam-refs large-sam-refs)
 
 (def test-fa
   [{:rname "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}

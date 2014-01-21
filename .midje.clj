@@ -7,7 +7,7 @@
 ;;;       that use many cpu times and memories.
 ;;;       And, it required "shell environment variables" for fetch files
 ;;;       from `share.xcoo.jp`;
-;;;       `AUTHUSER="usename" AUTHPASS="password" lein midje :filter heavy`
+;;;       `JVM_OPTS="-Xmx8g -server" AUTHUSER="usename" AUTHPASS="password" lein midje :filter heavy`
 ;;;
 ;;;       `:heavy` tests must have to not only `:heavy` but also `:slow`.
 ;;;       Because this `:fact-filter` can override by `:filter` like;

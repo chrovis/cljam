@@ -6,27 +6,16 @@
             [cavy.core :as cavy :refer [defcavy]]
             ))
 
-(defmacro defcavy-with-auth-info []
-  (let [user (System/getenv "AUTHUSER")
-        pass (System/getenv "AUTHPASS")
-        authtype (case (System/getenv "AUTHTYPE")
-                   "basic" :basic
-                   "digest" :digest
-                   :basic)
-        auth (and user pass {:type authtype, :user user, :password pass})]
-    `(defcavy mycavy
-       {:resources [{:id "large.bam"
-                     :url "https://share.xcoo.jp/works/cira/ChIP-Seq2/MBD-seq/B6_all_bwa.sorted.bam"
-                     :sha1 "de7604b60a894d8506405654f40c733879c48030"
-                     ;:url "https://share.xcoo.jp/tmp/testsam/reduced.bam"
-                     ;:sha1 "9a0457571d81e2c401b1f249de5e1f4992ae5cec"
-                     :auth ~auth
-                     }
-                    ]})))
-(defcavy-with-auth-info)
+(defcavy mycavy
+  {:resources [{:id "large.bam"
+                :url "ftp://ftp.broadinstitute.org/old/NA12878.BI.illumina.dup.sort.bam"
+                :sha1 "523780c7f39dfe97939124e92c8d34d0759c841f"
+                :auth {:user "gsapubftp-anonymous", :password "cljam-test"}
+                }
+               ]})
 
-(defn prepare-cavy! [] (cavy/without-print (cavy/get)) (cavy/verify))
-(defn clean-cavy! [] (cavy/clean))
+(defn prepare-cavy! [] (cavy/without-print (cavy/get!)) (cavy/verify))
+(defn clean-cavy! [] (cavy/clean!))
 
 
 ;;; slurp (for test)
@@ -116,6 +105,30 @@
     {:qname "x6"  , :flag 0  , :rname "ref2", :pos 14, :mapq 30, :cigar "23M"               , :rnext "*", :pnext 0 , :tlen 0  , :seq "TAATTAAGTCTACAGAGCAACTA"   , :qual "???????????????????????"   , :options []}]})
 
 (def test-sam-refs [{:name "ref", :len 45} {:name "ref2", :len 40}])
+(def medium-sam-refs [{:name "chr1",  :len 249250621}
+                      {:name "chr2",  :len 243199373}
+                      {:name "chr3",  :len 198022430}
+                      {:name "chr4",  :len 191154276}
+                      {:name "chr5",  :len 180915260}
+                      {:name "chr6",  :len 171115067}
+                      {:name "chr7",  :len 159138663}
+                      {:name "chr8",  :len 146364022}
+                      {:name "chr9",  :len 141213431}
+                      {:name "chr10", :len 135534747}
+                      {:name "chr11", :len 135006516}
+                      {:name "chr12", :len 133851895}
+                      {:name "chr13", :len 115169878}
+                      {:name "chr14", :len 107349540}
+                      {:name "chr15", :len 102531392}
+                      {:name "chr16", :len 90354753}
+                      {:name "chr17", :len 81195210}
+                      {:name "chr18", :len 78077248}
+                      {:name "chr19", :len 59128983}
+                      {:name "chr20", :len 63025520}
+                      {:name "chr21", :len 48129895}
+                      {:name "chr22", :len 51304566}
+                      {:name "chrX",  :len 155270560}
+                      {:name "chrY",  :len 59373566}])
 (def large-sam-refs [{:name "chr1",  :len 249250621}
                      {:name "chr2",  :len 243199373}
                      {:name "chr3",  :len 198022430}
@@ -140,7 +153,6 @@
                      {:name "chr22", :len 51304566}
                      {:name "chrX",  :len 155270560}
                      {:name "chrY",  :len 59373566}])
-(def medium-sam-refs large-sam-refs)
 
 (def test-fa
   [{:rname "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}

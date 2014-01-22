@@ -10,8 +10,7 @@
   {:resources [{:id "large.bam"
                 :url "ftp://ftp.broadinstitute.org/old/NA12878.BI.illumina.dup.sort.bam"
                 :sha1 "523780c7f39dfe97939124e92c8d34d0759c841f"
-                :auth {:user "gsapubftp-anonymous", :password "cljam-test"}
-                }
+                :auth {:user "gsapubftp-anonymous"}}
                ]})
 
 (defn prepare-cavy! [] (cavy/without-print (cavy/get!)) (cavy/verify))

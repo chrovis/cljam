@@ -10,7 +10,6 @@
   {:resources [{:id "large.bam"
                 :url "ftp://ftp.broadinstitute.org/old/NA12878.BI.illumina.dup.sort.bam"
                 :sha1 "523780c7f39dfe97939124e92c8d34d0759c841f"
-                ;:sha1 "e3d87d947e8b5cc0b88fef042b2e5438ab9120b8"
                 :auth {:user "gsapubftp-anonymous", :password "cljam-test"}
                 }
                ]})

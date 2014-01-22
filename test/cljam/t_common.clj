@@ -10,6 +10,7 @@
   {:resources [{:id "large.bam"
                 :url "ftp://ftp.broadinstitute.org/old/NA12878.BI.illumina.dup.sort.bam"
                 :sha1 "523780c7f39dfe97939124e92c8d34d0759c841f"
+                ;:sha1 "e3d87d947e8b5cc0b88fef042b2e5438ab9120b8"
                 :auth {:user "gsapubftp-anonymous", :password "cljam-test"}
                 }
                ]})
@@ -129,30 +130,31 @@
                       {:name "chr22", :len 51304566}
                       {:name "chrX",  :len 155270560}
                       {:name "chrY",  :len 59373566}])
-(def large-sam-refs [{:name "chr1",  :len 249250621}
-                     {:name "chr2",  :len 243199373}
-                     {:name "chr3",  :len 198022430}
-                     {:name "chr4",  :len 191154276}
-                     {:name "chr5",  :len 180915260}
-                     {:name "chr6",  :len 171115067}
-                     {:name "chr7",  :len 159138663}
-                     {:name "chr8",  :len 146364022}
-                     {:name "chr9",  :len 141213431}
-                     {:name "chr10", :len 135534747}
-                     {:name "chr11", :len 135006516}
-                     {:name "chr12", :len 133851895}
-                     {:name "chr13", :len 115169878}
-                     {:name "chr14", :len 107349540}
-                     {:name "chr15", :len 102531392}
-                     {:name "chr16", :len 90354753}
-                     {:name "chr17", :len 81195210}
-                     {:name "chr18", :len 78077248}
-                     {:name "chr19", :len 59128983}
-                     {:name "chr20", :len 63025520}
-                     {:name "chr21", :len 48129895}
-                     {:name "chr22", :len 51304566}
-                     {:name "chrX",  :len 155270560}
-                     {:name "chrY",  :len 59373566}])
+(def large-sam-refs [{:name "1",  :len 247249719}
+                     {:name "2",  :len 242951149}
+                     {:name "3",  :len 199501827}
+                     {:name "4",  :len 191273063}
+                     {:name "5",  :len 180857866}
+                     {:name "6",  :len 170899992}
+                     {:name "7",  :len 158821424}
+                     {:name "8",  :len 146274826}
+                     {:name "9",  :len 140273252}
+                     {:name "10", :len 135374737}
+                     {:name "11", :len 134452384}
+                     {:name "12", :len 132349534}
+                     {:name "13", :len 114142980}
+                     {:name "14", :len 106368585}
+                     {:name "15", :len 100338915}
+                     {:name "16", :len 88827254}
+                     {:name "17", :len 78774742}
+                     {:name "18", :len 76117153}
+                     {:name "19", :len 63811651}
+                     {:name "20", :len 62435964}
+                     {:name "21", :len 46944323}
+                     {:name "22", :len 49691432}
+                     {:name "X",  :len 154913754}
+                     {:name "Y",  :len 57772954}
+                     {:name "MT", :len 16571}])
 
 (def test-fa
   [{:rname "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}

@@ -6,7 +6,7 @@
 ;;; NOTE: `:heavy` tests are to fetch large files (over 1G),
 ;;;       that use many cpu times and memories.
 ;;;       Please use "JVM_OPTS".
-;;;       `JVM_OPTS="-Xmx8g -server" lein midje :filter heavy`
+;;;       `JVM_OPTS="-Xmx12g -server" lein midje :filter heavy`
 ;;;
 ;;;       `:heavy` tests must have to not only `:heavy` but also `:slow`.
 ;;;       Because this `:fact-filter` can override by `:filter` like;

@@ -117,21 +117,14 @@
                                         (prepare-cache!)))
                      (after  :facts (clean-cache!))]
   (fact "about sorting (large file)" :slow :heavy
-    (with-reader sorter/sort-by-pos large-bam-file tmp-coordinate-sorted-sam-file) => anything
     (with-reader sorter/sort-by-pos large-bam-file tmp-coordinate-sorted-bam-file) => anything
-    (with-reader sorter/sort-by-qname large-bam-file tmp-queryname-sorted-sam-file) =future=> anything
     (with-reader sorter/sort-by-qname large-bam-file tmp-queryname-sorted-bam-file) =future=> anything
     ;(with-reader sorter/sorted-by? large-bam-file) => falsey
-    (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file) => truthy
     (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file) => truthy
-    (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file) =future=> truthy
     (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file) =future=> truthy
     ;(with-reader sorter/sort-order large-bam-file) => sorter/order-unknown
-    (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file) => sorter/order-coordinate
     (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file) => sorter/order-coordinate
-    (with-reader sorter/sort-order tmp-queryname-sorted-sam-file) =future=> sorter/order-queryname
     (with-reader sorter/sort-order tmp-queryname-sorted-bam-file) =future=> sorter/order-queryname
     ;; check sorting order
-    ;(check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-file)) => anything
     ;(check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file)) => anything
     ))

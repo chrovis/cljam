@@ -142,16 +142,17 @@
         hdr (replace-header (io/read-header rdr)
                             version
                             (name order-coordinate))]
-    (doall
-     (pmap
-      (fn [i]
-        (let [r (bam/reader (cache-name-fn i))
-              blks (sort-alignments-by-pos r)]
-          (with-open [w (bam/writer (sorted-cache-name-fn i))]
-            (io/write-header w hdr)
-            (io/write-refs w hdr)
-            (io/write-coordinate-blocks w blks))))
-      (range num-splited)))
+    (doseq [idxs (partition-all util/num-cores (range num-splited))]
+      (doall
+       (pmap
+        (fn [i]
+          (let [r (bam/reader (cache-name-fn i))
+                blks (sort-alignments-by-pos r)]
+            (with-open [w (bam/writer (sorted-cache-name-fn i))]
+              (io/write-header w hdr)
+              (io/write-refs w hdr)
+              (io/write-coordinate-blocks w blks))))
+        idxs)))
     (merge-sam wtr hdr sorted-cache-name-fn num-splited)
     (clean-split-merge-cache cache-name-fn sorted-cache-name-fn num-splited)))
 

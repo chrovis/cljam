@@ -1,6 +1,10 @@
 (ns cljam.util
   (:require [clojure.java.io :refer [file]]))
 
+;;; cpu info
+
+(def num-cores (.availableProcessors (Runtime/getRuntime)))
+
 ;;; disk cache
 
 (def temp-dir (let [dir-path (.getPath (file (System/getProperty "java.io.tmpdir") "cljam"))]

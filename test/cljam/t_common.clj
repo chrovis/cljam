@@ -8,9 +8,10 @@
 
 (defcavy mycavy
   {:resources [{:id "large.bam"
-                :url "ftp://ftp.broadinstitute.org/old/NA12878.BI.illumina.dup.sort.bam"
-                :sha1 "523780c7f39dfe97939124e92c8d34d0759c841f"
-                :auth {:user "gsapubftp-anonymous"}}
+                :url "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/data/HG04238/alignment/HG04238.unmapped.ILLUMINA.bwa.ITU.low_coverage.20130415.bam"
+                :sha1 "f62c94eb80aa68f5c8d36e6147e66aefd879ae5d"
+                :auth {:user "anonymous", :password "test%40example.com"}
+                }
                ]})
 
 (defn prepare-cavy! [] (cavy/without-print (cavy/get!)) (cavy/verify))
@@ -128,31 +129,93 @@
                       {:name "chr22", :len 51304566}
                       {:name "chrX",  :len 155270560}
                       {:name "chrY",  :len 59373566}])
-(def large-sam-refs [{:name "1",  :len 247249719}
-                     {:name "2",  :len 242951149}
-                     {:name "3",  :len 199501827}
-                     {:name "4",  :len 191273063}
-                     {:name "5",  :len 180857866}
-                     {:name "6",  :len 170899992}
-                     {:name "7",  :len 158821424}
-                     {:name "8",  :len 146274826}
-                     {:name "9",  :len 140273252}
-                     {:name "10", :len 135374737}
-                     {:name "11", :len 134452384}
-                     {:name "12", :len 132349534}
-                     {:name "13", :len 114142980}
-                     {:name "14", :len 106368585}
-                     {:name "15", :len 100338915}
-                     {:name "16", :len 88827254}
-                     {:name "17", :len 78774742}
-                     {:name "18", :len 76117153}
-                     {:name "19", :len 63811651}
-                     {:name "20", :len 62435964}
-                     {:name "21", :len 46944323}
-                     {:name "22", :len 49691432}
-                     {:name "X",  :len 154913754}
-                     {:name "Y",  :len 57772954}
-                     {:name "MT", :len 16571}])
+(def large-sam-refs [{:name "1",          :len 249250621}
+                     {:name "2",          :len 243199373}
+                     {:name "3",          :len 198022430}
+                     {:name "4",          :len 191154276}
+                     {:name "5",          :len 180915260}
+                     {:name "6",          :len 171115067}
+                     {:name "7",          :len 159138663}
+                     {:name "8",          :len 146364022}
+                     {:name "9",          :len 141213431}
+                     {:name "10",         :len 135534747}
+                     {:name "11",         :len 135006516}
+                     {:name "12",         :len 133851895}
+                     {:name "13",         :len 115169878}
+                     {:name "14",         :len 107349540}
+                     {:name "15",         :len 102531392}
+                     {:name "16",         :len 90354753}
+                     {:name "17",         :len 81195210}
+                     {:name "18",         :len 78077248}
+                     {:name "19",         :len 59128983}
+                     {:name "20",         :len 63025520}
+                     {:name "21",         :len 48129895}
+                     {:name "22",         :len 51304566}
+                     {:name "X",          :len 155270560}
+                     {:name "Y",          :len 59373566}
+                     {:name "MT",         :len 16569}
+                     {:name "GL000207.1", :len 4262}
+                     {:name "GL000226.1", :len 15008}
+                     {:name "GL000229.1", :len 19913}
+                     {:name "GL000231.1", :len 27386}
+                     {:name "GL000210.1", :len 27682}
+                     {:name "GL000239.1", :len 33824}
+                     {:name "GL000235.1", :len 34474}
+                     {:name "GL000201.1", :len 36148}
+                     {:name "GL000247.1", :len 36422}
+                     {:name "GL000245.1", :len 36651}
+                     {:name "GL000197.1", :len 37175}
+                     {:name "GL000203.1", :len 37498}
+                     {:name "GL000246.1", :len 38154}
+                     {:name "GL000249.1", :len 38502}
+                     {:name "GL000196.1", :len 38914}
+                     {:name "GL000248.1", :len 39786}
+                     {:name "GL000244.1", :len 39929}
+                     {:name "GL000238.1", :len 39939}
+                     {:name "GL000202.1", :len 40103}
+                     {:name "GL000234.1", :len 40531}
+                     {:name "GL000232.1", :len 40652}
+                     {:name "GL000206.1", :len 41001}
+                     {:name "GL000240.1", :len 41933}
+                     {:name "GL000236.1", :len 41934}
+                     {:name "GL000241.1", :len 42152}
+                     {:name "GL000243.1", :len 43341}
+                     {:name "GL000242.1", :len 43523}
+                     {:name "GL000230.1", :len 43691}
+                     {:name "GL000237.1", :len 45867}
+                     {:name "GL000233.1", :len 45941}
+                     {:name "GL000204.1", :len 81310}
+                     {:name "GL000198.1", :len 90085}
+                     {:name "GL000208.1", :len 92689}
+                     {:name "GL000191.1", :len 106433}
+                     {:name "GL000227.1", :len 128374}
+                     {:name "GL000228.1", :len 129120}
+                     {:name "GL000214.1", :len 137718}
+                     {:name "GL000221.1", :len 155397}
+                     {:name "GL000209.1", :len 159169}
+                     {:name "GL000218.1", :len 161147}
+                     {:name "GL000220.1", :len 161802}
+                     {:name "GL000213.1", :len 164239}
+                     {:name "GL000211.1", :len 166566}
+                     {:name "GL000199.1", :len 169874}
+                     {:name "GL000217.1", :len 172149}
+                     {:name "GL000216.1", :len 172294}
+                     {:name "GL000215.1", :len 172545}
+                     {:name "GL000205.1", :len 174588}
+                     {:name "GL000219.1", :len 179198}
+                     {:name "GL000224.1", :len 179693}
+                     {:name "GL000223.1", :len 180455}
+                     {:name "GL000195.1", :len 182896}
+                     {:name "GL000212.1", :len 186858}
+                     {:name "GL000222.1", :len 186861}
+                     {:name "GL000200.1", :len 187035}
+                     {:name "GL000193.1", :len 189789}
+                     {:name "GL000194.1", :len 191469}
+                     {:name "GL000225.1", :len 211173}
+                     {:name "GL000192.1", :len 547496}
+                     {:name "NC_007605",  :len 171823}
+                     {:name "hs37d5",     :len 35477943}
+                     ])
 
 (def test-fa
   [{:rname "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}

@@ -3,10 +3,10 @@
   (:require [cljam.sam :as sam]
             [cljam.bam :as bam]
             [cljam.io :as io]
-            [cavy.core :as cavy :refer [defcavy]]
+            [cavy.core :as cavy :refer [defprofile with-profile]]
             ))
 
-(defcavy mycavy
+(defprofile mycavy
   {:resources [{:id "large.bam"
                 :url "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/data/HG04238/alignment/HG04238.unmapped.ILLUMINA.bwa.ITU.low_coverage.20130415.bam"
                 :sha1 "f62c94eb80aa68f5c8d36e6147e66aefd879ae5d"
@@ -14,8 +14,11 @@
                 }
                ]})
 
-(defn prepare-cavy! [] (cavy/without-print (cavy/get!)) (cavy/verify))
-(defn clean-cavy! [] (cavy/clean!))
+;;; Don't use `with-profile`, because don't want to clean .cavy automatically
+(defn prepare-cavy! []
+  (cavy/without-print (cavy/get! mycavy))
+  (cavy/verify mycavy))
+(defn clean-cavy! [] (cavy/clean! mycavy))
 
 
 ;;; slurp (for test)
@@ -296,5 +299,5 @@
 ;;; $ cat r.head r.body2 > result.sam
 ;;; $ samtools view -S -b result.sam > test/resources/medium.bam
 
-(def large-bam-file (cavy/resource "large.bam"))
+(def large-bam-file (cavy/resource mycavy "large.bam"))
 

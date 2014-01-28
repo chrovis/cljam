@@ -113,7 +113,7 @@
     (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file)) => anything
     ))
 
-(with-state-changes [(before :facts (do (prepare-cavy!)
+(with-state-changes [(before :facts (do (prepare-cavia!)
                                         (prepare-cache!)))
                      (after  :facts (clean-cache!))]
   (fact "about sorting (large file)" :slow :heavy

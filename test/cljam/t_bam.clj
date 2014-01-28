@@ -17,7 +17,7 @@
   (slurp-bam-for-test medium-bam-file) => anything)
 
 ;; NB: Cannot slurp large BAM (cause `java.lang.OutOfMemoryError`)
-;(with-state-changes [(before :facts (prepare-cavy!))]
+;(with-state-changes [(before :facts (prepare-cavia!))]
 ;  (fact "about slurp-bam (large file)" :slow :heavy
 ;        (slurp-bam-for-test large-bam-file) => anything))
 
@@ -34,7 +34,7 @@
       temp-file (slurp-bam-for-test medium-bam-file)) => anything))
 
 ;; NB: Cannot spit large BAM (cause `java.lang.OutOfMemoryError`)
-;(with-state-changes [(before :facts (do (prepare-cavy!)
+;(with-state-changes [(before :facts (do (prepare-cavia!)
 ;                                        (prepare-cache!)))
 ;                     (after :facts (clean-cache!))]
 ;  (fact "about spit-bam (large file)" :slow :heavy
@@ -52,7 +52,7 @@
       (io/read-refs rdr) => medium-sam-refs)))
 
 (with-state-changes [(before :facts (do (prepare-cache!)
-                                        (prepare-cavy!)))
+                                        (prepare-cavia!)))
                      (after :facts (clean-cache!))]
   (fact "about BAMReader (large file)" :slow :heavy
     (let [rdr (bam/reader large-bam-file)]
@@ -102,7 +102,7 @@
       temp-file-sorted (str temp-file-sorted ".bai")) => anything
     (.exists (file (str temp-file-sorted ".bai"))) => truthy))
 
-(with-state-changes [(before :facts (do (prepare-cavy!)
+(with-state-changes [(before :facts (do (prepare-cavia!)
                                         (prepare-cache!)
                                         (copy (file large-bam-file)
                                               (file temp-file-sorted))))

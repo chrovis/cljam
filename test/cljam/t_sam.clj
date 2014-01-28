@@ -23,7 +23,7 @@
       temp-file (slurp-bam-for-test medium-bam-file)) => anything))
 
 ;; NB: Cannot spit large SAM (cause `java.lang.OutOfMemoryError`)
-;(with-state-changes [(before :facts (do (prepare-cavy!)
+;(with-state-changes [(before :facts (do (prepare-cavia!)
 ;                                        (prepare-cache!)))
 ;                     (after :facts (clean-cache!))]
 ;  (fact "about spit-sam (large file)" :slow :heavy

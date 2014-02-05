@@ -54,3 +54,9 @@
      (gen-vec n nil))
   ([n ini]
      (vec (repeat n ini))))
+
+;;; map utils
+
+(defmacro swap
+  [m k f]
+  `(assoc ~m ~k (~f (get ~m ~k))))

@@ -7,6 +7,7 @@
                    [io :as io]
                    [bam :as bam]
                    [bam-indexer :as bai]
+                   [normal :as normal]
                    [sorter :as sorter]
                    [fasta :as fa]
                    [fasta-indexer :as fai]
@@ -103,6 +104,32 @@
             (io/write-refs wtr hdr)
             (doseq [alns (partition-all 10000 (io/read-alignments rdr {}))]
               (io/write-alignments wtr alns hdr)))))))
+  nil)
+
+;;; normalize command
+
+(def ^:private normalize-cli-options
+  [["-h" "--help"]])
+
+(defn- normalize-usage [options-summary]
+  (->> ["Normalize references of alignments"
+        ""
+        "Usage: cljam normalize <in.bam|sam> <out.bam|sam>"
+        ""
+        "Options:"
+        options-summary]
+       (str/join \newline)))
+
+(defn normalize [args]
+  (let [{:keys [options arguments errors summary]} (parse-opts args normalize-cli-options)]
+    (cond
+     (:help options) (exit 0 (normalize-usage summary))
+     (not= (count arguments) 2) (exit 1 (normalize-usage summary))
+     errors (exit 1 (error-msg errors)))
+    (let [[in out] arguments
+          r (reader in)
+          w (writer out)]
+      (normal/normalize r w)))
   nil)
 
 ;;; sort command
@@ -264,6 +291,7 @@
                                           :options  [["-h" "--help" "Show help" :default false :flag true]]
                                           :commands [["view"    "Extract/print all or sub alignments in SAM or BAM format."]
                                                      ["convert" "Convert SAM to BAM or BAM to SAM."]
+                                                     ["normalize" "Normalize references of alignments"]
                                                      ["sort"    "Sort alignments by leftmost coordinates."]
                                                      ["index"   "Index sorted alignment for fast random access."]
                                                      ["pileup"  "Generate pileup for the BAM file."]
@@ -274,6 +302,7 @@
     (case cmd
       :view    (view args)
       :convert (convert args)
+      :normalize (normalize args)
       :sort    (sort args)
       :index   (index args)
       :pileup  (pileup args)

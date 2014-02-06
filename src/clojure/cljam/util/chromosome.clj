@@ -1,6 +1,14 @@
 (ns cljam.util.chromosome
   (:require [clojure.string :as str]))
 
+(defn normalize-name
+  [s]
+  (-> s
+      (str/replace #"\."  "_")
+      (str/replace #","  "_")
+      (str/replace #"\""  "")
+      (str/replace #"\'"  "")))
+
 (defn trim-chromosome-key
   [s]
   (-> s
@@ -26,5 +34,6 @@
 (defn normalize-chromosome-key
   [s]
   (-> s
+      normalize-name
       prepend-chromosome-prefix
       normalize-chromosome-prefix))

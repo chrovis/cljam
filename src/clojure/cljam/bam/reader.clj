@@ -270,7 +270,7 @@
     (cons (read-fn rdr (.refs rdr))
           (lazy-seq (read-to-finish rdr finish read-fn)))))
 
-(defn- read-alignments*
+(defn read-alignments*
   [^BAMReader rdr
    ^String chr ^Long start ^Long end
    deep-or-shallow]
@@ -293,7 +293,7 @@
                                    (doall (read-to-finish rdr finish read-fn))) spans))]
     (filter window candidates)))
 
-(defn- read-alignments-sequentially*
+(defn read-alignments-sequentially*
   [^BAMReader rdr deep-or-shallow]
   (let [read-aln-fn (case deep-or-shallow
                       :shallow light-read-alignment
@@ -308,7 +308,7 @@
                       nil)))]
     (read-fn rdr (.refs rdr))))
 
-(defn- read-blocks-sequentially*
+(defn read-blocks-sequentially*
   [^BAMReader rdr option]
   (let [read-aln-fn (case option
                       :normal read-alignment-block
@@ -321,48 +321,20 @@
                       nil)))]
     (read-fn rdr (.refs rdr))))
 
-;;; public
-
-(defn reader [f {:keys [ignore-index]
-                 :or {ignore-index false}}]
-  (let [rdr (BGZFInputStream. (file f))
-        data-rdr (DataInputStream. rdr)]
-    (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes bam-magic))
-      (throw (IOException. "Invalid BAM file header")))
-    (let [header (parse-header (lsb/read-string data-rdr (lsb/read-int data-rdr)))
-          n-ref  (lsb/read-int data-rdr)
-          refs   (loop [i n-ref, ret []]
-                   (if (zero? i)
-                     ret
-                     (let [l-name (lsb/read-int data-rdr)
-                           name   (lsb/read-string data-rdr l-name)
-                           l-ref  (lsb/read-int data-rdr)]
-                       (recur (dec i)
-                              (conj ret {:name (subs name 0 (dec l-name))
-                                         :len  l-ref})))))
-          index (if ignore-index
-                  nil
-                  (try (bam-index f header) (catch IOException _ nil)))]
-      (->BAMReader (.getAbsolutePath (file f))
-                   header refs rdr data-rdr index))))
-
-(extend-type BAMReader
-  ISAMReader
-  (reader-path [this]
-    (.f this))
-  (read-header [this]
-    (.header this))
-  (read-refs [this]
-    (.refs this))
-  (read-alignments [this {:keys [chr start end depth]
-                          :or {chr nil
-                               start -1
-                               end -1
-                               depth :deep}}]
-    (if (nil? chr)
-      (read-alignments-sequentially* this depth)
-      (read-alignments* this chr start end depth)))
-  (read-blocks [this]
-    (read-blocks-sequentially* this :normal))
-  (read-coordinate-blocks [this]
-    (read-blocks-sequentially* this :coordinate)))
+(defn load-headers
+  [rdr]
+  (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes bam-magic))
+    (throw (IOException. "Invalid BAM file header")))
+  (let [header (parse-header (lsb/read-string rdr (lsb/read-int rdr)))
+        n-ref (lsb/read-int rdr)
+        refs (loop [i n-ref, ret []]
+               (if (zero? i)
+                 ret
+                 (let [l-name (lsb/read-int rdr)
+                       name   (lsb/read-string rdr l-name)
+                       l-ref  (lsb/read-int rdr)]
+                   (recur (dec i)
+                          (conj ret {:name (subs name 0 (dec l-name))
+                                     :len  l-ref})))))]
+    {:header header
+     :refs refs}))

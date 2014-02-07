@@ -1,16 +1,15 @@
 (ns cljam.bam.writer
-  (:use [cljam.io])
   (:require [clojure.string :refer [split]]
-            [clojure.java.io :refer [file]]
             (cljam [cigar :as cgr]
                    [lsb :as lsb]
                    [util :refer [string->bytes ubyte]])
             [cljam.util.sam-util :refer [reg->bin normalize-bases fastq->phred
                                          bytes->compressed-bases make-refs ref-id
                                          stringify-header]]
-            (cljam.bam [common :refer [bam-magic fixed-block-size]]))
+            [cljam.bam.common :refer [bam-magic fixed-block-size]])
   (:import [java.io DataOutputStream IOException EOFException]
            [chrovis.bgzf4j BGZFOutputStream]))
+
 ;;
 ;; BAMWriter
 ;;
@@ -208,26 +207,3 @@
     (doseq [b blocks]
       (lsb/write-int w (:size b))
       (lsb/write-bytes w (:data b)))))
-
-;;
-;; public
-;;
-
-(defn writer [f]
-  (->BAMWriter (.getAbsolutePath (file f))
-               (DataOutputStream. (BGZFOutputStream. (file f)))))
-
-(extend-type BAMWriter
-  ISAMWriter
-  (writer-path [this]
-    (.f this))
-  (write-header [this header]
-    (write-header* this header))
-  (write-refs [this header]
-    (write-refs* this header))
-  (write-alignments [this alignments header]
-    (write-alignments* this alignments header))
-  (write-blocks [this blocks]
-    (write-blocks* this blocks))
-  (write-coordinate-blocks [this blocks]
-    (write-blocks* this blocks)))

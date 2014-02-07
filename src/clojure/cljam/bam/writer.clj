@@ -122,7 +122,8 @@
     \A (lsb/write-char writer (char value))
     \i (lsb/write-int    writer (int value))
     \f (lsb/write-float  writer (float value))
-    \Z (lsb/write-string writer value)
+    \Z (do (lsb/write-string writer value)
+           (lsb/write-char writer (char 0)))
     ;; \H nil
     \B (let [[array-type & array] (split value #",")]
          (case (first array-type)

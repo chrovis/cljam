@@ -7,7 +7,7 @@
                  [org.clojure/tools.logging "0.2.6"]
                  [org.clojure/tools.cli "0.3.0"]
                  [clj-sub-command "0.2.0"]
-                 [chrovis/bgzf4j "0.1.0-SNAPSHOT"]]
+                 [bgzf4j "0.1.0"]]
   :source-paths ["src/clojure"]
   :java-source-paths ["src/java"]
   :javac-options ["-target" "1.7" "-source" "1.7"]

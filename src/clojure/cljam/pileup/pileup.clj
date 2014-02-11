@@ -76,4 +76,4 @@
                     rname (:len r)
                     (if (neg? start*) 0 start*)
                     (if (neg? end*) (:len r) end*))))
-       (catch chrovis.bgzf4j.BGZFException e (throw (RuntimeException. "Invalid file format"))))))
+       (catch bgzf4j.BGZFException e (throw (RuntimeException. "Invalid file format"))))))

@@ -8,7 +8,7 @@
                                          stringify-header]]
             [cljam.bam.common :refer [bam-magic fixed-block-size]])
   (:import [java.io DataOutputStream IOException EOFException]
-           [chrovis.bgzf4j BGZFOutputStream]))
+           [bgzf4j BGZFOutputStream]))
 
 ;;
 ;; BAMWriter

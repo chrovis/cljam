@@ -6,7 +6,7 @@
                        [index :as index :refer [bam-index]]))
   (:import java.util.Arrays
            [java.io DataInputStream DataOutputStream IOException EOFException]
-           [chrovis.bgzf4j BGZFInputStream BGZFOutputStream]
+           [bgzf4j BGZFInputStream BGZFOutputStream]
            [java.nio ByteBuffer ByteOrder]))
 
 ;;;

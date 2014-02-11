@@ -14,7 +14,7 @@
   (:import java.util.Arrays
            [java.io DataInputStream IOException EOFException]
            [java.nio ByteBuffer ByteOrder]
-           [chrovis.bgzf4j BGZFInputStream]))
+           [bgzf4j BGZFInputStream]))
 
 ;;
 ;; BAMReader

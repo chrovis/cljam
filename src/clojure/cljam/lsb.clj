@@ -67,6 +67,13 @@
     (.flip bb)
     (.getInt bb)))
 
+(defn read-long
+  [^DataInputStream rdr]
+  (let [bb (gen-byte-buffer)]
+    (read-byte-buffer rdr bb 8)
+    (.flip bb)
+    (.getLong bb)))
+
 (defn read-float
   [^DataInputStream rdr]
   (let [bb (gen-byte-buffer)]

@@ -5,8 +5,6 @@
            [java.io DataInputStream IOException]
            bgzf4j.BGZFInputStream))
 
-(set! *warn-on-reflection* true)
-
 (def tabix-magic "TBI\1")
 
 (def ^:private max-bin 37450)
@@ -15,9 +13,22 @@
 
 (def ^:private tad-lidx-shift 14)
 
+(defn- read-seq
+  [buf len]
+  (loop [i 0, j 0, seq* []]
+    (if (< i len)
+     (if (zero? (nth buf i))
+       (let [ba-len (- i j)
+             ba (byte-array ba-len)]
+         (System/arraycopy buf j ba 0 ba-len)
+         (recur (inc i) (inc i) (conj seq* (String. ba))))
+       (recur (inc i) j seq*))
+     seq*)))
+
 (defn- read-chunk
   [^DataInputStream rdr]
-  [(lsb/read-long rdr) (lsb/read-long rdr)])
+  {:beg (lsb/read-long rdr)
+   :end (lsb/read-long rdr)})
 
 (defn- read-bin
   [^DataInputStream rdr]
@@ -39,6 +50,7 @@
         skip   (lsb/read-int rdr)
         len    (lsb/read-int rdr)
         buf    (lsb/read-bytes rdr len)
+        seq    (read-seq buf len)
         index  (loop [i 0
                       bin-index []
                       linear-index []]
@@ -52,17 +64,9 @@
                             (conj linear-index new-linear-index)))
                    [bin-index linear-index]))]
     {:n-seq n-seq, :preset preset, :sc sc, :bc bc, :ec ec, :meta meta,
-     :skip skip, :bin-index (first index), :linear-index (last index)}
-    ))
-
-(deftype TABIXReader [f ^DataInputStream reader]
-  java.io.Closeable
-  (close [this]
-    (.close ^DataInputStream (.reader this))))
+     :skip skip, :seq seq ,:bin-index (first index), :linear-index (last index)}))
 
 (defn read-index
-  [^TABIXReader rdr]
-  (read-index* (.reader rdr)))
-
-(defn reader [f]
-  (->TABIXReader f (DataInputStream. (BGZFInputStream. (io/file f)))))
+  [f]
+  (with-open [r (DataInputStream. (BGZFInputStream. (io/file f)))]
+    (read-index* r)))

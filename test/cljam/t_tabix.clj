@@ -1,12 +1,12 @@
 (ns cljam.t-tabix
   (:require [midje.sweet :refer :all]
             [cljam.t-common :refer :all]
-            [cljam.tabix :as tabix]))
+            [cljam.tabix :as tbi]))
 
 (facts "about read-index"
   (fact "done without errors"
-    (tabix/read-index test-tabix-file) => anything)
-  (let [index (tabix/read-index test-tabix-file)]
+    (tbi/read-index test-tabix-file) => anything)
+  (let [index (tbi/read-index test-tabix-file)]
     (fact "returns a map"
       index => map?)
     (fact "check the returning map's structure"
@@ -20,3 +20,7 @@
                       :seq vector?
                       :bin-index vector?
                       :linear-index vector?}))))
+
+(with-state-changes [(before :facts (prepare-cavia!))]
+  (fact "large file" :slow :heavy
+    (tbi/read-index test-large-tabix-file) => anything))

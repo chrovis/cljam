@@ -10,14 +10,17 @@
   {:resources [{:id "large.bam"
                 :url "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/data/HG04238/alignment/HG04238.unmapped.ILLUMINA.bwa.ITU.low_coverage.20130415.bam"
                 :sha1 "f62c94eb80aa68f5c8d36e6147e66aefd879ae5d"
-                :auth {:user "anonymous", :password "test%40example.com"}
-                }
-               ]})
+                :auth {:user "anonymous", :password "test%40example.com"}}
+               {:id "large.tbi"
+                :url "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/release/20110521/ALL.chr1.phase1_release_v3.20101123.snps_indels_svs.genotypes.vcf.gz.tbi"
+                :sha1 "ebc756953ba502e6aba8f9b673c683318f6c63ee"
+                :auth {:user "anonymous"}}]})
 
 (defn prepare-cavia! []
   (with-profile mycavia
     (cavia/without-print (cavia/get!))
     (cavia/verify)))
+
 (defn clean-cavia! []
   (with-profile mycavia
     (cavia/clean!)))
@@ -52,6 +55,7 @@
 (def test-fa-file  "test/resources/test.fa")
 (def test-fai-file "test/resources/test.fa.fai")
 (def test-tabix-file "test/resources/test.gtf.gz.tbi")
+(def test-large-tabix-file (cavia/resource mycavia "large.tbi"))
 
 (def test-sam
   {:header {:SQ [{:SN "ref", :LN 45} {:SN "ref2", :LN 40}]}

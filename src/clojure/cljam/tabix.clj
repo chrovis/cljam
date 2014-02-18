@@ -30,23 +30,22 @@
   [^DataInputStream rdr]
   (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes ^String tabix-magic))
     (throw (IOException. "Invalid TABIX file")))
-  (let [n-seq  (lsb/read-int rdr) _ (println "n-seq: " n-seq)
-        preset (lsb/read-int rdr) _ (println "preset: " preset)
-        sc     (lsb/read-int rdr) _ (println "sc: " sc)
-        bc     (lsb/read-int rdr) _ (println "bc: " bc)
-        ec     (lsb/read-int rdr) _ (println "ec: " ec)
-        meta   (lsb/read-int rdr) _ (println "meta: " meta)
-        skip   (lsb/read-int rdr) _ (println "skip: " skip)
-        len    (lsb/read-int rdr) _ (println "len: " len)
+  (let [n-seq  (lsb/read-int rdr)
+        preset (lsb/read-int rdr)
+        sc     (lsb/read-int rdr)
+        bc     (lsb/read-int rdr)
+        ec     (lsb/read-int rdr)
+        meta   (lsb/read-int rdr)
+        skip   (lsb/read-int rdr)
+        len    (lsb/read-int rdr)
         buf    (lsb/read-bytes rdr len)
         index  (loop [i 0
                       bin-index []
                       linear-index []]
                  (if (< i n-seq)
-                   (let [n-bin (lsb/read-int rdr) _ (println "n-bin: " n-bin)
+                   (let [n-bin (lsb/read-int rdr)
                          new-bin-index (doall (map (fn [_] (read-bin rdr)) (range n-bin)))
-                         _ (println new-bin-index)
-                         n-linear-index (lsb/read-int rdr) _ (println "n-linear-index: " n-linear-index)
+                         n-linear-index (lsb/read-int rdr)
                          new-linear-index (doall (map (fn [_] (lsb/read-long rdr)) (range n-linear-index)))]
                      (recur (inc i)
                             (conj bin-index new-bin-index)

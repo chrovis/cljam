@@ -51,6 +51,7 @@
 (def test-sorted-bam-file "test/resources/test.sorted.bam")
 (def test-fa-file  "test/resources/test.fa")
 (def test-fai-file "test/resources/test.fa.fai")
+(def test-tabix-file "test/resources/test.gtf.gz.tbi")
 
 (def test-sam
   {:header {:SQ [{:SN "ref", :LN 45} {:SN "ref2", :LN 40}]}
@@ -302,4 +303,3 @@
 ;;; $ samtools view -S -b result.sam > test/resources/medium.bam
 
 (def large-bam-file (cavia/resource mycavia "large.bam"))
-

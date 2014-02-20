@@ -11,6 +11,10 @@
                 :url "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/data/HG04238/alignment/HG04238.unmapped.ILLUMINA.bwa.ITU.low_coverage.20130415.bam"
                 :sha1 "f62c94eb80aa68f5c8d36e6147e66aefd879ae5d"
                 :auth {:user "anonymous", :password "test%40example.com"}}
+               {:id "large.bai"
+                :url "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/data/HG04238/alignment/HG04238.chrom11.ILLUMINA.bwa.ITU.low_coverage.20130415.bam.bai"
+                :sha1 "396d3d87eea458c20b8222841a60a0f181587140"
+                :auth {:user "anonymous"}}
                {:id "large.tbi"
                 :url "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/release/20110521/ALL.chr1.phase1_release_v3.20101123.snps_indels_svs.genotypes.vcf.gz.tbi"
                 :sha1 "ebc756953ba502e6aba8f9b673c683318f6c63ee"
@@ -52,9 +56,12 @@
 (def test-sam-file "test/resources/test.sam")
 (def test-bam-file "test/resources/test.bam")
 (def test-sorted-bam-file "test/resources/test.sorted.bam")
+(def test-bai-file "test/resources/test.sorted.bam.bai")
 (def test-fa-file  "test/resources/test.fa")
 (def test-fai-file "test/resources/test.fa.fai")
 (def test-tabix-file "test/resources/test.gtf.gz.tbi")
+
+(def test-large-bai-file (cavia/resource mycavia "large.bai"))
 (def test-large-tabix-file (cavia/resource mycavia "large.tbi"))
 
 (def test-sam

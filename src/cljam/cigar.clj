@@ -1,5 +1,4 @@
-(ns cljam.cigar
-  (:require [clojure.string :as str]))
+(ns cljam.cigar)
 
 (defn parse
   "Parses CIGAR text, returns seq of lengths and operations."
@@ -22,22 +21,3 @@
 
 (def count-ref
   (memoize count-ref*))
-
-(defn substantial-seq [cigar seq]
-  (str/join
-   (loop [matches (parse cigar)
-          cursor  0
-          ret     []]
-     (if-let [[n op]  (first matches)]
-       (let [[cursor* ret*] (condp #(not (nil? (%1 %2))) op
-                              #{\M \= \X} [(+ cursor n)
-                                           (conj ret (subs seq cursor (+ cursor n)))]
-                              #{\D}       [cursor
-                                           (conj ret (str/join (repeat n "*")))]
-                              #{\N}       [cursor
-                                           (conj ret (str/join (repeat n ">")))]
-                              #{\S \I}    [(+ cursor n)
-                                           ret]
-                              [cursor ret])]
-         (recur (rest matches) cursor* ret*))
-       ret))))

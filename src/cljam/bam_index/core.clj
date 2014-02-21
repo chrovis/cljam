@@ -1,8 +1,8 @@
-(ns cljam.bam-indexer.core
+(ns cljam.bam-index.core
   (:require [clojure.java.io :as io]
-            [cljam.bam-indexer [common :refer :all]
-                               [chunk :as chunk]
-                               [reader :as reader]])
+            [cljam.bam-index [common :refer :all]
+                             [chunk :as chunk]
+                             [reader :as reader]])
   (:import java.util.BitSet))
 
 (deftype BAMIndex [f])

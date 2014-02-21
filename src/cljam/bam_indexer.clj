@@ -1,7 +1,7 @@
 (ns cljam.bam-indexer
   (:require [cljam.bam :as bam]
             [cljam.io :as io]
-            [cljam.bam-indexer.writer :as bai-writer]))
+            [cljam.bam-index.writer :as bai-writer]))
 
 (defn create-index
   [in-bam out-bai]

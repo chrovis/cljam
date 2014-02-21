@@ -1,5 +1,5 @@
 (ns cljam.bam-index
-  (:require [cljam.bam-indexer [core :as bai-core]]))
+  (:require [cljam.bam-index.core :as bai-core]))
 
 (defn read-index [bai]
   (bai-core/read-index bai))

@@ -1,4 +1,4 @@
-(ns cljam.bam-indexer.common)
+(ns cljam.bam-index.common)
 
 (def ^String bai-magic "BAI\1")
 

@@ -1,4 +1,4 @@
-(ns cljam.bam-indexer.writer
+(ns cljam.bam-index.writer
   (:require [clojure.java.io :refer [file]]
             [clojure.tools.logging :as logging]
             [clojure.pprint :refer [pprint]] ;; TODO for debug only
@@ -7,7 +7,7 @@
             [cljam.util :refer [gen-vec]]
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
-            [cljam.bam-indexer.common :refer :all])
+            [cljam.bam-index.common :refer :all])
   (:import [java.io DataOutputStream FileOutputStream Closeable]))
 
 (defn- max-bin-num [seq-len]

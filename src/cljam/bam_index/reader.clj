@@ -1,7 +1,7 @@
-(ns cljam.bam-indexer.reader
+(ns cljam.bam-index.reader
   (:require [clojure.java.io :as io]
             [cljam.lsb :as lsb]
-            [cljam.bam-indexer.common :refer [bai-magic]])
+            [cljam.bam-index.common :refer [bai-magic]])
   (:import java.util.Arrays
            [java.io DataInputStream FileInputStream Closeable IOException]))
 

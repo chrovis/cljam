@@ -1,4 +1,4 @@
-(ns cljam.bam-indexer.chunk
+(ns cljam.bam-index.chunk
   (:refer-clojure :exclude [compare])
   (:require [cljam.util.bgzf-util :as bgzf-util]))
 

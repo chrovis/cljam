@@ -5,8 +5,6 @@
   (:import java.util.Arrays
            [java.io DataInputStream FileInputStream IOException]))
 
-(set! *warn-on-reflection* true)
-
 (deftype BAIReader [f ^DataInputStream reader]
   java.io.Closeable
   (close [this]

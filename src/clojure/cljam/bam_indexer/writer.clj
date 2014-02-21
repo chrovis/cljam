@@ -7,17 +7,12 @@
             [cljam.util :refer [gen-vec]]
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
-            [cljam.bam-indexer.common :refer [bai-magic]])
+            [cljam.bam-indexer.common :refer :all])
   (:import [java.io DataOutputStream FileOutputStream]))
-
-(def ^:private max-bins 37450)
-(def ^:private level-starts [0 1 9 73 585 4681])
 
 (defn- max-bin-num [seq-len]
   (+ (nth level-starts  (dec (count level-starts)))
      (bit-shift-right seq-len 14)))
-
-(def ^:private max-lidx-size (- (inc max-bins) (last level-starts)))
 
 (defn- find-ref
   [refs name]

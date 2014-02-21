@@ -5,12 +5,13 @@
             (cljam [cigar :as cgr]
                    [lsb :as lsb]
                    [util :refer [string->bytes ubyte hex-string->bytes ]])
-            [cljam.util.sam-util :refer [phred->fastq ref-name
+            [cljam.util.sam-util :refer [phred->fastq ref-id ref-name
                                          compressed-bases->chars
                                          parse-header]]
-            (cljam.bam [index :refer [bam-index get-spans get-sequence-index]]
+            (cljam.bam ;[index :refer [bam-index get-spans get-sequence-index]]
                        [common :refer [bam-magic fixed-block-size]]
-                       [util :refer :all]))
+                       [util :refer :all])
+            [cljam.bam-index :refer [get-spans]])
   (:import java.util.Arrays
            [java.io DataInputStream IOException EOFException]
            [java.nio ByteBuffer ByteOrder]
@@ -277,7 +278,7 @@
   (when (nil? (.index rdr))
     (throw (Exception. "BAM index not found")))
   (let [^BAMIndex bai (.index rdr)
-        spans (get-spans bai chr start end)
+        spans (get-spans bai (ref-id (.refs rdr) chr) start end)
         window (fn [^clojure.lang.PersistentHashMap a]
                  (let [^Long left (:pos a)
                        ^Long right (+ left (cgr/count-ref (:cigar a)))]

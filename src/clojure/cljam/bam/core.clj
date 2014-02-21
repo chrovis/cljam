@@ -3,7 +3,9 @@
             [cljam.io]
             (cljam.bam [reader :as reader]
                        [writer :as writer]
-                       [index :as index :refer [bam-index]]))
+                       ;; [index :as index :refer [bam-index]]
+                       )
+            [cljam.bam-index :as bai])
   (:import java.util.Arrays
            [java.io DataInputStream DataOutputStream IOException EOFException]
            [bgzf4j BGZFInputStream BGZFOutputStream]
@@ -13,6 +15,12 @@
 ;;; reader
 ;;;
 
+(defn- bam-index [f]
+  (let [bai-f (str f ".bai")]
+    (when-not (.exists (file bai-f))
+      (throw (IOException. "Could not find BAM Index file")))
+    (bai/bam-index bai-f)))
+
 (defn reader [f {:keys [ignore-index]
                  :or {ignore-index false}}]
   (let [rdr (BGZFInputStream. (file f))
@@ -20,7 +28,7 @@
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
           index (if ignore-index
                   nil
-                  (try (bam-index f header) (catch IOException _ nil)))]
+                  (try (bam-index f) (catch IOException _ nil)))]
       (cljam.bam.reader.BAMReader. (.getAbsolutePath (file f))
                                    header refs rdr data-rdr index))))
 

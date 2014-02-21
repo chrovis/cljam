@@ -4,9 +4,9 @@
             [cljam.bam-indexer :as bai]))
 
 (fact "read-index is done without errors"
-  (bai/read-index test-bai-file) => anything)
+  (bai/read-index (bai/bam-index test-bai-file)) => anything)
 
-(let [index (bai/read-index test-bai-file)]
+(let [index (bai/read-index (bai/bam-index test-bai-file))]
   (fact "read-index returns vector"
     index => vector?)
   (fact "check the returning vector's structure"
@@ -17,4 +17,4 @@
 
 (with-state-changes [(before :facts (prepare-cavia!))]
   (fact "read-index is done without errors with a large file" :slow :heavy
-    (bai/read-index test-large-bai-file) => anything))
+    (bai/read-index (bai/bam-index test-large-bai-file)) => anything))

@@ -56,6 +56,5 @@
   [^BAIReader rdr]
   (read-index*! (.reader rdr)))
 
-(defn reader
-  [f]
+(defn reader [f]
   (->BAIReader f (DataInputStream. (FileInputStream. (io/file f)))))

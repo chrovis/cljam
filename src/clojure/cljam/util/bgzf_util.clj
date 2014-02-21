@@ -5,6 +5,8 @@
 
 (def ^:private address-mask 0xFFFFFFFFFFFF)
 
+(def ^:private offset-mask 0xFFFF)
+
 (defn compare
   "Negative if fp1 is earlier in file than fp2, positive if it is later, 0 if equal."
   [fp1 fp2]
@@ -19,6 +21,11 @@
   "File offset of start of BGZF block for this file pointer."
   [fp]
   (bit-and (bit-shift-right fp shift-amount) address-mask))
+
+(defn get-block-offset
+  "Offset into uncompressed block for this virtual file pointer."
+  [fp]
+  (bit-and fp offset-mask))
 
 (defn same-or-adjacent-blocks?
   "Returns true if fp2 points to somewhere in the same BGZF block, or the one

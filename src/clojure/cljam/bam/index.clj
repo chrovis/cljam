@@ -13,6 +13,7 @@
        (map (fn [s] (new SAMSequenceRecord (:SN s) (:LN s)))
             sequences)))
 
+;;; FIXME: not bai feature
 (defn get-sequence-index
   [^BAMIndex bai ^String chr]
   (let [sequences (.sequences bai)

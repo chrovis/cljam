@@ -13,7 +13,7 @@
                        [util :refer :all])
             [cljam.bam-index :refer [get-spans]])
   (:import java.util.Arrays
-           [java.io DataInputStream IOException EOFException]
+           [java.io DataInputStream Closeable IOException EOFException]
            [java.nio ByteBuffer ByteOrder]
            [bgzf4j BGZFInputStream]))
 
@@ -22,9 +22,9 @@
 ;;
 
 (deftype BAMReader [f header refs reader data-reader index]
-  java.io.Closeable
+  Closeable
   (close [this]
-    (.. this reader close)))
+    (.close ^Closeable (.reader this))))
 
 ;;
 ;; read alignment

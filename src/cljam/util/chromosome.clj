@@ -21,7 +21,7 @@
     (if (nil? m)
       s
       (let [[_ tail] m]
-        (str "chr" (.toUpperCase tail))))))
+        (str "chr" (str/upper-case tail))))))
 
 (defn- prepend-chromosome-prefix
   [s]
@@ -29,7 +29,7 @@
     (if (nil? m)
       s
       (let [[_ tail] m]
-        (str "chr" (.toUpperCase tail))))))
+        (str "chr" (str/upper-case tail))))))
 
 (defn normalize-chromosome-key
   [s]

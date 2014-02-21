@@ -7,7 +7,7 @@
                                          bytes->compressed-bases make-refs ref-id
                                          stringify-header]]
             [cljam.bam.common :refer [bam-magic fixed-block-size]])
-  (:import [java.io DataOutputStream IOException EOFException]
+  (:import [java.io DataOutputStream Closeable IOException EOFException]
            [bgzf4j BGZFOutputStream]))
 
 ;;
@@ -15,9 +15,9 @@
 ;;
 
 (deftype BAMWriter [f writer]
-  java.io.Closeable
+  Closeable
   (close [this]
-    (.. this writer close)))
+    (.close ^Closeable (.writer this))))
 
 ;;
 ;; write

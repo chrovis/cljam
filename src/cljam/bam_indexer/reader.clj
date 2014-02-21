@@ -3,12 +3,12 @@
             [cljam.lsb :as lsb]
             [cljam.bam-indexer.common :refer [bai-magic]])
   (:import java.util.Arrays
-           [java.io DataInputStream FileInputStream IOException]))
+           [java.io DataInputStream FileInputStream Closeable IOException]))
 
-(deftype BAIReader [f ^DataInputStream reader]
-  java.io.Closeable
+(deftype BAIReader [f reader]
+  Closeable
   (close [this]
-    (.. this reader close)))
+    (.close ^Closeable (.reader this))))
 
 (defn- read-chunks!
   [^DataInputStream rdr len]

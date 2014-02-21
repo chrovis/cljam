@@ -4,14 +4,14 @@
             [clojure.tools.logging :as logging]
             [cljam.util.sam-util :refer [stringify-header
                                          stringify-alignment]])
-  (:import [java.io BufferedWriter]))
+  (:import [java.io BufferedWriter Closeable]))
 
 ;;; writer
 
 (deftype SAMWriter [f writer]
-  java.io.Closeable
+  Closeable
   (close [this]
-    (.. this writer close)))
+    (.close ^Closeable (.writer this))))
 
 (defn writer [f]
   (->SAMWriter (.getAbsolutePath (file f))

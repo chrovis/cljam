@@ -1,15 +1,15 @@
 (ns cljam.fasta
   (:refer-clojure :exclude [read slurp])
-  (:import java.io.RandomAccessFile))
+  (:import [java.io RandomAccessFile Closeable]))
 
 ;;;
 ;;; FASTAReader
 ;;;
 
 (deftype FASTAReader [reader f]
-  java.io.Closeable
+  Closeable
   (close [this]
-    (.. this reader close)))
+    (.close ^Closeable (.reader this))))
 
 ;;;
 ;;; Read

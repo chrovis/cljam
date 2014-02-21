@@ -44,7 +44,7 @@
 
 (defn str->int [str]
   (try
-    (Integer. (re-find  #"\d+" str))
+    (Integer. ^String (re-find #"\d+" str))
     (catch Exception e nil)))
 
 ;;; seq utils

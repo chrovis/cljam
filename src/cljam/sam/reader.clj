@@ -5,14 +5,14 @@
             [cljam.util.sam-util :refer [make-refs
                                          parse-alignment
                                          parse-header-line]])
-  (:import [java.io BufferedReader]))
+  (:import [java.io BufferedReader Closeable]))
 
 ;;; reader
 
 (deftype SAMReader [f header reader]
-  java.io.Closeable
+  Closeable
   (close [this]
-    (.. this reader close)))
+    (.close ^Closeable (.reader this))))
 
 (extend-type SAMReader
   ISAMReader

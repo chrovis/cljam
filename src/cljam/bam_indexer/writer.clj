@@ -8,7 +8,7 @@
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
             [cljam.bam-indexer.common :refer :all])
-  (:import [java.io DataOutputStream FileOutputStream]))
+  (:import [java.io DataOutputStream FileOutputStream Closeable]))
 
 (defn- max-bin-num [seq-len]
   (+ (nth level-starts  (dec (count level-starts)))
@@ -33,9 +33,9 @@
 ;;
 
 (deftype BAIWriter [writer refs f]
-  java.io.Closeable
+  Closeable
   (close [this]
-    (.. this writer close)))
+    (.close ^Closeable (.writer this))))
 
 ;;
 ;; write index

@@ -22,10 +22,12 @@
     (doseq [sq fa-sq]
       (write-sq w sq))))
 
-(defn create-index
+(defn create-index!
   "Create a FAI file from the specified fasta file."
   [fasta out-fai]
   (with-open [r ^RandomAccessFile (fasta/reader fasta)
               w ^BufferedWriter (writer out-fai)]
     (doseq [sq (fasta/read r)]
       (write-sq w sq))))
+
+(def ^:deprecated create-index create-index!)

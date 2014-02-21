@@ -14,7 +14,7 @@
                                               (file temp-file-sorted))))
                      (after :facts (clean-cache!))]
   (fact "about BAM indexer"
-    (bai/create-index
+    (bai/create-index!
       temp-file-sorted (str temp-file-sorted ".bai")) => anything
     (.exists (file (str temp-file-sorted ".bai"))) => truthy
     (with-open [r (bam/reader temp-file-sorted)]
@@ -34,7 +34,7 @@
                                             (bam/writer sorted-f))))
                        (after :facts (clean-cache!))]
     (fact "about BAM indexer (for incomplete alignments)"
-      (bai/create-index sorted-f (str sorted-f ".bai")) => anything
+      (bai/create-index! sorted-f (str sorted-f ".bai")) => anything
       (.exists (file (str sorted-f ".bai"))) => truthy
       (with-open [r (bam/reader sorted-f)]
         (io/read-alignments r {:chr "ref" :start 0 :end 1000})
@@ -49,7 +49,7 @@
                                               (file temp-file-sorted))))
                      (after :facts (clean-cache!))]
   (fact "about BAM indexer (medium file)" :slow
-    (bai/create-index
+    (bai/create-index!
       temp-file-sorted (str temp-file-sorted ".bai")) => anything
     (.exists (file (str temp-file-sorted ".bai"))) => truthy))
 
@@ -59,6 +59,6 @@
                                               (file temp-file-sorted))))
                      (after :facts (clean-cache!))]
   (fact "about BAM indexer (large file)" :slow :heavy
-    (bai/create-index
+    (bai/create-index!
       temp-file-sorted (str temp-file-sorted ".bai")) => anything
     (.exists (file (str temp-file-sorted ".bai"))) => truthy))

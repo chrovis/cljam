@@ -1,4 +1,5 @@
 (ns cljam.bam-index.core
+  "The core of BAM index features."
   (:require [clojure.java.io :as io]
             [cljam.bam-index [common :refer :all]
                              [chunk :as chunk]
@@ -6,14 +7,19 @@
   (:import java.util.BitSet))
 
 (deftype BAMIndex [f])
-;;; TODO: need bam->BAMIndex
+
 (defn bam-index [f]
   (->BAMIndex f))
 
-(defn read-index
-  [^BAMIndex bai]
+(defn bin-index
+  [^BAMIndex bai ref-idx]
   (with-open [r (reader/reader (.f bai))]
-    (reader/read-index r)))
+    (reader/read-bin-index! r ref-idx)))
+
+(defn linear-index
+  [^BAMIndex bai ref-idx]
+  (with-open [r (reader/reader (.f bai))]
+    (reader/read-linear-index! r ref-idx)))
 
 (defn- reg->bins
   "Returns candidate bins for the specified region as java.util.BitSet."
@@ -36,12 +42,12 @@
 (defn get-spans
   [^BAMIndex bai ref-idx beg end]
   (let [bins ^BitSet (reg->bins beg end)
-        index (read-index bai)
-        chunks (->> (nth index ref-idx)
-                    (:bin-index)
+        bidx (bin-index bai ref-idx)
+        lidx (linear-index bai ref-idx)
+        chunks (->> bidx
                     (filter #(.get bins (:bin %)))
                     (map :chunks)
                     (flatten))
-        min-offset (or (first (:linear-index index)) 0)]
+        min-offset (or (first lidx) 0)]
     (->> (chunk/optimize-chunks chunks min-offset)
          (map vals))))

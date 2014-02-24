@@ -10,49 +10,93 @@
   (close [this]
     (.close ^Closeable (.reader this))))
 
-(defn- read-chunks!
-  [^DataInputStream rdr len]
-  (loop [i 0, chunks []]
-    (if (< i len)
-      (recur (inc i) (conj chunks {:beg (lsb/read-long rdr)
-                                   :end (lsb/read-long rdr)}))
-      chunks)))
-
-(defn- read-bin-index!
-  [^DataInputStream rdr len]
-  (loop [i 0, index []]
-    (if (< i len)
-      (let [bin (lsb/read-int rdr)
-            n-chunk (lsb/read-int rdr)
-            chunks (read-chunks! rdr n-chunk)]
-        (recur (inc i) (conj index {:bin bin, :chunks chunks})))
-      index)))
-
-(defn- read-linear-index!
-  [^DataInputStream rdr len]
-  (loop [i 0, index []]
-    (if (< i len)
-      (recur (inc i) (conj index (lsb/read-long rdr)))
-      index)))
-
-(defn- read-index*!
+(defn- skip-chunks!
   [^DataInputStream rdr]
-  (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes ^String bai-magic))
-    (throw (IOException. "Invalid BAI file")))
-  (let [n-ref (lsb/read-int rdr)]
-    (loop [i 0, index []]
-      (if (< i n-ref)
-        (let [n-bin-index (lsb/read-int rdr)
-              new-bin-index (read-bin-index! rdr n-bin-index)
-              n-linear-index (lsb/read-int rdr)
-              new-linear-index (read-linear-index! rdr n-linear-index)]
-          (recur (inc i) (conj index {:bin-index new-bin-index
-                                      :linear-index new-linear-index})))
-        index))))
+  (let [n-chunks (lsb/read-int rdr)]
+    (loop [i 0]
+      (when (< i n-chunks)
+        (lsb/skip rdr 16)
+        (recur (inc i))))))
 
-(defn read-index
-  [^BAIReader rdr]
-  (read-index*! (.reader rdr)))
+(defn- skip-bin-index!
+  [^DataInputStream rdr]
+  (let [n-bidx (lsb/read-int rdr)]
+    (loop [i 0]
+      (when (< i n-bidx)
+        (lsb/skip rdr 4)
+        (skip-chunks! rdr)
+        (recur (inc i))))))
+
+(defn- skip-linear-index!
+  [^DataInputStream rdr]
+  (let [n-lidx (lsb/read-int rdr)]
+    (loop [i 0]
+      (when (< i n-lidx)
+        (lsb/skip rdr 8)
+        (recur (inc i))))))
+
+(defn- skip-index!
+  [^DataInputStream rdr n]
+  (loop [i 0]
+    (when (< i n)
+      (skip-bin-index! rdr)
+      (skip-linear-index! rdr)
+      (recur (inc i)))))
+
+(defn- read-chunks!
+  [^DataInputStream rdr]
+  (let [n (lsb/read-int rdr)]
+   (loop [i 0, chunks []]
+     (if (< i n)
+       (recur (inc i) (conj chunks {:beg (lsb/read-long rdr)
+                                    :end (lsb/read-long rdr)}))
+       chunks))))
+
+(defn- read-bin-index**!
+  [^DataInputStream rdr]
+  (let [n (lsb/read-int rdr)]
+    (loop [i 0, bidx []]
+      (if (< i n)
+        (let [bin (lsb/read-int rdr)
+              chunks (read-chunks! rdr)]
+          (recur (inc i) (conj bidx {:bin bin, :chunks chunks})))
+        bidx))))
+
+(defn- read-bin-index*!
+  [^DataInputStream rdr ref-idx]
+  (let [n-ref (lsb/read-int rdr)]
+    (when (>= ref-idx n-ref)
+      (throw (IndexOutOfBoundsException. "The reference index number is invalid")))
+    (skip-index! rdr ref-idx)
+    (read-bin-index**! rdr)))
+
+(defn- read-linear-index**!
+  [^DataInputStream rdr]
+  (let [n (lsb/read-int rdr)]
+    (loop [i 0, lidx []]
+      (if (< i n)
+        (recur (inc i) (conj lidx (lsb/read-long rdr)))
+        lidx))))
+
+(defn- read-linear-index*!
+  [^DataInputStream rdr ref-idx]
+  (let [n-ref (lsb/read-int rdr)]
+    (when (>= ref-idx n-ref)
+      (throw (IndexOutOfBoundsException. "The reference index number is invalid")))
+    (skip-index! rdr ref-idx)
+    (skip-bin-index! rdr)
+    (read-linear-index**! rdr)))
+
+(defn read-bin-index!
+  [^BAIReader rdr ref-idx]
+  (read-bin-index*! (.reader rdr) ref-idx))
+
+(defn read-linear-index!
+  [^BAIReader rdr ref-idx]
+  (read-linear-index*! (.reader rdr) ref-idx))
 
 (defn reader [f]
-  (->BAIReader f (DataInputStream. (FileInputStream. (io/file f)))))
+  (let [r (DataInputStream. (FileInputStream. (io/file f)))]
+    (when-not (Arrays/equals ^bytes (lsb/read-bytes r 4) (.getBytes ^String bai-magic))
+      (throw (IOException. "Invalid BAI file")))
+    (->BAIReader f r)))

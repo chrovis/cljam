@@ -54,6 +54,6 @@
          (nil? last-chunk) (recur r f (conj ret f))
          (and (not (overlap? last-chunk f))
               (not (adjacent? last-chunk f))) (recur r f (conj ret f))
-         (> (:end f) (:end last-chunk)) (recur r (assoc last-chunk :end (:end f)) ret)
+         (> (:end f) (:end last-chunk)) (let [l (assoc last-chunk :end (:end f))] (recur r l (conj (pop ret) l)))
          :else (recur r last-chunk ret))
         ret))))

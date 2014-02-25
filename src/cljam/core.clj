@@ -255,8 +255,7 @@
      (not= (count arguments) 1) (exit 1 (faidx-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-     (fai/spit (str f ".fai")
-               (fa/slurp f))))
+      (fai/create-index! f (str f ".fai"))))
   nil)
 
 ;;; dict command

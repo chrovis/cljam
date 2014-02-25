@@ -1,4 +1,5 @@
 (ns cljam.bam-indexer
+  "Indexer of BAM."
   (:require [cljam.bam :as bam]
             [cljam.io :as io]
             [cljam.bam-index.writer :as bai-writer]))

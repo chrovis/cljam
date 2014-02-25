@@ -7,7 +7,7 @@ A DNA Sequence Alignment/Map (SAM) library for Clojure.
 Run `lein-bin` plugin and it creates standalone console executable into `target`.
 
     $ lein bin
-    > Creating standalone executable: ... target/cljam
+    > Creating standalone executable: .../target/cljam
 
 Copy the executable somewhere in your `$PATH`.
 
@@ -21,9 +21,18 @@ e.g.
 
 ## Test
 
-Run all test.
+This project uses Midje for test.
+Add lein-midje plugin to your `.lein/profiles.clj`.
+
+    {:user {:plugins [[lein-midje "3.1.3"]]}}
+
+To run all basic tests,
 
     $ lein midje
+
+To run heavy tests which uses remote large-size files,
+
+    $ lein midje :filter heavy
 
 ## Benchmark
 
@@ -38,6 +47,6 @@ e.g.
 
 ## License
 
-Copyright © 2013 FIXME
+Copyright © 2013 Xcoo, Inc.
 
 Distributed under the Eclipse Public License, the same as Clojure.

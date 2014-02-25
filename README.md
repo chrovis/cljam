@@ -21,11 +21,6 @@ e.g.
 
 ## Test
 
-This project uses Midje for test.
-Add lein-midje plugin to your `.lein/profiles.clj`.
-
-    {:user {:plugins [[lein-midje "3.1.3"]]}}
-
 To run all basic tests,
 
     $ lein midje

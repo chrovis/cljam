@@ -8,9 +8,8 @@
                  [org.clojure/tools.cli "0.3.0"]
                  [clj-sub-command "0.2.0"]
                  [bgzf4j "0.1.0"]]
-  :plugins [[lein-midje "3.1.1"]
-            [lein-bin "0.3.4"]]
-  :profiles {:dev {:dependencies [[midje "1.5.1"]
+  :plugins [[lein-bin "0.3.4"]]
+  :profiles {:dev {:dependencies [[midje "1.6.2"]
                                   [criterium "0.4.2"]
                                   [cavia "0.1.1"]]
                    :global-vars {*warn-on-reflection* true}}}

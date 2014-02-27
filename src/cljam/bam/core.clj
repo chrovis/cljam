@@ -2,9 +2,7 @@
   (:require [clojure.java.io :refer [file]]
             [cljam.io]
             (cljam.bam [reader :as reader]
-                       [writer :as writer]
-                       ;; [index :as index :refer [bam-index]]
-                       )
+                       [writer :as writer])
             [cljam.bam-index :as bai])
   (:import java.util.Arrays
            [java.io DataInputStream DataOutputStream IOException EOFException]

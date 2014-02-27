@@ -1,9 +1,9 @@
 (ns cljam.bam-index.core
   "The core of BAM index features."
   (:require [clojure.java.io :as io]
-            [cljam.bam-index [common :refer :all]
-                             [chunk :as chunk]
-                             [reader :as reader]])
+            [cljam.bam-index.common :refer :all]
+            [cljam.bam-index.chunk :as chunk]
+            [cljam.bam-index.reader :as reader])
   (:import java.util.BitSet))
 
 (deftype BAMIndex [f])

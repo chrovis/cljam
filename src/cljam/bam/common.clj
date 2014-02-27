@@ -2,4 +2,4 @@
 
 (def ^String bam-magic "BAM\1")
 
-(def ^Integer fixed-block-size 32)
+(def ^:const fixed-block-size 32)

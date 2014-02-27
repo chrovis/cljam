@@ -10,23 +10,22 @@
             [cljam.bam-index.common :refer :all])
   (:import [java.io DataOutputStream FileOutputStream Closeable]))
 
-(defn- max-bin-num [seq-len]
-  (+ (nth level-starts  (dec (count level-starts)))
-     (bit-shift-right seq-len 14)))
-
 (defn- find-ref
   [refs name]
   (first (filter #(= (:name %) name) refs)))
 
+(def ^:private ^:const max-level-start
+  (last level-starts))
+
+(defn- max-bin-num [^long seq-len]
+  (+ max-level-start
+     (bit-shift-right seq-len 14)))
+
 (defn- bin-count
   [refs name]
-  (let [ref (find-ref refs name)]
-    (if (nil? ref)
-      (dec max-bins)
-      (-> ref
-          :len
-          max-bin-num
-          inc))))
+  (if-let [ref (find-ref refs name)]
+    (inc (max-bin-num (:len ref)))
+    (dec max-bins)))
 
 ;;
 ;; BAIWriter
@@ -49,7 +48,7 @@
 ;; write index
 ;;
 
-(def bam-lidx-shift 14)
+(def ^:const bam-lidx-shift 14)
 
 (defn pos->lidx-offset
   [pos]
@@ -61,10 +60,11 @@
         last-non-zero-offset (atom 0)]
     (loop [i 0]
       (when (<= i largest-lidx-seen)
-        (if (zero? (nth @lidx i))
-          (swap! lidx assoc i @last-non-zero-offset)
-          (reset! last-non-zero-offset (nth @lidx i)))
-        (swap! new-lidx assoc i (nth @lidx i))
+        (let [l (nth @lidx i)]
+          (if (zero? l)
+            (swap! lidx assoc i @last-non-zero-offset)
+            (reset! last-non-zero-offset l))
+          (swap! new-lidx assoc i l))
         (recur (inc i))))
     @new-lidx))
 
@@ -157,7 +157,7 @@
                 (swap! bins assoc bin-idx new-bin)))
             (let [new-bin (assoc bin :chunks (vector (:chunk (:meta aln))))]
               (swap! bins assoc bin-idx new-bin))))
-        ;; lenear index
+        ;; linear index
         (let [aln-beg (:pos aln)
               aln-end (+ aln-beg (cgr/count-ref (:cigar aln)))
               window-beg (if (zero? aln-end)
@@ -200,7 +200,7 @@
   ;; n_ref
   (lsb/write-int wtr (count refs))
   (let [indices (make-index refs alns)]
-;    (println "Made index")              ; TODO: will remove
+    (println "Made index")              ; TODO: will remove
     (doseq [ref refs]
       (let [index (get indices (:name ref))]
         ;; bins

@@ -55,27 +55,27 @@
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) bam-lidx-shift))
 
 (defn- optimize-lidx
+  "Optimizes the linear index for safety. This seems unnecessary, but samtools
+  does this process."
   [lidx largest-lidx-seen]
-  (let [new-lidx (atom (gen-vec (inc largest-lidx-seen) 0))
-        last-non-zero-offset (atom 0)]
-    (loop [i 0]
-      (when (<= i largest-lidx-seen)
-        (let [l (nth @lidx i)]
-          (if (zero? l)
-            (swap! lidx assoc i @last-non-zero-offset)
-            (reset! last-non-zero-offset l))
-          (swap! new-lidx assoc i l))
-        (recur (inc i))))
-    @new-lidx))
+  (loop [i 0
+         lidx* []
+         last-non-zero 0]
+    (if (<= i largest-lidx-seen)
+      (let [l (nth lidx i)]
+        (if (zero? l)
+          (recur (inc i) (conj lidx* last-non-zero) last-non-zero)
+          (recur (inc i) (conj lidx* l) l)))
+      lidx*)))
 
 (defn- write-bin
   [w bin]
   (lsb/write-int w (:idx bin))
   ;; chunks
   (lsb/write-int w (count (:chunks bin)))
-  (doseq [c (:chunks bin)]
-    (lsb/write-long w (:beg c))
-    (lsb/write-long w (:end c))))
+  (doseq [{:keys [beg end]} (:chunks bin)]
+    (lsb/write-long w beg)
+    (lsb/write-long w end)))
 
 (defn- write-meta-data
   [w meta-data]
@@ -112,7 +112,7 @@
       (when-not (= (:rname aln) @ref-name)
         (swap! indices assoc @ref-name {:meta @meta
                                         :bins @bins
-                                        :lidx (optimize-lidx lidx @largest-lidx-seen)})
+                                        :lidx (optimize-lidx @lidx @largest-lidx-seen)})
         (reset! ref-name (:rname aln))
         (reset! bins (gen-vec (bin-count refs (:rname aln))))
         (reset! bins-seen 0)
@@ -177,7 +177,7 @@
     (swap! indices assoc
            @ref-name {:meta @meta
                       :bins @bins
-                      :lidx (optimize-lidx lidx @largest-lidx-seen)}
+                      :lidx (optimize-lidx @lidx @largest-lidx-seen)}
            :no-coordinate-alns @no-coordinate-alns)
     @indices))
 

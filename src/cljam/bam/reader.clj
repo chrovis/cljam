@@ -207,15 +207,8 @@
             _           (lsb/skip buffer 3)
             n-cigar-op  (lsb/read-ushort buffer)
             flag        (lsb/read-ushort buffer)
-            l-seq       (lsb/read-int buffer)
-            _           (lsb/skip buffer (+ 12 l-read-name))
+            _           (lsb/skip buffer (+ 16 l-read-name))
             cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
-            _           (lsb/skip buffer (+ (/ (inc l-seq) 2)
-                                            l-seq
-                                            (options-size block-size
-                                                          l-read-name
-                                                          n-cigar-op
-                                                          l-seq)))
             pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))]
         {:flag flag, :rname rname, :pos pos,:cigar cigar,
          :meta {:chunk {:beg pointer-beg, :end pointer-end}}}))))

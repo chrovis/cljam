@@ -86,10 +86,10 @@
         (recur (conj options (parse-option bb)))))))
 
 (defn- options-size
-  [block-size l-read-name n-cigar-op l-seq]
+  [^long block-size ^long l-read-name ^long n-cigar-op ^long l-seq]
   (- block-size
      fixed-block-size
-     (int l-read-name)
+     l-read-name
      (* n-cigar-op 4)
      (int (/ (inc l-seq) 2))
      l-seq))
@@ -158,7 +158,7 @@
           seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
           qual        (decode-qual (lsb/read-bytes rdr l-seq))
           rest        (lsb/read-bytes rdr (options-size block-size
-                                                        l-read-name
+                                                        (int l-read-name)
                                                         n-cigar-op
                                                         l-seq))
           options     (parse-options rest)]
@@ -187,37 +187,38 @@
           seq         (lsb/skip rdr (/ (inc l-seq) 2))
           lqual       (lsb/skip rdr l-seq)
           _           (lsb/skip rdr (options-size block-size
-                                                  l-read-name
+                                                  (int l-read-name)
                                                   n-cigar-op
                                                   l-seq))]
       {:rname rname, :pos pos, :cigar cigar})))
 
-;; TODO: improve performance using ByteBuffer
 (defn- pointer-read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
         pointer-beg (.getFilePointer ^BGZFInputStream (.reader bam-reader))
         block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size: " block-size))))
-    (let [ref-id      (lsb/read-int rdr)
-          rname       (if (= ref-id -1) "*" (ref-name refs ref-id))
-          pos         (inc (lsb/read-int rdr))
-          l-read-name (lsb/read-ubyte rdr)
-          _           (lsb/skip rdr 3)
-          n-cigar-op  (lsb/read-ushort rdr)
-          flag        (lsb/read-ushort rdr)
-          l-seq       (lsb/read-int rdr)
-          _           (lsb/skip rdr (+ 12 (int l-read-name)))
-          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
-          _           (lsb/skip rdr (+ (/ (inc l-seq) 2)
-                                       l-seq
-                                       (options-size block-size
-                                                     l-read-name
-                                                     n-cigar-op
-                                                     l-seq)))
-          pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))]
-      {:flag flag, :rname rname, :pos pos,:cigar cigar,
-       :meta {:chunk {:beg pointer-beg, :end pointer-end}}})))
+    (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
+      (lsb/read-bytes rdr (.array buffer) 0 block-size)
+      (let [ref-id      (lsb/read-int buffer)
+            rname       (if (= ref-id -1) "*" (ref-name refs ref-id))
+            pos         (inc (lsb/read-int buffer))
+            l-read-name (int (lsb/read-ubyte buffer))
+            _           (lsb/skip buffer 3)
+            n-cigar-op  (lsb/read-ushort buffer)
+            flag        (lsb/read-ushort buffer)
+            l-seq       (lsb/read-int buffer)
+            _           (lsb/skip buffer (+ 12 l-read-name))
+            cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
+            _           (lsb/skip buffer (+ (/ (inc l-seq) 2)
+                                            l-seq
+                                            (options-size block-size
+                                                          l-read-name
+                                                          n-cigar-op
+                                                          l-seq)))
+            pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))]
+        {:flag flag, :rname rname, :pos pos,:cigar cigar,
+         :meta {:chunk {:beg pointer-beg, :end pointer-end}}}))))
 
 (defn- read-coordinate-alignment-block [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)

@@ -200,7 +200,6 @@
   ;; n_ref
   (lsb/write-int wtr (count refs))
   (let [indices (make-index refs alns)]
-    (println "Made index")              ; TODO: will remove
     (doseq [ref refs]
       (let [index (get indices (:name ref))]
         ;; bins

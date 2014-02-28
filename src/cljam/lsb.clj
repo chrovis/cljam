@@ -10,14 +10,23 @@
   ([size]
      (.order (ByteBuffer/allocate size) ByteOrder/LITTLE_ENDIAN)))
 
-(defn skip
+(defmulti skip (fn [r & _] (class r)))
+
+(defmethod skip DataInputStream
   [^DataInputStream rdr ^Integer n]
   (.skipBytes rdr n)
   nil)
 
+(defmethod skip ByteBuffer
+  [^ByteBuffer bb ^Integer n]
+  (.position bb (+ (.position bb) n))
+  nil)
+
 ;;; reading
 
-(defn read-bytes
+(defmulti read-bytes (fn [r & _] (class r)))
+
+(defmethod read-bytes DataInputStream
   ([^DataInputStream rdr l]
      (let [ba (byte-array l)]
        (.read rdr ba 0 l)
@@ -30,15 +39,23 @@
              (throw (EOFException. "Premature EOF"))
              (recur (+ total-read n))))))))
 
+(defmethod read-bytes ByteBuffer
+  ([^ByteBuffer bb len]
+     (let [ba (byte-array len)]
+       (.get bb ba 0 len)
+       ba))
+  ([^ByteBuffer bb buffer offset len]
+     (.get bb buffer offset len)))
+
 (defn- read-byte-buffer
-  [^DataInputStream rdr ^ByteBuffer bb l]
+  [rdr ^ByteBuffer bb l]
   {:pre (< l (.capacity bb))}
   (read-bytes rdr (.array bb) 0 l)
   (.limit bb (.capacity bb))
   (.position bb l))
 
 (defn read-ubyte
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 1)
     (.put bb (byte 0))
@@ -46,14 +63,14 @@
     (.getShort bb)))
 
 (defn read-short
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 2)
     (.flip bb)
     (.getShort bb)))
 
 (defn read-ushort
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 2)
     (.putShort bb (short 0))
@@ -61,29 +78,29 @@
     (.getInt bb)))
 
 (defn read-int
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 4)
     (.flip bb)
     (.getInt bb)))
 
 (defn read-long
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 8)
     (.flip bb)
     (.getLong bb)))
 
 (defn read-float
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 4)
     (.flip bb)
     (.getFloat bb)))
 
 (defn read-string
-  [^DataInputStream rdr ^long l]
-  (String. ^bytes (read-bytes rdr l) 0 0 l))
+  [rdr ^Integer len]
+  (String. ^bytes (read-bytes rdr len) 0 0 len))
 
 (defn read-null-terminated-string
   [^ByteBuffer bb]

@@ -1,6 +1,5 @@
 (ns cljam.bam-index.writer
   (:require [clojure.java.io :as io]
-            [clojure.tools.logging :as logging]
             [cljam.lsb :as lsb]
             [cljam.cigar :as cgr]
             [cljam.util :refer [gen-vec]]
@@ -44,7 +43,7 @@
     (.close ^Closeable (.writer this))))
 
 ;;
-;; write index
+;; index
 ;;
 
 (def ^:const bam-lidx-shift 14)
@@ -67,28 +66,6 @@
           (recur (inc i) (conj lidx* l) l)))
       lidx*)))
 
-(defn- write-bin
-  [w bin]
-  (lsb/write-int w (:idx bin))
-  ;; chunks
-  (lsb/write-int w (count (:chunks bin)))
-  (doseq [{:keys [beg end]} (:chunks bin)]
-    (lsb/write-long w beg)
-    (lsb/write-long w end)))
-
-(defn- write-meta-data
-  [w meta-data]
-  (lsb/write-int w max-bins)
-  (lsb/write-int w 2)
-  (lsb/write-long w (:first-offset meta-data))
-  (lsb/write-long w (:last-offset meta-data))
-  (lsb/write-long w (:aligned-alns meta-data))
-  (lsb/write-long w (:unaligned-alns meta-data)))
-
-;;
-;; index
-;;
-
 (defn- init-meta-data []
   {:first-offset  -1
    :last-offset    0
@@ -98,17 +75,16 @@
 (defn- update-meta-data
   [meta-data aln]
   (let [{:keys [first-offset last-offset aligned-alns unaligned-alns]} meta-data
-        {:keys [beg end]} (:chunk (:meta aln))]
+        {:keys [beg end]} (:chunk (:meta aln))
+        aligned? (zero? (bit-and (:flag aln) 4))]
     (assoc meta-data
       :first-offset   (if (or (< (bgzf-util/compare beg first-offset) 1)
                               (= first-offset -1))
                         beg first-offset)
       :last-offset    (if (< (bgzf-util/compare last-offset end) 1)
                         end last-offset)
-      :aligned-alns   (if (zero? (bit-and (:flag aln) 4))
-                        (inc aligned-alns) aligned-alns)
-      :unaligned-alns (if-not (zero? (bit-and (:flag aln) 4))
-                        (inc unaligned-alns) unaligned-alns))))
+      :aligned-alns   (if aligned? (inc aligned-alns) aligned-alns)
+      :unaligned-alns (if-not aligned? (inc unaligned-alns) unaligned-alns))))
 
 (defn- init-bin-index
   "bin-index > {bin1 chunks1, bin2 chunks2, ...}
@@ -128,12 +104,12 @@
              (vector achunk)))))
 
 (defn- init-linear-index []
-  {:lidx (gen-vec max-lidx-size 0)
-   :largest-lidx-seen -1})
+  {:index (gen-vec max-lidx-size 0)
+   :largest-seen -1})
 
 (defn- update-linear-index
   [linear-index aln]
-  (let [{:keys [lidx largest-lidx-seen]} linear-index
+  (let [{:keys [index largest-seen]} linear-index
         {:keys [beg]} (:chunk (:meta aln))
         aln-beg (:pos aln)
         aln-end (+ aln-beg (cgr/count-ref (:cigar aln)))
@@ -144,20 +120,19 @@
                   win-beg
                   (pos->lidx-offset aln-end))]
     (assoc linear-index
-      :lidx (loop [i win-beg, lidx* lidx]
-              (if (<= i win-end)
-                (let [l (nth lidx* i)]
-                  (if (or (zero? l) (< beg l))
-                    (recur (inc i) (assoc lidx* i beg))
-                    (recur (inc i) lidx*)))
-                lidx*))
-      :largest-lidx-seen  (if (> win-end largest-lidx-seen)
-                            win-end largest-lidx-seen))))
+      :index (loop [i win-beg, lidx* index]
+               (if (<= i win-end)
+                 (let [l (nth lidx* i)]
+                   (recur (inc i) (if (or (zero? l) (< beg l))
+                                    (assoc lidx* i beg)
+                                    lidx*)))
+                 lidx*))
+      :largest-seen (max win-end largest-seen))))
 
 (defn- init-index-status []
-  {:bin-index    (init-bin-index)
-   :linear-index (init-linear-index)
-   :meta-data    (init-meta-data)})
+  {:meta-data    (init-meta-data)
+   :bin-index    (init-bin-index)
+   :linear-index (init-linear-index)})
 
 (defn- update-index-status
   [index-status aln]
@@ -185,14 +160,14 @@
             indices' (if new-ref?
                        (assoc indices ref-name {:meta (:meta-data idx-status)
                                                 :bins (:bin-index idx-status)
-                                                :lidx (optimize-lidx (:lidx (:linear-index idx-status))
-                                                                     (:largest-lidx-seen (:linear-index idx-status)))})
+                                                :lidx (optimize-lidx (:index (:linear-index idx-status))
+                                                                     (:largest-seen (:linear-index idx-status)))})
                        indices)]
         (recur rest ref-name' idx-status' no-coordinate-alns' indices'))
       (assoc indices ref-name {:meta (:meta-data idx-status)
                                :bins (:bin-index idx-status)
-                               :lidx (optimize-lidx (:lidx (:linear-index idx-status))
-                                                    (:largest-lidx-seen (:linear-index idx-status)))}
+                               :lidx (optimize-lidx (:index (:linear-index idx-status))
+                                                    (:largest-seen (:linear-index idx-status)))}
                      :no-coordinate-alns no-coordinate-alns))))
 
 (defn- make-index
@@ -207,6 +182,28 @@
                          :lidx []}) refs))
    (make-index! refs alns)))
 
+;;;
+;;; Write index
+;;;
+
+(defn- write-bin
+  [w bin chunks]
+  (lsb/write-int w bin)
+  ;; chunks
+  (lsb/write-int w (count chunks))
+  (doseq [{:keys [beg end]} chunks]
+    (lsb/write-long w beg)
+    (lsb/write-long w end)))
+
+(defn- write-meta-data
+  [w meta-data]
+  (lsb/write-int w max-bins)
+  (lsb/write-int w 2)
+  (lsb/write-long w (:first-offset meta-data))
+  (lsb/write-long w (:last-offset meta-data))
+  (lsb/write-long w (:aligned-alns meta-data))
+  (lsb/write-long w (:unaligned-alns meta-data)))
+
 (defn- write-index*!
   [wtr refs alns]
   ;; magic
@@ -215,15 +212,16 @@
   (lsb/write-int wtr (count refs))
   (let [indices (make-index refs alns)]
     (doseq [ref refs]
-      (let [index (get indices (:name ref))]
+      (let [index (get indices (:name ref))
+            n-bin (count (:bins index))]
         ;; bins
-        (if (zero? (count (:bins index)))
+        (if (zero? n-bin)
           (lsb/write-int wtr 0)
-          (let [bins (:bins index)]
+          (do
             ;; # of bins
-            (lsb/write-int wtr (inc (count bins)))
-            (doseq [bin bins]
-              (write-bin wtr {:idx (first bin), :chunks (second bin)}))
+            (lsb/write-int wtr (inc n-bin))
+            (doseq [bin (:bins index)]
+              (write-bin wtr (first bin) (second bin)))
             ;; meta data
             (write-meta-data wtr (:meta index))))
         ;; linear index
@@ -243,13 +241,6 @@
                refs
                (.getAbsolutePath (io/file f))))
 
-(defn write-index
+(defn write-index!
   [^BAIWriter wtr alns]
-  (try
-    (write-index*! (.writer wtr) (.refs wtr) alns)
-    (catch Exception e (do
-                         (let [f (io/file (.f wtr))]
-                           (when (.exists f)
-                             (.delete f)))
-                         (logging/error "Failed to create BAM index")
-                         (.printStackTrace e)))))
+  (write-index*! (.writer wtr) (.refs wtr) alns))

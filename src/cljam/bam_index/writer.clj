@@ -60,7 +60,7 @@
          lidx* []
          last-non-zero 0]
     (if (<= i largest-lidx-seen)
-      (let [l (nth lidx i)]
+      (let [l (long (nth lidx i))]
         (if (zero? l)
           (recur (inc i) (conj lidx* last-non-zero) last-non-zero)
           (recur (inc i) (conj lidx* l) l)))
@@ -102,6 +102,13 @@
                  (conj (pop chunks) l))
                (conj chunks achunk))
              (vector achunk)))))
+
+(defn- finish-bin-index
+  [bin-index]
+  (->> bin-index
+       (seq)
+       (sort-by first)
+       (map (partial zipmap [:bin :chunks]))))
 
 (defn- init-linear-index []
   {:index (gen-vec max-lidx-size 0)
@@ -159,13 +166,13 @@
                                   no-coordinate-alns)
             indices' (if new-ref?
                        (assoc indices ref-name {:meta (:meta-data idx-status)
-                                                :bins (:bin-index idx-status)
+                                                :bins (finish-bin-index (:bin-index idx-status))
                                                 :lidx (optimize-lidx (:index (:linear-index idx-status))
                                                                      (:largest-seen (:linear-index idx-status)))})
                        indices)]
         (recur rest ref-name' idx-status' no-coordinate-alns' indices'))
       (assoc indices ref-name {:meta (:meta-data idx-status)
-                               :bins (:bin-index idx-status)
+                               :bins (finish-bin-index (:bin-index idx-status))
                                :lidx (optimize-lidx (:index (:linear-index idx-status))
                                                     (:largest-seen (:linear-index idx-status)))}
                      :no-coordinate-alns no-coordinate-alns))))
@@ -221,7 +228,7 @@
             ;; # of bins
             (lsb/write-int wtr (inc n-bin))
             (doseq [bin (:bins index)]
-              (write-bin wtr (first bin) (second bin)))
+              (write-bin wtr (:bin bin) (:chunks bin)))
             ;; meta data
             (write-meta-data wtr (:meta index))))
         ;; linear index

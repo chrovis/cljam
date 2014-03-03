@@ -119,7 +119,7 @@
   (let [{:keys [index largest-seen]} linear-index
         {:keys [beg]} (:chunk (:meta aln))
         aln-beg (:pos aln)
-        aln-end (+ aln-beg (cgr/count-ref (:cigar aln)))
+        aln-end (dec (+ aln-beg (cgr/count-ref (:cigar aln))))
         win-beg (if (zero? aln-end)
                   (pos->lidx-offset (dec aln-beg))
                   (pos->lidx-offset aln-beg))

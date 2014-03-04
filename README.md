@@ -43,11 +43,21 @@ tabix:
 | ------ | ---: | -----: |
 | tabix  |  Yes |     No |
 
+## Installation
+
+cljam is available as a Maven artifact from [Clojars][clojars].
+
+To use with Leiningen, add the following dependency.
+
+```clojure
+[cljam "0.1.0"]
+```
+
 ## Command-line tool
 
 cljam provides a command-line tool to use the features easily.
 
-### Installation
+### Executable installation
 
 Run `lein-bin` plugin and it creates standalone console executable into `target` directory.
 
@@ -64,7 +74,9 @@ e.g.
 
     $ cljam view --header test/resources/test.sam
 
-## Test
+## Development
+
+### Test
 
 To run all basic tests,
 
@@ -74,7 +86,7 @@ To run heavy tests which uses remote large-size files,
 
     $ lein midje :filter heavy
 
-## Benchmark
+### Benchmark
 
 Use criterium.
 
@@ -85,8 +97,22 @@ e.g.
                    (bench
                     (pileup (cljam.bam/slurp "test/resources/test.sorted.bam"))))
 
+### Generating document
+
+cljam uses [Marginalia][marginalia] for generating documents.
+
+```bash
+$ lein marg -m
+```
+
+generates HTML documents in `./docs`.
+
 ## License
 
-Copyright © 2013 Xcoo, Inc.
+Copyright © 2013 [Xcoo, Inc][xcoo].
 
 Distributed under the Eclipse Public License, the same as Clojure.
+
+[clojars]: https://clojars.org/cljam
+[marginalia]: http://gdeer81.github.io/marginalia/
+[xcoo]: http://www.xcoo.jp/

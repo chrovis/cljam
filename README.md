@@ -62,7 +62,7 @@ cljam provides a command-line tool to use the features easily.
 Run `lein-bin` plugin and it creates standalone console executable into `target` directory.
 
     $ lein bin
-    > Creating standalone executable: .../target/cljam
+    > Creating standalone executable: /path/to/cljam/target/cljam
 
 Copy the executable somewhere in your `$PATH`.
 
@@ -106,6 +106,14 @@ $ lein marg -m
 ```
 
 generates HTML documents in `./docs`.
+
+## Contributors
+
+Sorted by first commit.
+
+- Toshiki Takeuchi ([@totakke](https://github.com/totakke))
+- Takashi Aoki ([@federkasten](https://github.com/federkasten))
+- Atsuo Yamada ([@ayamada](https://github.com/ayamada))
 
 ## License
 

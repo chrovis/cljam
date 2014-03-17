@@ -5,7 +5,8 @@
             [cljam.util :refer [gen-vec]]
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
-            [cljam.bam-index.common :refer :all])
+            [cljam.bam-index.common :refer :all]
+            [cljam.bam-index.chunk :as chunk])
   (:import [java.io DataOutputStream FileOutputStream Closeable]))
 
 (defn- find-ref
@@ -149,7 +150,7 @@
       :bin-index    (update-bin-index bin-index aln)
       :linear-index (update-linear-index linear-index aln))))
 
-(defn- make-index!
+(defn- make-index*
   [refs alns]
   (loop [[aln & rest] alns
          ref-name (:rname aln)
@@ -177,7 +178,7 @@
                                                     (:largest-seen (:linear-index idx-status)))}
                      :no-coordinate-alns no-coordinate-alns))))
 
-(defn- make-index
+(defn make-index
   [refs alns]
   (merge
    (zipmap (map :name refs)
@@ -187,7 +188,51 @@
                                 :unaligned-alns 0}
                          :bins {}
                          :lidx []}) refs))
-   (make-index! refs alns)))
+   (make-index* refs alns)))
+
+;;;
+;;; Merge indices
+;;;
+
+(defn- merge-meta
+  [meta1 meta2]
+  {:first-offset (min (:first-offset meta1) (:first-offset meta2))
+   :last-offset (max (:last-offset meta1) (:last-offset meta2))
+   :aligned-alns (+ (:aligned-alns meta1) (:aligned-alns meta2))
+   :unaligned-alns (+ (:unaligned-alns meta1) (:unaligned-alns meta2))})
+
+(defn- merge-chunks
+  [chunks1 chunks2]
+  (-> (concat chunks1 chunks2)
+      (chunk/optimize-chunks 0)))
+
+(defn- merge-bins
+  [bins1 bins2]
+  (let [bins->bin-map (fn [bins]
+                        (zipmap (map :bin bins)
+                                (map :chunks bins)))
+        bin-map1 (bins->bin-map bins1)
+        bin-map2 (bins->bin-map bins2)]
+    (-> (merge-with merge-chunks bin-map1 bin-map2)
+        (finish-bin-index))))
+
+(defn- merge-lidx
+  [lidx1 lidx2]
+  (concat lidx1 lidx2))
+
+(defn merge-index
+  [& indices]
+  (reduce (fn [idx1 idx2]
+            (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
+                  idx1 (dissoc idx1 :no-coordinate-alns)
+                  idx2 (dissoc idx2 :no-coordinate-alns)]
+              (assoc (merge-with (fn [v1 v2]
+                                   {:meta (merge-meta (:meta v1) (:meta v2))
+                                    :bins (merge-bins (:bins v1) (:bins v2))
+                                    :lidx (merge-lidx (:lidx v1) (:lidx v2))})
+                                 idx1 idx2)
+                :no-coordinate-alns no-coordinate-alns)))
+          indices))
 
 ;;;
 ;;; Write index

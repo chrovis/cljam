@@ -128,9 +128,7 @@
   does this process."
   [linear-index]
   (let [{lidx :index, largest-lidx-seen :largest-seen} linear-index]
-    (loop [i 0
-           lidx* []
-           last-non-zero 0]
+    (loop [i 0, lidx* [], last-non-zero 0]
       (if (<= i largest-lidx-seen)
         (let [l (long (nth lidx i))]
           (if (zero? l)
@@ -216,22 +214,21 @@
 
 (defn- merge-lidx
   [lidx1 lidx2]
-  {:index (map min (:index lidx1) (:index lidx2))
+  {:index (vec (map min (:index lidx1) (:index lidx2))) ; OPTIMIZE
    :largest-seen (max (:largest-seen lidx1) (:largest-seen lidx2))})
 
+
 (defn merge-index
-  [& indices]
-  (reduce (fn [idx1 idx2]
-            (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
-                  idx1 (dissoc idx1 :no-coordinate-alns)
-                  idx2 (dissoc idx2 :no-coordinate-alns)]
-              (assoc (merge-with (fn [v1 v2]
-                                   {:meta (merge-meta (:meta v1) (:meta v2))
-                                    :bins (merge-bins (:bins v1) (:bins v2))
-                                    :lidx (merge-lidx (:lidx v1) (:lidx v2))})
-                                 idx1 idx2)
-                :no-coordinate-alns no-coordinate-alns)))
-          indices))
+  [idx1 idx2]
+  (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
+        idx1 (dissoc idx1 :no-coordinate-alns)
+        idx2 (dissoc idx2 :no-coordinate-alns)]
+    (assoc (merge-with (fn [v1 v2]
+                         {:meta (merge-meta (:meta v1) (:meta v2))
+                          :bins (merge-bins (:bins v1) (:bins v2))
+                          :lidx (merge-lidx (:lidx v1) (:lidx v2))})
+                       idx1 idx2)
+      :no-coordinate-alns no-coordinate-alns)))
 
 ;;;
 ;;; Make index
@@ -243,11 +240,12 @@
        (make-index* refs)
        (finish-index refs)))
 
+ ; TODO: Parallelize
 (defn make-index1
   [refs alns]
   (->> (partition-all 40 alns)
        (map (partial make-index* refs))
-       (apply merge-index)
+       (reduce merge-index)
        (finish-index refs)))
 
 ;;;
@@ -278,7 +276,7 @@
   (lsb/write-bytes wtr (.getBytes bai-magic))
   ;; n_ref
   (lsb/write-int wtr (count refs))
-  (let [indices (make-index refs alns)] ; TODO: parallelize
+  (let [indices (make-index1 refs alns)]
     (doseq [ref refs]
       (let [index (get indices (:name ref))
             n-bin (count (:bins index))]

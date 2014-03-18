@@ -44,7 +44,7 @@
     (.close ^Closeable (.writer this))))
 
 ;;
-;; index
+;; Indexing
 ;;
 
 (def ^:const bam-lidx-shift 14)
@@ -128,15 +128,15 @@
   does this process."
   [linear-index]
   (let [{lidx :index, largest-lidx-seen :largest-seen} linear-index]
-   (loop [i 0
-          lidx* []
-          last-non-zero 0]
-     (if (<= i largest-lidx-seen)
-       (let [l (long (nth lidx i))]
-         (if (zero? l)
-           (recur (inc i) (conj lidx* last-non-zero) last-non-zero)
-           (recur (inc i) (conj lidx* l) l)))
-       lidx*))))
+    (loop [i 0
+           lidx* []
+           last-non-zero 0]
+      (if (<= i largest-lidx-seen)
+        (let [l (long (nth lidx i))]
+          (if (zero? l)
+            (recur (inc i) (conj lidx* last-non-zero) last-non-zero)
+            (recur (inc i) (conj lidx* l) l)))
+        lidx*))))
 
 (defn- init-index-status []
   {:meta-data    (init-meta-data)
@@ -150,6 +150,19 @@
       :meta-data    (update-meta-data meta-data aln)
       :bin-index    (update-bin-index bin-index aln)
       :linear-index (update-linear-index linear-index aln))))
+
+(defn- finish-index
+  [refs index]
+  (loop [[f & r] refs
+         index index]
+    (if f
+      (let [rname (:name f)]
+        (if (get index rname)
+          (recur r (-> index
+                       (update-in [rname :bins] finish-bin-index)
+                       (update-in [rname :lidx] finish-linear-index)))
+          (recur r index)))
+      index)))
 
 (defn- make-index*
   [refs alns]
@@ -176,19 +189,6 @@
                                :bins (:bin-index idx-status)
                                :lidx (:linear-index idx-status)}
                      :no-coordinate-alns no-coordinate-alns))))
-
-(defn make-index
-  [refs alns]
-  (->> alns
-       (make-index* refs)
-       (finish-index refs)))
-
-(defn make-index1
-  [refs alns]
-  (->> (partition-all 40 alns)
-       (map (partial make-index* refs))
-       (apply merge-index)
-       (finish-index refs)))
 
 ;;;
 ;;; Merge indices
@@ -234,6 +234,23 @@
           indices))
 
 ;;;
+;;; Make index
+;;;
+
+(defn make-index
+  [refs alns]
+  (->> alns
+       (make-index* refs)
+       (finish-index refs)))
+
+(defn make-index1
+  [refs alns]
+  (->> (partition-all 40 alns)
+       (map (partial make-index* refs))
+       (apply merge-index)
+       (finish-index refs)))
+
+;;;
 ;;; Write index
 ;;;
 
@@ -255,24 +272,13 @@
   (lsb/write-long w (:aligned-alns meta-data))
   (lsb/write-long w (:unaligned-alns meta-data)))
 
-(defn- finish-index
-  [refs index]
-  (loop [[f & r] refs
-         index index]
-    (if f
-      (let [rname (:name f)]
-        (recur r (-> index
-                     (update-in [rname :bins] finish-bin-index)
-                     (update-in [rname :lidx] finish-linear-index))))
-      index)))
-
 (defn- write-index*!
   [wtr refs alns]
   ;; magic
   (lsb/write-bytes wtr (.getBytes bai-magic))
   ;; n_ref
   (lsb/write-int wtr (count refs))
-  (let [indices (make-index1 refs alns)] ; TODO: parallelize
+  (let [indices (make-index refs alns)] ; TODO: parallelize
     (doseq [ref refs]
       (let [index (get indices (:name ref))
             n-bin (count (:bins index))]

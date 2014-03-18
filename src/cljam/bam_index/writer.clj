@@ -53,20 +53,6 @@
   [pos]
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) bam-lidx-shift))
 
-(defn- optimize-lidx
-  "Optimizes the linear index for safety. This seems unnecessary, but samtools
-  does this process."
-  [lidx largest-lidx-seen]
-  (loop [i 0
-         lidx* []
-         last-non-zero 0]
-    (if (<= i largest-lidx-seen)
-      (let [l (long (nth lidx i))]
-        (if (zero? l)
-          (recur (inc i) (conj lidx* last-non-zero) last-non-zero)
-          (recur (inc i) (conj lidx* l) l)))
-      lidx*)))
-
 (defn- init-meta-data []
   {:first-offset  -1
    :last-offset    0
@@ -137,6 +123,21 @@
                  lidx*))
       :largest-seen (max win-end largest-seen))))
 
+(defn- finish-linear-index
+  "Optimizes the linear index for safety. This seems unnecessary, but samtools
+  does this process."
+  [linear-index]
+  (let [{lidx :index, largest-lidx-seen :largest-seen} linear-index]
+   (loop [i 0
+          lidx* []
+          last-non-zero 0]
+     (if (<= i largest-lidx-seen)
+       (let [l (long (nth lidx i))]
+         (if (zero? l)
+           (recur (inc i) (conj lidx* last-non-zero) last-non-zero)
+           (recur (inc i) (conj lidx* l) l)))
+       lidx*))))
+
 (defn- init-index-status []
   {:meta-data    (init-meta-data)
    :bin-index    (init-bin-index)
@@ -167,28 +168,27 @@
                                   no-coordinate-alns)
             indices' (if new-ref?
                        (assoc indices ref-name {:meta (:meta-data idx-status)
-                                                :bins (finish-bin-index (:bin-index idx-status))
-                                                :lidx (optimize-lidx (:index (:linear-index idx-status))
-                                                                     (:largest-seen (:linear-index idx-status)))})
+                                                :bins (:bin-index idx-status)
+                                                :lidx (:linear-index idx-status)})
                        indices)]
         (recur rest ref-name' idx-status' no-coordinate-alns' indices'))
       (assoc indices ref-name {:meta (:meta-data idx-status)
-                               :bins (finish-bin-index (:bin-index idx-status))
-                               :lidx (optimize-lidx (:index (:linear-index idx-status))
-                                                    (:largest-seen (:linear-index idx-status)))}
+                               :bins (:bin-index idx-status)
+                               :lidx (:linear-index idx-status)}
                      :no-coordinate-alns no-coordinate-alns))))
 
 (defn make-index
   [refs alns]
-  (merge
-   (zipmap (map :name refs)
-           (map (fn [r] {:meta {:first-offset -1
-                                :last-offset 0
-                                :aligned-alns 0
-                                :unaligned-alns 0}
-                         :bins {}
-                         :lidx []}) refs))
-   (make-index* refs alns)))
+  (->> alns
+       (make-index* refs)
+       (finish-index refs)))
+
+(defn make-index1
+  [refs alns]
+  (->> (partition-all 40 alns)
+       (map (partial make-index* refs))
+       (apply merge-index)
+       (finish-index refs)))
 
 ;;;
 ;;; Merge indices
@@ -196,7 +196,11 @@
 
 (defn- merge-meta
   [meta1 meta2]
-  {:first-offset (min (:first-offset meta1) (:first-offset meta2))
+  {:first-offset (let [offsets (filter (partial not= -1) [(:first-offset meta1) (:first-offset meta2)])]
+                   (cond
+                    (> (count offsets) 1) (apply min offsets)
+                    (= (count offsets) 1) (first offsets)
+                    :else -1))
    :last-offset (max (:last-offset meta1) (:last-offset meta2))
    :aligned-alns (+ (:aligned-alns meta1) (:aligned-alns meta2))
    :unaligned-alns (+ (:unaligned-alns meta1) (:unaligned-alns meta2))})
@@ -207,18 +211,13 @@
       (chunk/optimize-chunks 0)))
 
 (defn- merge-bins
-  [bins1 bins2]
-  (let [bins->bin-map (fn [bins]
-                        (zipmap (map :bin bins)
-                                (map :chunks bins)))
-        bin-map1 (bins->bin-map bins1)
-        bin-map2 (bins->bin-map bins2)]
-    (-> (merge-with merge-chunks bin-map1 bin-map2)
-        (finish-bin-index))))
+  [bin-map1 bin-map2]
+  (merge-with merge-chunks bin-map1 bin-map2))
 
 (defn- merge-lidx
   [lidx1 lidx2]
-  (concat lidx1 lidx2))
+  {:index (map min (:index lidx1) (:index lidx2))
+   :largest-seen (max (:largest-seen lidx1) (:largest-seen lidx2))})
 
 (defn merge-index
   [& indices]
@@ -256,13 +255,24 @@
   (lsb/write-long w (:aligned-alns meta-data))
   (lsb/write-long w (:unaligned-alns meta-data)))
 
+(defn- finish-index
+  [refs index]
+  (loop [[f & r] refs
+         index index]
+    (if f
+      (let [rname (:name f)]
+        (recur r (-> index
+                     (update-in [rname :bins] finish-bin-index)
+                     (update-in [rname :lidx] finish-linear-index))))
+      index)))
+
 (defn- write-index*!
   [wtr refs alns]
   ;; magic
   (lsb/write-bytes wtr (.getBytes bai-magic))
   ;; n_ref
   (lsb/write-int wtr (count refs))
-  (let [indices (make-index refs alns)]
+  (let [indices (make-index1 refs alns)] ; TODO: parallelize
     (doseq [ref refs]
       (let [index (get indices (:name ref))
             n-bin (count (:bins index))]

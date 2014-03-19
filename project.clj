@@ -1,4 +1,4 @@
-(defproject cljam "0.1.0-SNAPSHOT"
+(defproject cljam "0.1.0-FHO"
   :description "A DNA Sequence Alignment/Map (SAM) library for Clojure"
   :url "https://chrov.is"
   :license {:name "Eclipse Public License"

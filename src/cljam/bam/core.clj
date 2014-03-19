@@ -15,20 +15,21 @@
 ;;; reader
 ;;;
 
-(defn- bam-index [f]
+(defn- bam-index [f & {:keys [ignore]
+                       :or {ignore false}}]
   (let [bai-f (str f ".bai")]
-    (when-not (.exists (file bai-f))
-      (throw (IOException. "Could not find BAM Index file")))
-    (bai/bam-index bai-f)))
+    (if-not (.exists (file bai-f))
+      (if ignore
+        nil
+        (throw (IOException. "Could not find BAM Index file")))
+      (bai/bam-index bai-f))))
 
 (defn reader [f {:keys [ignore-index]
                  :or {ignore-index false}}]
   (let [rdr (BGZFInputStream. (file f))
         data-rdr (DataInputStream. rdr)]
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
-          index (if ignore-index
-                  nil
-                  (try (bam-index f) (catch IOException _ nil)))]
+          index (bam-index f :ignore ignore-index)]
       (cljam.bam.reader.BAMReader. (.getAbsolutePath (file f))
                                    header refs rdr data-rdr index))))
 

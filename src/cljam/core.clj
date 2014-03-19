@@ -19,7 +19,7 @@
 (defn reader [f]
   (condp re-find f
     #"\.sam$" (sam/reader f)
-    #"\.bam$" (bam/reader f)
+    #"\.bam$" (bam/reader f :ignore-index true)
     (throw (IllegalArgumentException. "Invalid file type"))))
 
 (defn writer [f]
@@ -65,7 +65,7 @@
       (with-open [r (condp = (:format options)
                       "auto" (reader     f)
                       "sam"  (sam/reader f)
-                      "bam"  (bam/reader f))]
+                      "bam"  (bam/reader f :ignore-index true))]
         (when (:header options)
           (println (stringify-header (io/read-header r))))
         (doseq [aln (io/read-alignments r {})]

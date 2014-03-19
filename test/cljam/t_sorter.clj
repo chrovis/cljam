@@ -27,21 +27,22 @@
 
 (defn- with-reader
   [target-fn src-file & [dst-file]]
-  (let [src-reader (cond
-                     (re-find #"\.sam$" src-file) sam/reader
-                     (re-find #"\.bam$" src-file) bam/reader
-                     :else (throw (RuntimeException.
-                                    (str "invalid file suffix " src-file))))
-        dst-writer (cond
-                     (not dst-file) nil
-                     (re-find #"\.sam$" dst-file) sam/writer
-                     (re-find #"\.bam$" dst-file) bam/writer
-                     :else (throw (RuntimeException.
-                                    (str "invalid file suffix " dst-file))))]
-    (if dst-file
-      (target-fn (src-reader src-file) (dst-writer dst-file))
-      (target-fn (src-reader src-file)))))
-
+  (let [src-rdr (cond
+                 (re-find #"\.sam$" src-file) (sam/reader src-file)
+                 (re-find #"\.bam$" src-file) (bam/reader src-file :ignore-index true)
+                 :else (throw (RuntimeException.
+                               (str "invalid file suffix " src-file))))
+        dst-wtr (if dst-file
+                  (cond
+                   (not dst-file) nil
+                   (re-find #"\.sam$" dst-file) (sam/writer dst-file)
+                   (re-find #"\.bam$" dst-file) (bam/writer dst-file)
+                   :else (throw (RuntimeException.
+                                 (str "invalid file suffix " dst-file))))
+                  nil)]
+    (if-not (nil? dst-wtr)
+      (target-fn src-rdr dst-wtr)
+      (target-fn src-rdr))))
 
 (with-state-changes [(before :facts (do (prepare-cache!)
                                         (prepare-shuffled-files!)))

@@ -345,11 +345,13 @@
   (for [sq (:SQ hdr)]
     {:name (:SN sq), :len (:LN sq)}))
 
-(defn ref-id [refs name]
+(defn ref-id* [refs name]
   "Returns reference ID from the reference sequence and the specified reference
   name. If not found, return nil."
   (some #(when (= name (:name (second %))) (first %))
         (map-indexed vector refs)))
+
+(def ref-id (memoize ref-id*))
 
 (defn ref-name [refs id]
   "Returns a reference name from the reference ID. Returns nil if id is not

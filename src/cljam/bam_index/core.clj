@@ -10,17 +10,17 @@
 (deftype BAMIndex [f bidx lidx])
 
 (defn bam-index [f]
-  (let [{:keys [bidx lidx]} (with-open [r (reader/reader f)] (reader/read-all-index! r))]
+  (let [{:keys [bidx lidx]} (with-open [r ^cljam.bam_index.reader.BAIReader (reader/reader f)] (reader/read-all-index! r))]
     (->BAMIndex f bidx lidx)))
 
 (defn bin-index
   [f ref-idx]
-  (with-open [r (reader/reader f)]
+  (with-open [r ^cljam.bam_index.reader.BAIReader (reader/reader f)]
     (reader/read-bin-index! r ref-idx)))
 
 (defn linear-index
   [f ref-idx]
-  (with-open [r (reader/reader f)]
+  (with-open [r ^cljam.bam_index.reader.BAIReader (reader/reader f)]
     (reader/read-linear-index! r ref-idx)))
 
 (defn- reg->bins*
@@ -30,28 +30,25 @@
         beg (if (<= beg 0) 0 (bit-and (dec beg) max-pos))
         end (if (<= end 0) max-pos (bit-and (dec end) max-pos))]
     (if (<= beg end)
-      (let [bit-set (BitSet. max-bins)]
-        (.set bit-set 0)
+      (let [bit-set (transient [])]
+        (conj! bit-set 0)
         (doseq [[ini shift] [[1 26] [9 23] [73 20] [585 17] [4681 14]]]
           (let [ini* (+ ini (bit-shift-right beg shift))
                 end* (+ ini (bit-shift-right end shift))]
            (loop [k ini*]
              (when (<= k end*)
-               (.set bit-set k)
+               (conj! bit-set k)
                (recur (inc k))))))
-        bit-set))))
+        (persistent! bit-set)))))
 
 (def ^:private reg->bins (memoize reg->bins*))
 
 (defn get-spans
   [^BAMIndex bai ref-idx beg end]
-  (let [bins ^BitSet (reg->bins beg end)
-        bidx (get (.bidx bai) ref-idx) ;; (bin-index bai ref-idx)
-        lidx (get (.lidx bai) ref-idx) ;; (linear-index bai ref-idx)
-        chunks (->> bidx
-                    (filter #(.get bins (:bin %)))
-                    (map :chunks)
-                    (flatten))
+  (let [bins (reg->bins beg end)
+        bidx (get (.bidx bai) ref-idx)
+        lidx (get (.lidx bai) ref-idx)
+        chunks (flatten (filter (complement nil?) (map #(get bidx %) bins)))
         min-offset (or (first lidx) 0)]
     (->> (chunk/optimize-chunks chunks min-offset)
          (map vals))))

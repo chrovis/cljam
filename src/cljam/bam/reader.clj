@@ -179,16 +179,14 @@
           n-cigar-op  (lsb/read-ushort rdr)
           _           (lsb/skip rdr 2)
           l-seq       (lsb/read-int rdr)
-          _           (lsb/skip rdr 12)
-          qname       (lsb/skip rdr (dec (int l-read-name)))
-          _           (lsb/skip rdr 1)
+          _           (lsb/skip rdr (+ 13 (dec (int l-read-name))))
           cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
-          seq         (lsb/skip rdr (/ (inc l-seq) 2))
-          lqual       (lsb/skip rdr l-seq)
-          _           (lsb/skip rdr (options-size block-size
-                                                  l-read-name
-                                                  n-cigar-op
-                                                  l-seq))]
+          _           (lsb/skip rdr (+ l-seq
+                                       (/ (inc l-seq) 2)
+                                       (options-size block-size
+                                                     l-read-name
+                                                     n-cigar-op
+                                                     l-seq)))]
       {:rname rname, :pos pos, :cigar cigar})))
 
 ;; TODO: improve performance using ByteBuffer
@@ -266,10 +264,11 @@
   [^BAMReader rdr
    ^Long finish
    ^clojure.lang.IFn read-fn]
-  (when (and (not (zero? (.available (.reader rdr))))
-             (> finish (.getFilePointer (.reader rdr))))
-    (cons (read-fn rdr (.refs rdr))
-          (lazy-seq (read-to-finish rdr finish read-fn)))))
+  (let [r ^BGZFInputStream (.reader rdr)]
+    (when (and (not (zero? (.available r)))
+               (> finish (.getFilePointer r)))
+      (cons (read-fn rdr (.refs rdr))
+            (lazy-seq (read-to-finish rdr finish read-fn))))))
 
 (defn read-alignments*
   [^BAMReader rdr
@@ -290,7 +289,7 @@
                   :deep read-alignment
                   :pointer pointer-read-alignment)
         candidates (flatten (map (fn [[^Long begin ^Long finish]]
-                                   (.seek (.reader rdr) begin)
+                                   (.seek ^BGZFInputStream (.reader rdr) begin)
                                    (doall (read-to-finish rdr finish read-fn))) spans))]
     (filter window candidates)))
 

@@ -1,7 +1,8 @@
 (ns cljam.pileup.pileup
   (:require [cljam.cigar :as cgr]
             [cljam.io :as io]
-            [cljam.pileup.common :refer [window-width step center]]))
+            [cljam.pileup.common :refer [window-width step center]]
+            [cljam.bam.reader]))
 
 (defn- count-for-alignment
   [^clojure.lang.PersistentHashMap aln
@@ -53,21 +54,23 @@
            refs)))
 
 (defn- pileup*
-  ([rdr ^String rname ^Long rlength ^Long start ^Long end]
-     (flatten
-      (let [parts (partition-all step (rpositions start end))]
-        (map (fn [positions]
-               (let [^Long pos (if (= (count positions) step)
-                                 (nth positions center)
-                                 (nth positions (quot (count positions) 2)))
-                     ^clojure.lang.LazySeq alns (read-alignments rdr rname rlength pos)]
-                 (count-for-positions alns rname positions)))
-             parts)))))
+  [^cljam.bam.reader.BAMReader rdr ^String rname ^Long rlength ^Long start ^Long end]
+  (let [read-alignments-memo (memoize read-alignments)]
+    (flatten
+     (let [parts (partition-all step (rpositions start end))]
+       (map (fn [positions]
+              ;; (println (first positions))
+              (let [^Long pos (if (= (count positions) step)
+                                (nth positions center)
+                                (nth positions (quot (count positions) 2)))
+                    ^clojure.lang.LazySeq alns (read-alignments-memo rdr rname rlength pos)]
+                (count-for-positions alns rname positions)))
+            parts)))))
 
 (defn pileup
-  ([rdr ^String rname]
+  ([^cljam.bam.reader.BAMReader rdr ^String rname]
      (pileup rdr rname -1 -1))
-  ([rdr ^String rname ^Long start* ^Long end*]
+  ([^cljam.bam.reader.BAMReader rdr ^String rname ^Long start* ^Long end*]
      (try
        (let [r (search-ref (.refs rdr) rname)]
          (if (nil? r)

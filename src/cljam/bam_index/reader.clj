@@ -99,10 +99,18 @@
   [^BAIReader r]
   (let [rdr (.reader r)
         n-ref (lsb/read-int rdr)
+        refs (range n-ref)
         all-idx (map (fn [i] [(read-bin-index**! rdr) (read-linear-index**! rdr)])
-                     (range n-ref))]
-    {:bidx (zipmap (range n-ref) (map first all-idx))
-     :lidx (zipmap (range n-ref) (map second all-idx))}))
+                     refs)
+        bidx-seq (map first all-idx)
+        bidx (zipmap
+              refs
+              (map (fn [bins]
+                     (zipmap (map :bin bins) (map :chunks bins)))
+                   bidx-seq))
+        lidx (zipmap refs (map second all-idx))]
+    {:bidx bidx
+     :lidx lidx}))
 
 (defn reader [f]
   (let [r (DataInputStream. (FileInputStream. (io/file f)))]

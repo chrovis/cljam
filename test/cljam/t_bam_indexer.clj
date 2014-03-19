@@ -30,7 +30,7 @@
                                             f test-sam-incomplete-alignments)
                                           ;; TODO: go independent from sorter
                                           (sorter/sort-by-pos
-                                            (bam/reader f)
+                                            (bam/reader f :ignore-index true)
                                             (bam/writer sorted-f))))
                        (after :facts (clean-cache!))]
     (fact "about BAM indexer (for incomplete alignments)"

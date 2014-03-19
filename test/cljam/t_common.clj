@@ -3,8 +3,7 @@
   (:require [cljam.sam :as sam]
             [cljam.bam :as bam]
             [cljam.io :as io]
-            [cavia.core :as cavia :refer [defprofile with-profile]]
-            ))
+            [cavia.core :as cavia :refer [defprofile with-profile]]))
 
 (defprofile mycavia
   {:resources [{:id "large.bam"
@@ -29,7 +28,6 @@
   (with-profile mycavia
     (cavia/clean!)))
 
-
 ;;; slurp (for test)
 (defn slurp-sam-for-test [f]
   (with-open [r (sam/reader f)]
@@ -37,7 +35,7 @@
      :alignments (doall (io/read-alignments r {}))}))
 
 (defn slurp-bam-for-test [f]
-  (with-open [r (bam/reader f)]
+  (with-open [r (bam/reader f :ignore-index true)]
     {:header (io/read-header r)
      :alignments (doall (io/read-alignments r {}))}))
 

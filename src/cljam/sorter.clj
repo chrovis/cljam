@@ -99,7 +99,7 @@
 
 (defn merge-sam
   [wtr header name-fn n]
-  (let [rdrs (map #(bam/reader (name-fn %)) (range n))
+  (let [rdrs (map #(bam/reader (name-fn %) :ignore-index true) (range n))
         ref-map (apply merge
                        (map-indexed (fn [i val] {val i})
                                     (map :name (sam-util/make-refs header))))]
@@ -146,7 +146,7 @@
       (doall
        (pmap
         (fn [i]
-          (let [r (bam/reader (cache-name-fn i))
+          (let [r (bam/reader (cache-name-fn i) :ignore-index true)
                 blks (sort-alignments-by-pos r)]
             (with-open [w (bam/writer (sorted-cache-name-fn i))]
               (io/write-header w hdr)

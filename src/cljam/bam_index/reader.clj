@@ -95,6 +95,15 @@
   [^BAIReader rdr ref-idx]
   (read-linear-index*! (.reader rdr) ref-idx))
 
+(defn read-all-index!
+  [^BAIReader r]
+  (let [rdr (.reader r)
+        n-ref (lsb/read-int rdr)
+        all-idx (map (fn [i] [(read-bin-index**! rdr) (read-linear-index**! rdr)])
+                     (range n-ref))]
+    {:bidx (zipmap (range n-ref) (map first all-idx))
+     :lidx (zipmap (range n-ref) (map second all-idx))}))
+
 (defn reader [f]
   (let [r (DataInputStream. (FileInputStream. (io/file f)))]
     (when-not (Arrays/equals ^bytes (lsb/read-bytes r 4) (.getBytes ^String bai-magic))

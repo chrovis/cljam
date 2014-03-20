@@ -68,13 +68,12 @@
             parts)))))
 
 (defn first-pos
+  "Return a position of first alignment in left-right, or nil."
   [rdr ^String rname ^Long left ^Long right]
-  ;; TODO: :depth :first-only を新設し、最初の一個を見付けるのに特化させる
-  (let [^clojure.lang.LazySeq alns (io/read-alignments rdr {:chr rname
-                                                            :start left
-                                                            :end right
-                                                            :depth :shallow})]
-    (:pos (first alns))))
+  (:pos (first (io/read-alignments rdr {:chr rname
+                                        :start left
+                                        :end right
+                                        :depth :shallow}))))
 
 (defn pileup
   ([^cljam.bam.reader.BAMReader rdr ^String rname]

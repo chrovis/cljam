@@ -6,7 +6,7 @@
             [cljam.pileup.pileup :as plp]
             [cljam.pileup.mpileup :as mplp]))
 
-(def void? plp/void?)
+(def first-pos plp/first-pos)
 
 (def pileup plp/pileup)
 

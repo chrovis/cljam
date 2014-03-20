@@ -67,21 +67,14 @@
                 (count-for-positions alns rname positions)))
             parts)))))
 
-(defn void?
+(defn first-pos
   [rdr ^String rname ^Long left ^Long right]
-  ;; TODO: このままでもそれなりに機能するが、sparseでないBAMだと
-  ;;       無駄にオーバーヘッドがかかって元の状態より重くなるので、
-  ;;       範囲内に一個でもalignmentを見付けたら、
-  ;;       その時点で探索を中止するようにすべき。
-  ;;       とは言うものの、readerからその情報を取れるようにするには、
-  ;;       普通に実装すると、ISAMReaderにそれ用のmethodを追加する事になる。
-  ;;       ISAMReaderに手を入れると変更範囲が大きい為、
-  ;;       :depthに新しいキーを追加する事での対応を考えたい。
+  ;; TODO: :depth :first-only を新設し、最初の一個を見付けるのに特化させる
   (let [^clojure.lang.LazySeq alns (io/read-alignments rdr {:chr rname
                                                             :start left
                                                             :end right
                                                             :depth :shallow})]
-    (empty? alns)))
+    (:pos (first alns))))
 
 (defn pileup
   ([^cljam.bam.reader.BAMReader rdr ^String rname]

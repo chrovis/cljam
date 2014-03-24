@@ -116,18 +116,17 @@
 (defn- decode-cigar-op [op]
   (get cigar-op-map op))
 
-(defn- decode-cigar*
-  [^ByteBuffer buf]
-  (when (.hasRemaining buf)
-    (let [b  (.getInt buf)
-          op (bit-and b 0xf)
-          n  (bit-shift-right b 4)]
-      (cons n (cons (decode-cigar-op op) (decode-cigar* buf))))))
-
 (defn decode-cigar [cigar-bytes]
   (let [buf (ByteBuffer/wrap cigar-bytes)]
     (.order buf ByteOrder/LITTLE_ENDIAN)
-    (apply str (decode-cigar* buf))))
+    (loop [sb (StringBuilder.)]
+      (if (.hasRemaining buf)
+        (let [b  (.getInt buf)
+              op (bit-and b 0xF)
+              n  (bit-shift-right b 4)]
+          (recur (doto sb (.append n)
+                          (.append (decode-cigar-op op)))))
+        (str sb)))))
 
 (defn- decode-next-ref-id [refs n rname]
   (cond

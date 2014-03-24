@@ -10,29 +10,36 @@
             [cljam.bam-index.common :refer :all])
   (:import [java.io DataOutputStream FileOutputStream Closeable]))
 
-(defn- max-bin-num [seq-len]
-  (+ (nth level-starts  (dec (count level-starts)))
-     (bit-shift-right seq-len 14)))
-
 (defn- find-ref
   [refs name]
   (first (filter #(= (:name %) name) refs)))
 
+(def ^:private ^:const max-level-start
+  (last level-starts))
+
+(defn- max-bin-num [^long seq-len]
+  (+ max-level-start
+     (bit-shift-right seq-len 14)))
+
 (defn- bin-count
   [refs name]
-  (let [ref (find-ref refs name)]
-    (if (nil? ref)
-      (dec max-bins)
-      (-> ref
-          :len
-          max-bin-num
-          inc))))
+  (if-let [ref (find-ref refs name)]
+    (inc (max-bin-num (:len ref)))
+    (dec max-bins)))
 
 ;;
 ;; BAIWriter
 ;;
 
-(deftype BAIWriter [writer refs f]
+(defmacro deftypeonce
+  [name & body]
+  (let [loaded (symbol (str name "-loaded__"))]
+   `(do (defonce ~loaded (atom false))
+        (when-not @~loaded
+          (reset! ~loaded true)
+          (deftype ~name ~@body)))))
+
+(deftypeonce BAIWriter [writer refs f]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this))))
@@ -41,7 +48,7 @@
 ;; write index
 ;;
 
-(def bam-lidx-shift 14)
+(def ^:const bam-lidx-shift 14)
 
 (defn pos->lidx-offset
   [pos]
@@ -53,10 +60,11 @@
         last-non-zero-offset (atom 0)]
     (loop [i 0]
       (when (<= i largest-lidx-seen)
-        (if (zero? (nth @lidx i))
-          (swap! lidx assoc i @last-non-zero-offset)
-          (reset! last-non-zero-offset (nth @lidx i)))
-        (swap! new-lidx assoc i (nth @lidx i))
+        (let [l (nth @lidx i)]
+          (if (zero? l)
+            (swap! lidx assoc i @last-non-zero-offset)
+            (reset! last-non-zero-offset l))
+          (swap! new-lidx assoc i l))
         (recur (inc i))))
     @new-lidx))
 
@@ -82,6 +90,7 @@
 ;; index
 ;;
 
+; OPTIMIZE: make-index! is slow
 (defn- make-index!
   [refs alns]
   (let [indices (atom {})
@@ -148,7 +157,7 @@
                 (swap! bins assoc bin-idx new-bin)))
             (let [new-bin (assoc bin :chunks (vector (:chunk (:meta aln))))]
               (swap! bins assoc bin-idx new-bin))))
-        ;; lenear index
+        ;; linear index
         (let [aln-beg (:pos aln)
               aln-end (+ aln-beg (cgr/count-ref (:cigar aln)))
               window-beg (if (zero? aln-end)
@@ -175,7 +184,7 @@
 (defn- make-index
   [refs alns]
   (merge
-   (zipmap (map #(:name %) refs)
+   (zipmap (map :name refs)
            (map (fn [r] {:meta {:first-offset -1
                                 :last-offset 0
                                 :aligned-alns 0
@@ -183,6 +192,32 @@
                          :bins []
                          :lidx []}) refs))
    (make-index! refs alns)))
+
+(defn- write-index*!
+  [wtr refs alns]
+  ;; magic
+  (lsb/write-bytes wtr (.getBytes bai-magic))
+  ;; n_ref
+  (lsb/write-int wtr (count refs))
+  (let [indices (make-index refs alns)]
+    (doseq [ref refs]
+      (let [index (get indices (:name ref))]
+        ;; bins
+        (if (zero? (count (:bins index)))
+          (lsb/write-int wtr 0)
+          (let [bins (filter #(not (nil? %)) (:bins index))]
+            ;; # of bins
+            (lsb/write-int wtr (inc (count bins)))
+            (doseq [bin bins]
+              (write-bin wtr bin))
+            ;; meta data
+            (write-meta-data wtr (:meta index))))
+        ;; linear index
+        (lsb/write-int wtr (count (:lidx index)))
+        (doseq [l (:lidx index)]
+          (lsb/write-long wtr l))))
+    ;; no coordinate alignments
+    (lsb/write-long wtr (:no-coordinate-alns indices))))
 
 ;;;
 ;;; public
@@ -197,32 +232,7 @@
 (defn write-index
   [^BAIWriter wtr alns]
   (try
-    (let [w (.writer wtr)
-          refs (.refs wtr)]
-      ;; magic
-      (lsb/write-bytes w (.getBytes bai-magic))
-      ;; n_ref
-      (lsb/write-int w (count refs))
-      (let [indices (make-index refs alns)]
-        (doseq [ref refs]
-          (let [index (get indices (:name ref))]
-            ;; bins
-            (if (zero? (count (:bins index)))
-              (lsb/write-int w 0)
-              (do
-                (let [bins (filter #(not (nil? %)) (:bins index))]
-                  ;; # of bins
-                  (lsb/write-int w (inc (count bins)))
-                  (doseq [bin bins]
-                    (write-bin w bin))
-                  ;; meta data
-                  (write-meta-data w (:meta index)))))
-            ;; linear index
-            (lsb/write-int w (count (:lidx index)))
-            (doseq [l (:lidx index)]
-              (lsb/write-long w l))))
-        ;; no coordinate alignments
-        (lsb/write-long w (:no-coordinate-alns indices))))
+    (write-index*! (.writer wtr) (.refs wtr) alns)
     (catch Exception e (do
                          (let [f (file (.f wtr))]
                            (when (.exists f)

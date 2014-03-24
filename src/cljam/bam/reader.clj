@@ -8,8 +8,7 @@
             [cljam.util.sam-util :refer [phred->fastq ref-id ref-name
                                          compressed-bases->chars
                                          parse-header]]
-            (cljam.bam ;[index :refer [bam-index get-spans get-sequence-index]]
-                       [common :refer [bam-magic fixed-block-size]]
+            (cljam.bam [common :refer [bam-magic fixed-block-size]]
                        [util :refer :all])
             [cljam.bam-index :refer [get-spans]])
   (:import java.util.Arrays
@@ -87,10 +86,10 @@
         (recur (conj options (parse-option bb)))))))
 
 (defn- options-size
-  [block-size l-read-name n-cigar-op l-seq]
+  [^long block-size ^long l-read-name ^long n-cigar-op ^long l-seq]
   (- block-size
      fixed-block-size
-     (int l-read-name)
+     l-read-name
      (* n-cigar-op 4)
      (int (/ (inc l-seq) 2))
      l-seq))
@@ -103,30 +102,31 @@
 (defn- decode-seq [seq-bytes length]
   (join (compressed-bases->chars length seq-bytes 0)))
 
-(defn- decode-cigar-op [op]
-  (condp = op
-    (byte 0) \M
-    (byte 1) \I
-    (byte 2) \D
-    (byte 3) \N
-    (byte 4) \S
-    (byte 5) \H
-    (byte 6) \P
-    (byte 7) \=
-    (byte 8) \X))
+(def ^:private cigar-op-map
+  (hash-map (byte 0) \M
+            (byte 1) \I
+            (byte 2) \D
+            (byte 3) \N
+            (byte 4) \S
+            (byte 5) \H
+            (byte 6) \P
+            (byte 7) \=
+            (byte 8) \X))
 
-(defn- decode-cigar*
-  [^ByteBuffer buf]
-  (when (.hasRemaining buf)
-    (let [b  (.getInt buf)
-          op (bit-and b 0xf)
-          n  (bit-shift-right b 4)]
-      (concat [n (decode-cigar-op op)] (decode-cigar* buf)))))
+(defn- decode-cigar-op [op]
+  (get cigar-op-map op))
 
 (defn decode-cigar [cigar-bytes]
   (let [buf (ByteBuffer/wrap cigar-bytes)]
     (.order buf ByteOrder/LITTLE_ENDIAN)
-    (apply str (decode-cigar* buf))))
+    (loop [sb (StringBuilder.)]
+      (if (.hasRemaining buf)
+        (let [b  (.getInt buf)
+              op (bit-and b 0xF)
+              n  (bit-shift-right b 4)]
+          (recur (doto sb (.append n)
+                          (.append (decode-cigar-op op)))))
+        (str sb)))))
 
 (defn- decode-next-ref-id [refs n rname]
   (cond
@@ -157,7 +157,7 @@
           seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
           qual        (decode-qual (lsb/read-bytes rdr l-seq))
           rest        (lsb/read-bytes rdr (options-size block-size
-                                                        l-read-name
+                                                        (int l-read-name)
                                                         n-cigar-op
                                                         l-seq))
           options     (parse-options rest)]
@@ -189,34 +189,26 @@
                                                      l-seq)))]
       {:rname rname, :pos pos, :cigar cigar})))
 
-;; TODO: improve performance using ByteBuffer
 (defn- pointer-read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
-        pointer-beg (.getFilePointer (.reader bam-reader))
-        ^Integer block-size (lsb/read-int rdr)]
+        pointer-beg (.getFilePointer ^BGZFInputStream (.reader bam-reader))
+        block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
-      (throw (Exception. (str "Invalid block size:" block-size))))
-    (let [ref-id      (lsb/read-int rdr)
-          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
-          pos         (inc (lsb/read-int rdr))
-          l-read-name (lsb/read-ubyte rdr)
-          _           (lsb/skip rdr 3)
-          n-cigar-op  (lsb/read-ushort rdr)
-          flag        (lsb/read-ushort rdr)
-          l-seq       (lsb/read-int rdr)
-          _           (lsb/skip rdr 12)
-          qname       (lsb/skip rdr (dec (int l-read-name)))
-          _           (lsb/skip rdr 1)
-          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
-          seq         (lsb/skip rdr (/ (inc l-seq) 2))
-          lqual       (lsb/skip rdr l-seq)
-          _           (lsb/skip rdr (options-size block-size
-                                                  l-read-name
-                                                  n-cigar-op
-                                                  l-seq))
-          pointer-end (.getFilePointer (.reader bam-reader))]
-      {:flag flag, :rname rname, :pos pos,:cigar cigar,
-       :meta {:chunk {:beg pointer-beg, :end pointer-end}}})))
+      (throw (Exception. (str "Invalid block size: " block-size))))
+    (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
+      (lsb/read-bytes rdr (.array buffer) 0 block-size)
+      (let [ref-id      (lsb/read-int buffer)
+            rname       (if (= ref-id -1) "*" (ref-name refs ref-id))
+            pos         (inc (lsb/read-int buffer))
+            l-read-name (int (lsb/read-ubyte buffer))
+            _           (lsb/skip buffer 3)
+            n-cigar-op  (lsb/read-ushort buffer)
+            flag        (lsb/read-ushort buffer)
+            _           (lsb/skip buffer (+ 16 l-read-name))
+            cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
+            pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))]
+        {:flag flag, :rname rname, :pos pos,:cigar cigar,
+         :meta {:chunk {:beg pointer-beg, :end pointer-end}}}))))
 
 (defn- read-coordinate-alignment-block [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
@@ -301,11 +293,10 @@
                       :pointer pointer-read-alignment)
         read-fn (fn read-fn*
                   [^BAMReader r ^clojure.lang.PersistentVector refs]
-                  (let [a (try (read-aln-fn r refs)
-                               (catch EOFException e nil))]
-                    (if a
-                      (cons a (lazy-seq (read-fn* r refs)))
-                      nil)))]
+                  (if-let [a (try (read-aln-fn r refs)
+                                  (catch EOFException e nil))]
+                    (cons a (lazy-seq (read-fn* r refs)))
+                    nil))]
     (read-fn rdr (.refs rdr))))
 
 (defn read-blocks-sequentially*

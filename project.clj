@@ -12,7 +12,8 @@
             [lein-bin "0.3.4"]]
   :profiles {:dev {:dependencies [[midje "1.6.2"]
                                   [criterium "0.4.2"]
-                                  [cavia "0.1.1"]]
+                                  [cavia "0.1.1"]
+                                  [primitive-math "0.1.3"]]
                    :global-vars {*warn-on-reflection* true}}}
   :main cljam.core
   :aot [cljam.core]

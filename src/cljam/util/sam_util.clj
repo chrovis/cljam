@@ -123,7 +123,7 @@
 (defn reg->bin
   "Calculates bin given an alignment covering [beg,end) (zero-based, half-close-half-open),
   the same as reg2bin on samtools."
-  [beg end]
+  [^long beg ^long end]
   (let [end (dec end)]
     (cond
      (= (bit-shift-right beg 14) (bit-shift-right end 14))
@@ -331,7 +331,7 @@
   (when-not (nil? b)
     (str/join (map #(phred->fastq (int (bit-and % 0xff))) b))))
 
-(def max-phred-score 93)
+(def ^:const max-phred-score 93)
 
 (defmethod phred->fastq Integer
   [n]

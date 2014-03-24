@@ -54,5 +54,5 @@
                                         (prepare-cavia!)))
                      (after :facts (clean-cache!))]
   (fact "about BAMReader (large file)" :slow :heavy
-    (let [rdr (bam/reader large-bam-file)]
+    (let [rdr (bam/reader large-bam-file :ignore-index true)]
       (io/read-refs rdr) => large-sam-refs)))

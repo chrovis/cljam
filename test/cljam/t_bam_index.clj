@@ -42,6 +42,6 @@
 
 (with-state-changes [(before :facts (prepare-cavia!))]
   (fact "bin-index is done without errors with a large file" :slow :heavy
-    (bai/bin-index (bai/bam-index test-large-bai-file) 0) => anything)
+    (bai/bin-index test-large-bai-file 0) => anything)
   (fact "linear-index is done without errors with a large file" :slow :heavy
-    (bai/linear-index (bai/bam-index test-large-bai-file) 0) => anything))
+    (bai/linear-index test-large-bai-file 0) => anything))

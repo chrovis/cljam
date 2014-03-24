@@ -136,34 +136,36 @@
 
 (defn- read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
-        ^Integer block-size (lsb/read-int rdr)]
+        block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
-      (throw (Exception. (str "Invalid block size:" block-size))))
-    (let [ref-id      (lsb/read-int rdr)
-          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
-          pos         (inc (lsb/read-int rdr))
-          l-read-name (lsb/read-ubyte rdr)
-          mapq        (lsb/read-ubyte rdr)
-          bin         (lsb/read-ushort rdr)
-          n-cigar-op  (lsb/read-ushort rdr)
-          flag        (lsb/read-ushort rdr)
-          l-seq       (lsb/read-int rdr)
-          rnext       (decode-next-ref-id refs (lsb/read-int rdr) rname)
-          pnext       (inc (lsb/read-int rdr))
-          tlen        (lsb/read-int rdr)
-          qname       (lsb/read-string rdr (dec (int l-read-name)))
-          _           (lsb/read-bytes rdr 1)
-          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
-          seq         (decode-seq (lsb/read-bytes rdr (/ (inc l-seq) 2)) l-seq)
-          qual        (decode-qual (lsb/read-bytes rdr l-seq))
-          rest        (lsb/read-bytes rdr (options-size block-size
-                                                        (int l-read-name)
-                                                        n-cigar-op
-                                                        l-seq))
-          options     (parse-options rest)]
-      {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
-       :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
-       :qual qual, :options options})))
+      (throw (Exception. (str "Invalid block size: " block-size))))
+    (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
+      (lsb/read-bytes rdr (.array buffer) 0 block-size)
+      (let [ref-id      (lsb/read-int buffer)
+            rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+            pos         (inc (lsb/read-int buffer))
+            l-read-name (int (lsb/read-ubyte buffer))
+            mapq        (lsb/read-ubyte buffer)
+            bin         (lsb/read-ushort buffer)
+            n-cigar-op  (lsb/read-ushort buffer)
+            flag        (lsb/read-ushort buffer)
+            l-seq       (lsb/read-int buffer)
+            rnext       (decode-next-ref-id refs (lsb/read-int buffer) rname)
+            pnext       (inc (lsb/read-int buffer))
+            tlen        (lsb/read-int buffer)
+            qname       (lsb/read-string buffer (dec l-read-name))
+            _           (lsb/skip buffer 1)
+            cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
+            seq         (decode-seq (lsb/read-bytes buffer (/ (inc l-seq) 2)) l-seq)
+            qual        (decode-qual (lsb/read-bytes buffer l-seq))
+            rest        (lsb/read-bytes buffer (options-size block-size
+                                                             l-read-name
+                                                             n-cigar-op
+                                                             l-seq))
+            options     (parse-options rest)]
+        {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
+         :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
+         :qual qual, :options options}))))
 
 (defn- light-read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)

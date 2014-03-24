@@ -165,29 +165,24 @@
        :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
        :qual qual, :options options})))
 
-;; TODO: improve performance using ByteBuffer
 (defn- light-read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
-        ^Integer block-size (lsb/read-int rdr)]
+        block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
-      (throw (Exception. (str "Invalid block size:" block-size))))
-    (let [ref-id      (lsb/read-int rdr)
-          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
-          pos         (inc (lsb/read-int rdr))
-          l-read-name (lsb/read-ubyte rdr)
-          _           (lsb/skip rdr 3)
-          n-cigar-op  (lsb/read-ushort rdr)
-          _           (lsb/skip rdr 2)
-          l-seq       (lsb/read-int rdr)
-          _           (lsb/skip rdr (+ 13 (dec (int l-read-name))))
-          cigar       (decode-cigar (lsb/read-bytes rdr (* n-cigar-op 4)))
-          _           (lsb/skip rdr (+ l-seq
-                                       (/ (inc l-seq) 2)
-                                       (options-size block-size
-                                                     l-read-name
-                                                     n-cigar-op
-                                                     l-seq)))]
-      {:rname rname, :pos pos, :cigar cigar})))
+      (throw (Exception. (str "Invalid block size: " block-size))))
+    (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
+      (lsb/read-bytes rdr (.array buffer) 0 block-size)
+      (let [ref-id      (lsb/read-int buffer)
+            rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+            pos         (inc (lsb/read-int buffer))
+            l-read-name (int (lsb/read-ubyte buffer))
+            _           (lsb/skip buffer 3)
+            n-cigar-op  (lsb/read-ushort buffer)
+            _           (lsb/skip buffer 2)
+            l-seq       (lsb/read-int buffer)
+            _           (lsb/skip buffer (+ 13 (dec l-read-name)))
+            cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))]
+        {:rname rname, :pos pos, :cigar cigar}))))
 
 (defn- pointer-read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)

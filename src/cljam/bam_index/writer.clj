@@ -212,6 +212,7 @@
   [bin-map1 bin-map2]
   (merge-with merge-chunks bin-map1 bin-map2))
 
+;;; slow ...
 (defn- merge-lidx
   [lidx1 lidx2]
   {:index (vec (map min (:index lidx1) (:index lidx2))) ; OPTIMIZE
@@ -243,8 +244,8 @@
  ; TODO: Parallelize
 (defn make-index1
   [refs alns]
-  (->> (partition-all 40 alns)
-       (map (partial make-index* refs))
+  (->> (partition-all 1000 alns)
+       (pmap (partial make-index* refs))
        (reduce merge-index)
        (finish-index refs)))
 

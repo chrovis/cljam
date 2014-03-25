@@ -98,13 +98,11 @@
        (map (partial zipmap [:bin :chunks]))))
 
 (defn- init-linear-index []
-  {:index (gen-vec max-lidx-size 0)
-   :largest-seen -1})
+  {})
 
 (defn- update-linear-index
   [linear-index aln]
-  (let [{:keys [index largest-seen]} linear-index
-        {:keys [beg]} (:chunk (:meta aln))
+  (let [{:keys [beg]} (:chunk (:meta aln))
         aln-beg (:pos aln)
         aln-end (dec (+ aln-beg (cgr/count-ref (:cigar aln))))
         win-beg (if (zero? aln-end)
@@ -113,28 +111,31 @@
         win-end (if (zero? aln-end)
                   win-beg
                   (pos->lidx-offset aln-end))]
-    (assoc linear-index
-      :index (loop [i win-beg, lidx* index]
-               (if (<= i win-end)
-                 (let [l (nth lidx* i)]
-                   (recur (inc i) (if (or (zero? l) (< beg l))
-                                    (assoc lidx* i beg)
-                                    lidx*)))
-                 lidx*))
-      :largest-seen (max win-end largest-seen))))
+    (loop [i win-beg, lidx* linear-index]
+      (if (<= i win-end)
+        (recur (inc i) (update-in lidx* [i] (fn [l]
+                                              (if l (min l beg) beg))))
+        lidx*))))
+
+(defn- complement-linear-index
+  "([1 10] [3 30]) -> ([0 0] [1 10] [2 10] [3 30])"
+  [linear-index]
+  (loop [[f & r] (if (zero? (ffirst linear-index))
+                   linear-index
+                   (conj linear-index [0 0]))
+         ret []]
+    (if (seq r)
+      (recur r (apply conj ret (map #(conj (vector %) (second f)) (range (first f) (ffirst r)))))
+      (conj ret f))))
+
 
 (defn- finish-linear-index
-  "Optimizes the linear index for safety. This seems unnecessary, but samtools
-  does this process."
   [linear-index]
-  (let [{lidx :index, largest-lidx-seen :largest-seen} linear-index]
-    (loop [i 0, lidx* [], last-non-zero 0]
-      (if (<= i largest-lidx-seen)
-        (let [l (long (nth lidx i))]
-          (if (zero? l)
-            (recur (inc i) (conj lidx* last-non-zero) last-non-zero)
-            (recur (inc i) (conj lidx* l) l)))
-        lidx*))))
+  (->> linear-index
+       (seq)
+       (sort-by first)
+       (complement-linear-index)
+       (map second)))
 
 (defn- init-index-status []
   {:meta-data    (init-meta-data)
@@ -220,17 +221,9 @@
   [bin-map1 bin-map2]
   (merge-with merge-chunks bin-map1 bin-map2))
 
-;;; slow ...
 (defn- merge-lidx
   [lidx1 lidx2]
-  {:index (vec (map (fn [l1 l2]
-                      (cond
-                        (zero? l1) l2
-                        (zero? l2) l1
-                        :else (min l1 l2)))
-                    (:index lidx1) (:index lidx2))) ; OPTIMIZE
-   :largest-seen (max (:largest-seen lidx1) (:largest-seen lidx2))})
-
+  (merge-with min lidx1 lidx2))
 
 (defn merge-index
   [idx1 idx2]
@@ -254,7 +247,6 @@
        (make-index* refs)
        (finish-index refs)))
 
- ; TODO: Parallelize
 (defn make-index1
   [refs alns]
   (->> (partition-all 1000 alns)

@@ -183,7 +183,8 @@
      (not= (count arguments) 1) (exit 1 (index-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-     (bai/create-index f (str f ".bai"))))
+      (bai/create-index f (str f ".bai"))))
+  (shutdown-agents)
   nil)
 
 ;;; pileup command

@@ -73,7 +73,7 @@
   (:pos (first (io/read-alignments rdr {:chr rname
                                         :start left
                                         :end right
-                                        :depth :shallow}))))
+                                        :depth :first-only}))))
 
 (defn pileup
   ([^cljam.bam.reader.BAMReader rdr ^String rname]

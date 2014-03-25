@@ -259,6 +259,21 @@
       (cons (read-fn rdr (.refs rdr))
             (lazy-seq (read-to-finish rdr finish read-fn))))))
 
+(defn- read-alignments-first-only
+  "It should be equivalent to [(first (filter window @candidates))]"
+  [^BAMReader rdr spans window read-fn]
+  (loop [left-spans spans]
+    (when-let [span (first left-spans)]
+      (let [[^Long begin ^Long finish] span]
+        (.seek ^BGZFInputStream (.reader rdr) begin)
+        (or
+          (loop [left (read-to-finish rdr finish read-fn)]
+            (when-let [one (first left)]
+              (if (window one)
+                [one]
+                (recur (rest left)))))
+          (recur (rest left-spans)))))))
+
 (defn read-alignments*
   [^BAMReader rdr
    ^String chr ^Long start ^Long end
@@ -274,13 +289,16 @@
                         (<= start right)
                         (>= end left))))
         read-fn (case deep-or-shallow
+                  :first-only light-read-alignment
                   :shallow light-read-alignment
                   :deep read-alignment
                   :pointer pointer-read-alignment)
-        candidates (flatten (map (fn [[^Long begin ^Long finish]]
-                                   (.seek ^BGZFInputStream (.reader rdr) begin)
-                                   (doall (read-to-finish rdr finish read-fn))) spans))]
-    (filter window candidates)))
+        candidates (delay (flatten (map (fn [[^Long begin ^Long finish]]
+                                          (.seek ^BGZFInputStream (.reader rdr) begin)
+                                          (doall (read-to-finish rdr finish read-fn))) spans)))]
+    (if (= deep-or-shallow :first-only)
+      (read-alignments-first-only rdr spans window read-fn)
+      (filter window @candidates))))
 
 (defn read-alignments-sequentially*
   [^BAMReader rdr deep-or-shallow]

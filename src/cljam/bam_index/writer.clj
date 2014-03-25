@@ -223,7 +223,12 @@
 ;;; slow ...
 (defn- merge-lidx
   [lidx1 lidx2]
-  {:index (vec (map min (:index lidx1) (:index lidx2))) ; OPTIMIZE
+  {:index (vec (map (fn [l1 l2]
+                      (cond
+                        (zero? l1) l2
+                        (zero? l2) l1
+                        :else (min l1 l2)))
+                    (:index lidx1) (:index lidx2))) ; OPTIMIZE
    :largest-seen (max (:largest-seen lidx1) (:largest-seen lidx2))})
 
 

@@ -9,6 +9,8 @@
             [cljam.bam-index.chunk :as chunk])
   (:import [java.io DataOutputStream FileOutputStream Closeable]))
 
+(declare make-index)
+
 (defn- find-ref
   [refs name]
   (first (filter #(= (:name %) name) refs)))
@@ -47,11 +49,9 @@
 ;; Indexing
 ;;
 
-(def ^:const bam-lidx-shift 14)
-
 (defn pos->lidx-offset
   [pos]
-  (bit-shift-right (if (<= pos 0) 0 (dec pos)) bam-lidx-shift))
+  (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
 (defn- init-meta-data []
   {:first-offset  -1
@@ -90,7 +90,7 @@
                (conj chunks achunk))
              (vector achunk)))))
 
-(defn- finish-bin-index
+(defn- finalize-bin-index
   [bin-index]
   (->> bin-index
        (seq)
@@ -118,7 +118,8 @@
         lidx*))))
 
 (defn- complement-linear-index
-  "([1 10] [3 30]) -> ([0 0] [1 10] [2 10] [3 30])"
+  "Complements a linear index.
+  e.g. ([1 10] [3 30]) -> ([0 0] [1 10] [2 10] [3 30])"
   [linear-index]
   (loop [[f & r] (if (zero? (ffirst linear-index))
                    linear-index
@@ -128,8 +129,7 @@
       (recur r (apply conj ret (map #(conj (vector %) (second f)) (range (first f) (ffirst r)))))
       (conj ret f))))
 
-
-(defn- finish-linear-index
+(defn- finalize-linear-index
   [linear-index]
   (->> linear-index
        (seq)
@@ -150,7 +150,9 @@
       :bin-index    (update-bin-index bin-index aln)
       :linear-index (update-linear-index linear-index aln))))
 
-(defn- finish-index
+(defn- finalize-index
+  "Converts intermidate BAM index data structure into final one. This function
+  must be called in the final stage."
   [refs index]
   (loop [[f & r] refs
          index index]
@@ -158,8 +160,8 @@
       (let [rname (:name f)]
         (if (get index rname)
           (recur r (-> index
-                       (update-in [rname :bins] finish-bin-index)
-                       (update-in [rname :lidx] finish-linear-index)))
+                       (update-in [rname :bins] finalize-bin-index)
+                       (update-in [rname :lidx] finalize-linear-index)))
           (recur r index)))
       index)))
 
@@ -225,7 +227,7 @@
   [lidx1 lidx2]
   (merge-with min lidx1 lidx2))
 
-(defn merge-index
+(defn- merge-index
   [idx1 idx2]
   (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
         idx1 (dissoc idx1 :no-coordinate-alns)
@@ -236,23 +238,6 @@
                           :lidx (merge-lidx (:lidx v1) (:lidx v2))})
                        idx1 idx2)
       :no-coordinate-alns no-coordinate-alns)))
-
-;;;
-;;; Make index
-;;;
-
-(defn make-index
-  [refs alns]
-  (->> alns
-       (make-index* refs)
-       (finish-index refs)))
-
-(defn make-index1
-  [refs alns]
-  (->> (partition-all 1000 alns)
-       (pmap (partial make-index* refs))
-       (reduce merge-index)
-       (finish-index refs)))
 
 ;;;
 ;;; Write index
@@ -282,7 +267,7 @@
   (lsb/write-bytes wtr (.getBytes bai-magic))
   ;; n_ref
   (lsb/write-int wtr (count refs))
-  (let [indices (make-index1 refs alns)]
+  (let [indices (make-index refs alns :concurrent true)]
     (doseq [ref refs]
       (let [index (get indices (:name ref))
             n-bin (count (:bins index))]
@@ -307,6 +292,22 @@
 ;;; public
 ;;;
 
+(def ^:dynamic *alignments-partition-size* 1000)
+
+(defn make-index
+  "Calculates a BAM index from provided references and alignments. Optionally,
+   you can do this process concurrently."
+  [refs alns & {:keys [concurrent] :or {concurrent false}}]
+  (let [make-index-fn (fn [refs alns]
+                        (if concurrent
+                          (->> (partition-all *alignments-partition-size* alns)
+                               (pmap (partial make-index* refs))
+                               (reduce merge-index))
+                          (make-index* refs alns)))]
+    (->> alns
+         (make-index-fn refs)
+         (finalize-index refs))))
+
 (defn writer
   [f refs]
   (->BAIWriter (DataOutputStream. (FileOutputStream. (io/file f)))
@@ -314,5 +315,6 @@
                (.getAbsolutePath (io/file f))))
 
 (defn write-index!
+  "Calculates a BAM index from alns, writing the index to a file."
   [^BAIWriter wtr alns]
   (write-index*! (.writer wtr) (.refs wtr) alns))

@@ -10,46 +10,52 @@
   ([size]
      (.order (ByteBuffer/allocate size) ByteOrder/LITTLE_ENDIAN)))
 
-(defmulti skip (fn [r & _] (class r)))
+;;; skip
 
-(defmethod skip DataInputStream
-  [^DataInputStream rdr ^Integer n]
-  (.skipBytes rdr n)
-  nil)
+(defprotocol Skippable
+  (skip [this n]))
 
-(defmethod skip ByteBuffer
-  [^ByteBuffer bb ^Integer n]
-  (.position bb (+ (.position bb) n))
-  nil)
+(extend-protocol Skippable
+  DataInputStream
+  (skip [^DataInputStream rdr n]
+    (.skipBytes rdr n)
+    nil)
+  ByteBuffer
+  (skip [^ByteBuffer bb n]
+    (.position bb (+ (.position bb) n))
+    nil))
 
 ;;; reading
 
-(defmulti read-bytes (fn [r & _] (class r)))
+(defprotocol BytesReadble
+  (read-bytes [this l] [this buffer offset l]))
 
-(defmethod read-bytes DataInputStream
-  ([^DataInputStream rdr l]
-     (let [ba (byte-array l)]
-       (.read rdr ba 0 l)
-       ba))
-  ([^DataInputStream rdr buffer offset l]
-     (loop [total-read 0]
-       (when (< total-read l)
-         (let [n (.read rdr buffer (+ offset total-read) (- l total-read))]
-           (if (neg? n)
-             (throw (EOFException. "Premature EOF"))
-             (recur (+ total-read n))))))))
-
-(defmethod read-bytes ByteBuffer
-  ([^ByteBuffer bb len]
-     (let [ba (byte-array len)]
-       (.get bb ba 0 len)
-       ba))
-  ([^ByteBuffer bb buffer offset len]
-     (.get bb buffer offset len)))
+(extend-protocol BytesReadble
+  DataInputStream
+  (read-bytes
+    ([^DataInputStream rdr l]
+       (let [ba (byte-array l)]
+         (.read rdr ba 0 l)
+         ba))
+    ([^DataInputStream rdr buffer offset l]
+       (loop [total-read 0]
+         (when (< total-read l)
+           (let [n (.read rdr buffer (+ offset total-read) (- l total-read))]
+             (if (neg? n)
+               (throw (EOFException. "Premature EOF"))
+               (recur (+ total-read n))))))))
+  ByteBuffer
+  (read-bytes
+    ([^ByteBuffer bb len]
+       (let [ba (byte-array len)]
+         (.get bb ba 0 len)
+         ba))
+    ([^ByteBuffer bb buffer offset len]
+       (.get bb buffer offset len))))
 
 (defn- read-byte-buffer
   [rdr ^ByteBuffer bb l]
-  {:pre (< l (.capacity bb))}
+  {:pre (<= l (.capacity bb))}
   (read-bytes rdr (.array bb) 0 l)
   (.limit bb (.capacity bb))
   (.position bb l))

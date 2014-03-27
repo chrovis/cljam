@@ -15,12 +15,11 @@
 
 (defn- bam-index [f & {:keys [ignore]
                        :or {ignore false}}]
-  (let [bai-f (str f ".bai")]
-    (if-not (.exists (file bai-f))
-      (if ignore
-        nil
-        (throw (IOException. "Could not find BAM Index file")))
-      (bai/bam-index bai-f))))
+  (if-not ignore
+    (let [bai-f (str f ".bai")]
+      (if (.exists (file bai-f))
+        (bai/bam-index bai-f)
+        (throw (IOException. "Could not find BAM Index file"))))))
 
 (defn reader [f {:keys [ignore-index]
                  :or {ignore-index false}}]

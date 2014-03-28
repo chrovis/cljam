@@ -1,19 +1,21 @@
 (ns cljam.util.bgzf-util
   (:refer-clojure :exclude [compare]))
 
-(def ^:private shift-amount 16)
+(def ^:private ^:const shift-amount 16)
 
-(def ^:private address-mask 0xFFFFFFFFFFFF)
+(def ^:private ^:const address-mask 0xFFFFFFFFFFFF)
 
-(def ^:private offset-mask 0xFFFF)
+(def ^:private ^:const offset-mask 0xFFFF)
 
 (defn compare
   "Negative if fp1 is earlier in file than fp2, positive if it is later, 0 if equal."
   [fp1 fp2]
   (cond
    (= fp1 fp2)                 0
+   ;; When treating as unsigned, negative number is > positive.
    (and (< fp1 0) (>= fp2 0))  1
    (and (>= fp1 0) (< fp2 0)) -1
+   ;; Either both negative or both non-negative, so regular comparison works.
    (< fp1 fp2)                -1
    :else                       1))
 

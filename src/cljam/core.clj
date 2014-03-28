@@ -183,7 +183,7 @@
      (not= (count arguments) 1) (exit 1 (index-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-     (bai/create-index f (str f ".bai"))))
+      (bai/create-index f (str f ".bai"))))
   nil)
 
 ;;; pileup command
@@ -307,4 +307,5 @@
       :pileup  (pileup args)
       :faidx   (faidx args)
       :dict    (dict args)
-      (println help))))
+      (println help))
+    (shutdown-agents)))

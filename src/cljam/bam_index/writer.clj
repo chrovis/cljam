@@ -32,15 +32,7 @@
 ;; BAIWriter
 ;;
 
-(defmacro deftypeonce
-  [name & body]
-  (let [loaded (symbol (str name "-loaded__"))]
-   `(do (defonce ~loaded (atom false))
-        (when-not @~loaded
-          (reset! ~loaded true)
-          (deftype ~name ~@body)))))
-
-(deftypeonce BAIWriter [writer refs f]
+(deftype BAIWriter [writer refs f]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this))))

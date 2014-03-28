@@ -186,8 +186,6 @@
             cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))]
         {:rname rname, :pos pos, :cigar cigar}))))
 
-;;; OPTIMIZE: Read block-sizes primarily
-;;;           multimethod is slow, use protocol
 (defn- pointer-read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
         pointer-beg (.getFilePointer ^BGZFInputStream (.reader bam-reader))

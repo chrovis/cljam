@@ -44,15 +44,15 @@
                                         (spit-bam-for-test temp-file test-sam)))
                      (after :facts (clean-cache!))]
   (fact "about BAMReader"
-    (let [rdr (bam/reader temp-file)]
+    (let [rdr (bam/reader temp-file :ignore-index true)]
       (io/read-refs rdr) => test-sam-refs))
   (fact "about BAMReader (medium file)" :slow
-    (let [rdr (bam/reader medium-bam-file)]
+    (let [rdr (bam/reader medium-bam-file :ignore-index true)]
       (io/read-refs rdr) => medium-sam-refs)))
 
 (with-state-changes [(before :facts (do (prepare-cache!)
                                         (prepare-cavia!)))
                      (after :facts (clean-cache!))]
   (fact "about BAMReader (large file)" :slow :heavy
-    (let [rdr (bam/reader large-bam-file)]
+    (let [rdr (bam/reader large-bam-file :ignore-index true)]
       (io/read-refs rdr) => large-sam-refs)))

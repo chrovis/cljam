@@ -1,6 +1,6 @@
 (ns cljam.pileup.common)
 
 ;; TODO: estiamte from actual data
-(def window-width 1250)
-(def step 2000)
-(def center (int (/ step 2)))
+(def ^:const window-width 1250)
+(def ^:const step 2000)
+(def ^:const center (int (/ step 2)))

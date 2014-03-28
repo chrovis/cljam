@@ -123,7 +123,7 @@
 (defn reg->bin
   "Calculates bin given an alignment covering [beg,end) (zero-based, half-close-half-open),
   the same as reg2bin on samtools."
-  [beg end]
+  [^long beg ^long end]
   (let [end (dec end)]
     (cond
      (= (bit-shift-right beg 14) (bit-shift-right end 14))
@@ -331,7 +331,7 @@
   (when-not (nil? b)
     (str/join (map #(phred->fastq (int (bit-and % 0xff))) b))))
 
-(def max-phred-score 93)
+(def ^:const max-phred-score 93)
 
 (defmethod phred->fastq Integer
   [n]
@@ -345,11 +345,13 @@
   (for [sq (:SQ hdr)]
     {:name (:SN sq), :len (:LN sq)}))
 
-(defn ref-id [refs name]
+(defn ref-id* [refs name]
   "Returns reference ID from the reference sequence and the specified reference
   name. If not found, return nil."
   (some #(when (= name (:name (second %))) (first %))
         (map-indexed vector refs)))
+
+(def ref-id (memoize ref-id*))
 
 (defn ref-name [refs id]
   "Returns a reference name from the reference ID. Returns nil if id is not

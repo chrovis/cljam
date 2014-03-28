@@ -6,29 +6,27 @@
 
 ;;; bin-index
 
-(let [bai* (bai/bam-index test-bai-file)]
-  (fact "bin-index is done without errors"
-    (bai/bin-index bai* 0) => anything)
-  (fact "bin-index throws BoundsException for the invalid given index"
-    (bai/bin-index bai* 2) => (throws Exception))
-  (fact "bin-index returns vector"
-    (bai/bin-index bai* 0) => vector?)
-  (fact "check the returning vector's structure"
-    (bai/bin-index bai* 0) => (has every? (just {:bin number?
-                                                 :chunks (has every? (just {:beg number?
-                                                                            :end number?}))}))))
+(fact "bin-index is done without errors"
+      (bai/bin-index test-bai-file 0) => anything)
+(fact "bin-index throws BoundsException for the invalid given index"
+      (bai/bin-index test-bai-file 2) => (throws Exception))
+(fact "bin-index returns vector"
+      (bai/bin-index test-bai-file 0) => vector?)
+(fact "check the returning vector's structure"
+      (bai/bin-index test-bai-file 0) => (has every? (just {:bin number?
+                                                   :chunks (has every? (just {:beg number?
+                                                                              :end number?}))})))
 
 ;;; linear-index
 
-(let [bai* (bai/bam-index test-bai-file)]
-  (fact "linear-index is done without errors"
-    (bai/linear-index bai* 0) => anything)
-  (fact "linear-index throws Exception for the invalid given index"
-    (bai/linear-index bai* 2) => (throws Exception))
-  (fact "linear-index returns vector"
-    (bai/linear-index bai* 0) => vector?)
-  (fact "check the returning vector's structure"
-    (bai/linear-index bai* 0) => (has every? number?)))
+(fact "linear-index is done without errors"
+      (bai/linear-index test-bai-file 0) => anything)
+(fact "linear-index throws Exception for the invalid given index"
+      (bai/linear-index test-bai-file 2) => (throws Exception))
+(fact "linear-index returns vector"
+      (bai/linear-index test-bai-file 0) => vector?)
+(fact "check the returning vector's structure"
+      (bai/linear-index test-bai-file 0) => (has every? number?))
 
 ;;; get-spans
 
@@ -44,6 +42,6 @@
 
 (with-state-changes [(before :facts (prepare-cavia!))]
   (fact "bin-index is done without errors with a large file" :slow :heavy
-    (bai/bin-index (bai/bam-index test-large-bai-file) 0) => anything)
+    (bai/bin-index test-large-bai-file 0) => anything)
   (fact "linear-index is done without errors with a large file" :slow :heavy
-    (bai/linear-index (bai/bam-index test-large-bai-file) 0) => anything))
+    (bai/linear-index test-large-bai-file 0) => anything))

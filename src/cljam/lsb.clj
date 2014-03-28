@@ -10,35 +10,58 @@
   ([size]
      (.order (ByteBuffer/allocate size) ByteOrder/LITTLE_ENDIAN)))
 
-(defn skip
-  [^DataInputStream rdr ^Integer n]
-  (.skipBytes rdr n)
-  nil)
+;;; skip
+
+(defprotocol Skippable
+  (skip [this n]))
+
+(extend-protocol Skippable
+  DataInputStream
+  (skip [^DataInputStream rdr n]
+    (.skipBytes rdr n)
+    nil)
+  ByteBuffer
+  (skip [^ByteBuffer bb n]
+    (.position bb (+ (.position bb) n))
+    nil))
 
 ;;; reading
 
-(defn read-bytes
-  ([^DataInputStream rdr l]
-     (let [ba (byte-array l)]
-       (.read rdr ba 0 l)
-       ba))
-  ([^DataInputStream rdr buffer offset l]
-     (loop [total-read 0]
-       (when (< total-read l)
-         (let [n (.read rdr buffer (+ offset total-read) (- l total-read))]
-           (if (neg? n)
-             (throw (EOFException. "Premature EOF"))
-             (recur (+ total-read n))))))))
+(defprotocol BytesReadble
+  (read-bytes [this l] [this buffer offset l]))
+
+(extend-protocol BytesReadble
+  DataInputStream
+  (read-bytes
+    ([^DataInputStream rdr l]
+       (let [ba (byte-array l)]
+         (.read rdr ba 0 l)
+         ba))
+    ([^DataInputStream rdr buffer offset l]
+       (loop [total-read 0]
+         (when (< total-read l)
+           (let [n (.read rdr buffer (+ offset total-read) (- l total-read))]
+             (if (neg? n)
+               (throw (EOFException. "Premature EOF"))
+               (recur (+ total-read n))))))))
+  ByteBuffer
+  (read-bytes
+    ([^ByteBuffer bb len]
+       (let [ba (byte-array len)]
+         (.get bb ba 0 len)
+         ba))
+    ([^ByteBuffer bb buffer offset len]
+       (.get bb buffer offset len))))
 
 (defn- read-byte-buffer
-  [^DataInputStream rdr ^ByteBuffer bb l]
-  {:pre (< l (.capacity bb))}
+  [rdr ^ByteBuffer bb l]
+  {:pre (<= l (.capacity bb))}
   (read-bytes rdr (.array bb) 0 l)
   (.limit bb (.capacity bb))
   (.position bb l))
 
 (defn read-ubyte
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 1)
     (.put bb (byte 0))
@@ -46,14 +69,14 @@
     (.getShort bb)))
 
 (defn read-short
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 2)
     (.flip bb)
     (.getShort bb)))
 
 (defn read-ushort
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 2)
     (.putShort bb (short 0))
@@ -61,29 +84,29 @@
     (.getInt bb)))
 
 (defn read-int
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 4)
     (.flip bb)
     (.getInt bb)))
 
 (defn read-long
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 8)
     (.flip bb)
     (.getLong bb)))
 
 (defn read-float
-  [^DataInputStream rdr]
+  [rdr]
   (let [bb (gen-byte-buffer)]
     (read-byte-buffer rdr bb 4)
     (.flip bb)
     (.getFloat bb)))
 
 (defn read-string
-  [^DataInputStream rdr ^long l]
-  (String. ^bytes (read-bytes rdr l) 0 0 l))
+  [rdr ^Integer len]
+  (String. ^bytes (read-bytes rdr len) 0 0 len))
 
 (defn read-null-terminated-string
   [^ByteBuffer bb]

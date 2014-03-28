@@ -16,10 +16,10 @@
             [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
   (:gen-class))
 
-(defn reader [f]
+(defn reader [f & {:keys [ignore-index] :or {ignore-index true}}]
   (condp re-find f
     #"\.sam$" (sam/reader f)
-    #"\.bam$" (bam/reader f)
+    #"\.bam$" (bam/reader f :ignore-index ignore-index)
     (throw (IllegalArgumentException. "Invalid file type"))))
 
 (defn writer [f]
@@ -65,7 +65,7 @@
       (with-open [r (condp = (:format options)
                       "auto" (reader     f)
                       "sam"  (sam/reader f)
-                      "bam"  (bam/reader f))]
+                      "bam"  (bam/reader f :ignore-index true))]
         (when (:header options)
           (println (stringify-header (io/read-header r))))
         (doseq [aln (io/read-alignments r {})]
@@ -183,7 +183,7 @@
      (not= (count arguments) 1) (exit 1 (index-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-     (bai/create-index f (str f ".bai"))))
+      (bai/create-index f (str f ".bai"))))
   nil)
 
 ;;; pileup command
@@ -224,7 +224,7 @@
      (not= (count arguments) 1) (exit 1 (pileup-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (with-open [r (reader f)]
+      (with-open [r (reader f :ignore-index false)]
         (when (= (type r) cljam.sam.reader.SAMReader)
           (exit 1 "Not support SAM file"))
         (when-not (sorter/sorted-by? r)
@@ -307,4 +307,5 @@
       :pileup  (pileup args)
       :faidx   (faidx args)
       :dict    (dict args)
-      (println help))))
+      (println help))
+    (shutdown-agents)))

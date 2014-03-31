@@ -23,7 +23,7 @@
 ;; Indexing
 ;;
 
-(defn pos->lidx-offset
+(defn- pos->lidx-offset
   [pos]
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
@@ -54,12 +54,12 @@
 
 (defn- update-bin-index
   [bin-index aln]
-  (let [{:keys [beg end] :as achunk} (:chunk (:meta aln))
-        bin (sam-util/compute-bin aln)]
+  (let [bin (sam-util/compute-bin aln)
+        achunk (:chunk (:meta aln))]
     (assoc bin-index bin
            (if-let [chunks (get bin-index bin)]
-             (if (bgzf-util/same-or-adjacent-blocks? (:end (last chunks)) beg)
-               (let [l (assoc (last chunks) :end end)]
+             (if (bgzf-util/same-or-adjacent-blocks? (:end (last chunks)) (:beg achunk))
+               (let [l (assoc (last chunks) :end (:end achunk))]
                  (conj (pop chunks) l))
                (conj chunks achunk))
              (vector achunk)))))
@@ -84,11 +84,12 @@
                   (pos->lidx-offset aln-beg))
         win-end (if (zero? aln-end)
                   win-beg
-                  (pos->lidx-offset aln-end))]
+                  (pos->lidx-offset aln-end))
+        min* (fn [x]
+               (if x (min x beg) beg))]
     (loop [i win-beg, lidx* linear-index]
       (if (<= i win-end)
-        (recur (inc i) (update-in lidx* [i] (fn [l]
-                                              (if l (min l beg) beg))))
+        (recur (inc i) (update-in lidx* [i] min*))
         lidx*))))
 
 (defn- complement-linear-index
@@ -118,11 +119,10 @@
 
 (defn- update-index-status
   [index-status aln]
-  (let [{:keys [bin-index linear-index meta-data]} index-status]
-    (assoc index-status
-      :meta-data    (update-meta-data meta-data aln)
-      :bin-index    (update-bin-index bin-index aln)
-      :linear-index (update-linear-index linear-index aln))))
+  (-> index-status
+      (update-in [:meta-data] update-meta-data aln)
+      (update-in [:bin-index] update-bin-index aln)
+      (update-in [:linear-index] update-linear-index aln)))
 
 (defn- finalize-index
   "Converts intermidate BAM index data structure into final one. This function
@@ -171,11 +171,12 @@
 
 (defn- merge-meta
   [meta1 meta2]
-  {:first-offset (let [offsets (filter (partial not= -1) [(:first-offset meta1) (:first-offset meta2)])]
+  {:first-offset (let [f1 (:first-offset meta1)
+                       f2 (:first-offset meta2)]
                    (cond
-                    (> (count offsets) 1) (apply min offsets)
-                    (= (count offsets) 1) (first offsets)
-                    :else -1))
+                    (= f1 -1) f2
+                    (= f2 -1) f1
+                    :else (min f1 f2)))
    :last-offset (max (:last-offset meta1) (:last-offset meta2))
    :aligned-alns (+ (:aligned-alns meta1) (:aligned-alns meta2))
    :unaligned-alns (+ (:unaligned-alns meta1) (:unaligned-alns meta2))})
@@ -187,6 +188,7 @@
     (if f
       (if-let [last-chunk (last chunks')]
         (if (bgzf-util/same-or-adjacent-blocks? (:end last-chunk) (:beg f))
+
           (let [l (assoc last-chunk :end (:end f))]
             (recur r (conj (pop chunks') l)))
           (recur r (conj chunks' f)))

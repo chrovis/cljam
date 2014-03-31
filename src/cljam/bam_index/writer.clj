@@ -5,8 +5,7 @@
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
             [cljam.bam-index.common :refer :all]
-            [cljam.bam-index.chunk :as chunk])
-  (:import [java.io DataOutputStream FileOutputStream Closeable]))
+            [cljam.bam-index.chunk :as chunk]))
 
 (declare make-index)
 
@@ -15,9 +14,9 @@
 ;;
 
 (deftype BAIWriter [writer refs f]
-  Closeable
+  java.io.Closeable
   (close [this]
-    (.close ^Closeable (.writer this))))
+    (.close ^java.io.Closeable (.writer this))))
 
 ;;
 ;; Indexing
@@ -283,12 +282,6 @@
     (->> alns
          (make-index-fn refs)
          (finalize-index refs))))
-
-(defn writer
-  [f refs]
-  (->BAIWriter (DataOutputStream. (FileOutputStream. (io/file f)))
-               refs
-               (.getAbsolutePath (io/file f))))
 
 (defn write-index!
   "Calculates a BAM index from alns, writing the index to a file."

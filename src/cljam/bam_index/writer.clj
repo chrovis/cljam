@@ -2,7 +2,6 @@
   (:require [clojure.java.io :as io]
             [cljam.lsb :as lsb]
             [cljam.cigar :as cgr]
-            [cljam.util :refer [gen-vec]]
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
             [cljam.bam-index.common :refer :all]
@@ -10,23 +9,6 @@
   (:import [java.io DataOutputStream FileOutputStream Closeable]))
 
 (declare make-index)
-
-(defn- find-ref
-  [refs name]
-  (first (filter #(= (:name %) name) refs)))
-
-(def ^:private ^:const max-level-start
-  (last level-starts))
-
-(defn- max-bin-num [^long seq-len]
-  (+ max-level-start
-     (bit-shift-right seq-len 14)))
-
-(defn- bin-count
-  [refs name]
-  (if-let [ref (find-ref refs name)]
-    (inc (max-bin-num (:len ref)))
-    (dec max-bins)))
 
 ;;
 ;; BAIWriter
@@ -256,7 +238,7 @@
 (defn- write-index*!
   [wtr refs alns]
   ;; magic
-  (lsb/write-bytes wtr (.getBytes bai-magic))
+  (lsb/write-bytes wtr (.getBytes ^String bai-magic))
   ;; n_ref
   (lsb/write-int wtr (count refs))
   (let [indices (make-index refs alns :concurrent true)]

@@ -292,8 +292,7 @@
                   [^BAMReader r ^clojure.lang.PersistentVector refs]
                   (if-let [a (try (read-aln-fn r refs)
                                   (catch EOFException e nil))]
-                    (cons a (lazy-seq (read-fn* r refs)))
-                    nil))]
+                    (cons a (lazy-seq (read-fn* r refs)))))]
     (read-fn rdr (.refs rdr))))
 
 (defn read-blocks-sequentially*

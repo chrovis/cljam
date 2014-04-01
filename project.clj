@@ -17,7 +17,7 @@
                                   [cavia "0.1.2"]
                                   [primitive-math "0.1.3"]]
                    :global-vars {*warn-on-reflection* true}}}
-  :main cljam.core
-  :aot [cljam.core]
+  :main cljam.main
+  :aot [cljam.main]
   :bin {:name "cljam"}
   :repl-options {:init-ns user})

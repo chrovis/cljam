@@ -1,4 +1,4 @@
-(ns cljam.core
+(ns cljam.cli
   (:refer-clojure :exclude [sort merge])
   (:require [clojure.string :as str]
             [clj-sub-command.core :refer [sub-command]]
@@ -13,8 +13,7 @@
                    [fasta-indexer :as fai]
                    [dict :as dict]
                    [pileup :as plp])
-            [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
-  (:gen-class))
+            [cljam.util.sam-util :refer [stringify-header stringify-alignment]]))
 
 (defn reader [f & {:keys [ignore-index] :or {ignore-index true}}]
   (condp re-find f
@@ -282,9 +281,9 @@
       (dict/create-dict in out)))
   nil)
 
-;;; main
+;; ## Main command
 
-(defn -main [& args]
+(defn run [args]
   (let [[opts cmd args help] (sub-command args
                                           "Usage: cljam {view,convert,sort,index,pileup,faidx,dict} ..."
                                           :options  [["-h" "--help" "Show help" :default false :flag true]]
@@ -307,5 +306,4 @@
       :pileup  (pileup args)
       :faidx   (faidx args)
       :dict    (dict args)
-      (println help))
-    (shutdown-agents)))
+      (println help))))

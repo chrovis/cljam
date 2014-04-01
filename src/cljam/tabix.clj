@@ -1,4 +1,6 @@
 (ns cljam.tabix
+  "Alpha - subject to change.
+  Reader of a TABIX format file."
   (:require [clojure.java.io :as io]
             [cljam.lsb :as lsb])
   (:import java.util.Arrays

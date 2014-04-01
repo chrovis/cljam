@@ -187,7 +187,6 @@
     (if f
       (if-let [last-chunk (last chunks')]
         (if (bgzf-util/same-or-adjacent-blocks? (:end last-chunk) (:beg f))
-
           (let [l (assoc last-chunk :end (:end f))]
             (recur r (conj (pop chunks') l)))
           (recur r (conj chunks' f)))

@@ -1,9 +1,11 @@
 (ns cljam.cli
+  "Implementations of the command-line tool."
   (:refer-clojure :exclude [sort merge])
   (:require [clojure.string :as str]
             [clj-sub-command.core :refer [sub-command]]
             [clojure.tools.cli :refer [parse-opts]]
-            (cljam [sam :as sam]
+            (cljam [core :refer [reader writer]]
+                   [sam :as sam]
                    [io :as io]
                    [bam :as bam]
                    [bam-indexer :as bai]
@@ -14,18 +16,6 @@
                    [dict :as dict]
                    [pileup :as plp])
             [cljam.util.sam-util :refer [stringify-header stringify-alignment]]))
-
-(defn reader [f & {:keys [ignore-index] :or {ignore-index true}}]
-  (condp re-find f
-    #"\.sam$" (sam/reader f)
-    #"\.bam$" (bam/reader f :ignore-index ignore-index)
-    (throw (IllegalArgumentException. "Invalid file type"))))
-
-(defn writer [f]
-  (condp re-find f
-    #"\.sam$" (sam/writer f)
-    #"\.bam$" (bam/writer f)
-    (throw (IllegalArgumentException. "Invalid file type"))))
 
 ;;; cli functions
 

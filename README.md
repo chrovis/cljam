@@ -2,47 +2,6 @@
 
 A DNA Sequence Alignment/Map (SAM) library for Clojure.
 
-## Features
-
-Current cljam supports the following features.
-
-SAM/BAM:
-
-| Format | Read | Write | Normalize | Sort | Pielup |
-| ------ | ---: | ----: | --------: | ---: | -----: |
-| SAM    |  Yes |   Yes |       Yes |  Yes |    Yes |
-| BAM    |  Yes |   Yes |       Yes |  Yes |    Yes |
-
-BAM index (.bai):
-
-| Format     | Read | Create |
-| ---------- | ---: | -----: |
-| BAM index  |  Yes |    Yes |
-
-FASTA:
-
-| Format | Read | Write | Create dict |
-| ------ | ---: | ----: | ----------: |
-| FASTA  |  Yes |    No |         Yes |
-
-FASTA index (.fai):
-
-| Format      | Read | Create |
-| ----------- | ---: | -----: |
-| FASTA index |   No |    Yes |
-
-FASTA sequence dictionary (.dict):
-
-| Format                    | Read | Create |
-| ------------------------- | ---: | -----: |
-| FASTA sequence dictionary |   No |    Yes |
-
-tabix:
-
-| Format | Read | Create |
-| ------ | ---: | -----: |
-| tabix  |  Yes |     No |
-
 ## Installation
 
 cljam is available as a Maven artifact from [Clojars][clojars].
@@ -51,6 +10,16 @@ To use with Leiningen, add the following dependency.
 
 ```clojure
 [cljam "0.1.0"]
+```
+
+To use with Maven, add the following dependency.
+
+```xml
+<dependency>
+  <groupId>cljam</groupId>
+  <artifactId>cljam</artifactId>
+  <version>0.1.0</version>
+</dependency>
 ```
 
 ## Command-line tool

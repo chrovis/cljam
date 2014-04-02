@@ -1,4 +1,5 @@
 (ns cljam.sequence
+  "Parser of genome sequence strings."
   (:require [cljam.cigar :as cgr]))
 
 (defn- parse-seq [seq* cigar]

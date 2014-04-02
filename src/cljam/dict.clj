@@ -1,4 +1,6 @@
 (ns cljam.dict
+  "Alpha - subject to change.
+  Generator of a FASTA sequence dictionary file."
   (:require [clojure.java.io :refer [file writer]]
             [clojure.string :as str]
             [cljam.common :refer [version]]

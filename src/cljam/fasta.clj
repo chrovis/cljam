@@ -1,4 +1,6 @@
 (ns cljam.fasta
+  "Alpha - subject to change.
+  Reader of a FASTA format file."
   (:refer-clojure :exclude [read slurp])
   (:import [java.io RandomAccessFile Closeable]))
 

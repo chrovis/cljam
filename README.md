@@ -61,18 +61,28 @@ cljam provides a command-line tool to use the features easily.
 
 Run `lein-bin` plugin and it creates standalone console executable into `target` directory.
 
-    $ lein bin
-    > Creating standalone executable: /path/to/cljam/target/cljam
+```bash
+$ lein bin
+Created /path/to/cljam/target/cljam-0.1.0.jar
+Created /path/to/cljam/target/cljam-0.1.0-standalone.jar
+Creating standalone executable: /path/to/cljam/target/cljam
+```
 
 Copy the executable somewhere in your `$PATH`.
 
 ### Usage
 
-All commands are displayed by `cljam -h`, and detailed help for a command are displayed by `cljam [cmd] -h`.
+All commands are displayed by `cljam -h`, and detailed help for each command are displayed by `cljam [cmd] -h`.
 
-e.g.
+```bash
+$ cljam view -h
+```
 
-    $ cljam view --header test/resources/test.sam
+For example, to display contents of a SAM file including the header,
+
+```bash
+$ cljam view --header test/resources/test.sam
+```
 
 ## Development
 
@@ -80,22 +90,15 @@ e.g.
 
 To run all basic tests,
 
-    $ lein midje
+```bash
+$ lein midje
+```
 
 To run heavy tests which uses remote large-size files,
 
-    $ lein midje :filter heavy
-
-### Benchmark
-
-Use criterium.
-
-e.g.
-
-    cljam.pileup> (use 'criterium.core)
-    cljam.pileup> (with-progress-reporting
-                   (bench
-                    (pileup (cljam.bam/slurp "test/resources/test.sorted.bam"))))
+```bash
+$ lein midje :filter heavy
+```
 
 ### Generating document
 
@@ -105,7 +108,7 @@ cljam uses [Marginalia][marginalia] for generating documents.
 $ lein marg -m
 ```
 
-generates HTML documents in `./docs`.
+generates HTML documents in `docs` directory.
 
 ## Contributors
 

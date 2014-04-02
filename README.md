@@ -117,10 +117,11 @@ Sorted by first commit.
 
 ## License
 
-Copyright © 2013 [Xcoo, Inc][xcoo].
+Copyright 2013 [Xcoo, Inc.][xcoo]
 
-Distributed under the Eclipse Public License, the same as Clojure.
+Licensed under the [Apache License, Version 2.0][apache-license-2.0].
 
 [clojars]: https://clojars.org/cljam
 [marginalia]: http://gdeer81.github.io/marginalia/
 [xcoo]: http://www.xcoo.jp/
+[apache-license-2.0]: http://www.apache.org/licenses/LICENSE-2.0.html

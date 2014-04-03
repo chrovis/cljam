@@ -4,13 +4,12 @@
             [clojure.java.io :refer [file]]
             (cljam [cigar :as cgr]
                    [lsb :as lsb]
-                   [util :refer [string->bytes ubyte hex-string->bytes ]])
+                   [util :refer [string->bytes ubyte hex-string->bytes]])
             [cljam.util.sam-util :refer [phred->fastq ref-id ref-name
                                          compressed-bases->chars
                                          parse-header]]
-            (cljam.bam [common :refer [bam-magic fixed-block-size]]
-                       [util :refer :all])
-            [cljam.bam-index :refer [get-spans]])
+            [cljam.bam-index :refer [get-spans]]
+            [cljam.bam.common :refer [bam-magic fixed-block-size]])
   (:import java.util.Arrays
            [java.io DataInputStream Closeable IOException EOFException]
            [java.nio ByteBuffer ByteOrder]

@@ -2,91 +2,148 @@
 
 A DNA Sequence Alignment/Map (SAM) library for Clojure.
 
-## Features
+## Installation
 
-Current cljam supports the following features.
+cljam is available as a Maven artifact from [Clojars][clojars].
 
-SAM/BAM:
+To use with Leiningen, add the following dependency.
 
-| Format | Read | Write | Normalize | Sort | Pielup |
-| ------ | ---: | ----: | --------: | ---: | -----: |
-| SAM    |  Yes |   Yes |       Yes |  Yes |    Yes |
-| BAM    |  Yes |   Yes |       Yes |  Yes |    Yes |
+```clojure
+[cljam "0.1.0"]
+```
 
-BAM index (.bai):
+To use with Maven, add the following dependency.
 
-| Format     | Read | Create |
-| ---------- | ---: | -----: |
-| BAM index  |  Yes |    Yes |
+```xml
+<dependency>
+  <groupId>cljam</groupId>
+  <artifactId>cljam</artifactId>
+  <version>0.1.0</version>
+</dependency>
+```
 
-FASTA:
+## Getting started
 
-| Format | Read | Write | Create dict |
-| ------ | ---: | ----: | ----------: |
-| FASTA  |  Yes |    No |         Yes |
+To read a SAM/BAM format file,
 
-FASTA index (.fai):
+```clojure
+(require '[cljam.core :refer [reader]]
+         '[cljam.io :as io])
 
-| Format      | Read | Create |
-| ----------- | ---: | -----: |
-| FASTA index |   No |    Yes |
+;; Open a file
+(with-open [r (reader "path/to/file.bam")]
+  ;; Retrieve header
+  (io/read-header r)
+  ;; Retrieve alignments
+  (take 5 (io/read-alignments r {})))
+```
 
-FASTA sequence dictionary (.dict):
+To create a sorted file,
 
-| Format                    | Read | Create |
-| ------------------------- | ---: | -----: |
-| FASTA sequence dictionary |   No |    Yes |
+```clojure
+(require '[cljam.core :refer [reader writer]]
+         '[cljam.sorter :as sorter])
 
-tabix:
+(with-open [r (reader "path/to/file.bam")
+            w (writer "path/to/sorted.bam")]
+  ;; Sort by chromosomal coordinates
+  (sorter/sort-by-pos r w))
+```
 
-| Format | Read | Create |
-| ------ | ---: | -----: |
-| tabix  |  Yes |     No |
+To create a BAM index file,
+
+```clojure
+(require '[cljam.bam-indexer :as bai])
+
+;; Create a new BAM index file
+(bai/create-index "path/to/sorted.bam" "path/to/sorted.bam.bai")
+```
+
+To pileup,
+
+```clojure
+(require '[cljam.core :refer [reader]]
+         '[cljam.pileup :as plp])
+
+(with-open [r (reader "path/to/sorted.bam")]
+  ;; Pileup "chr1" alignments
+  (take 10 (plp/pileup r "chr1")))
+```
+
+Check https://chrovis.github.io/cljam for more information.
 
 ## Command-line tool
 
 cljam provides a command-line tool to use the features easily.
 
-### Installation
+### Executable installation
 
 Run `lein-bin` plugin and it creates standalone console executable into `target` directory.
 
-    $ lein bin
-    > Creating standalone executable: .../target/cljam
+```bash
+$ lein bin
+Created /path/to/cljam/target/cljam-0.1.0.jar
+Created /path/to/cljam/target/cljam-0.1.0-standalone.jar
+Creating standalone executable: /path/to/cljam/target/cljam
+```
 
 Copy the executable somewhere in your `$PATH`.
 
 ### Usage
 
-All commands are displayed by `cljam -h`, and detailed help for a command are displayed by `cljam [cmd] -h`.
+All commands are displayed by `cljam -h`, and detailed help for each command are displayed by `cljam [cmd] -h`.
 
-e.g.
+```bash
+$ cljam view -h
+```
 
-    $ cljam view --header test/resources/test.sam
+For example, to display contents of a SAM file including the header,
 
-## Test
+```bash
+$ cljam view --header path/to/file.sam
+```
+
+## Development
+
+### Test
 
 To run all basic tests,
 
-    $ lein midje
+```bash
+$ lein midje
+```
 
 To run heavy tests which uses remote large-size files,
 
-    $ lein midje :filter heavy
+```bash
+$ lein midje :filter heavy
+```
 
-## Benchmark
+### Generating document
 
-Use criterium.
+cljam uses [Marginalia][marginalia] for generating documents.
 
-e.g.
+```bash
+$ lein marg -m
+```
 
-    cljam.pileup> (use 'criterium.core)
-    cljam.pileup> (with-progress-reporting
-                   (bench
-                    (pileup (cljam.bam/slurp "test/resources/test.sorted.bam"))))
+generates HTML documents in `docs` directory.
+
+## Contributors
+
+Sorted by first commit.
+
+- Toshiki Takeuchi ([@totakke](https://github.com/totakke))
+- Takashi Aoki ([@federkasten](https://github.com/federkasten))
+- Atsuo Yamada ([@ayamada](https://github.com/ayamada))
 
 ## License
 
-Copyright © 2013 Xcoo, Inc.
+Copyright 2013 [Xcoo, Inc.][xcoo]
 
-Distributed under the Eclipse Public License, the same as Clojure.
+Licensed under the [Apache License, Version 2.0][apache-license-2.0].
+
+[clojars]: https://clojars.org/cljam
+[marginalia]: http://gdeer81.github.io/marginalia/
+[xcoo]: http://www.xcoo.jp/
+[apache-license-2.0]: http://www.apache.org/licenses/LICENSE-2.0.html

@@ -1,19 +1,25 @@
 (ns cljam.lsb
+  "Reading/writing functions of stream and buffer for little-endian data."
   (:refer-clojure :exclude [read-string])
   (:require [cljam.util :refer [string->bytes bytes->string]])
   (:import [java.io DataInputStream DataOutputStream EOFException]
            [java.nio ByteBuffer ByteOrder]))
 
 (defn ^ByteBuffer gen-byte-buffer
+  "Generates a new `java.nio.ByteBuffer` instance with little-endian byte order.
+  The default buffer size is 8."
   ([]
      (.order (ByteBuffer/allocate 8) ByteOrder/LITTLE_ENDIAN))
   ([size]
      (.order (ByteBuffer/allocate size) ByteOrder/LITTLE_ENDIAN)))
 
-;;; skip
+;; Skip
+;; ----
 
 (defprotocol Skippable
-  (skip [this n]))
+  "Provides skipping data feature. Note that this feature is implemented by
+  protocol instead of multimethods for performance."
+  (skip [this n] "Skip over n bytes of data, discarding the skipped bytes."))
 
 (extend-protocol Skippable
   DataInputStream
@@ -25,10 +31,14 @@
     (.position bb (+ (.position bb) n))
     nil))
 
-;;; reading
+;; Reading
+;; -------
 
 (defprotocol BytesReadble
-  (read-bytes [this l] [this buffer offset l]))
+  "Provides bytes reading feature. Note that this feature is implemented by
+  Protocol instead of multimethods for performance."
+  (read-bytes [this len] [this buffer offset len]
+    "Reads up to len bytes of data."))
 
 (extend-protocol BytesReadble
   DataInputStream
@@ -120,7 +130,8 @@
     (.get bb)
     (bytes->string ba)))
 
-;;; writing
+;; Writing
+;; -------
 
 (defn write-char
   [^DataOutputStream w b]

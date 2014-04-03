@@ -1,7 +1,8 @@
-(ns cljam.cigar)
+(ns cljam.cigar
+  "Parser of CIGAR strings.")
 
 (defn parse
-  "Parses CIGAR text, returns seq of lengths and operations."
+  "Parses CIGAR string, returning a sequence of lengths and operations."
   [^String s]
   (for [[_ n op] (re-seq #"([0-9]*)([MIDNSHP=X])" s)]
     [(Integer/parseInt n) (first op)]))

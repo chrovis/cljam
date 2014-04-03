@@ -1,4 +1,5 @@
 (ns cljam.sorter
+  "Sorter of SAM/BAM format alignments."
   (:require [clojure.java.io :refer [file]]
             [clojure.string :as str]
             (cljam [sam :as sam]
@@ -14,9 +15,8 @@
 (def order-coordinate :coordinate)
 (def order-queryname :queryname)
 
-;;
-;; coordinate sorter
-;;
+;; Coordinate sorter
+;; -----------------
 
 (defn- replace-header [hdr vn so]
   (conj hdr {:HD {:VN vn, :SO so}}))
@@ -38,9 +38,8 @@
                                     (map :name (sam-util/make-refs (io/read-header rdr)))))]
     (sort (partial compare-key-pos ref-map) (io/read-coordinate-blocks rdr))))
 
-;;
-;; queryname sorter
-;;
+;; Queryname sorter
+;; ----------------
 
 ;; (defn- compkey-qname [hdr aln]
 ;;   [(.indexOf ^List (map :name (sam-util/make-refs hdr)) (:rname aln))
@@ -53,9 +52,8 @@
   ;;      (assoc sam :alignments))
   )
 
-;;
 ;; split/merge
-;;
+;; -----------
 
 (defn gen-cache-filename
   [prefix i]
@@ -128,9 +126,8 @@
       (clean (name-fn i))
       (clean (sorted-name-fn i)))))
 
-;;
-;; sorter
-;;
+;; Sorter
+;; ------
 
 (defn sort-by-pos [rdr wtr]
   (let [filename (.getName (file (io/reader-path rdr)))

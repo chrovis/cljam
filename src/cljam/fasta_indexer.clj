@@ -1,5 +1,6 @@
 (ns cljam.fasta-indexer
-  "Indexer of FASTA."
+  "Alpha - subject to change.
+  Indexer of FASTA."
   (:require [cljam.fasta :as fasta]
             [cljam.fasta-index.writer :as fai-writer]))
 

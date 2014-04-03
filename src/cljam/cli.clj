@@ -17,17 +17,25 @@
                    [pileup :as plp])
             [cljam.util.sam-util :refer [stringify-header stringify-alignment]]))
 
-;;; cli functions
+;; CLI functions
+;; -------------
 
-(defn- exit [status msg]
-  (println msg)
+(defn- exit
+  "Exits the program with the status after printing the message."
+  [status message]
+  (println message)
   (System/exit status))
 
-(defn- error-msg [errors]
+(defn- error-msg
+  "Returns error message strings from the errors."
+  [errors]
   (str "The following errors occurred while parsing your command:\n\n"
        (str/join \newline errors)))
 
-;;; view command
+;; Sub-commands
+;; ------------
+
+;; ### view command
 
 (def ^:private view-cli-options
   [[nil "--header" "Include header"]
@@ -61,7 +69,7 @@
           (println (stringify-alignment aln))))))
   nil)
 
-;;; convert command
+;; ### convert command
 
 (def ^:private convert-cli-options
   [["-if" "--input-format FORMAT" "Input file format <auto|sam|bam>"
@@ -95,7 +103,7 @@
               (io/write-alignments wtr alns hdr)))))))
   nil)
 
-;;; normalize command
+;; ### normalize command
 
 (def ^:private normalize-cli-options
   [["-h" "--help"]])
@@ -121,7 +129,7 @@
       (normal/normalize r w)))
   nil)
 
-;;; sort command
+;; ### sort command
 
 (def ^:private sort-cli-options
   [["-o" "--order ORDER" "Sorting order of alignments <coordinate|queryname>"
@@ -151,7 +159,7 @@
         (name sorter/order-queryname) (sorter/sort-by-qname r w))))
   nil)
 
-;;; index command
+;; ### index command
 
 (def ^:private index-cli-options
   [["-h" "--help"]])
@@ -175,7 +183,7 @@
       (bai/create-index f (str f ".bai"))))
   nil)
 
-;;; pileup command
+;; ### pileup command
 
 (def ^:private pileup-cli-options
   [["-r" "--ref FASTA" "Reference file in the FASTA format."
@@ -223,7 +231,7 @@
           (pileup-with-ref r (:ref options))))))
   nil)
 
-;;; faidx command
+;; ### faidx command
 
 (def ^:private faidx-cli-options
   [["-h" "--help"]])
@@ -247,7 +255,7 @@
       (fai/create-index! f (str f ".fai"))))
   nil)
 
-;;; dict command
+;; ### dict command
 
 (def ^:private dict-cli-options
   [["-h" "--help"]])
@@ -271,7 +279,8 @@
       (dict/create-dict in out)))
   nil)
 
-;; ## Main command
+;; Main command
+;; ------------
 
 (defn run [args]
   (let [[opts cmd args help] (sub-command args

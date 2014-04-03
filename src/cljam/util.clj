@@ -1,17 +1,23 @@
 (ns cljam.util
+  "General utilities."
   (:require [clojure.java.io :refer [file]]))
 
-;;; cpu info
+;; CPU info
+;; --------
 
-(def num-cores (.availableProcessors (Runtime/getRuntime)))
+(def num-cores
+  "The number of processors available to the Java virtual machine."
+  (.availableProcessors (Runtime/getRuntime)))
 
-;;; disk cache
+;; Disk cache
+;; ----------
 
 (def temp-dir (let [dir-path (.getPath (file (System/getProperty "java.io.tmpdir") "cljam"))]
                 (.mkdirs (file dir-path))
                 dir-path))
 
-;;; byte array
+;; byte array
+;; ----------
 
 (defn ubyte
   "Casts to byte avoiding an error about out of range for byte."
@@ -19,7 +25,8 @@
   {:pre [(<= 0 n 255)]}
   (byte (if (< n 0x80) n (- n 0x100))))
 
-;;; string utils
+;; string utils
+;; ------------
 
 (defn string->bytes [^String s]
   (let [buf (byte-array (count s))]
@@ -47,7 +54,8 @@
     (Integer. ^String (re-find #"\d+" str))
     (catch Exception e nil)))
 
-;;; seq utils
+;; seq utils
+;; ---------
 
 (defn gen-vec
   ([n]
@@ -55,7 +63,8 @@
   ([n ini]
      (vec (repeat n ini))))
 
-;;; map utils
+;; map utils
+;; ---------
 
 (defmacro swap
   [m k f]

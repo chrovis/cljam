@@ -22,6 +22,56 @@ To use with Maven, add the following dependency.
 </dependency>
 ```
 
+## Getting started
+
+To read a SAM/BAM format file,
+
+```clojure
+(require '[cljam.core :refer [reader]]
+         '[cljam.io :as io])
+
+;; Open a file
+(with-open [r (reader "path/to/file.bam")]
+  ;; Retrieve header
+  (io/read-header r)
+  ;; Retrieve alignments
+  (take 5 (io/read-alignments r {})))
+```
+
+To create a sorted file,
+
+```clojure
+(require '[cljam.core :refer [reader writer]]
+         '[cljam.sorter :as sorter])
+
+(with-open [r (reader "path/to/file.bam")
+            w (writer "path/to/sorted.bam")]
+  ;; Sort by chromosomal coordinates
+  (sorter/sort-by-pos r w))
+```
+
+To create a BAM index file,
+
+```clojure
+(require '[cljam.bam-indexer :as bai])
+
+;; Create a new BAM index file
+(bai/create-index "path/to/sorted.bam" "path/to/sorted.bam.bai")
+```
+
+To pileup,
+
+```clojure
+(require '[cljam.core :refer [reader]]
+         '[cljam.pileup :as plp])
+
+(with-open [r (reader "path/to/sorted.bam")]
+  ;; Pileup "chr1" alignments
+  (take 10 (plp/pileup r "chr1")))
+```
+
+Check https://chrovis.github.io/cljam for more information.
+
 ## Command-line tool
 
 cljam provides a command-line tool to use the features easily.
@@ -50,7 +100,7 @@ $ cljam view -h
 For example, to display contents of a SAM file including the header,
 
 ```bash
-$ cljam view --header test/resources/test.sam
+$ cljam view --header path/to/file.sam
 ```
 
 ## Development

@@ -1,13 +1,18 @@
 (ns cljam.fasta-index.writer
   "Writing features for a FASTA index file."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str])
-  (:import [java.io BufferedWriter Closeable]))
+  (:require [clojure.string :as str])
+  (:import [java.io BufferedWriter]))
 
-(deftype FAIWriter [f writer]
-  Closeable
+;; FAIWriter
+;; ---------
+
+(deftype FAIWriter [writer f]
+  java.io.Closeable
   (close [this]
-    (.close ^Closeable (.writer this))))
+    (.close ^java.io.Closeable (.writer this))))
+
+;; Indexing
+;; --------
 
 (defn write-sq!
   [^BufferedWriter wtr sq]
@@ -27,7 +32,3 @@
 (defn write-index!
   [^FAIWriter wtr seqs]
   (write-index*! (.writer wtr) seqs))
-
-(defn writer
-  [f]
-  (->FAIWriter f (io/writer f)))

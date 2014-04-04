@@ -12,7 +12,7 @@
                                         (fs/copy test-fa-file temp-fa-file)))
                      (after :facts (clean-cache!))]
   (fact "about FASTA indexer"
-    (fai/create-index! temp-fa-file (str temp-fa-file ".fai")) => anything
+    (fai/create-index temp-fa-file (str temp-fa-file ".fai")) => anything
     (fs/exists? (str temp-fa-file ".fai")) => truthy
     (same-file? (str temp-fa-file ".fai") test-fai-file) => truthy))
 
@@ -20,6 +20,6 @@
                                         (fs/copy medium-fa-file temp-fa-file)))
                      (after :facts (clean-cache!))]
   (fact "about FASTA indexer (medium file)" :slow
-    (fai/create-index! temp-fa-file (str temp-fa-file ".fai")) => anything
+    (fai/create-index temp-fa-file (str temp-fa-file ".fai")) => anything
     (fs/exists? (str temp-fa-file ".fai")) => truthy
     (same-file? (str temp-fa-file ".fai") medium-fai-file) => truthy))

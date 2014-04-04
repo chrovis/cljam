@@ -15,7 +15,8 @@
   :profiles {:dev {:dependencies [[midje "1.6.3"]
                                   [criterium "0.4.3"]
                                   [cavia "0.1.2"]
-                                  [primitive-math "0.1.3"]]
+                                  [primitive-math "0.1.3"]
+                                  [pandect "0.3.1"]]
                    :global-vars {*warn-on-reflection* true}}}
   :main cljam.main
   :aot [cljam.main]

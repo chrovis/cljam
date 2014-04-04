@@ -1,6 +1,7 @@
 (ns cljam.t-common
   (:use [clojure.java.io :only [file]])
-  (:require [cljam.sam :as sam]
+  (:require [pandect.core :refer [md5-file]]
+            [cljam.sam :as sam]
             [cljam.bam :as bam]
             [cljam.io :as io]
             [cavia.core :as cavia :refer [defprofile with-profile]]))
@@ -51,15 +52,28 @@
     (io/write-refs w (:header sam))
     (io/write-alignments w (:alignments sam) (:header sam))))
 
+;; Test resources
+;; --------------
+
 (def test-sam-file "test/resources/test.sam")
 (def test-bam-file "test/resources/test.bam")
 (def test-sorted-bam-file "test/resources/test.sorted.bam")
 (def test-bai-file "test/resources/test.sorted.bam.bai")
-(def test-fa-file  "test/resources/test.fa")
-(def test-fai-file "test/resources/test.fa.fai")
-(def test-tabix-file "test/resources/test.gtf.gz.tbi")
-
 (def test-large-bai-file (cavia/resource mycavia "large.bai"))
+
+;; ### FASTA files
+
+(def test-fa-file  "test/resources/test.fa")
+(def medium-fa-file "test/resources/medium.fa")
+
+;; ### FASTA index files
+
+(def test-fai-file "test/resources/test.fa.fai")
+(def medium-fai-file "test/resources/medium.fa.fai")
+
+;; ### TABIX files
+
+(def test-tabix-file "test/resources/test.gtf.gz.tbi")
 (def test-large-tabix-file (cavia/resource mycavia "large.tbi"))
 
 (def test-sam
@@ -312,3 +326,11 @@
 ;;; $ samtools view -S -b result.sam > test/resources/medium.bam
 
 (def large-bam-file (cavia/resource mycavia "large.bam"))
+
+;; Utilities
+;; ---------
+
+(defn same-file?
+  "Returns true if the two files' MD5 hash are same, false if not."
+  [f1 f2]
+  (= (md5-file f1) (md5-file f2)))

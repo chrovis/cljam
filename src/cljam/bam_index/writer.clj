@@ -57,8 +57,8 @@
         achunk (:chunk (:meta aln))]
     (assoc bin-index bin
            (if-let [chunks (get bin-index bin)]
-             (if (bgzf-util/same-or-adjacent-blocks? (:end (last chunks)) (:beg achunk))
-               (let [l (assoc (last chunks) :end (:end achunk))]
+             (if (bgzf-util/same-or-adjacent-blocks? (:end (peek chunks)) (:beg achunk))
+               (let [l (assoc (peek chunks) :end (:end achunk))]
                  (conj (pop chunks) l))
                (conj chunks achunk))
              (vector achunk)))))
@@ -75,7 +75,7 @@
 
 (defn- update-linear-index
   [linear-index aln]
-  (let [{:keys [beg]} (:chunk (:meta aln))
+  (let [beg (get-in aln [:meta :chunk :beg])
         aln-beg (:pos aln)
         aln-end (dec (+ aln-beg (cgr/count-ref (:cigar aln))))
         win-beg (if (zero? aln-end)
@@ -185,7 +185,7 @@
   (loop [[f & r] (sort chunk/compare (concat chunks1 chunks2))
          chunks' []]
     (if f
-      (if-let [last-chunk (last chunks')]
+      (if-let [last-chunk (peek chunks')]
         (if (bgzf-util/same-or-adjacent-blocks? (:end last-chunk) (:beg f))
           (let [l (assoc last-chunk :end (:end f))]
             (recur r (conj (pop chunks') l)))

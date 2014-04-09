@@ -23,7 +23,7 @@
 ;;
 
 (defn- pos->lidx-offset
-  [pos]
+  [^long pos]
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
 (defn- init-meta-data []

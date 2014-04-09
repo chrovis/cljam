@@ -127,19 +127,19 @@
   (let [end (dec end)]
     (cond
      (= (bit-shift-right beg 14) (bit-shift-right end 14))
-     (+ (/ (dec (bit-shift-left 1 15)) 7) (bit-shift-right beg 14))
+     (+ 4681 (bit-shift-right beg 14))
 
      (= (bit-shift-right beg 17) (bit-shift-right end 17))
-     (+ (/ (dec (bit-shift-left 1 12)) 7) (bit-shift-right beg 17))
+     (+ 585 (bit-shift-right beg 17))
 
      (= (bit-shift-right beg 20) (bit-shift-right end 20))
-     (+ (/ (dec (bit-shift-left 1 9)) 7) (bit-shift-right beg 20))
+     (+ 73 (bit-shift-right beg 20))
 
      (= (bit-shift-right beg 23) (bit-shift-right end 23))
-     (+ (/ (dec (bit-shift-left 1 6)) 7) (bit-shift-right beg 23))
+     (+ 9 (bit-shift-right beg 23))
 
      (= (bit-shift-right beg 26) (bit-shift-right end 26))
-     (+ (/ (dec (bit-shift-left 1 3)) 7) (bit-shift-right beg 26))
+     (+ 1 (bit-shift-right beg 26))
 
      :else 0)))
 

@@ -2,6 +2,7 @@
   "Alpha - subject to change.
   Reader of a FASTA format file."
   (:refer-clojure :exclude [read slurp])
+  (:require [cljam.util :refer [graph?]])
   (:import [java.io RandomAccessFile Closeable]))
 
 ;;;
@@ -33,7 +34,7 @@
                      (assoc ret
                        :seq line
                        :line-len (inc (count line))
-                       :line-blen (count (filter (partial not= \space) line))))]
+                       :line-blen (count (filter graph? line))))]
           (recur (.readLine rdr) ret')))
       (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
             nil))))

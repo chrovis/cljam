@@ -54,6 +54,11 @@
     (Integer. ^String (re-find #"\d+" str))
     (catch Exception e nil)))
 
+(defn graph?
+  "Returns true if c is a visible character, false if not."
+  [c]
+  (<= 0x20 (byte c) 0x7E))
+
 ;; seq utils
 ;; ---------
 

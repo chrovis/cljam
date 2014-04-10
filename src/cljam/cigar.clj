@@ -16,7 +16,7 @@
   "Returns length of reference bases."
   [^String s]
   (->> (parse s)
-       (filter (comp #{\M \D \N \= \X} last))
+       (filter (comp #{\M \D \N \= \X} peek))
        (map first)
        (reduce +)))
 

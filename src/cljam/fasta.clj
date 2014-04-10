@@ -23,13 +23,19 @@
     (if-not (nil? line)
       (if (= (first line) \>)
         (if (seq ret)
-          (cons (assoc ret :blen (count (filter (partial not= \space) (:seq ret))))
+          (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
                 (lazy-seq (read* line rdr)))
           (let [ref (subs line 1)
                 offset (.getFilePointer rdr)]
             (recur (.readLine rdr) (assoc ret :rname ref :offset offset))))
-        (recur (.readLine rdr) (update-in ret [:seq] str line)))
-      (cons (assoc ret :blen (count (filter (partial not= \space) (:seq ret))))
+        (let [ret' (if (:line-len ret)
+                     (update-in ret [:seq] str line)
+                     (assoc ret
+                       :seq line
+                       :line-len (inc (count line))
+                       :line-blen (count (filter (partial not= \space) line))))]
+          (recur (.readLine rdr) ret')))
+      (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
             nil))))
 
 ;;;

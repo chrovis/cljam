@@ -18,10 +18,10 @@
   [^BufferedWriter wtr sq]
   (.write wtr (str/join "\t"
                         [(:rname sq)
-                         (count (:seq sq))
+                         (:len sq)
                          (:offset sq)
-                         (:blen sq)
-                         (inc (count (:seq sq)))]))
+                         (:line-blen sq)
+                         (:line-len sq)]))
   (.newLine wtr))
 
 (defn- write-index*!

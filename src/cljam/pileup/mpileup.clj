@@ -6,7 +6,7 @@
             [cljam.fasta :as fa]
             [cljam.pileup.common :refer [window-width step center]]
             [cljam.pileup.pileup :refer [rpositions]])
-  (:import cljam.fasta.FASTAReader))
+  (:import cljam.fasta.reader.FASTAReader))
 
 (defn- pickup-qual [aln pos]
   (if (= (:qual aln) "*")

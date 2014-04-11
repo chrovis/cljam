@@ -16,10 +16,10 @@
 
 (defn create-index
   "Creates a FASTA index file from the sequences."
-  [f seqs]
+  [f headers sequences]
   (with-open [w ^cljam.fasta_index.writer.FAIWriter (writer f)]
     (try
-      (writer/write-index! w seqs)
+      (writer/write-index! w headers sequences)
       (catch Exception e (do
                            (fs/delete (.f w))
                            (logging/error "Failed to create FASTA index")

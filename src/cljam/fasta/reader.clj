@@ -6,13 +6,17 @@
 ;; FASTAReader
 ;; -----------
 
-(deftype FASTAReader [reader f]
+(deftype FASTAReader [reader f headers]
   java.io.Closeable
   (close [this]
     (.close ^java.io.Closeable (.reader this))))
 
 ;; Reading
 ;; -------
+
+(defn- header-line?
+  [line]
+  (= (first line) \>))
 
 (defn- read* [line ^RandomAccessFile rdr]
   (loop [line line
@@ -35,8 +39,37 @@
       (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
             nil))))
 
-;; Public
-;; ------
+(defn load-headers
+  [^RandomAccessFile rdr]
+  (loop [line (.readLine rdr), headers []]
+    (if line
+      (if (header-line? line)
+        (let [offset (.getFilePointer rdr)]
+          (recur (.readLine rdr) (conj headers {:name (subs line 1)
+                                                :offset offset})))
+        (recur (.readLine rdr) headers))
+      headers)))
+
+(defn- read-sequence*
+  [^FASTAReader rdr name]
+  (let [reader ^RandomAccessFile (.reader rdr)
+        line (.readLine reader)]
+    (if line
+      (if-not (header-line? line)
+        {:name name, :sequence line}
+        (subs line 1)))))
+
+(defn read-sequences
+  "Reads sequences by line, returning the line-separated sequences
+  as lazy sequence."
+  [^FASTAReader rdr]
+  (let [reader ^RandomAccessFile (.reader rdr)
+        read-fn (fn read-fn* [^FASTAReader rdr name]
+                  (let [s (read-sequence* rdr name)]
+                    (cond
+                     (string? s) (read-fn* rdr s)
+                     (map? s) (cons s (lazy-seq (read-fn* rdr name))))))]
+    (read-fn rdr nil)))
 
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."

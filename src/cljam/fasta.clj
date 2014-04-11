@@ -12,3 +12,14 @@
 (defn read
   [rdr]
   (fa-core/read rdr))
+
+(defn read-headers
+  "Returns headers as vector. Each element consists of name and offset."
+  [rdr]
+  (fa-core/read-headers rdr))
+
+(defn read-sequences
+  "Reads sequences by line, returning the line-separated sequences
+  as lazy sequence."
+  [rdr]
+  (fa-core/read-sequences rdr))

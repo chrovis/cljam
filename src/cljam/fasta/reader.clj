@@ -1,6 +1,6 @@
 (ns cljam.fasta.reader
   (:refer-clojure :exclude [read slurp])
-  (:require [cljam.util :refer [graph?]])
+  (:require [cljam.util :refer [graph? space?]])
   (:import java.io.RandomAccessFile))
 
 ;; FASTAReader
@@ -17,6 +17,17 @@
 (defn- header-line?
   [line]
   (= (first line) \>))
+
+(defn- parse-header-line
+  [line]
+  (let [line (subs line 1)]
+    {:name (->> line
+                (take-while (complement space?))
+                (apply str))
+     :desc (->> line
+                (drop-while (complement space?))
+                (drop 1)
+                (apply str))}))
 
 (defn- read* [line ^RandomAccessFile rdr]
   (loop [line line
@@ -45,8 +56,8 @@
     (if line
       (if (header-line? line)
         (let [offset (.getFilePointer rdr)]
-          (recur (.readLine rdr) (conj headers {:name (subs line 1)
-                                                :offset offset})))
+          (recur (.readLine rdr) (conj headers (merge (parse-header-line line)
+                                                      {:offset offset}))))
         (recur (.readLine rdr) headers))
       headers)))
 
@@ -57,7 +68,7 @@
     (if line
       (if-not (header-line? line)
         {:name name, :sequence line}
-        (subs line 1)))))
+        (:name (parse-header-line line))))))
 
 (defn read-sequences
   "Reads sequences by line, returning the line-separated sequences

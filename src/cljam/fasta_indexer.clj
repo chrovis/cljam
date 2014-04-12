@@ -2,13 +2,12 @@
   "Alpha - subject to change.
   Indexer of FASTA."
   (:require [cljam.fasta :as fasta]
-            [cljam.fasta-index.writer :as fai-writer]))
+            [cljam.fasta-index.core :as fai-core]))
 
-(defn create-index!
+(defn create-index
   "Create a FASTA index file from the FASTA file."
-  [fa fai]
-  (with-open [r (fasta/reader fa)
-              w (fai-writer/writer fai)]
-    (fai-writer/write-index! w (fasta/read r))))
-
-(def ^:deprecated create-index create-index!)
+  [in-fa out-fai]
+  (with-open [r ^cljam.fasta.reader.FASTAReader (fasta/reader in-fa)]
+    (fai-core/create-index out-fai
+                           (.headers r)
+                           (fasta/read-sequences r))))

@@ -252,7 +252,7 @@
      (not= (count arguments) 1) (exit 1 (faidx-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (fai/create-index! f (str f ".fai"))))
+      (fai/create-index f (str f ".fai"))))
   nil)
 
 ;; ### dict command

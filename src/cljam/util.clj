@@ -54,6 +54,17 @@
     (Integer. ^String (re-find #"\d+" str))
     (catch Exception e nil)))
 
+(defn graph?
+  "Returns true if c is a visible character, false if not."
+  [c]
+  (<= 0x20 (byte c) 0x7E))
+
+(defn space?
+  "Returns true if c is a character that creates \"white space\" in displayed
+  text."
+  [c]
+  (not (nil? (#{\space \tab \newline \formfeed \return (char 0x0b)} c))))
+
 ;; seq utils
 ;; ---------
 

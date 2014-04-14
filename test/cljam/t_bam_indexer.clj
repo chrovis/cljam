@@ -1,4 +1,5 @@
 (ns cljam.t-bam-indexer
+  "Tests for cljam.bam-indexer."
   (:require [midje.sweet :refer :all]
             [me.raynes.fs :as fs]
             [cljam.t-common :refer :all]
@@ -17,6 +18,7 @@
     (bai/create-index
       temp-file-sorted (str temp-file-sorted ".bai")) => anything
     (fs/exists? (str temp-file-sorted ".bai")) => truthy
+    (same-file? (str temp-file-sorted ".bai") test-bai-file) => truthy
     (with-open [r (bam/reader temp-file-sorted)]
       (io/read-alignments r {:chr "ref" :start 0 :end 1000})
       ) => (filter #(= "ref" (:rname %))

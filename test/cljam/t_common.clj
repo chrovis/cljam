@@ -55,9 +55,19 @@
 ;; Test resources
 ;; --------------
 
+;; ### SAM files
+
 (def test-sam-file "test/resources/test.sam")
+
+;; ### BAM files
+
 (def test-bam-file "test/resources/test.bam")
 (def test-sorted-bam-file "test/resources/test.sorted.bam")
+(def medium-bam-file "test/resources/medium.bam")
+(def large-bam-file (cavia/resource mycavia "large.bam"))
+
+;; ### BAM index files
+
 (def test-bai-file "test/resources/test.sorted.bam.bai")
 (def test-large-bai-file (cavia/resource mycavia "large.bai"))
 
@@ -314,18 +324,6 @@
               one)
             (filter #(= rname (:rname %)) (:alignments target-sam))))
         target-rnames))))
-
-(def medium-bam-file "test/resources/medium.bam")
-;;; How to generate "medium.bam":
-;;; $ wget https://share.xcoo.jp/works/.../B6_all_bwa.sorted.bam
-;;; $ samtools view -h B6_all_bwa.sorted.bam > src.sam
-;;; $ grep '^@' src.sam > r.head
-;;; $ grep -v '^@' src.sam > r.body
-;;; $ cat r.body | perl -ne 'print $_ if rand() < 0.001' > r.body2
-;;; $ cat r.head r.body2 > result.sam
-;;; $ samtools view -S -b result.sam > test/resources/medium.bam
-
-(def large-bam-file (cavia/resource mycavia "large.bam"))
 
 ;; Utilities
 ;; ---------

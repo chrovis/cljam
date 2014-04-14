@@ -6,7 +6,7 @@
             [cljam.t-common :refer :all]
             [cljam.fasta-indexer :as fai]))
 
-(def temp-fa-file (str temp-dir "/test.fai"))
+(def temp-fa-file (str temp-dir "/test.fa"))
 
 (with-state-changes [(before :facts (do (prepare-cache!)
                                         (fs/copy test-fa-file temp-fa-file)))

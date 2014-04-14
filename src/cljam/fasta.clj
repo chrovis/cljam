@@ -2,9 +2,10 @@
   "Alpha - subject to change.
   Reader of a FASTA format file."
   (:refer-clojure :exclude [read])
-  (:require [cljam.fasta.core :as fa-core]))
+  (:require [cljam.fasta.core :as fa-core])
+  (:import cljam.fasta.reader.FASTAReader))
 
-(defn reader
+(defn ^FASTAReader reader
   "Returns FASTA file reader of f."
   [f]
   (fa-core/reader f))

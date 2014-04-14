@@ -2,21 +2,22 @@
   (:refer-clojure :exclude [read slurp])
   (:require [clojure.java.io :as io]
             [cljam.fasta.reader :as reader])
-  (:import java.io.RandomAccessFile))
+  (:import java.io.RandomAccessFile
+           cljam.fasta.reader.FASTAReader))
 
 ;; Reading
 ;; -------
 
-(defn reader
+(defn ^FASTAReader reader
   [^String f]
   (let [headers (with-open [r (RandomAccessFile. f "r")]
                   (reader/load-headers r))]
-    (cljam.fasta.reader.FASTAReader. (RandomAccessFile. f "r")
-                                     (.getAbsolutePath (io/file f))
-                                     headers)))
+    (FASTAReader. (RandomAccessFile. f "r")
+                  (.getAbsolutePath (io/file f))
+                  headers)))
 
 (defn read-headers
-  [^cljam.fasta.reader.FASTAReader rdr]
+  [^FASTAReader rdr]
   (.headers rdr))
 
 (defn read-sequences

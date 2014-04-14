@@ -7,7 +7,7 @@
 (defn create-index
   "Create a FASTA index file from the FASTA file."
   [in-fa out-fai]
-  (with-open [r ^cljam.fasta.reader.FASTAReader (fasta/reader in-fa)]
+  (with-open [r (fasta/reader in-fa)]
     (fai-core/create-index out-fai
                            (.headers r)
                            (fasta/read-sequences r))))

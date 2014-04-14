@@ -9,24 +9,26 @@
                              [writer :as writer])
             [cljam.util.sam-util :refer [ref-id]])
   (:import java.util.BitSet
-           [java.io DataOutputStream FileOutputStream]))
+           [java.io DataOutputStream FileOutputStream]
+           cljam.bam_index.reader.BAIReader
+           cljam.bam_index.writer.BAIWriter))
 
 (deftype BAMIndex [f bidx lidx])
 
 (defn bam-index [f]
-  (let [{:keys [bidx lidx]} (with-open [r ^cljam.bam_index.reader.BAIReader (reader/reader f)] (reader/read-all-index! r))]
+  (let [{:keys [bidx lidx]} (with-open [r ^BAIReader (reader/reader f)] (reader/read-all-index! r))]
     (->BAMIndex f bidx lidx)))
 
 ;; ## Reading
 
 (defn bin-index
   [f ref-idx]
-  (with-open [r ^cljam.bam_index.reader.BAIReader (reader/reader f)]
+  (with-open [r ^BAIReader (reader/reader f)]
     (reader/read-bin-index! r ref-idx)))
 
 (defn linear-index
   [f ref-idx]
-  (with-open [r ^cljam.bam_index.reader.BAIReader (reader/reader f)]
+  (with-open [r ^BAIReader (reader/reader f)]
     (reader/read-linear-index! r ref-idx)))
 
 (defn- reg->bins*
@@ -61,17 +63,16 @@
 
 ;; ## Writing
 
-(defn writer
+(defn ^BAIWriter writer
   [f refs]
-  (cljam.bam_index.writer.BAIWriter.
-   (DataOutputStream. (FileOutputStream. (io/file f)))
-   refs
-   (.getAbsolutePath (io/file f))))
+  (BAIWriter. (DataOutputStream. (FileOutputStream. (io/file f)))
+              refs
+              (.getAbsolutePath (io/file f))))
 
 (defn create-index
   "Creates a BAM index file from the alignments and references data."
   [f alns refs]
-  (with-open [w ^cljam.bam_index.writer.BAIWriter (writer f refs)]
+  (with-open [w (writer f refs)]
     (try
       (writer/write-index! w alns)
       (catch Exception e (do

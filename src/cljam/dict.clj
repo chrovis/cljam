@@ -1,22 +1,12 @@
 (ns cljam.dict
   "Alpha - subject to change.
   Generator of a FASTA sequence dictionary file."
-  (:require [clojure.java.io :refer [file writer]]
+  (:require [clojure.java.io :as io]
+            [pandect.core :refer [md5]]
             [cljam.common :refer [version]]
             [cljam.fasta :as fasta]
             [cljam.util :refer [string->bytes]])
-  (:import [java.io BufferedWriter RandomAccessFile]
-           java.security.MessageDigest))
-
-(defn- md5-hash
-  [^bytes b]
-  (let [md5 (MessageDigest/getInstance "MD5")]
-    (.reset md5)
-    (.update md5 b)
-    (let [s (.toString (BigInteger. 1 (.digest md5)) 16)]
-      (if-not (= (count s) 32)
-        (str (subs "00000000000000000000000000000000" 0 (- 32 (count s))) s)
-        s))))
+  (:import java.io.BufferedWriter))
 
 (def ^:private upper-case-offset
   (- (byte \A) (byte \a)))
@@ -32,7 +22,7 @@
       (when (< i (count bases))
         (aset bases i ^byte (upper-case (nth bases i)))
         (recur (inc i))))
-    (md5-hash bases)))
+    (md5 bases)))
 
 (defn- write-header
   [^BufferedWriter wrtr]
@@ -50,9 +40,9 @@
   "Creates a FASTA sequence dictionary file (.dict) from the specified a FASTA
   file (.fasta/fa)."
   [fasta out-dict]
-  (let [ur (.toString (.toURI (file fasta)))]
+  (let [ur (.. (io/file fasta) getCanonicalFile toURI toString)]
    (with-open [r ^cljam.fasta.reader.FASTAReader (fasta/reader fasta)
-               w ^BufferedWriter (writer out-dict)]
+               w ^BufferedWriter (io/writer out-dict)]
      (write-header w)
      (doseq [sq (fasta/read r)]
-       (write-sq w (:ref sq) (:seq sq) ur)))))
+       (write-sq w (:rname sq) (:seq sq) ur)))))

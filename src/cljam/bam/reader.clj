@@ -144,7 +144,10 @@
     {:size block-size
      :data (lsb/read-bytes rdr block-size)}))
 
-(defn- read-pointer-alignment-block [^BAMReader bam-reader _]
+(defn- read-pointer-alignment-block
+  "Reads an alignment block, returning a map including the data as byte array
+  and the file pointers. This function is for indexing a BAM file."
+  [^BAMReader bam-reader _]
   (let [rdr (.data-reader bam-reader)
         pointer-beg (.getFilePointer ^BGZFInputStream (.reader bam-reader))
         block-size (lsb/read-int rdr)]
@@ -153,15 +156,6 @@
     {:data (lsb/read-bytes rdr block-size)
      :pointer-beg pointer-beg
      :pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))}))
-
-;; (defn pointer-read-blocks-sequentially
-;;   [^BAMReader rdr refs]
-;;   (let [read-fn (fn read-fn*
-;;                   [^BAMReader r refs]
-;;                   (if-let [a (try (pointer-read-alignment-block r refs)
-;;                                   (catch EOFException e nil))]
-;;                     (cons a (lazy-seq (read-fn* r refs)))))]
-;;     (read-fn rdr (.refs rdr))))
 
 (defn- read-to-finish
   [^BAMReader rdr
@@ -212,9 +206,9 @@
 (defn read-blocks-sequentially*
   [^BAMReader rdr mode]
   (let [read-block-fn (case mode
-                      :normal read-alignment-block
-                      :coordinate read-coordinate-alignment-block
-                      :pointer read-pointer-alignment-block)
+                        :normal read-alignment-block
+                        :coordinate read-coordinate-alignment-block
+                        :pointer read-pointer-alignment-block)
         read-fn (fn read-fn* [^BAMReader r ^clojure.lang.PersistentVector refs]
                   (if-let [b (try (read-block-fn r refs)
                                   (catch EOFException e nil))]

@@ -269,7 +269,7 @@
 ;;; public
 ;;;
 
-(def ^:dynamic *alignments-partition-size* 1000)
+(def ^:dynamic *alignments-partition-size* 10000)
 
 (defn make-index
   "Calculates a BAM index from provided references and alignments. Optionally,

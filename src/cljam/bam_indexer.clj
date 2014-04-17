@@ -9,5 +9,5 @@
   [in-bam out-bai]
   (with-open [r (bam/reader in-bam :ignore-index true)]
     (bai-core/create-index out-bai
-                           (io/read-alignments r {:depth :pointer})
+                           (io/read-blocks r {:mode :pointer})
                            (io/read-refs r))))

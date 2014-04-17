@@ -18,3 +18,9 @@
 
 (fact "about pileup"
   (plp/pileup (bam/reader test-sorted-bam-file) "ref2") => test-bam-pileup-ref2)
+
+(fact "about first-pos"
+  (plp/first-pos (bam/reader test-sorted-bam-file) "ref" 0 64) => 7)
+
+(fact "about first-pos"
+  (plp/first-pos (bam/reader test-sorted-bam-file) "ref2" 0 64) => 1)

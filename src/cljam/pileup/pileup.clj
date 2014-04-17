@@ -67,6 +67,14 @@
                 (count-for-positions alns rname positions)))
             parts)))))
 
+(defn first-pos
+  "Return a position of first alignment in left-right, or nil."
+  [rdr ^String rname ^Long left ^Long right]
+  (:pos (first (io/read-alignments rdr {:chr rname
+                                        :start left
+                                        :end right
+                                        :depth :first-only}))))
+
 (defn pileup
   ([^cljam.bam.reader.BAMReader rdr ^String rname]
      (pileup rdr rname -1 -1))

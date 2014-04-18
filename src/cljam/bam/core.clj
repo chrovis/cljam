@@ -46,8 +46,11 @@
     (if (nil? chr)
       (reader/read-alignments-sequentially* this depth)
       (reader/read-alignments* this chr start end depth)))
-  (read-blocks [this]
-    (reader/read-blocks-sequentially* this :normal))
+  (read-blocks
+    ([this]
+       (reader/read-blocks-sequentially* this :normal))
+    ([this {:keys [mode] :or [mode :normal]}]
+       (reader/read-blocks-sequentially* this mode)))
   (read-coordinate-blocks [this]
     (reader/read-blocks-sequentially* this :coordinate)))
 

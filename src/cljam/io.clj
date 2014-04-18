@@ -8,7 +8,7 @@
   (read-alignments [this option]
     "Reads alignments of the SAM/BAM file, returning the alignments as a lazy
     sequence.")
-  (read-blocks [this])
+  (read-blocks [this] [this option])
   (read-coordinate-blocks [this]))
 
 (defprotocol ISAMWriter

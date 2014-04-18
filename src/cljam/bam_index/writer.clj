@@ -4,10 +4,13 @@
             [cljam.cigar :as cgr]
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
+            [cljam.bam.decoder :as bam-decoder]
             [cljam.bam-index.common :refer :all]
-            [cljam.bam-index.chunk :as chunk]))
+            [cljam.bam-index.chunk :as chunk])
+  (:import [java.nio ByteBuffer ByteOrder]))
 
 (declare make-index)
+(declare make-index-from-blocks)
 
 ;;
 ;; BAIWriter
@@ -241,7 +244,7 @@
   (lsb/write-bytes wtr (.getBytes ^String bai-magic))
   ;; n_ref
   (lsb/write-int wtr (count refs))
-  (let [indices (make-index refs alns :concurrent true)]
+  (let [indices (make-index-from-blocks refs alns :concurrent true)]
     (doseq [ref refs]
       (let [index (get indices (:name ref))
             n-bin (count (:bins index))]
@@ -266,7 +269,7 @@
 ;;; public
 ;;;
 
-(def ^:dynamic *alignments-partition-size* 1000)
+(def ^:dynamic *alignments-partition-size* 10000)
 
 (defn make-index
   "Calculates a BAM index from provided references and alignments. Optionally,
@@ -279,6 +282,23 @@
                                (reduce merge-index))
                           (make-index* refs alns)))]
     (->> alns
+         (make-index-fn refs)
+         (finalize-index refs))))
+
+(defn make-index-from-blocks
+  [refs blocks & {:keys [concurrent] :or {concurrent false}}]
+  (let [make-index-fn (fn [refs blocks]
+                        (if concurrent
+                          (->> (partition-all *alignments-partition-size* blocks)
+                               (pmap (fn [sub-blocks]
+                                       (->> sub-blocks
+                                            (map #(bam-decoder/decode-alignment-block % refs :pointer))
+                                            (make-index* refs))))
+                               (reduce merge-index))
+                          (->> blocks
+                               (map #(bam-decoder/decode-alignment-block % refs :pointer))
+                               (make-index* refs blocks))))]
+    (->> blocks
          (make-index-fn refs)
          (finalize-index refs))))
 

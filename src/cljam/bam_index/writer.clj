@@ -12,28 +12,39 @@
 (declare make-index)
 (declare make-index-from-blocks)
 
-;;
 ;; BAIWriter
-;;
+;; ---------
 
 (deftype BAIWriter [writer refs f]
   java.io.Closeable
   (close [this]
     (.close ^java.io.Closeable (.writer this))))
 
-;;
 ;; Indexing
-;;
+;; --------
 
 (defn- pos->lidx-offset
   [^long pos]
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
-(defn- init-meta-data []
-  {:first-offset  -1
-   :last-offset    0
-   :aligned-alns   0
-   :unaligned-alns 0})
+;; ### Initializing
+
+(defn- init-index-status
+  "Returns initialized index status. This data structure is intermidate. Must
+  be passed `finalize-index` in the final stage."
+  []
+  {:meta-data {:first-offset -1
+               :last-offset 0
+               :aligned-alns 0
+               :unaligned-alns 0}
+   ;; Intermidiate bin-index -> {bin1 chunks1, bin2 chunks2, ...}
+   ;; e.g. {4681 [{:beg 97, :end 555} ...], 37450 [...] ...}
+   :bin-index {}
+   ;; Intermidate linear-index -> {pos1 value1, pos2 value2, ...}
+   ;; e.g. {5415 4474732776, 14827 5955073327, ...}
+   :linear-index {}})
+
+;; ### Updating
 
 (defn- update-meta-data
   [meta-data aln]
@@ -41,18 +52,13 @@
         {:keys [beg end]} (:chunk (:meta aln))
         aligned? (zero? (bit-and (:flag aln) 4))]
     (assoc meta-data
-      :first-offset   (if (or (< (bgzf-util/compare beg first-offset) 1)
-                              (= first-offset -1))
-                        beg first-offset)
-      :last-offset    (if (< (bgzf-util/compare last-offset end) 1)
-                        end last-offset)
-      :aligned-alns   (if aligned? (inc aligned-alns) aligned-alns)
+      :first-offset (if (or (< (bgzf-util/compare beg first-offset) 1)
+                            (= first-offset -1))
+                      beg first-offset)
+      :last-offset (if (< (bgzf-util/compare last-offset end) 1)
+                     end last-offset)
+      :aligned-alns (if aligned? (inc aligned-alns) aligned-alns)
       :unaligned-alns (if-not aligned? (inc unaligned-alns) unaligned-alns))))
-
-(defn- init-bin-index
-  "bin-index > {bin1 chunks1, bin2 chunks2, ...}
-  e.g. {4681 [{:beg 97, :end 555} ...], 37450 [...] ...}"
-  [] {})
 
 (defn- update-bin-index
   [bin-index aln]
@@ -66,21 +72,11 @@
                (conj chunks achunk))
              (vector achunk)))))
 
-(defn- finalize-bin-index
-  [bin-index]
-  (->> bin-index
-       (seq)
-       (sort-by first)
-       (map (partial zipmap [:bin :chunks]))))
-
-(defn- init-linear-index []
-  {})
-
 (defn- update-linear-index
   [linear-index aln]
   (let [beg (get-in aln [:meta :chunk :beg])
         aln-beg (:pos aln)
-        aln-end (dec (+ aln-beg (cgr/count-ref (:cigar aln))))
+        aln-end (sam-util/get-end aln)
         win-beg (if (zero? aln-end)
                   (pos->lidx-offset (dec aln-beg))
                   (pos->lidx-offset aln-beg))
@@ -89,59 +85,24 @@
                   (pos->lidx-offset aln-end))
         min* (fn [x]
                (if x (min x beg) beg))]
-    (loop [i win-beg, lidx* linear-index]
+    (loop [i win-beg, ret linear-index]
       (if (<= i win-end)
-        (recur (inc i) (update-in lidx* [i] min*))
-        lidx*))))
-
-(defn- complement-linear-index
-  "Complements a linear index.
-  e.g. ([1 10] [3 30]) -> ([0 0] [1 10] [2 10] [3 30])"
-  [linear-index]
-  (loop [[f & r] (if (zero? (ffirst linear-index))
-                   linear-index
-                   (conj linear-index [0 0]))
-         ret []]
-    (if (seq r)
-      (recur r (apply conj ret (map #(conj (vector %) (second f)) (range (first f) (ffirst r)))))
-      (conj ret f))))
-
-(defn- finalize-linear-index
-  [linear-index]
-  (->> linear-index
-       (seq)
-       (sort-by first)
-       (complement-linear-index)
-       (map second)))
-
-(defn- init-index-status []
-  {:meta-data    (init-meta-data)
-   :bin-index    (init-bin-index)
-   :linear-index (init-linear-index)})
+        (recur (inc i) (update-in ret [i] min*))
+        ret))))
 
 (defn- update-index-status
   [index-status aln]
-  (-> index-status
-      (update-in [:meta-data] update-meta-data aln)
-      (update-in [:bin-index] update-bin-index aln)
-      (update-in [:linear-index] update-linear-index aln)))
+  (assoc index-status
+    :meta-data (update-meta-data (:meta-data index-status) aln)
+    :bin-index (update-bin-index (:bin-index index-status) aln)
+    :linear-index (update-linear-index (:linear-index index-status) aln)))
 
-(defn- finalize-index
-  "Converts intermidate BAM index data structure into final one. This function
-  must be called in the final stage."
-  [refs index]
-  (loop [[f & r] refs
-         index index]
-    (if f
-      (let [rname (:name f)]
-        (if (get index rname)
-          (recur r (-> index
-                       (update-in [rname :bins] finalize-bin-index)
-                       (update-in [rname :lidx] finalize-linear-index)))
-          (recur r index)))
-      index)))
+;; ### Making index
 
 (defn- make-index*
+  "Calculates index from the references and alignments, returning it as a map.
+  Returned index is still intermidate. It must be passed to finalize function
+  in the final stage."
   [refs alns]
   (loop [[aln & rest] alns
          ref-name (:rname aln)
@@ -157,21 +118,16 @@
                                   (inc no-coordinate-alns)
                                   no-coordinate-alns)
             indices' (if new-ref?
-                       (assoc indices ref-name {:meta (:meta-data idx-status)
-                                                :bins (:bin-index idx-status)
-                                                :lidx (:linear-index idx-status)})
+                       (assoc indices ref-name idx-status)
                        indices)]
         (recur rest ref-name' idx-status' no-coordinate-alns' indices'))
-      (assoc indices ref-name {:meta (:meta-data idx-status)
-                               :bins (:bin-index idx-status)
-                               :lidx (:linear-index idx-status)}
+      (assoc indices ref-name idx-status
                      :no-coordinate-alns no-coordinate-alns))))
 
-;;;
-;;; Merge indices
-;;;
+;; Merging indices
+;; -------------
 
-(defn- merge-meta
+(defn- merge-meta-data
   [meta1 meta2]
   {:first-offset (let [f1 (:first-offset meta1)
                        f2 (:first-offset meta2)]
@@ -196,29 +152,75 @@
         (recur r (conj chunks' f)))
       chunks')))
 
-(defn- merge-bins
+(defn- merge-bin-index
   [bin-map1 bin-map2]
   (merge-with merge-chunks bin-map1 bin-map2))
 
-(defn- merge-lidx
+(defn- merge-linear-index
   [lidx1 lidx2]
   (merge-with min lidx1 lidx2))
 
 (defn- merge-index
+  "Merges two intermidate indices, returning the merged intermidate index."
   [idx1 idx2]
   (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
         idx1 (dissoc idx1 :no-coordinate-alns)
         idx2 (dissoc idx2 :no-coordinate-alns)]
-    (assoc (merge-with (fn [v1 v2]
-                         {:meta (merge-meta (:meta v1) (:meta v2))
-                          :bins (merge-bins (:bins v1) (:bins v2))
-                          :lidx (merge-lidx (:lidx v1) (:lidx v2))})
-                       idx1 idx2)
-      :no-coordinate-alns no-coordinate-alns)))
+    (-> (merge-with
+         (fn [v1 v2]
+           {:meta-data (merge-meta-data (:meta-data v1) (:meta-data v2))
+            :bin-index (merge-bin-index (:bin-index v1) (:bin-index v2))
+            :linear-index (merge-linear-index (:linear-index v1) (:linear-index v2))})
+         idx1 idx2)
+        (assoc :no-coordinate-alns no-coordinate-alns))))
 
-;;;
-;;; Write index
-;;;
+;; Finalizing index
+;; ----------------
+
+(defn- finalize-bin-index
+  [bin-index]
+  (->> bin-index
+       (seq)
+       (sort-by first)
+       (map (partial zipmap [:bin :chunks]))))
+
+(defn- complement-linear-index
+  "Complements a linear index.
+  e.g. ([1 10] [3 30]) -> ([0 0] [1 10] [2 10] [3 30])"
+  [linear-index]
+  (loop [[f & r] (if (zero? (ffirst linear-index))
+                   linear-index
+                   (conj linear-index [0 0]))
+         ret []]
+    (if (seq r)
+      (recur r (apply conj ret (map #(conj (vector %) (second f)) (range (first f) (ffirst r)))))
+      (conj ret f))))
+
+(defn- finalize-linear-index
+  [linear-index]
+  (->> linear-index
+       (seq)
+       (sort-by first)
+       (complement-linear-index)
+       (map second)))
+
+(defn- finalize-index
+  "Converts intermidate BAM index data structure into final one. Must be called
+  in the final stage."
+  [refs index]
+  (loop [[f & r] refs
+         index index]
+    (if f
+      (let [rname (:name f)]
+        (if (get index rname)
+          (recur r (-> index
+                       (update-in [rname :bin-index] finalize-bin-index)
+                       (update-in [rname :linear-index] finalize-linear-index)))
+          (recur r index)))
+      index)))
+
+;; Writing index
+;; -----------
 
 (defn- write-bin
   [w bin chunks]
@@ -247,29 +249,31 @@
   (let [indices (make-index-from-blocks refs alns :concurrent true)]
     (doseq [ref refs]
       (let [index (get indices (:name ref))
-            n-bin (count (:bins index))]
+            n-bin (count (:bin-index index))]
         ;; bins
         (if (zero? n-bin)
           (lsb/write-int wtr 0)
           (do
             ;; # of bins
             (lsb/write-int wtr (inc n-bin))
-            (doseq [bin (:bins index)]
+            (doseq [bin (:bin-index index)]
               (write-bin wtr (:bin bin) (:chunks bin)))
             ;; meta data
-            (write-meta-data wtr (:meta index))))
+            (write-meta-data wtr (:meta-data index))))
         ;; linear index
-        (lsb/write-int wtr (count (:lidx index)))
-        (doseq [l (:lidx index)]
+        (lsb/write-int wtr (count (:linear-index index)))
+        (doseq [l (:linear-index index)]
           (lsb/write-long wtr l))))
     ;; no coordinate alignments
     (lsb/write-long wtr (:no-coordinate-alns indices))))
 
-;;;
-;;; public
-;;;
+;; Public
+;; ------
 
-(def ^:dynamic *alignments-partition-size* 10000)
+(def ^:dynamic *alignments-partition-size*
+  "The number of alignments that is loaded each indexing process. This has an
+  effect on performance of concurrent indexing. The default value is 10,000."
+  10000)
 
 (defn make-index
   "Calculates a BAM index from provided references and alignments. Optionally,
@@ -286,6 +290,8 @@
          (finalize-index refs))))
 
 (defn make-index-from-blocks
+  "Calculates a BAM index from provided references and alignment blocks.
+  Optionally, you can do this process concurrently."
   [refs blocks & {:keys [concurrent] :or {concurrent false}}]
   (let [make-index-fn (fn [refs blocks]
                         (if concurrent
@@ -297,7 +303,7 @@
                                (reduce merge-index))
                           (->> blocks
                                (map #(bam-decoder/decode-alignment-block % refs :pointer))
-                               (make-index* refs blocks))))]
+                               (make-index* refs))))]
     (->> blocks
          (make-index-fn refs)
          (finalize-index refs))))

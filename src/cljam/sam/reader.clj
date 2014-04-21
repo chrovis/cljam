@@ -27,8 +27,11 @@
       (if-not (= (first line) \@)
         (cons (parse-alignment line) (lazy-seq (read-alignments this {})))
         (lazy-seq (read-alignments this {})))))
-  (read-blocks [this]
-    (logging/info "SAMReader does not support read-blocks"))
+  (read-blocks
+    ([this]
+       (logging/info "SAMReader does not support read-blocks"))
+    ([this option]
+       (logging/info "SAMReader does not support read-blocks")))
   (read-coordinate-blocks [this]
     (logging/info "SAMReader does not support read-coordinate-blocks")))
 

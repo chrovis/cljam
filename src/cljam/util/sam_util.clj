@@ -143,7 +143,7 @@
 
      :else 0)))
 
-(defn- get-end [aln]
+(defn get-end [aln]
   (dec
    (+ (:pos aln)
       (count-ref (:cigar aln)))))

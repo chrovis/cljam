@@ -1,7 +1,6 @@
 (ns cljam.bam-index.writer
   (:require [clojure.java.io :as io]
             [cljam.lsb :as lsb]
-            [cljam.cigar :as cgr]
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
             [cljam.bam.decoder :as bam-decoder]
@@ -15,10 +14,10 @@
 ;; BAIWriter
 ;; ---------
 
-(deftype BAIWriter [writer refs f]
+(deftype BAIWriter [^java.io.DataOutputStream writer refs f]
   java.io.Closeable
   (close [this]
-    (.close ^java.io.Closeable (.writer this))))
+    (.close writer)))
 
 ;; Indexing
 ;; --------
@@ -27,22 +26,28 @@
   [^long pos]
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
+;; ### Intermidate data definitions
+;;
+;; Use record for performance.
+;; Record is faster than map for retrieving elements by keyword.
+
+(defrecord IndexStatus [meta-data bin-index linear-index])
+
+(defrecord MetaData [first-offset last-offset aligned-alns unaligned-alns])
+
 ;; ### Initializing
 
 (defn- init-index-status
   "Returns initialized index status. This data structure is intermidate. Must
   be passed `finalize-index` in the final stage."
   []
-  {:meta-data {:first-offset -1
-               :last-offset 0
-               :aligned-alns 0
-               :unaligned-alns 0}
-   ;; Intermidiate bin-index -> {bin1 chunks1, bin2 chunks2, ...}
-   ;; e.g. {4681 [{:beg 97, :end 555} ...], 37450 [...] ...}
-   :bin-index {}
-   ;; Intermidate linear-index -> {pos1 value1, pos2 value2, ...}
-   ;; e.g. {5415 4474732776, 14827 5955073327, ...}
-   :linear-index {}})
+  (IndexStatus. (MetaData. -1 0 0 0)
+                ;; Intermidiate bin-index -> {bin1 chunks1, bin2 chunks2, ...}
+                ;; e.g. {4681 [{:beg 97, :end 555} ...], 37450 [...] ...}
+                {}
+                ;; Intermidate linear-index -> {pos1 value1, pos2 value2, ...}
+                ;; e.g. {5415 4474732776, 14827 5955073327, ...}
+                {}))
 
 ;; ### Updating
 
@@ -51,14 +56,13 @@
   (let [{:keys [first-offset last-offset aligned-alns unaligned-alns]} meta-data
         {:keys [beg end]} (:chunk (:meta aln))
         aligned? (zero? (bit-and (:flag aln) 4))]
-    (assoc meta-data
-      :first-offset (if (or (< (bgzf-util/compare beg first-offset) 1)
-                            (= first-offset -1))
-                      beg first-offset)
-      :last-offset (if (< (bgzf-util/compare last-offset end) 1)
-                     end last-offset)
-      :aligned-alns (if aligned? (inc aligned-alns) aligned-alns)
-      :unaligned-alns (if-not aligned? (inc unaligned-alns) unaligned-alns))))
+    (MetaData. (if (or (< (bgzf-util/compare beg first-offset) 1)
+                       (= first-offset -1))
+                 beg first-offset)
+               (if (< (bgzf-util/compare last-offset end) 1)
+                 end last-offset)
+               (if aligned? (inc aligned-alns) aligned-alns)
+               (if-not aligned? (inc unaligned-alns) unaligned-alns))))
 
 (defn- update-bin-index
   [bin-index aln]
@@ -68,7 +72,7 @@
            (if-let [chunks (get bin-index bin)]
              (if (bgzf-util/same-or-adjacent-blocks? (:end (peek chunks)) (:beg achunk))
                (let [l (assoc (peek chunks) :end (:end achunk))]
-                 (conj (pop chunks) l))
+                 (assoc chunks (dec (count chunks)) l))
                (conj chunks achunk))
              (vector achunk)))))
 
@@ -92,10 +96,9 @@
 
 (defn- update-index-status
   [index-status aln]
-  (assoc index-status
-    :meta-data (update-meta-data (:meta-data index-status) aln)
-    :bin-index (update-bin-index (:bin-index index-status) aln)
-    :linear-index (update-linear-index (:linear-index index-status) aln)))
+  (IndexStatus. (update-meta-data (:meta-data index-status) aln)
+                (update-bin-index (:bin-index index-status) aln)
+                (update-linear-index (:linear-index index-status) aln)))
 
 ;; ### Making index
 
@@ -129,15 +132,15 @@
 
 (defn- merge-meta-data
   [meta1 meta2]
-  {:first-offset (let [f1 (:first-offset meta1)
-                       f2 (:first-offset meta2)]
-                   (cond
-                    (= f1 -1) f2
-                    (= f2 -1) f1
-                    :else (min f1 f2)))
-   :last-offset (max (:last-offset meta1) (:last-offset meta2))
-   :aligned-alns (+ (:aligned-alns meta1) (:aligned-alns meta2))
-   :unaligned-alns (+ (:unaligned-alns meta1) (:unaligned-alns meta2))})
+  (MetaData. (let [f1 (:first-offset meta1)
+                   f2 (:first-offset meta2)]
+               (cond
+                (= f1 -1) f2
+                (= f2 -1) f1
+                :else (min f1 f2)))
+             (max (:last-offset meta1) (:last-offset meta2))
+             (+ (:aligned-alns meta1) (:aligned-alns meta2))
+             (+ (:unaligned-alns meta1) (:unaligned-alns meta2))))
 
 (defn- merge-chunks
   [chunks1 chunks2]
@@ -147,7 +150,7 @@
       (if-let [last-chunk (peek chunks')]
         (if (bgzf-util/same-or-adjacent-blocks? (:end last-chunk) (:beg f))
           (let [l (assoc last-chunk :end (:end f))]
-            (recur r (conj (pop chunks') l)))
+            (recur r (assoc chunks' (dec (count chunks')) l)))
           (recur r (conj chunks' f)))
         (recur r (conj chunks' f)))
       chunks')))
@@ -168,9 +171,9 @@
         idx2 (dissoc idx2 :no-coordinate-alns)]
     (-> (merge-with
          (fn [v1 v2]
-           {:meta-data (merge-meta-data (:meta-data v1) (:meta-data v2))
-            :bin-index (merge-bin-index (:bin-index v1) (:bin-index v2))
-            :linear-index (merge-linear-index (:linear-index v1) (:linear-index v2))})
+           (IndexStatus. (merge-meta-data (:meta-data v1) (:meta-data v2))
+                         (merge-bin-index (:bin-index v1) (:bin-index v2))
+                         (merge-linear-index (:linear-index v1) (:linear-index v2))))
          idx1 idx2)
         (assoc :no-coordinate-alns no-coordinate-alns))))
 
@@ -298,7 +301,7 @@
                           (->> (partition-all *alignments-partition-size* blocks)
                                (pmap (fn [sub-blocks]
                                        (->> sub-blocks
-                                            (map #(bam-decoder/decode-alignment-block % refs :pointer))
+                                            (map #(bam-decoder/pointer-decode-alignment-block % refs))
                                             (make-index* refs))))
                                (reduce merge-index))
                           (->> blocks

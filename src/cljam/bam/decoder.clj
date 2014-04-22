@@ -119,7 +119,7 @@
   [block refs]
   (let [buffer (ByteBuffer/wrap (:data block))]
     (let [ref-id      (lsb/read-int buffer)
-          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+          rname       (or (ref-name refs ref-id) "*")
           pos         (inc (lsb/read-int buffer))
           l-read-name (int (lsb/read-ubyte buffer))
           mapq        (lsb/read-ubyte buffer)
@@ -148,7 +148,7 @@
   [block refs]
   (let [buffer (ByteBuffer/wrap (:data block))]
     (let [ref-id      (lsb/read-int buffer)
-          rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+          rname       (or (ref-name refs ref-id) "*")
           pos         (inc (lsb/read-int buffer))
           l-read-name (int (lsb/read-ubyte buffer))
           _           (lsb/skip buffer 3)
@@ -163,7 +163,7 @@
   [block refs]
   (let [buffer (ByteBuffer/wrap (:data block))]
     (let [ref-id      (lsb/read-int buffer)
-          rname       (if (= ref-id -1) "*" (ref-name refs ref-id))
+          rname       (or (ref-name refs ref-id) "*")
           pos         (inc (lsb/read-int buffer))
           l-read-name (int (lsb/read-ubyte buffer))
           _           (lsb/skip buffer 3)
@@ -171,7 +171,7 @@
           flag        (lsb/read-ushort buffer)
           _           (lsb/skip buffer (+ 16 l-read-name))
           cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))]
-      {:flag flag, :rname rname, :pos pos,:cigar cigar,
+      {:flag flag, :rname rname, :pos pos, :cigar cigar,
        :meta {:chunk {:beg (:pointer-beg block),
                       :end (:pointer-end block)}}})))
 

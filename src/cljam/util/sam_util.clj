@@ -143,10 +143,12 @@
 
      :else 0)))
 
-(defn get-end [aln]
+(defn get-end
+  [aln]
   (dec
    (+ (:pos aln)
-      (count-ref (:cigar aln)))))
+      (count-ref (or (:cigar-bytes (:meta aln))
+                     (:cigar aln))))))
 
 (defn compute-bin
   "Returns indexing bin based on alignment start and end."

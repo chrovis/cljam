@@ -29,11 +29,11 @@
 ;; ### Intermidate data definitions
 ;;
 ;; Use record for performance.
-;; Record is faster than map for retrieving elements by keyword.
-
-(defrecord IndexStatus [meta-data bin-index linear-index])
+;; Record is faster than map for retrieving elements.
 
 (defrecord MetaData [first-offset last-offset aligned-alns unaligned-alns])
+
+(defrecord IndexStatus [^MetaData meta-data bin-index linear-index])
 
 ;; ### Initializing
 
@@ -52,17 +52,25 @@
 ;; ### Updating
 
 (defn- update-meta-data
-  [meta-data aln]
-  (let [{:keys [first-offset last-offset aligned-alns unaligned-alns]} meta-data
+  [^MetaData meta-data aln]
+  (let [first-offset (.first-offset meta-data)
+        last-offset (.last-offset meta-data)
+        aligned-alns (.aligned-alns meta-data)
+        unaligned-alns (.unaligned-alns meta-data)
         {:keys [beg end]} (:chunk (:meta aln))
         aligned? (zero? (bit-and (:flag aln) 4))]
-    (MetaData. (if (or (< (bgzf-util/compare beg first-offset) 1)
-                       (= first-offset -1))
-                 beg first-offset)
-               (if (< (bgzf-util/compare last-offset end) 1)
-                 end last-offset)
-               (if aligned? (inc aligned-alns) aligned-alns)
-               (if-not aligned? (inc unaligned-alns) unaligned-alns))))
+    (MetaData.
+     ;; first-offset
+     (if (or (< (bgzf-util/compare beg first-offset) 1)
+             (= first-offset -1))
+       beg first-offset)
+     ;; last-offset
+     (if (< (bgzf-util/compare last-offset end) 1)
+       end last-offset)
+     ;; aligned-alns
+     (if aligned? (inc aligned-alns) aligned-alns)
+     ;; unaligned-alns
+     (if-not aligned? (inc unaligned-alns) unaligned-alns))))
 
 (defn- update-bin-index
   [bin-index aln]
@@ -78,7 +86,7 @@
 
 (defn- update-linear-index
   [linear-index aln]
-  (let [beg (get-in aln [:meta :chunk :beg])
+  (let [beg (-> aln :meta :chunk :beg)
         aln-beg (:pos aln)
         aln-end (sam-util/get-end aln)
         win-beg (if (zero? aln-end)
@@ -91,14 +99,14 @@
                (if x (min x beg) beg))]
     (loop [i win-beg, ret linear-index]
       (if (<= i win-end)
-        (recur (inc i) (update-in ret [i] min*))
+        (recur (inc i) (assoc ret i (min* (get ret i))))
         ret))))
 
 (defn- update-index-status
-  [index-status aln]
-  (IndexStatus. (update-meta-data (:meta-data index-status) aln)
-                (update-bin-index (:bin-index index-status) aln)
-                (update-linear-index (:linear-index index-status) aln)))
+  [^IndexStatus index-status aln]
+  (IndexStatus. (update-meta-data (.meta-data index-status) aln)
+                (update-bin-index (.bin-index index-status) aln)
+                (update-linear-index (.linear-index index-status) aln)))
 
 ;; ### Making index
 
@@ -131,16 +139,16 @@
 ;; -------------
 
 (defn- merge-meta-data
-  [meta1 meta2]
-  (MetaData. (let [f1 (:first-offset meta1)
-                   f2 (:first-offset meta2)]
+  [^MetaData meta1 ^MetaData meta2]
+  (MetaData. (let [f1 (.first-offset meta1)
+                   f2 (.first-offset meta2)]
                (cond
                 (= f1 -1) f2
                 (= f2 -1) f1
                 :else (min f1 f2)))
-             (max (:last-offset meta1) (:last-offset meta2))
-             (+ (:aligned-alns meta1) (:aligned-alns meta2))
-             (+ (:unaligned-alns meta1) (:unaligned-alns meta2))))
+             (max (.last-offset meta1) (.last-offset meta2))
+             (+ (.aligned-alns meta1) (.aligned-alns meta2))
+             (+ (.unaligned-alns meta1) (.unaligned-alns meta2))))
 
 (defn- merge-chunks
   [chunks1 chunks2]
@@ -170,10 +178,10 @@
         idx1 (dissoc idx1 :no-coordinate-alns)
         idx2 (dissoc idx2 :no-coordinate-alns)]
     (-> (merge-with
-         (fn [v1 v2]
-           (IndexStatus. (merge-meta-data (:meta-data v1) (:meta-data v2))
-                         (merge-bin-index (:bin-index v1) (:bin-index v2))
-                         (merge-linear-index (:linear-index v1) (:linear-index v2))))
+         (fn [^IndexStatus v1 ^IndexStatus v2]
+           (IndexStatus. (merge-meta-data (.meta-data v1) (.meta-data v2))
+                         (merge-bin-index (.bin-index v1) (.bin-index v2))
+                         (merge-linear-index (.linear-index v1) (.linear-index v2))))
          idx1 idx2)
         (assoc :no-coordinate-alns no-coordinate-alns))))
 

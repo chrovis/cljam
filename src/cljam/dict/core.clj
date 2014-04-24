@@ -24,10 +24,10 @@
 (defn create-dict
   "Creates a FASTA sequence dictionary file (.dict) from the specified FASTA
   file. The unfinished file will be deleted when failing."
-  [f reads ur]
+  [f headers sequences ur]
   (with-open [w (writer f)]
     (try
-      (writer/write-dict! w reads ur)
+      (writer/write-dict! w headers sequences ur)
       (catch Exception e (do
                            (fs/delete (.f w))
                            (logging/error "Failed to create dictionary")

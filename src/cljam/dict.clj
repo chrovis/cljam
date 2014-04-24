@@ -11,5 +11,6 @@
   [fasta out-dict]
   (with-open [r (fasta/reader fasta)]
     (dict-core/create-dict out-dict
-                           (fasta/read r)
+                           (fasta/read-headers r)
+                           (fasta/read-sequences r)
                            (str (.. (io/file fasta) getCanonicalFile toURI)))))

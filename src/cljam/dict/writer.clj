@@ -1,35 +1,71 @@
 (ns cljam.dict.writer
+  "Makes a sequence dictionary from FASTA data, and writes it to a file."
   (:require [pandect.core :refer [md5]]
             [cljam.common :refer [version]]
-            [cljam.util :refer [string->bytes]])
+            [cljam.util :refer [string->bytes graph?]])
   (:import java.io.BufferedWriter))
 
 ;; DICTWriter
 ;; ----------
 
-(deftype DICTWriter [writer f]
+(deftype DICTWriter [^java.io.BufferedWriter writer f]
   java.io.Closeable
   (close [this]
-    (.close ^java.io.Closeable (.writer this))))
+    (.close writer)))
 
 ;; Making dict
 ;; -----------
 
-(def ^:private upper-case-offset
-  (- (byte \A) (byte \a)))
+(def ^:const ^:private upper-case-offset
+  "Equals to `(- (byte \\A) (byte \\a))`."
+  -32)
 
 (defn- upper-case [b]
   (if (or (< b (byte \a)) (> b (byte \z)))
     b
     (byte (+ b upper-case-offset))))
 
-(defn- make-hash [seq]
-  (let [bases ^bytes (string->bytes seq)]
+(defn- make-hash
+  "Normalizes the sequence string, calculates its MD5 hash, and returns it."
+  [sequence]
+  (let [bases ^bytes (string->bytes sequence)]
     (loop [i 0]
       (when (< i (count bases))
         (aset bases i ^byte (upper-case (nth bases i)))
         (recur (inc i))))
     (md5 bases)))
+
+(defn- init-dict-status
+  []
+  {:sequence "", :len 0})
+
+(defn- update-dict-status
+  [dict-status sequence]
+  {:sequence (str (:sequence dict-status) sequence)
+   :len (+ (:len dict-status) (count (filter graph? sequence)))})
+
+(defn make-dict
+  "Calculates sequence dictionary from the headers and sequences, returning it
+  as a map."
+  [headers sequences ur]
+  (loop [[seq* & rest] sequences
+         name (:name seq*)
+         dict-status (init-dict-status)
+         dicts {}]
+    (if seq*
+      (let [name' (:name seq*)
+            new? (not= name' name)
+            dict-status' (update-dict-status
+                          (if new? (init-dict-status) dict-status) (:sequence seq*))
+            dicts' (if new?
+                     (assoc dicts name {:blen (:len dict-status)
+                                        :ur ur
+                                        :m5 (make-hash (:sequence dict-status))})
+                     dicts)]
+        (recur rest name' dict-status' dicts'))
+      (assoc dicts name {:blen (:len dict-status)
+                         :ur ur
+                         :m5 (make-hash (:sequence dict-status))}))))
 
 ;; Writing
 ;; -------
@@ -40,18 +76,22 @@
   (.newLine wtr))
 
 (defn- write-sequence!
-  [^BufferedWriter wtr ref seq ur]
-  (let [blen (count (filter (partial not= \space) seq))
-        m5 (make-hash seq)]
-    (.write wtr (str "@SQ\tSN:" ref "\tLN:" blen "\tUR:" ur "\tM5:" m5)))
+  [^BufferedWriter wtr name blen ur m5]
+  (.write wtr (str "@SQ\tSN:" name "\tLN:" blen "\tUR:" ur "\tM5:" m5))
   (.newLine wtr))
 
 (defn- write-dict*!
-  [^BufferedWriter wtr reads ur]
-  (write-header! wtr)
-  (doseq [sq reads]
-    (write-sequence! wtr (:rname sq) (:seq sq) ur)))
+  [wtr headers sequences ur]
+  (let [dicts (make-dict headers sequences ur)]
+   (write-header! wtr)
+   (doseq [header headers]
+     (let [dict (get dicts (:name header))]
+      (write-sequence! wtr
+                       (:name header)
+                       (:blen dict)
+                       (:ur dict)
+                       (:m5 dict))))))
 
 (defn write-dict!
-  [^DICTWriter wtr reads ur]
-  (write-dict*! (.writer wtr) reads ur))
+  [^DICTWriter wtr headers sequences ur]
+  (write-dict*! (.writer wtr) headers sequences ur))

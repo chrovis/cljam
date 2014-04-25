@@ -69,7 +69,7 @@
   (fact "about pileup"
     ;; NB: "pileup" output format may change in future (maybe)
     (with-out-file temp-out (cli/pileup [test-sorted-bam-file])) => anything
-    ;(slurp temp-out) => (slurp "test/resources/t_cli.pileup")
+    ;(slurp temp-out) => (slurp "test-resources/t_cli.pileup")
     ))
 
 (with-state-changes [(before :facts (do (prepare-cache!)

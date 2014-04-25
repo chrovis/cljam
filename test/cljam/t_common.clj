@@ -57,33 +57,33 @@
 
 ;; ### SAM files
 
-(def test-sam-file "test/resources/test.sam")
+(def test-sam-file "test-resources/test.sam")
 
 ;; ### BAM files
 
-(def test-bam-file "test/resources/test.bam")
-(def test-sorted-bam-file "test/resources/test.sorted.bam")
-(def medium-bam-file "test/resources/medium.bam")
+(def test-bam-file "test-resources/test.bam")
+(def test-sorted-bam-file "test-resources/test.sorted.bam")
+(def medium-bam-file "test-resources/medium.bam")
 (def large-bam-file (cavia/resource mycavia "large.bam"))
 
 ;; ### BAM index files
 
-(def test-bai-file "test/resources/test.sorted.bam.bai")
+(def test-bai-file "test-resources/test.sorted.bam.bai")
 (def test-large-bai-file (cavia/resource mycavia "large.bai"))
 
 ;; ### FASTA files
 
-(def test-fa-file  "test/resources/test.fa")
-(def medium-fa-file "test/resources/medium.fa")
+(def test-fa-file  "test-resources/test.fa")
+(def medium-fa-file "test-resources/medium.fa")
 
 ;; ### FASTA index files
 
-(def test-fai-file "test/resources/test.fa.fai")
-(def medium-fai-file "test/resources/medium.fa.fai")
+(def test-fai-file "test-resources/test.fa.fai")
+(def medium-fai-file "test-resources/medium.fa.fai")
 
 ;; ### TABIX files
 
-(def test-tabix-file "test/resources/test.gtf.gz.tbi")
+(def test-tabix-file "test-resources/test.gtf.gz.tbi")
 (def test-large-tabix-file (cavia/resource mycavia "large.tbi"))
 
 (def test-sam

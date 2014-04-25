@@ -9,10 +9,10 @@
                                          compressed-bases->chars
                                          parse-header]]
             [cljam.bam-index :refer [get-spans]]
-            [cljam.bam.common :refer [bam-magic fixed-block-size]]
+            [cljam.bam.common :refer [fixed-block-size]]
             [cljam.bam.decoder :as decoder])
   (:import java.util.Arrays
-           [java.io DataInputStream Closeable IOException EOFException]
+           [java.io DataInputStream Closeable EOFException]
            [java.nio ByteBuffer ByteOrder]
            [bgzf4j BGZFInputStream]))
 
@@ -235,8 +235,6 @@
 
 (defn load-headers
   [rdr]
-  (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes bam-magic))
-    (throw (IOException. "Invalid BAM file header")))
   (let [header (parse-header (lsb/read-string rdr (lsb/read-int rdr)))
         n-ref (lsb/read-int rdr)
         refs (loop [i n-ref, ret []]

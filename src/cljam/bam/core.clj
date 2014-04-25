@@ -1,36 +1,42 @@
 (ns cljam.bam.core
+  "The core of BAM features."
   (:require [clojure.java.io :refer [file]]
+            [me.raynes.fs :as fs]
             [cljam.io]
-            (cljam.bam [reader :as reader]
+            [cljam.lsb :as lsb]
+            (cljam.bam [common :refer [bam-magic]]
+                       [reader :as reader]
                        [writer :as writer])
             [cljam.bam-index :as bai])
   (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException EOFException]
+           [java.io DataInputStream DataOutputStream IOException]
            [bgzf4j BGZFInputStream BGZFOutputStream]
-           [java.nio ByteBuffer ByteOrder]))
+           cljam.bam.reader.BAMReader
+           cljam.bam.writer.BAMWriter))
 
-;;;
-;;; reader
-;;;
+;; Reading
+;; -------
 
 (defn- bam-index [f & {:keys [ignore]
                        :or {ignore false}}]
   (if-not ignore
     (let [bai-f (str f ".bai")]
-      (if (.exists (file bai-f))
+      (if (fs/exists? bai-f)
         (bai/bam-index bai-f)
         (throw (IOException. "Could not find BAM Index file"))))))
 
-(defn reader [f {:keys [ignore-index]
-                 :or {ignore-index false}}]
+(defn ^BAMReader reader [f {:keys [ignore-index]
+                            :or {ignore-index false}}]
   (let [rdr (BGZFInputStream. (file f))
         data-rdr (DataInputStream. rdr)]
+    (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes ^String bam-magic))
+      (throw (IOException. "Invalid BAM file")))
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
           index (bam-index f :ignore ignore-index)]
-      (cljam.bam.reader.BAMReader. (.getAbsolutePath (file f))
-                                   header refs rdr data-rdr index))))
+      (BAMReader. (.getAbsolutePath (file f))
+                  header refs rdr data-rdr index))))
 
-(extend-type cljam.bam.reader.BAMReader
+(extend-type BAMReader
   cljam.io/ISAMReader
   (reader-path [this]
     (.f this))
@@ -54,16 +60,14 @@
   (read-coordinate-blocks [this]
     (reader/read-blocks-sequentially* this :coordinate)))
 
+;; Writing
+;; -------
 
-;;
-;; writer
-;;
+(defn ^BAMWriter writer [f]
+  (BAMWriter. (.getAbsolutePath (file f))
+              (DataOutputStream. (BGZFOutputStream. (file f)))))
 
-(defn writer [f]
-  (cljam.bam.writer.BAMWriter. (.getAbsolutePath (file f))
-                               (DataOutputStream. (BGZFOutputStream. (file f)))))
-
-(extend-type cljam.bam.writer.BAMWriter
+(extend-type BAMWriter
   cljam.io/ISAMWriter
   (writer-path [this]
     (.f this))

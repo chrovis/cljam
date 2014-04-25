@@ -3028,174 +3028,172 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.pileup.mpileup" name="cljam.pileup.mpileup"><h1 class="project-name">cljam.pileup.mpileup</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.pileup.mpileup
-  (:require [clojure.string :as str]
-            [cljam.cigar :as cgr]
-            [cljam.sequence :as cseq]
-            [cljam.io :as io]
-            [cljam.fasta :as fa]
-            [cljam.pileup.common :refer [window-width step center]]
-            [cljam.pileup.pileup :refer [rpositions]])
-  (:import cljam.fasta.reader.FASTAReader))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- pickup-qual [aln pos]
-  (if (= (:qual aln) &quot;*&quot;)
-    \~
-    (nth (:qual aln) pos)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- encode-seq* [seq*]
-  (loop [[f &amp; r] (filter #(nil? (#{\P} (:op %))) seq*)
-         ret     []
-         op      nil
-         tmp     {:n 0, :op nil, :seq nil}]
-    (if (nil? f)
-      (case op
-        \M (apply conj ret (map str (:seq tmp)))
-        \I (if (seq ret)
-             (update-in ret [(dec (count ret))] str &quot;+&quot; (:n tmp) (apply str (:seq tmp)))
-             ret)
-        \D (apply conj ret (map str (:seq tmp)))
-        \N (apply conj ret (map str (:seq tmp)))
-        ret)
-      (if (nil? op)
-        (recur r ret (:op f) f)
-        (if (= (:op f) op)
-          (recur r ret (:op f) (-&gt; tmp
-                                   (update-in [:n] + (:n f))
-                                   (assoc :op (:op f))
-                                   (update-in [:seq] (partial apply conj) (:seq f))))
-          (let [new-ret (case op
-                          \M (apply conj ret (map str (:seq tmp)))
-                          \I (if (seq ret)
-                               (update-in ret [(dec (count ret))] str &quot;+&quot; (:n tmp) (apply str (:seq tmp)))
-                               ret)
-                          \D (apply conj ret (map str (:seq tmp)))
-                          \N (apply conj ret (map str (:seq tmp)))
-                          ret)]
-            (recur r new-ret (:op f) f)))))))</pre></td></tr><tr><td class="docs"><p>Encode sequence strings, returning string sequence for mpileup output.
-  e.g. ({:n 2, :op \M :seq [\T \A]} ... {:n 1, :op \M :seq [\C]})
-       => ("^?TA" ... "C$")</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- encode-seq
-  &quot;Encode sequence strings, returning string sequence for mpileup output.
-  e.g. ({:n 2, :op \\M :seq [\\T \\A]} ... {:n 1, :op \\M :seq [\\C]})
-       =&gt; (\&quot;^?TA\&quot; ... \&quot;C$\&quot;)&quot;
-  [seq*]
-  (let [seq** (encode-seq* seq*)]
-    (-&gt; (update-in seq** [(dec (count seq**))] str &quot;$&quot;) ; Append &quot;$&quot; to the end
-        (update-in [0] #(str &quot;^?&quot; %)))))                ; Insert &quot;^?&quot; before the begin</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord ^:private PileupStatus [count seq qual])</pre></td></tr><tr><td class="docs"><p>Modify sequence strings to referenced version.
-  e.g. ({:n 2, :op \M :seq [\T \A]} ...)
-       => ({:n 2, :op \M :seq [. .] :pos 7} ...)</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- ref-wrap
-  &quot;Modify sequence strings to referenced version.
-  e.g. ({:n 2, :op \\M :seq [\\T \\A]} ...)
-       =&gt; ({:n 2, :op \\M :seq [\\. \\.] :pos 7} ...)&quot;
-  [seq* ref-seq left]
-  (let [positioned-seq (loop [ret     []
-                              [f &amp; r] seq*
-                              pos     left]
-                         (if (nil? f)
-                           ret
-                           (recur (conj ret (assoc f :pos pos))
-                                  r
-                                  (if-not (nil? (#{\M \D \N \= \X} (:op f)))
-                                    (+ pos (count (:seq f)))
-                                    pos))))]
-    (map (fn [s]
-           (if-not (nil? (#{\M \D \N \= \X} (:op s)))
-             (update-in s [:seq] (partial map-indexed
-                                          (fn [idx itm]
-                                            (if (= itm (nth ref-seq (+ (dec (:pos s)) idx)))
-                                              \.
-                                              itm))))
-             s))
-         positioned-seq)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- count-for-alignment
-  [aln ref-seq rname positions]
-  (if (= rname (:rname aln))
-    (let [left  (:pos aln)
-          right (dec (+ left (cgr/count-ref (:cigar aln))))
-          seq** (cseq/parse (:seq aln) (:cigar aln))
-          seq*  (encode-seq (if (nil? ref-seq)
-                              seq**
-                              (ref-wrap seq** ref-seq left)))]
-      (map (fn [p]
-             (if (&lt;= left p right)
-               (PileupStatus. 1 (nth seq* (- p left)) (pickup-qual aln (- p left)))
-               (PileupStatus. 0 nil nil))) positions))
-    (repeat (count positions) (PileupStatus. 0 nil nil))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- pickup-ref
-  [ref-seq pos]
-  (if (nil? ref-seq)
-    \N
-    (let [idx (dec pos)]
-      (if (neg? idx)
-        \N
-        (if-let [ref (nth ref-seq idx)]
-          ref
-          \N)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- count-for-positions
-  [alns ref-line rname positions]
-  (if (pos? (count alns))
-    (let [cfas (map #(count-for-alignment % (:seq ref-line) rname positions) alns)
-          plp1 (apply map (fn [&amp; a]
-                            {:rname rname
-                             :count (reduce + (map :count a))
-                             :seq   (str/join (map :seq a))
-                             :qual  (str/join (map :qual a))}) cfas)]
-      (map #(assoc %2 :pos %1 :ref (pickup-ref (:seq ref-line) %1))
-           positions plp1))
-    (let [plp1 (repeat (count positions) {:rname rname
-                                          :count 0
-                                          :seq   nil
-                                          :qual  nil})]
-      (map #(assoc %2 :pos %1 :ref (pickup-ref (:seq ref-line) %1))
-           positions plp1))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-alignments
-  [rdr rname rlength pos]
-  (let [left (let [val (- pos window-width)]
-               (if (&lt; val 0)
-                 0
-                 val))
-        right (let [val (+ pos window-width)]
-                (if (&lt; rlength val)
-                  rlength
-                  val))]
-    (io/read-alignments rdr {:chr rname
-                             :start left
-                             :end right
-                             :depth :deep})))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-ref-fasta-line
-  [fa-rdr rname]
-  (if-not (nil? fa-rdr)
-    (first
-     (filter #(= (:rname %) rname) (fa/read fa-rdr)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- search-ref
-  [refs rname]
-  (first
-   (filter (fn [r] (= (:name r) rname))
-           refs)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- pileup*
-  ([rdr ^FASTAReader fa-rdr rname rlength start end]
-     (flatten
-      (let [parts (partition-all step (rpositions start end))]
-        (map (fn [positions]
-               (let [pos (if (= (count positions) step)
-                           (nth positions center)
-                           (nth positions (quot (count positions) 2)))
-                     alns (read-alignments rdr rname rlength pos)
-                     ref-line (read-ref-fasta-line fa-rdr rname)]
-                 (count-for-positions alns ref-line rname positions)))
-             parts)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn pileup
-  ([rdr rname]
-     (pileup rdr rname -1 -1))
-  ([rdr rname start* end* &amp; {:keys [ref-fasta] :or {ref-fasta nil}}]
-     (let [r (search-ref (.refs rdr) rname)]
-       (if (nil? r)
-         nil
-         (pileup* rdr
-                  ref-fasta
-                  rname (:len r)
-                  (if (neg? start*) 0 start*)
-                  (if (neg? end*) (:len r) end*))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.bam.decoder" name="cljam.bam.decoder"><h1 class="project-name">cljam.bam.decoder</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Decoder of BAM alignment blocks.</p>
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.bam.decoder
+  (:require [clojure.string :refer [join]]
+            [cljam.util :refer [ubyte hex-string-&gt;bytes]]
+            [cljam.util.sam-util :refer [phred-&gt;fastq compressed-bases-&gt;chars
+                                         ref-name]]
+            [cljam.lsb :as lsb]
+            [cljam.bam.common :refer [fixed-block-size]])
+  (:import java.util.Arrays
+           [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- validate-tag-type
+  [t]
+  (case t
+    \I \i
+    \s \i
+    \S \i
+    \c \i
+    \C \i
+    t))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- parse-tag-single [tag-type ^ByteBuffer bb]
+  (case tag-type
+    \Z (lsb/read-null-terminated-string bb)
+    \A (.get bb)
+    \I (bit-and (.getInt bb) 0xffffffff)
+    \i (.getInt bb)
+    \s (int (.getShort bb))
+    \S (bit-and (.getShort bb) 0xffff)
+    \c (int (.get bb))
+    \C (bit-and (int (.get bb)) 0xff)
+    \f (.getFloat bb)
+    \H (hex-string-&gt;bytes (lsb/read-null-terminated-string bb))
+    (throw (Exception. &quot;Unrecognized tag type&quot;))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- parse-tag-array [^ByteBuffer bb]
+  (let [typ (char (.get bb))
+        len (.getInt bb)]
+    (-&gt;&gt; (for [i (range len)]
+           (case typ
+             \c (int (.get bb))
+             \C (bit-and (int (.get bb)) 0xff)
+             \s (int (.getShort bb))
+             \S (bit-and (.getShort bb) 0xffff)
+             \i (.getInt bb)
+             \I (bit-and (.getInt bb) 0xffffffff)
+             \f (.getFloat bb)
+             (throw (Exception. (str &quot;Unrecognized tag array type: &quot; typ)))))
+         (cons typ)
+         (join \,))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- parse-option [^ByteBuffer bb]
+  (let [tag (str (char (.get bb)) (char (.get bb)))
+        typ (char (.get bb))]
+    {(keyword tag) {:type  (str (validate-tag-type typ))
+                    :value (if (= typ \B)
+                             (parse-tag-array bb)
+                             (parse-tag-single typ bb))}}))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn decode-options [rest]
+  (let [bb (ByteBuffer/wrap rest)]
+    (.order bb ByteOrder/LITTLE_ENDIAN)
+    (loop [options []]
+      (if-not (.hasRemaining bb)
+        options
+        (recur (conj options (parse-option bb)))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn options-size
+  [^long block-size ^long l-read-name ^long n-cigar-op ^long l-seq]
+  (- block-size
+     fixed-block-size
+     l-read-name
+     (* n-cigar-op 4)
+     (int (/ (inc l-seq) 2))
+     l-seq))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn decode-qual [^bytes b]
+  (if (Arrays/equals b (byte-array (count b) (ubyte 0xff)))
+    &quot;*&quot;
+    (phred-&gt;fastq b)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn decode-seq [seq-bytes length]
+  (join (compressed-bases-&gt;chars length seq-bytes 0)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn decode-next-ref-id [refs n rname]
+  (cond
+    (= n -1) &quot;*&quot;
+    (= (ref-name refs n) rname) &quot;=&quot;
+    :else (ref-name refs n)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private cigar-op-map
+  (hash-map (byte 0) \M
+            (byte 1) \I
+            (byte 2) \D
+            (byte 3) \N
+            (byte 4) \S
+            (byte 5) \H
+            (byte 6) \P
+            (byte 7) \=
+            (byte 8) \X))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- decode-cigar-op [op]
+  (get cigar-op-map op))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn decode-cigar
+  [cigar-bytes]
+  (let [buf (ByteBuffer/wrap cigar-bytes)]
+    (.order buf ByteOrder/LITTLE_ENDIAN)
+    (loop [sb (StringBuilder.)]
+      (if (.hasRemaining buf)
+        (let [b  (.getInt buf)
+              op (bit-and b 0xF)
+              n  (bit-shift-right b 4)]
+          (recur (doto sb (.append n)
+                          (.append (decode-cigar-op op)))))
+        (str sb)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn deep-decode-alignment-block
+  [block refs]
+  (let [buffer (ByteBuffer/wrap (:data block))]
+    (let [ref-id      (lsb/read-int buffer)
+          rname       (or (ref-name refs ref-id) &quot;*&quot;)
+          pos         (inc (lsb/read-int buffer))
+          l-read-name (int (lsb/read-ubyte buffer))
+          mapq        (lsb/read-ubyte buffer)
+          bin         (lsb/read-ushort buffer)
+          n-cigar-op  (lsb/read-ushort buffer)
+          flag        (lsb/read-ushort buffer)
+          l-seq       (lsb/read-int buffer)
+          rnext       (decode-next-ref-id refs (lsb/read-int buffer) rname)
+          pnext       (inc (lsb/read-int buffer))
+          tlen        (lsb/read-int buffer)
+          qname       (lsb/read-string buffer (dec l-read-name))
+          _           (lsb/skip buffer 1)
+          cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
+          seq         (decode-seq (lsb/read-bytes buffer (/ (inc l-seq) 2)) l-seq)
+          qual        (decode-qual (lsb/read-bytes buffer l-seq))
+          rest        (lsb/read-bytes buffer (options-size (:size block)
+                                                           l-read-name
+                                                           n-cigar-op
+                                                           l-seq))
+          options     (decode-options rest)]
+      {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
+       :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
+       :qual qual, :options options})))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn light-decode-alignment-block
+  [block refs]
+  (let [buffer (ByteBuffer/wrap (:data block))]
+    (let [ref-id      (lsb/read-int buffer)
+          rname       (or (ref-name refs ref-id) &quot;*&quot;)
+          pos         (inc (lsb/read-int buffer))
+          l-read-name (int (lsb/read-ubyte buffer))
+          _           (lsb/skip buffer 3)
+          n-cigar-op  (lsb/read-ushort buffer)
+          _           (lsb/skip buffer 2)
+          l-seq       (lsb/read-int buffer)
+          _           (lsb/skip buffer (+ 13 (dec l-read-name)))
+          cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))]
+      {:rname rname, :pos pos, :cigar cigar})))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn pointer-decode-alignment-block
+  [block refs]
+  (let [buffer (ByteBuffer/wrap (:data block))]
+    (let [rname       (or (ref-name refs (lsb/read-int buffer)) &quot;*&quot;)
+          pos         (inc (lsb/read-int buffer))
+          l-read-name (int (lsb/read-ubyte buffer))
+          _           (lsb/skip buffer 3)
+          n-cigar-op  (lsb/read-ushort buffer)
+          flag        (lsb/read-ushort buffer)
+          _           (lsb/skip buffer (+ 16 l-read-name))
+          cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))]
+      {:flag flag, :rname rname, :pos pos,
+       :meta {:chunk {:beg (:pointer-beg block),
+                      :end (:pointer-end block)}
+              :cigar-bytes cigar-bytes}})))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn decode-alignment-block
+  [block refs depth]
+  (let [f (case depth
+            :deep deep-decode-alignment-block
+            :shallow light-decode-alignment-block
+            :pointer pointer-decode-alignment-block)]
+    (f block refs)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
        SyntaxHighlighter.all()</script></body></html>

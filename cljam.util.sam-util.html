@@ -3138,20 +3138,22 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [end (dec end)]
     (cond
      (= (bit-shift-right beg 14) (bit-shift-right end 14))
-     (+ (/ (dec (bit-shift-left 1 15)) 7) (bit-shift-right beg 14))
+     (+ 4681 (bit-shift-right beg 14))
      (= (bit-shift-right beg 17) (bit-shift-right end 17))
-     (+ (/ (dec (bit-shift-left 1 12)) 7) (bit-shift-right beg 17))
+     (+ 585 (bit-shift-right beg 17))
      (= (bit-shift-right beg 20) (bit-shift-right end 20))
-     (+ (/ (dec (bit-shift-left 1 9)) 7) (bit-shift-right beg 20))
+     (+ 73 (bit-shift-right beg 20))
      (= (bit-shift-right beg 23) (bit-shift-right end 23))
-     (+ (/ (dec (bit-shift-left 1 6)) 7) (bit-shift-right beg 23))
+     (+ 9 (bit-shift-right beg 23))
      (= (bit-shift-right beg 26) (bit-shift-right end 26))
-     (+ (/ (dec (bit-shift-left 1 3)) 7) (bit-shift-right beg 26))
+     (+ 1 (bit-shift-right beg 26))
      :else 0)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-end [aln]
+</td><td class="codes"><pre class="brush: clojure">(defn get-end
+  [aln]
   (dec
    (+ (:pos aln)
-      (count-ref (:cigar aln)))))</pre></td></tr><tr><td class="docs"><p>Returns indexing bin based on alignment start and end.</p>
+      (count-ref (or (:cigar-bytes (:meta aln))
+                     (:cigar aln))))))</pre></td></tr><tr><td class="docs"><p>Returns indexing bin based on alignment start and end.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn compute-bin
   [aln]
   (let [beg (dec (:pos aln))

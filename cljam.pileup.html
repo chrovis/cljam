@@ -3034,8 +3034,11 @@ net.brehaut.ClojureTools = (function (SH) {
             [clojure.java.io :refer [writer]]
             [cljam.bam :as bam]
             [cljam.io :as io]
+            [cljam.pileup.common :as plpc]
             [cljam.pileup.pileup :as plp]
             [cljam.pileup.mpileup :as mplp]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def window-width plpc/window-width)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def first-pos plp/first-pos)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def pileup plp/pileup)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def mpileup mplp/pileup)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn create-mpileup

@@ -3230,7 +3230,7 @@ net.brehaut.ClojureTools = (function (SH) {
      (not= (count arguments) 1) (exit 1 (faidx-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (fai/create-index! f (str f &quot;.fai&quot;))))
+      (fai/create-index f (str f &quot;.fai&quot;))))
   nil)</pre></td></tr><tr><td class="docs"><h3>dict command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private dict-cli-options

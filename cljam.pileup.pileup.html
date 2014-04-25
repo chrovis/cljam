@@ -3089,7 +3089,13 @@ net.brehaut.ClojureTools = (function (SH) {
                                 (nth positions (quot (count positions) 2)))
                     ^clojure.lang.LazySeq alns (read-alignments-memo rdr rname rlength pos)]
                 (count-for-positions alns rname positions)))
-            parts)))))</pre></td></tr><tr><td class="docs">
+            parts)))))</pre></td></tr><tr><td class="docs"><p>Return a position of first alignment in left-right, or nil.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn first-pos
+  [rdr ^String rname ^Long left ^Long right]
+  (:pos (first (io/read-alignments rdr {:chr rname
+                                        :start left
+                                        :end right
+                                        :depth :first-only}))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn pileup
   ([^cljam.bam.reader.BAMReader rdr ^String rname]
      (pileup rdr rname -1 -1))

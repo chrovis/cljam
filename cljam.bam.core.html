@@ -3028,34 +3028,40 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.bam.core" name="cljam.bam.core"><h1 class="project-name">cljam.bam.core</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.bam.core" name="cljam.bam.core"><h1 class="project-name">cljam.bam.core</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>The core of BAM features.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.bam.core
   (:require [clojure.java.io :refer [file]]
+            [me.raynes.fs :as fs]
             [cljam.io]
-            (cljam.bam [reader :as reader]
+            [cljam.lsb :as lsb]
+            (cljam.bam [common :refer [bam-magic]]
+                       [reader :as reader]
                        [writer :as writer])
             [cljam.bam-index :as bai])
   (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException EOFException]
+           [java.io DataInputStream DataOutputStream IOException]
            [bgzf4j BGZFInputStream BGZFOutputStream]
-           [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs"><p>reader</p>
+           cljam.bam.reader.BAMReader
+           cljam.bam.writer.BAMWriter))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- bam-index [f &amp; {:keys [ignore]
                        :or {ignore false}}]
   (if-not ignore
     (let [bai-f (str f &quot;.bai&quot;)]
-      (if (.exists (file bai-f))
+      (if (fs/exists? bai-f)
         (bai/bam-index bai-f)
         (throw (IOException. &quot;Could not find BAM Index file&quot;))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn reader [f {:keys [ignore-index]
-                 :or {ignore-index false}}]
+</td><td class="codes"><pre class="brush: clojure">(defn ^BAMReader reader [f {:keys [ignore-index]
+                            :or {ignore-index false}}]
   (let [rdr (BGZFInputStream. (file f))
         data-rdr (DataInputStream. rdr)]
+    (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes ^String bam-magic))
+      (throw (IOException. &quot;Invalid BAM file&quot;)))
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
           index (bam-index f :ignore ignore-index)]
-      (cljam.bam.reader.BAMReader. (.getAbsolutePath (file f))
-                                   header refs rdr data-rdr index))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(extend-type cljam.bam.reader.BAMReader
+      (BAMReader. (.getAbsolutePath (file f))
+                  header refs rdr data-rdr index))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(extend-type BAMReader
   cljam.io/ISAMReader
   (reader-path [this]
     (.f this))
@@ -3071,15 +3077,18 @@ net.brehaut.ClojureTools = (function (SH) {
     (if (nil? chr)
       (reader/read-alignments-sequentially* this depth)
       (reader/read-alignments* this chr start end depth)))
-  (read-blocks [this]
-    (reader/read-blocks-sequentially* this :normal))
+  (read-blocks
+    ([this]
+       (reader/read-blocks-sequentially* this :normal))
+    ([this {:keys [mode] :or [mode :normal]}]
+       (reader/read-blocks-sequentially* this mode)))
   (read-coordinate-blocks [this]
-    (reader/read-blocks-sequentially* this :coordinate)))</pre></td></tr><tr><td class="docs"><p>writer</p>
+    (reader/read-blocks-sequentially* this :coordinate)))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn writer [f]
-  (cljam.bam.writer.BAMWriter. (.getAbsolutePath (file f))
-                               (DataOutputStream. (BGZFOutputStream. (file f)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(extend-type cljam.bam.writer.BAMWriter
+</td><td class="codes"><pre class="brush: clojure">(defn ^BAMWriter writer [f]
+  (BAMWriter. (.getAbsolutePath (file f))
+              (DataOutputStream. (BGZFOutputStream. (file f)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(extend-type BAMWriter
   cljam.io/ISAMWriter
   (writer-path [this]
     (.f this))

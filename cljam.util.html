@@ -3064,7 +3064,14 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn str-&gt;int [str]
   (try
     (Integer. ^String (re-find #&quot;\d+&quot; str))
-    (catch Exception e nil)))</pre></td></tr><tr><td class="docs"><h2>seq utils</h2>
+    (catch Exception e nil)))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a visible character, false if not.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn graph?
+  [c]
+  (&lt;= 0x20 (byte c) 0x7E))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a character that creates "white space" in displayed
+  text.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn space?
+  [c]
+  (not (nil? (#{\space \tab \newline \formfeed \return (char 0x0b)} c))))</pre></td></tr><tr><td class="docs"><h2>seq utils</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn gen-vec
   ([n]

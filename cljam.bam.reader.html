@@ -3040,9 +3040,10 @@ net.brehaut.ClojureTools = (function (SH) {
                                          compressed-bases-&gt;chars
                                          parse-header]]
             [cljam.bam-index :refer [get-spans]]
-            [cljam.bam.common :refer [bam-magic fixed-block-size]])
+            [cljam.bam.common :refer [fixed-block-size]]
+            [cljam.bam.decoder :as decoder])
   (:import java.util.Arrays
-           [java.io DataInputStream Closeable IOException EOFException]
+           [java.io DataInputStream Closeable EOFException]
            [java.nio ByteBuffer ByteOrder]
            [bgzf4j BGZFInputStream]))</pre></td></tr><tr><td class="docs"><p>BAMReader</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
@@ -3051,99 +3052,6 @@ net.brehaut.ClojureTools = (function (SH) {
   (close [this]
     (.close ^Closeable (.reader this))))</pre></td></tr><tr><td class="docs"><p>read alignment</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- validate-tag-type
-  [t]
-  (case t
-    \I \i
-    \s \i
-    \S \i
-    \c \i
-    \C \i
-    t))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- parse-tag-single [tag-type ^ByteBuffer bb]
-  (case tag-type
-    \Z (lsb/read-null-terminated-string bb)
-    \A (.get bb)
-    \I (bit-and (.getInt bb) 0xffffffff)
-    \i (.getInt bb)
-    \s (int (.getShort bb))
-    \S (bit-and (.getShort bb) 0xffff)
-    \c (int (.get bb))
-    \C (bit-and (int (.get bb)) 0xff)
-    \f (.getFloat bb)
-    \H (hex-string-&gt;bytes (lsb/read-null-terminated-string bb))
-    (throw (Exception. &quot;Unrecognized tag type&quot;))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- parse-tag-array [^ByteBuffer bb]
-  (let [typ (char (.get bb))
-        len (.getInt bb)]
-    (-&gt;&gt; (for [i (range len)]
-           (case typ
-             \c (int (.get bb))
-             \C (bit-and (int (.get bb)) 0xff)
-             \s (int (.getShort bb))
-             \S (bit-and (.getShort bb) 0xffff)
-             \i (.getInt bb)
-             \I (bit-and (.getInt bb) 0xffffffff)
-             \f (.getFloat bb)
-             (throw (Exception. (str &quot;Unrecognized tag array type: &quot; typ)))))
-         (cons typ)
-         (join \,))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- parse-option [^ByteBuffer bb]
-  (let [tag (str (char (.get bb)) (char (.get bb)))
-        typ (char (.get bb))]
-    {(keyword tag) {:type  (str (validate-tag-type typ))
-                    :value (if (= typ \B)
-                             (parse-tag-array bb)
-                             (parse-tag-single typ bb))}}))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- parse-options [rest]
-  (let [bb (ByteBuffer/wrap rest)]
-    (.order bb ByteOrder/LITTLE_ENDIAN)
-    (loop [options []]
-      (if-not (.hasRemaining bb)
-        options
-        (recur (conj options (parse-option bb)))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- options-size
-  [^long block-size ^long l-read-name ^long n-cigar-op ^long l-seq]
-  (- block-size
-     fixed-block-size
-     l-read-name
-     (* n-cigar-op 4)
-     (int (/ (inc l-seq) 2))
-     l-seq))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- decode-qual [^bytes b]
-  (if (Arrays/equals b (byte-array (count b) (ubyte 0xff)))
-    &quot;*&quot;
-    (phred-&gt;fastq b)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- decode-seq [seq-bytes length]
-  (join (compressed-bases-&gt;chars length seq-bytes 0)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private cigar-op-map
-  (hash-map (byte 0) \M
-            (byte 1) \I
-            (byte 2) \D
-            (byte 3) \N
-            (byte 4) \S
-            (byte 5) \H
-            (byte 6) \P
-            (byte 7) \=
-            (byte 8) \X))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- decode-cigar-op [op]
-  (get cigar-op-map op))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn decode-cigar [cigar-bytes]
-  (let [buf (ByteBuffer/wrap cigar-bytes)]
-    (.order buf ByteOrder/LITTLE_ENDIAN)
-    (loop [sb (StringBuilder.)]
-      (if (.hasRemaining buf)
-        (let [b  (.getInt buf)
-              op (bit-and b 0xF)
-              n  (bit-shift-right b 4)]
-          (recur (doto sb (.append n)
-                          (.append (decode-cigar-op op)))))
-        (str sb)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- decode-next-ref-id [refs n rname]
-  (cond
-    (= n -1) &quot;*&quot;
-    (= (ref-name refs n) rname) &quot;=&quot;
-    :else (ref-name refs n)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
         block-size (lsb/read-int rdr)]
@@ -3160,19 +3068,19 @@ net.brehaut.ClojureTools = (function (SH) {
             n-cigar-op  (lsb/read-ushort buffer)
             flag        (lsb/read-ushort buffer)
             l-seq       (lsb/read-int buffer)
-            rnext       (decode-next-ref-id refs (lsb/read-int buffer) rname)
+            rnext       (decoder/decode-next-ref-id refs (lsb/read-int buffer) rname)
             pnext       (inc (lsb/read-int buffer))
             tlen        (lsb/read-int buffer)
             qname       (lsb/read-string buffer (dec l-read-name))
             _           (lsb/skip buffer 1)
-            cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
-            seq         (decode-seq (lsb/read-bytes buffer (/ (inc l-seq) 2)) l-seq)
-            qual        (decode-qual (lsb/read-bytes buffer l-seq))
-            rest        (lsb/read-bytes buffer (options-size block-size
-                                                             l-read-name
-                                                             n-cigar-op
-                                                             l-seq))
-            options     (parse-options rest)]
+            cigar       (decoder/decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
+            seq         (decoder/decode-seq (lsb/read-bytes buffer (/ (inc l-seq) 2)) l-seq)
+            qual        (decoder/decode-qual (lsb/read-bytes buffer l-seq))
+            rest        (lsb/read-bytes buffer (decoder/options-size block-size
+                                                                     l-read-name
+                                                                     n-cigar-op
+                                                                     l-seq))
+            options     (decoder/decode-options rest)]
         {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
          :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
          :qual qual, :options options}))))</pre></td></tr><tr><td class="docs">
@@ -3192,7 +3100,7 @@ net.brehaut.ClojureTools = (function (SH) {
             _           (lsb/skip buffer 2)
             l-seq       (lsb/read-int buffer)
             _           (lsb/skip buffer (+ 13 (dec l-read-name)))
-            cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))]
+            cigar       (decoder/decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))]
         {:rname rname, :pos pos, :cigar cigar}))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- pointer-read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
@@ -3210,7 +3118,7 @@ net.brehaut.ClojureTools = (function (SH) {
             n-cigar-op  (lsb/read-ushort buffer)
             flag        (lsb/read-ushort buffer)
             _           (lsb/skip buffer (+ 16 l-read-name))
-            cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
+            cigar       (decoder/decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
             pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))]
         {:flag flag, :rname rname, :pos pos,:cigar cigar,
          :meta {:chunk {:beg pointer-beg, :end pointer-end}}}))))</pre></td></tr><tr><td class="docs">
@@ -3249,11 +3157,22 @@ net.brehaut.ClojureTools = (function (SH) {
        :pos pos})))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-alignment-block [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
-        ^Integer block-size (lsb/read-int rdr)]
+        block-size (lsb/read-int rdr)]
     (when (&lt; block-size fixed-block-size)
       (throw (Exception. (str &quot;Invalid block size:&quot; block-size))))
     {:size block-size
-     :data (lsb/read-bytes rdr block-size)}))</pre></td></tr><tr><td class="docs">
+     :data (lsb/read-bytes rdr block-size)}))</pre></td></tr><tr><td class="docs"><p>Reads an alignment block, returning a map including the data as byte array
+  and the file pointers. This function is for indexing a BAM file.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-pointer-alignment-block
+  [^BAMReader bam-reader _]
+  (let [rdr (.data-reader bam-reader)
+        pointer-beg (.getFilePointer ^BGZFInputStream (.reader bam-reader))
+        block-size (lsb/read-int rdr)]
+    (when (&lt; block-size fixed-block-size)
+      (throw (Exception. (str &quot;Invalid block size: &quot; block-size))))
+    {:data (lsb/read-bytes rdr block-size)
+     :pointer-beg pointer-beg
+     :pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))}))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-to-finish
   [^BAMReader rdr
    ^Long finish
@@ -3262,7 +3181,20 @@ net.brehaut.ClojureTools = (function (SH) {
     (when (and (not (zero? (.available r)))
                (&gt; finish (.getFilePointer r)))
       (cons (read-fn rdr (.refs rdr))
-            (lazy-seq (read-to-finish rdr finish read-fn))))))</pre></td></tr><tr><td class="docs">
+            (lazy-seq (read-to-finish rdr finish read-fn))))))</pre></td></tr><tr><td class="docs"><p>It should be equivalent to [(first (filter window @candidates))]</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-alignments-first-only
+  [^BAMReader rdr spans window read-fn]
+  (loop [left-spans spans]
+    (when-let [span (first left-spans)]
+      (let [[^Long begin ^Long finish] span]
+        (.seek ^BGZFInputStream (.reader rdr) begin)
+        (or
+          (loop [left (read-to-finish rdr finish read-fn)]
+            (when-let [one (first left)]
+              (if (window one)
+                [one]
+                (recur (rest left)))))
+          (recur (rest left-spans)))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-alignments*
   [^BAMReader rdr
    ^String chr ^Long start ^Long end
@@ -3278,13 +3210,16 @@ net.brehaut.ClojureTools = (function (SH) {
                         (&lt;= start right)
                         (&gt;= end left))))
         read-fn (case deep-or-shallow
+                  :first-only light-read-alignment
                   :shallow light-read-alignment
                   :deep read-alignment
                   :pointer pointer-read-alignment)
-        candidates (flatten (map (fn [[^Long begin ^Long finish]]
-                                   (.seek ^BGZFInputStream (.reader rdr) begin)
-                                   (doall (read-to-finish rdr finish read-fn))) spans))]
-    (filter window candidates)))</pre></td></tr><tr><td class="docs">
+        candidates (delay (flatten (map (fn [[^Long begin ^Long finish]]
+                                          (.seek ^BGZFInputStream (.reader rdr) begin)
+                                          (doall (read-to-finish rdr finish read-fn))) spans)))]
+    (if (= deep-or-shallow :first-only)
+      (read-alignments-first-only rdr spans window read-fn)
+      (filter window @candidates))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-alignments-sequentially*
   [^BAMReader rdr deep-or-shallow]
   (let [read-aln-fn (case deep-or-shallow
@@ -3298,21 +3233,18 @@ net.brehaut.ClojureTools = (function (SH) {
                     (cons a (lazy-seq (read-fn* r refs)))))]
     (read-fn rdr (.refs rdr))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-blocks-sequentially*
-  [^BAMReader rdr option]
-  (let [read-aln-fn (case option
-                      :normal read-alignment-block
-                      :coordinate read-coordinate-alignment-block)
+  [^BAMReader rdr mode]
+  (let [read-block-fn (case mode
+                        :normal read-alignment-block
+                        :coordinate read-coordinate-alignment-block
+                        :pointer read-pointer-alignment-block)
         read-fn (fn read-fn* [^BAMReader r ^clojure.lang.PersistentVector refs]
-                  (let [b (try (read-aln-fn r refs)
-                               (catch EOFException e nil))]
-                    (if b
-                      (cons b (lazy-seq (read-fn* r refs)))
-                      nil)))]
+                  (if-let [b (try (read-block-fn r refs)
+                                  (catch EOFException e nil))]
+                    (cons b (lazy-seq (read-fn* r refs)))))]
     (read-fn rdr (.refs rdr))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn load-headers
   [rdr]
-  (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes bam-magic))
-    (throw (IOException. &quot;Invalid BAM file header&quot;)))
   (let [header (parse-header (lsb/read-string rdr (lsb/read-int rdr)))
         n-ref (lsb/read-int rdr)
         refs (loop [i n-ref, ret []]

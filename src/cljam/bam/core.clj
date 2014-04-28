@@ -55,7 +55,7 @@
   (read-blocks
     ([this]
        (reader/read-blocks-sequentially* this :normal))
-    ([this {:keys [mode] :or [mode :normal]}]
+    ([this {:keys [mode] :or {mode :normal}}]
        (reader/read-blocks-sequentially* this mode)))
   (read-coordinate-blocks [this]
     (reader/read-blocks-sequentially* this :coordinate)))

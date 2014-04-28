@@ -1,5 +1,5 @@
 (ns cljam.pileup.pileup
-  (:require [cljam.cigar :as cgr]
+  (:require [cljam.util.sam-util :as sam-util]
             [cljam.io :as io]
             [cljam.pileup.common :refer [window-width step center]]
             [cljam.bam.reader]))
@@ -10,7 +10,7 @@
    ^clojure.lang.LazySeq positions]
   (if (= rname (:rname aln))
     (let [^Long left (:pos aln)
-          ^Long right (dec (+ left (cgr/count-ref (:cigar aln))))]
+          ^Long right (sam-util/get-end aln)]
       (map (fn [p]
              (if (<= left p right) 1 0)) positions))
     (repeat (count positions) 0)))

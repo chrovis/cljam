@@ -4,24 +4,26 @@
             [cljam.pileup.common :refer [window-width step center]]
             [cljam.bam.reader]))
 
-(defn- count-for-alignment
-  [^clojure.lang.PersistentHashMap aln
-   ^String rname
-   ^clojure.lang.LazySeq positions]
+(defn- update-pile
+  [aln rname pile positions]
   (if (= rname (:rname aln))
-    (let [^Long left (:pos aln)
-          ^Long right (sam-util/get-end aln)]
-      (map (fn [p]
-             (if (<= left p right) 1 0)) positions))
-    (repeat (count positions) 0)))
+    (let [win-beg (first positions)
+          win-end (last positions)
+          left (max (:pos aln) win-beg)
+          right (min (sam-util/get-end aln) win-end)]
+      (loop [i left, pile* pile]
+        (if (<= i right)
+          (recur (inc i) (update-in pile* [(- i win-beg)] inc))
+          pile*)))
+    (vec (repeat (count pile) 0))))
 
 (defn- count-for-positions
-  "Returns a histogram value of the specified position."
-  [^clojure.lang.LazySeq alns
-   ^String rname positions]
-  (if (pos? (count alns))
-    (apply map + (map #(count-for-alignment % rname positions) alns))
-    (repeat (count positions) 0)))
+  [alns rname positions]
+  (loop [[aln & rest] alns
+         pile (vec (repeat (count positions) 0))]
+    (if aln
+      (recur rest (update-pile aln rname pile positions))
+      pile)))
 
 (defn rpositions
   ([^Long start ^Long end]

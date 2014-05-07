@@ -1,4 +1,5 @@
 (ns cljam.util.sam-util
+  "Utilities related to SAM/BAM format."
   (:require [clojure.string :as str]
             [cljam.cigar :refer [count-ref]]
             [cljam.util :refer [ubyte str->int]]))
@@ -342,21 +343,30 @@
 
 ;;; Reference functions
 
-(defn make-refs [hdr]
+(defn make-refs
   "Return a reference sequence from the sam header."
+  [hdr]
   (for [sq (:SQ hdr)]
     {:name (:SN sq), :len (:LN sq)}))
 
-(defn ref-id* [refs name]
-  "Returns reference ID from the reference sequence and the specified reference
-  name. If not found, return nil."
+(defn- ref-id*
+  [refs name]
   (some #(when (= name (:name (second %))) (first %))
         (map-indexed vector refs)))
 
-(def ref-id (memoize ref-id*))
+(def ref-id
+  "Returns reference ID from the reference sequence and the specified reference
+  name. If not found, returns nil."
+  (memoize ref-id*))
 
-(defn ref-name [refs id]
+(defn ref-name
   "Returns a reference name from the reference ID. Returns nil if id is not
   mapped."
+  [refs id]
   (if (<= 0 id (dec (count refs)))
     (:name (nth refs id))))
+
+(defn ref-by-name
+  "Returns the first reference which has the specified name."
+  [refs name]
+  (some #(if (= (:name %) name) %) refs))

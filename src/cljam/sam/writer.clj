@@ -1,35 +1,54 @@
 (ns cljam.sam.writer
-  (:use [cljam.io])
-  (:require [clojure.java.io :refer [file]]
+  "Provides writing features."
+  (:require [clojure.java.io :as io]
             [clojure.tools.logging :as logging]
             [cljam.util.sam-util :refer [stringify-header
-                                         stringify-alignment]])
-  (:import [java.io BufferedWriter Closeable]))
+                                         stringify-alignment]]
+            [cljam.io])
+  (:import java.io.BufferedWriter))
 
-;;; writer
+;; SAMWriter
+;; ---------
 
-(deftype SAMWriter [f writer]
-  Closeable
+(deftype SAMWriter [^java.io.BufferedWriter writer f]
+  java.io.Closeable
   (close [this]
-    (.close ^Closeable (.writer this))))
+    (.close writer)))
 
-(defn writer [f]
-  (->SAMWriter (.getAbsolutePath (file f))
-               (clojure.java.io/writer f)))
+;; Writing
+;; -------
+
+(defn- write-header*
+  [^SAMWriter sam-writer header]
+  (let [wtr ^BufferedWriter (.writer sam-writer)]
+    (.write wtr ^String (stringify-header header))
+    (.newLine wtr)))
+
+(defn- write-alignments*
+  [^SAMWriter sam-writer alns refs]
+  (let [wtr ^BufferedWriter (.writer sam-writer)]
+   (doseq [a alns]
+     (.write wtr ^String (stringify-alignment a))
+     (.newLine wtr))))
+
+;; Public
+;; ------
+
+(defn ^SAMWriter writer
+  [f]
+  (->SAMWriter (clojure.java.io/writer f)
+               (.getAbsolutePath (io/file f))))
 
 (extend-type SAMWriter
-  ISAMWriter
+  cljam.io/ISAMWriter
   (writer-path [this]
     (.f this))
   (write-header [this header]
-    (.write (.writer this) ^String (stringify-header header))
-    (.newLine (.writer this)))
+    (write-header* this header))
   (write-refs [this refs]
     (logging/info "SAMWriter does not support write-refs"))
   (write-alignments [this alignments refs]
-    (doseq [a alignments]
-      (.write (.writer this) ^String (stringify-alignment a))
-      (.newLine (.writer this))))
+    (write-alignments* this alignments refs))
   (write-blocks [this blocks]
     ;;(logging/info "SAMWriter does not support write-blocks")
     )

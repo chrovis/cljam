@@ -16,12 +16,7 @@
 (def mpileup mplp/pileup)
 
 (defn create-mpileup
+  "Creates a mpileup file from the BAM file."
   [in-bam out-mplp]
-  (with-open [r (bam/reader in-bam)
-              w (writer out-mplp)]
-    (doseq [rname (map :name (io/read-refs r))
-            line  (mpileup r rname)]
-      (when-not (zero? (:count line))
-        (.write w (str/join \tab (map val line)))
-        (.newLine w))))
-  nil)
+  (with-open [r (bam/reader in-bam)]
+    (mplp/create-mpileup out-mplp r)))

@@ -1,6 +1,9 @@
 (ns cljam.pileup.mpileup
   (:require [clojure.string :as str]
-            [cljam.cigar :as cgr]
+            [clojure.java.io :refer [writer]]
+            [clojure.tools.logging :as logging]
+            [me.raynes.fs :as fs]
+            [cljam.util.sam-util :as sam-util]
             [cljam.sequence :as cseq]
             [cljam.io :as io]
             [cljam.fasta :as fa]
@@ -84,7 +87,7 @@
   [aln ref-seq rname positions]
   (if (= rname (:rname aln))
     (let [left  (:pos aln)
-          right (dec (+ left (cgr/count-ref (:cigar aln))))
+          right (sam-util/get-end aln)
           seq** (cseq/parse (:seq aln) (:cigar aln))
           seq*  (encode-seq (if (nil? ref-seq)
                               seq**
@@ -125,15 +128,12 @@
            positions plp1))))
 
 (defn- read-alignments
+  "Reads alignments which have the rname and are included in a range defined by
+  the pos and window size, returning the alignments as a lazy seq. Reading
+  depth is deep."
   [rdr rname rlength pos]
-  (let [left (let [val (- pos window-width)]
-               (if (< val 0)
-                 0
-                 val))
-        right (let [val (+ pos window-width)]
-                (if (< rlength val)
-                  rlength
-                  val))]
+  (let [left (max (- pos window-width) 0)
+        right (min rlength (+ pos window-width))]
     (io/read-alignments rdr {:chr rname
                              :start left
                              :end right
@@ -145,34 +145,51 @@
     (first
      (filter #(= (:rname %) rname) (fa/read fa-rdr)))))
 
-(defn- search-ref
-  [refs rname]
-  (first
-   (filter (fn [r] (= (:name r) rname))
-           refs)))
-
 (defn- pileup*
-  ([rdr ^FASTAReader fa-rdr rname rlength start end]
-     (flatten
-      (let [parts (partition-all step (rpositions start end))]
-        (map (fn [positions]
-               (let [pos (if (= (count positions) step)
-                           (nth positions center)
-                           (nth positions (quot (count positions) 2)))
-                     alns (read-alignments rdr rname rlength pos)
-                     ref-line (read-ref-fasta-line fa-rdr rname)]
-                 (count-for-positions alns ref-line rname positions)))
-             parts)))))
+  "Internal pileup function."
+  [rdr ^FASTAReader fa-rdr rname rlength start end]
+  (->> (rpositions start end)
+       (partition-all step)
+       (map (fn [positions]
+              (let [pos (if (= (count positions) step)
+                          (nth positions center)
+                          (nth positions (quot (count positions) 2)))
+                    alns (read-alignments rdr rname rlength pos)
+                    ref-line (read-ref-fasta-line fa-rdr rname)]
+                (count-for-positions alns ref-line rname positions))))
+       flatten))
 
 (defn pileup
-  ([rdr rname]
-     (pileup rdr rname -1 -1))
-  ([rdr rname start* end* & {:keys [ref-fasta] :or {ref-fasta nil}}]
-     (let [r (search-ref (.refs rdr) rname)]
-       (if (nil? r)
-         nil
-         (pileup* rdr
-                  ref-fasta
-                  rname (:len r)
-                  (if (neg? start*) 0 start*)
-                  (if (neg? end*) (:len r) end*))))))
+  ([bam-reader rname]
+     (pileup bam-reader rname -1 -1))
+  ([bam-reader rname start end & {:keys [ref-fasta] :or {ref-fasta nil}}]
+     (try
+       (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
+         (pileup* bam-reader ref-fasta rname (:len r)
+                  (if (neg? start) 0 start)
+                  (if (neg? end) (:len r) end)))
+       (catch bgzf4j.BGZFException _
+         (throw (RuntimeException. "Invalid file format"))))))
+
+;; Writing
+;; -------
+
+(defn- write-line!
+  [^java.io.BufferedWriter w line]
+  ;; FIXME: order of tab-delimitated elements
+  (.write w (str/join \tab (map val line)))
+  (.newLine w))
+
+(defn create-mpileup
+  "Creates a mpileup file from the BAM file."
+  [f bam-reader]
+  (try
+    (with-open [w (writer f)]
+      (doseq [rname (map :name (io/read-refs bam-reader))
+              line (pileup bam-reader rname)]
+        (when-not (zero? (:count line))
+          (write-line! w line))))
+    (catch Exception e (do
+                         (fs/delete f)
+                         (logging/error "Failed to create mpileup")
+                         (throw e)))))

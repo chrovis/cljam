@@ -2,12 +2,11 @@
   (:use [cljam.io])
   (:require [clojure.string :refer [join]]
             [clojure.java.io :refer [file]]
-            (cljam [cigar :as cgr]
-                   [lsb :as lsb]
+            (cljam [lsb :as lsb]
                    [util :refer [string->bytes ubyte hex-string->bytes]])
             [cljam.util.sam-util :refer [phred->fastq ref-id ref-name
                                          compressed-bases->chars
-                                         parse-header]]
+                                         parse-header get-end]]
             [cljam.bam-index :refer [get-spans]]
             [cljam.bam.common :refer [fixed-block-size]]
             [cljam.bam.decoder :as decoder])
@@ -70,16 +69,14 @@
     (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
       (lsb/read-bytes rdr (.array buffer) 0 block-size)
       (let [ref-id      (lsb/read-int buffer)
-            rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
+            rname       (or (ref-name refs ref-id) "*")
             pos         (inc (lsb/read-int buffer))
             l-read-name (int (lsb/read-ubyte buffer))
             _           (lsb/skip buffer 3)
             n-cigar-op  (lsb/read-ushort buffer)
-            _           (lsb/skip buffer 2)
-            l-seq       (lsb/read-int buffer)
-            _           (lsb/skip buffer (+ 13 (dec l-read-name)))
-            cigar       (decoder/decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))]
-        {:rname rname, :pos pos, :cigar cigar}))))
+            _           (lsb/skip buffer (+ 18 l-read-name))
+            cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))]
+        {:rname rname, :pos pos, :meta {:cigar-bytes cigar-bytes}}))))
 
 (defn- pointer-read-alignment [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
@@ -192,7 +189,7 @@
         spans (get-spans bai (ref-id (.refs rdr) chr) start end)
         window (fn [^clojure.lang.PersistentHashMap a]
                  (let [^Long left (:pos a)
-                       ^Long right (+ left (cgr/count-ref (:cigar a)))]
+                       ^Long right (get-end a)]
                    (and (= chr (:rname a))
                         (<= start right)
                         (>= end left))))

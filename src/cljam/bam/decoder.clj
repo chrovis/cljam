@@ -153,11 +153,9 @@
           l-read-name (int (lsb/read-ubyte buffer))
           _           (lsb/skip buffer 3)
           n-cigar-op  (lsb/read-ushort buffer)
-          _           (lsb/skip buffer 2)
-          l-seq       (lsb/read-int buffer)
-          _           (lsb/skip buffer (+ 13 (dec l-read-name)))
-          cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))]
-      {:rname rname, :pos pos, :cigar cigar})))
+          _           (lsb/skip buffer (+ 18 l-read-name))
+          cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))]
+      {:rname rname, :pos pos, :meta {:cigar-bytes cigar-bytes}})))
 
 (defn pointer-decode-alignment-block
   [block refs]

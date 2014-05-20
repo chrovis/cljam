@@ -1,103 +1,23 @@
 (ns cljam.bam.reader
-  (:use [cljam.io])
-  (:require [clojure.string :refer [join]]
-            [clojure.java.io :refer [file]]
-            (cljam [lsb :as lsb]
-                   [util :refer [string->bytes ubyte hex-string->bytes]])
-            [cljam.util.sam-util :refer [phred->fastq ref-id ref-name
-                                         compressed-bases->chars
-                                         parse-header get-end]]
+  (:require [cljam.lsb :as lsb]
+            [cljam.util.sam-util :refer [ref-id ref-name parse-header get-end]]
             [cljam.bam-index :refer [get-spans]]
             [cljam.bam.common :refer [fixed-block-size]]
             [cljam.bam.decoder :as decoder])
-  (:import java.util.Arrays
-           [java.io DataInputStream Closeable EOFException]
-           [java.nio ByteBuffer ByteOrder]
-           [bgzf4j BGZFInputStream]))
+  (:import [java.io Closeable EOFException]
+           java.nio.ByteBuffer
+           bgzf4j.BGZFInputStream))
 
-;;
 ;; BAMReader
-;;
+;; ---------
 
 (deftype BAMReader [f header refs reader data-reader index]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this))))
 
-;;
-;; read alignment
-;;
-
-(defn- read-alignment [^BAMReader bam-reader refs]
-  (let [rdr (.data-reader bam-reader)
-        block-size (lsb/read-int rdr)]
-    (when (< block-size fixed-block-size)
-      (throw (Exception. (str "Invalid block size: " block-size))))
-    (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
-      (lsb/read-bytes rdr (.array buffer) 0 block-size)
-      (let [ref-id      (lsb/read-int buffer)
-            rname       (if (= ref-id -1) "*" (:name (nth refs ref-id)))
-            pos         (inc (lsb/read-int buffer))
-            l-read-name (int (lsb/read-ubyte buffer))
-            mapq        (lsb/read-ubyte buffer)
-            bin         (lsb/read-ushort buffer)
-            n-cigar-op  (lsb/read-ushort buffer)
-            flag        (lsb/read-ushort buffer)
-            l-seq       (lsb/read-int buffer)
-            rnext       (decoder/decode-next-ref-id refs (lsb/read-int buffer) rname)
-            pnext       (inc (lsb/read-int buffer))
-            tlen        (lsb/read-int buffer)
-            qname       (lsb/read-string buffer (dec l-read-name))
-            _           (lsb/skip buffer 1)
-            cigar       (decoder/decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
-            seq         (decoder/decode-seq (lsb/read-bytes buffer (/ (inc l-seq) 2)) l-seq)
-            qual        (decoder/decode-qual (lsb/read-bytes buffer l-seq))
-            rest        (lsb/read-bytes buffer (decoder/options-size block-size
-                                                                     l-read-name
-                                                                     n-cigar-op
-                                                                     l-seq))
-            options     (decoder/decode-options rest)]
-        {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
-         :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
-         :qual qual, :options options}))))
-
-(defn- light-read-alignment [^BAMReader bam-reader refs]
-  (let [rdr (.data-reader bam-reader)
-        block-size (lsb/read-int rdr)]
-    (when (< block-size fixed-block-size)
-      (throw (Exception. (str "Invalid block size: " block-size))))
-    (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
-      (lsb/read-bytes rdr (.array buffer) 0 block-size)
-      (let [ref-id      (lsb/read-int buffer)
-            rname       (or (ref-name refs ref-id) "*")
-            pos         (inc (lsb/read-int buffer))
-            l-read-name (int (lsb/read-ubyte buffer))
-            _           (lsb/skip buffer 3)
-            n-cigar-op  (lsb/read-ushort buffer)
-            _           (lsb/skip buffer (+ 18 l-read-name))
-            cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))]
-        {:rname rname, :pos pos, :meta {:cigar-bytes cigar-bytes}}))))
-
-(defn- pointer-read-alignment [^BAMReader bam-reader refs]
-  (let [rdr (.data-reader bam-reader)
-        pointer-beg (.getFilePointer ^BGZFInputStream (.reader bam-reader))
-        block-size (lsb/read-int rdr)]
-    (when (< block-size fixed-block-size)
-      (throw (Exception. (str "Invalid block size: " block-size))))
-    (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
-      (lsb/read-bytes rdr (.array buffer) 0 block-size)
-      (let [ref-id      (lsb/read-int buffer)
-            rname       (if (= ref-id -1) "*" (ref-name refs ref-id))
-            pos         (inc (lsb/read-int buffer))
-            l-read-name (int (lsb/read-ubyte buffer))
-            _           (lsb/skip buffer 3)
-            n-cigar-op  (lsb/read-ushort buffer)
-            flag        (lsb/read-ushort buffer)
-            _           (lsb/skip buffer (+ 16 l-read-name))
-            cigar       (decoder/decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
-            pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))]
-        {:flag flag, :rname rname, :pos pos,:cigar cigar,
-         :meta {:chunk {:beg pointer-beg, :end pointer-end}}}))))
+;; Reading a single block
+;; --------------------
 
 (defn- read-alignment-block
   "Reads an alignment block, returning a map including the block size and the
@@ -144,6 +64,34 @@
     {:data (lsb/read-bytes rdr block-size)
      :pointer-beg pointer-beg
      :pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))}))
+
+;; Reading a single alignment
+;; --------------------------
+
+(defn- read-alignment
+  "Reads a single alignment and decodes it entirely, returning a map including
+  full information. See also `cljam.bam.decoder/deep-decode-alignment-block`."
+  [bam-reader refs]
+  (-> (read-alignment-block bam-reader refs)
+      (decoder/deep-decode-alignment-block refs)))
+
+(defn- light-read-alignment
+  "Reads a single alignment and decodes it partialy, returning a map including
+  partial information. See also
+ `cljam.bam.decoder/light-decode-alignment-block`."
+  [bam-reader refs]
+  (-> (read-alignment-block bam-reader refs)
+      (decoder/light-decode-alignment-block refs)))
+
+(defn- pointer-read-alignment
+  "Reads a single alignment and decodes it partialy, returning a map including
+  partial information and file pointers. See also
+ `cljam.bam.decoder/pointer-decode-alignment-block`."
+  [bam-reader refs]
+  (-> (read-pointer-alignment-block bam-reader refs)
+      (decoder/pointer-decode-alignment-block refs)))
+
+;;
 
 (defn- read-to-finish
   [^BAMReader rdr

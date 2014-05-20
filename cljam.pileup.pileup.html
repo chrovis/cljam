@@ -3028,85 +3028,82 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.pileup.pileup" name="cljam.pileup.pileup"><h1 class="project-name">cljam.pileup.pileup</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.pileup.pileup" name="cljam.pileup.pileup"><h1 class="project-name">cljam.pileup.pileup</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Provides simple pileup functions.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.pileup.pileup
-  (:require [cljam.cigar :as cgr]
+  (:require [cljam.util.sam-util :as sam-util]
             [cljam.io :as io]
             [cljam.pileup.common :refer [window-width step center]]
-            [cljam.bam.reader]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- count-for-alignment
-  [^clojure.lang.PersistentHashMap aln
-   ^String rname
-   ^clojure.lang.LazySeq positions]
+            cljam.bam.reader)
+  (:import cljam.bam.reader.BAMReader))</pre></td></tr><tr><td class="docs"><p>Updates the pile vector from the alignment, returning the updated pile
+  vector. pile must be a vector.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- update-pile
+  [aln rname pile positions]
   (if (= rname (:rname aln))
-    (let [^Long left (:pos aln)
-          ^Long right (dec (+ left (cgr/count-ref (:cigar aln))))]
-      (map (fn [p]
-             (if (&lt;= left p right) 1 0)) positions))
-    (repeat (count positions) 0)))</pre></td></tr><tr><td class="docs"><p>Returns a histogram value of the specified position.</p>
+    (let [win-beg (first positions)
+          win-end (last positions)
+          left (max (:pos aln) win-beg)
+          right (min (sam-util/get-end aln) win-end)]
+      (loop [i left, pile* pile]
+        (if (&lt;= i right)
+          (recur (inc i) (update-in pile* [(- i win-beg)] inc))
+          pile*)))
+    (vec (repeat (count pile) 0))))</pre></td></tr><tr><td class="docs"><p>Piles the alignments up and counts them in the positions, returning it as a
+  vector.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- count-for-positions
-  [^clojure.lang.LazySeq alns
-   ^String rname positions]
-  (if (pos? (count alns))
-    (apply map + (map #(count-for-alignment % rname positions) alns))
-    (repeat (count positions) 0)))</pre></td></tr><tr><td class="docs">
+  [alns rname positions]
+  (loop [[aln &amp; rest] alns
+         pile (vec (repeat (count positions) 0))]
+    (if aln
+      (recur rest (update-pile aln rname pile positions))
+      pile)))</pre></td></tr><tr><td class="docs"><p>Returns a lazy seq of nums from start (inclusive) to end (inclusive).</p>
 </td><td class="codes"><pre class="brush: clojure">(defn rpositions
-  ([^Long start ^Long end]
+  ([start end]
      (rpositions start end start))
-  ([^Long start ^Long end ^Long n]
+  ([start end n]
      (if (&gt;= end n)
-       (cons n
-             (lazy-seq (rpositions start end (inc n))))
-       nil)))</pre></td></tr><tr><td class="docs">
+       (cons n (lazy-seq (rpositions start end (inc n)))))))</pre></td></tr><tr><td class="docs"><p>Reads alignments which have the rname and are included in a range defined by
+  the pos and window size, returning the alignments as a lazy seq. Reading
+  depth is shallow.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-alignments
-  [rdr ^String rname ^Long rlength ^Long pos]
-  (let [^Long left (let [^Long val (- pos window-width)]
-                     (if (&lt; val 0)
-                       0
-                       val))
-        ^Long right (let [^Long val (+ pos window-width)]
-                      (if (&lt; rlength val)
-                        rlength
-                        val))]
+  [rdr rname rlength pos]
+  (let [left (max (- pos window-width) 0)
+        right (min rlength (+ pos window-width))]
     (io/read-alignments rdr {:chr rname
                              :start left
                              :end right
-                             :depth :shallow})))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- search-ref
-  [refs rname]
-  (first
-   (filter (fn [r] (= (:name r) rname))
-           refs)))</pre></td></tr><tr><td class="docs">
+                             :depth :shallow})))</pre></td></tr><tr><td class="docs"><p>Internal pileup function.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- pileup*
-  [^cljam.bam.reader.BAMReader rdr ^String rname ^Long rlength ^Long start ^Long end]
+  [rdr rname rlength start end]
   (let [read-alignments-memo (memoize read-alignments)]
-    (flatten
-     (let [parts (partition-all step (rpositions start end))]
-       (map (fn [positions]
-              ;; (println (first positions))
-              (let [^Long pos (if (= (count positions) step)
-                                (nth positions center)
-                                (nth positions (quot (count positions) 2)))
-                    ^clojure.lang.LazySeq alns (read-alignments-memo rdr rname rlength pos)]
-                (count-for-positions alns rname positions)))
-            parts)))))</pre></td></tr><tr><td class="docs"><p>Return a position of first alignment in left-right, or nil.</p>
+    (-&gt;&gt; (rpositions start end)
+         (partition-all step)
+         (map (fn [positions]
+                (let [pos (if (= (count positions) step)
+                            (nth positions center)
+                            (nth positions (quot (count positions) 2)))
+                      alns (read-alignments-memo rdr rname rlength pos)]
+                  (count-for-positions alns rname positions))))
+         flatten)))</pre></td></tr><tr><td class="docs"><p>Return a position of first alignment in left-right, or nil.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn first-pos
-  [rdr ^String rname ^Long left ^Long right]
-  (:pos (first (io/read-alignments rdr {:chr rname
-                                        :start left
-                                        :end right
-                                        :depth :first-only}))))</pre></td></tr><tr><td class="docs">
+  [bam-reader rname left right]
+  (-&gt; (io/read-alignments bam-reader {:chr rname
+                                      :start left
+                                      :end right
+                                      :depth :first-only})
+      first
+      :pos))</pre></td></tr><tr><td class="docs"><p>Piles alignments up, returning the pileup as a lazy seq. Requires a
+  <code>cljam.bam.reader.BAMReader</code> instance and rname. If start and end are not
+  supplied, piles whole range up.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn pileup
-  ([^cljam.bam.reader.BAMReader rdr ^String rname]
-     (pileup rdr rname -1 -1))
-  ([^cljam.bam.reader.BAMReader rdr ^String rname ^Long start* ^Long end*]
+  ([bam-reader rname]
+     (pileup bam-reader rname -1 -1))
+  ([bam-reader rname start end]
      (try
-       (let [r (search-ref (.refs rdr) rname)]
-         (if (nil? r)
-           nil
-           (pileup* rdr
-                    rname (:len r)
-                    (if (neg? start*) 0 start*)
-                    (if (neg? end*) (:len r) end*))))
-       (catch bgzf4j.BGZFException e (throw (RuntimeException. &quot;Invalid file format&quot;))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+       (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
+         (pileup* bam-reader
+                  rname (:len r)
+                  (if (neg? start) 0 start)
+                  (if (neg? end) (:len r) end)))
+       (catch bgzf4j.BGZFException _
+         (throw (RuntimeException. &quot;Invalid file format&quot;))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
        SyntaxHighlighter.all()</script></body></html>

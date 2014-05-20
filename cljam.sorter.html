@@ -3059,7 +3059,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [ref-map (apply merge
                        (map-indexed (fn [i val] {val i})
                                     (map :name (sam-util/make-refs (io/read-header rdr)))))]
-    (sort (partial compare-key-pos ref-map) (io/read-coordinate-blocks rdr))))</pre></td></tr><tr><td class="docs"><h2>Queryname sorter</h2>
+    (sort (partial compare-key-pos ref-map) (io/read-blocks rdr {:mode :coordinate}))))</pre></td></tr><tr><td class="docs"><h2>Queryname sorter</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>(defn- compkey-qname [hdr aln]
   [(.indexOf ^List (map :name (sam-util/make-refs hdr)) (:rname aln))
    (:qname aln)
@@ -3113,11 +3113,11 @@ net.brehaut.ClojureTools = (function (SH) {
     (with-open [wtr wtr]
       (io/write-header wtr header)
       (io/write-refs wtr header)
-      (loop [blocks-list (map #(io/read-coordinate-blocks %) rdrs)]
+      (loop [blocks-list (map #(io/read-blocks % {:mode :coordinate}) rdrs)]
         (let [candidates (map first blocks-list)]
           (when-not (every? nil? candidates)
             (let [[i b] (head candidates ref-map)]
-              (io/write-coordinate-blocks wtr [b])
+              (io/write-blocks wtr [b])
               (recur (map
                       (fn [[idx blocks]]
                         (if (= idx i)
@@ -3153,7 +3153,7 @@ net.brehaut.ClojureTools = (function (SH) {
             (with-open [w (bam/writer (sorted-cache-name-fn i))]
               (io/write-header w hdr)
               (io/write-refs w hdr)
-              (io/write-coordinate-blocks w blks))))
+              (io/write-blocks w blks))))
         idxs)))
     (merge-sam wtr hdr sorted-cache-name-fn num-splited)
     (clean-split-merge-cache cache-name-fn sorted-cache-name-fn num-splited)))</pre></td></tr><tr><td class="docs">

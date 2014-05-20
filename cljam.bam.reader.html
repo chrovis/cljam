@@ -3030,138 +3030,49 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.bam.reader" name="cljam.bam.reader"><h1 class="project-name">cljam.bam.reader</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.bam.reader
-  (:use [cljam.io])
-  (:require [clojure.string :refer [join]]
-            [clojure.java.io :refer [file]]
-            (cljam [cigar :as cgr]
-                   [lsb :as lsb]
-                   [util :refer [string-&gt;bytes ubyte hex-string-&gt;bytes]])
-            [cljam.util.sam-util :refer [phred-&gt;fastq ref-id ref-name
-                                         compressed-bases-&gt;chars
-                                         parse-header]]
+  (:require [cljam.lsb :as lsb]
+            [cljam.util.sam-util :refer [ref-id ref-name parse-header get-end]]
             [cljam.bam-index :refer [get-spans]]
             [cljam.bam.common :refer [fixed-block-size]]
             [cljam.bam.decoder :as decoder])
-  (:import java.util.Arrays
-           [java.io DataInputStream Closeable EOFException]
-           [java.nio ByteBuffer ByteOrder]
-           [bgzf4j BGZFInputStream]))</pre></td></tr><tr><td class="docs"><p>BAMReader</p>
+  (:import [java.io Closeable EOFException]
+           java.nio.ByteBuffer
+           bgzf4j.BGZFInputStream))</pre></td></tr><tr><td class="docs"><h2>BAMReader</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype BAMReader [f header refs reader data-reader index]
   Closeable
   (close [this]
-    (.close ^Closeable (.reader this))))</pre></td></tr><tr><td class="docs"><p>read alignment</p>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-alignment [^BAMReader bam-reader refs]
-  (let [rdr (.data-reader bam-reader)
-        block-size (lsb/read-int rdr)]
-    (when (&lt; block-size fixed-block-size)
-      (throw (Exception. (str &quot;Invalid block size: &quot; block-size))))
-    (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
-      (lsb/read-bytes rdr (.array buffer) 0 block-size)
-      (let [ref-id      (lsb/read-int buffer)
-            rname       (if (= ref-id -1) &quot;*&quot; (:name (nth refs ref-id)))
-            pos         (inc (lsb/read-int buffer))
-            l-read-name (int (lsb/read-ubyte buffer))
-            mapq        (lsb/read-ubyte buffer)
-            bin         (lsb/read-ushort buffer)
-            n-cigar-op  (lsb/read-ushort buffer)
-            flag        (lsb/read-ushort buffer)
-            l-seq       (lsb/read-int buffer)
-            rnext       (decoder/decode-next-ref-id refs (lsb/read-int buffer) rname)
-            pnext       (inc (lsb/read-int buffer))
-            tlen        (lsb/read-int buffer)
-            qname       (lsb/read-string buffer (dec l-read-name))
-            _           (lsb/skip buffer 1)
-            cigar       (decoder/decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
-            seq         (decoder/decode-seq (lsb/read-bytes buffer (/ (inc l-seq) 2)) l-seq)
-            qual        (decoder/decode-qual (lsb/read-bytes buffer l-seq))
-            rest        (lsb/read-bytes buffer (decoder/options-size block-size
-                                                                     l-read-name
-                                                                     n-cigar-op
-                                                                     l-seq))
-            options     (decoder/decode-options rest)]
-        {:qname qname, :flag flag, :rname rname, :pos pos, :mapq  mapq,
-         :cigar cigar, :rnext rnext, :pnext pnext, :tlen tlen, :seq seq,
-         :qual qual, :options options}))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- light-read-alignment [^BAMReader bam-reader refs]
-  (let [rdr (.data-reader bam-reader)
-        block-size (lsb/read-int rdr)]
-    (when (&lt; block-size fixed-block-size)
-      (throw (Exception. (str &quot;Invalid block size: &quot; block-size))))
-    (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
-      (lsb/read-bytes rdr (.array buffer) 0 block-size)
-      (let [ref-id      (lsb/read-int buffer)
-            rname       (if (= ref-id -1) &quot;*&quot; (:name (nth refs ref-id)))
-            pos         (inc (lsb/read-int buffer))
-            l-read-name (int (lsb/read-ubyte buffer))
-            _           (lsb/skip buffer 3)
-            n-cigar-op  (lsb/read-ushort buffer)
-            _           (lsb/skip buffer 2)
-            l-seq       (lsb/read-int buffer)
-            _           (lsb/skip buffer (+ 13 (dec l-read-name)))
-            cigar       (decoder/decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))]
-        {:rname rname, :pos pos, :cigar cigar}))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- pointer-read-alignment [^BAMReader bam-reader refs]
-  (let [rdr (.data-reader bam-reader)
-        pointer-beg (.getFilePointer ^BGZFInputStream (.reader bam-reader))
-        block-size (lsb/read-int rdr)]
-    (when (&lt; block-size fixed-block-size)
-      (throw (Exception. (str &quot;Invalid block size: &quot; block-size))))
-    (let [buffer ^ByteBuffer (ByteBuffer/allocate block-size)]
-      (lsb/read-bytes rdr (.array buffer) 0 block-size)
-      (let [ref-id      (lsb/read-int buffer)
-            rname       (if (= ref-id -1) &quot;*&quot; (ref-name refs ref-id))
-            pos         (inc (lsb/read-int buffer))
-            l-read-name (int (lsb/read-ubyte buffer))
-            _           (lsb/skip buffer 3)
-            n-cigar-op  (lsb/read-ushort buffer)
-            flag        (lsb/read-ushort buffer)
-            _           (lsb/skip buffer (+ 16 l-read-name))
-            cigar       (decoder/decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
-            pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))]
-        {:flag flag, :rname rname, :pos pos,:cigar cigar,
-         :meta {:chunk {:beg pointer-beg, :end pointer-end}}}))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-coordinate-alignment-block [^BAMReader bam-reader refs]
-  (let [rdr (.data-reader bam-reader)
-        ^Integer block-size (lsb/read-int rdr)]
-    (when (&lt; block-size fixed-block-size)
-      (throw (Exception. (str &quot;Invalid block size:&quot; block-size))))
-    (let [data (lsb/read-bytes rdr block-size)
-          bb (doto (lsb/gen-byte-buffer block-size)
-               (.put data)
-               (.flip))
-          ref-id (.getInt bb)
-          pos (inc (.getInt bb))
-          bb-get-char (fn [b]
-                        (let [c (.get b)
-                              cb (lsb/gen-byte-buffer)]
-                          (.limit cb (.capacity cb))
-                          (.put cb c)
-                          (.put cb (byte 0))
-                          (.flip cb)
-                          (.getShort cb)))
-          bb-skip (fn [b l]
-                    (.position b (+ l (.position b))))
-          bb-get-string (fn [b l]
-                          (let [a (byte-array l)]
-                            (.get b a 0 l)
-                            (String. ^bytes a 0 0 l)))
-          l-read-name (int (bb-get-char bb))
-          _ (bb-skip bb 23)
-          qname (bb-get-string bb (dec l-read-name))]
-      {:size block-size
-       :data data
-       :qname qname
-       :rname (if (= ref-id -1) &quot;*&quot; (:name (nth refs ref-id)))
-       :pos pos})))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-alignment-block [^BAMReader bam-reader refs]
+    (.close ^Closeable (.reader this))))</pre></td></tr><tr><td class="docs"><h2>Reading a single block</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Reads an alignment block, returning a map including the block size and the
+  data as byte array.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-alignment-block
+  [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
         block-size (lsb/read-int rdr)]
     (when (&lt; block-size fixed-block-size)
       (throw (Exception. (str &quot;Invalid block size:&quot; block-size))))
     {:size block-size
-     :data (lsb/read-bytes rdr block-size)}))</pre></td></tr><tr><td class="docs"><p>Reads an alignment block, returning a map including the data as byte array
+     :data (lsb/read-bytes rdr block-size)}))</pre></td></tr><tr><td class="docs"><p>Reads an alignment block, returning a map including the block size, the data
+  as byte array, qname, rname, and pos.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-coordinate-alignment-block
+  [^BAMReader bam-reader refs]
+  (let [rdr (.data-reader bam-reader)
+        block-size (lsb/read-int rdr)]
+    (when (&lt; block-size fixed-block-size)
+      (throw (Exception. (str &quot;Invalid block size: &quot; block-size))))
+    (let [data (lsb/read-bytes rdr block-size)
+          bb (ByteBuffer/wrap data)
+          ref-id (lsb/read-int bb)
+          rname (or (ref-name refs ref-id) &quot;*&quot;)
+          pos (inc (lsb/read-int bb))
+          l-read-name (int (lsb/read-ubyte bb))
+          _ (lsb/skip bb 23)
+          qname (lsb/read-string bb (dec l-read-name))]
+      {:size block-size
+       :data data
+       :qname qname
+       :rname rname
+       :pos pos})))</pre></td></tr><tr><td class="docs"><p>Reads an alignment block, returning a map including the data as byte array
   and the file pointers. This function is for indexing a BAM file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-pointer-alignment-block
   [^BAMReader bam-reader _]
@@ -3172,7 +3083,26 @@ net.brehaut.ClojureTools = (function (SH) {
       (throw (Exception. (str &quot;Invalid block size: &quot; block-size))))
     {:data (lsb/read-bytes rdr block-size)
      :pointer-beg pointer-beg
-     :pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))}))</pre></td></tr><tr><td class="docs">
+     :pointer-end (.getFilePointer ^BGZFInputStream (.reader bam-reader))}))</pre></td></tr><tr><td class="docs"><h2>Reading a single alignment</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Reads a single alignment and decodes it entirely, returning a map including
+  full information. See also <code>cljam.bam.decoder/deep-decode-alignment-block</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-alignment
+  [bam-reader refs]
+  (-&gt; (read-alignment-block bam-reader refs)
+      (decoder/deep-decode-alignment-block refs)))</pre></td></tr><tr><td class="docs"><p>Reads a single alignment and decodes it partialy, returning a map including
+  partial information. See also
+ <code>cljam.bam.decoder/light-decode-alignment-block</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- light-read-alignment
+  [bam-reader refs]
+  (-&gt; (read-alignment-block bam-reader refs)
+      (decoder/light-decode-alignment-block refs)))</pre></td></tr><tr><td class="docs"><p>Reads a single alignment and decodes it partialy, returning a map including
+  partial information and file pointers. See also
+ <code>cljam.bam.decoder/pointer-decode-alignment-block</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- pointer-read-alignment
+  [bam-reader refs]
+  (-&gt; (read-pointer-alignment-block bam-reader refs)
+      (decoder/pointer-decode-alignment-block refs)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-to-finish
   [^BAMReader rdr
    ^Long finish
@@ -3205,7 +3135,7 @@ net.brehaut.ClojureTools = (function (SH) {
         spans (get-spans bai (ref-id (.refs rdr) chr) start end)
         window (fn [^clojure.lang.PersistentHashMap a]
                  (let [^Long left (:pos a)
-                       ^Long right (+ left (cgr/count-ref (:cigar a)))]
+                       ^Long right (get-end a)]
                    (and (= chr (:rname a))
                         (&lt;= start right)
                         (&gt;= end left))))

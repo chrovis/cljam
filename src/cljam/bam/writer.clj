@@ -143,7 +143,7 @@
   (let [w (.writer wtr)
         refs (make-refs header)
         header-string (str (stringify-header header) \newline)]
-    (lsb/write-bytes w (.getBytes bam-magic)) ; magic
+    (lsb/write-bytes w (.getBytes ^String bam-magic)) ; magic
     (lsb/write-int w (count header-string))
     (lsb/write-string w header-string)))
 

@@ -99,47 +99,38 @@
         {:flag flag, :rname rname, :pos pos,:cigar cigar,
          :meta {:chunk {:beg pointer-beg, :end pointer-end}}}))))
 
-(defn- read-coordinate-alignment-block [^BAMReader bam-reader refs]
-  (let [rdr (.data-reader bam-reader)
-        ^Integer block-size (lsb/read-int rdr)]
-    (when (< block-size fixed-block-size)
-      (throw (Exception. (str "Invalid block size:" block-size))))
-    (let [data (lsb/read-bytes rdr block-size)
-          bb (doto (lsb/gen-byte-buffer block-size)
-               (.put data)
-               (.flip))
-          ref-id (.getInt bb)
-          pos (inc (.getInt bb))
-          bb-get-char (fn [b]
-                        (let [c (.get b)
-                              cb (lsb/gen-byte-buffer)]
-                          (.limit cb (.capacity cb))
-                          (.put cb c)
-                          (.put cb (byte 0))
-                          (.flip cb)
-                          (.getShort cb)))
-          bb-skip (fn [b l]
-                    (.position b (+ l (.position b))))
-          bb-get-string (fn [b l]
-                          (let [a (byte-array l)]
-                            (.get b a 0 l)
-                            (String. ^bytes a 0 0 l)))
-          l-read-name (int (bb-get-char bb))
-          _ (bb-skip bb 23)
-          qname (bb-get-string bb (dec l-read-name))]
-      {:size block-size
-       :data data
-       :qname qname
-       :rname (if (= ref-id -1) "*" (:name (nth refs ref-id)))
-       :pos pos})))
-
-(defn- read-alignment-block [^BAMReader bam-reader refs]
+(defn- read-alignment-block
+  "Reads an alignment block, returning a map including the block size and the
+  data as byte array."
+  [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
         block-size (lsb/read-int rdr)]
     (when (< block-size fixed-block-size)
       (throw (Exception. (str "Invalid block size:" block-size))))
     {:size block-size
      :data (lsb/read-bytes rdr block-size)}))
+
+(defn- read-coordinate-alignment-block
+  "Reads an alignment block, returning a map including the block size, the data
+  as byte array, qname, rname, and pos."
+  [^BAMReader bam-reader refs]
+  (let [rdr (.data-reader bam-reader)
+        block-size (lsb/read-int rdr)]
+    (when (< block-size fixed-block-size)
+      (throw (Exception. (str "Invalid block size: " block-size))))
+    (let [data (lsb/read-bytes rdr block-size)
+          bb (ByteBuffer/wrap data)
+          ref-id (lsb/read-int bb)
+          rname (or (ref-name refs ref-id) "*")
+          pos (inc (lsb/read-int bb))
+          l-read-name (int (lsb/read-ubyte bb))
+          _ (lsb/skip bb 23)
+          qname (lsb/read-string bb (dec l-read-name))]
+      {:size block-size
+       :data data
+       :qname qname
+       :rname rname
+       :pos pos})))
 
 (defn- read-pointer-alignment-block
   "Reads an alignment block, returning a map including the data as byte array

@@ -44,21 +44,19 @@
     (.header this))
   (read-refs [this]
     (.refs this))
-  (read-alignments [this {:keys [chr start end depth]
-                          :or {chr nil
-                               start -1
-                               end -1
-                               depth :deep}}]
-    (if (nil? chr)
-      (reader/read-alignments-sequentially* this depth)
-      (reader/read-alignments* this chr start end depth)))
+  (read-alignments
+    ([this]
+       (reader/read-alignments-sequentially* this :deep))
+    ([this {:keys [chr start end depth]
+            :or {chr nil, start -1, end -1, depth :deep}}]
+       (if (nil? chr)
+         (reader/read-alignments-sequentially* this depth)
+         (reader/read-alignments* this chr start end depth))))
   (read-blocks
     ([this]
        (reader/read-blocks-sequentially* this :normal))
     ([this {:keys [mode] :or {mode :normal}}]
-       (reader/read-blocks-sequentially* this mode)))
-  (read-coordinate-blocks [this]
-    (reader/read-blocks-sequentially* this :coordinate)))
+       (reader/read-blocks-sequentially* this mode))))
 
 ;; Writing
 ;; -------
@@ -78,6 +76,4 @@
   (write-alignments [this alignments header]
     (writer/write-alignments* this alignments header))
   (write-blocks [this blocks]
-    (writer/write-blocks* this blocks))
-  (write-coordinate-blocks [this blocks]
     (writer/write-blocks* this blocks)))

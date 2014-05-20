@@ -51,7 +51,4 @@
     (write-alignments* this alignments refs))
   (write-blocks [this blocks]
     ;;(logging/info "SAMWriter does not support write-blocks")
-    )
-  (write-coordinate-blocks [this blocks]
-    ;;(logging/info "SAMWriter does not support write-coordinate-blocks")
     ))

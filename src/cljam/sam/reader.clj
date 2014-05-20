@@ -14,6 +14,13 @@
   (close [this]
     (.close ^Closeable (.reader this))))
 
+(defn- read-alignments*
+  [^SAMReader sam-reader]
+  (when-let [line (.readLine ^BufferedReader (.reader sam-reader))]
+    (if-not (= (first line) \@)
+      (cons (parse-alignment line) (lazy-seq (read-alignments* sam-reader)))
+      (lazy-seq (read-alignments* sam-reader)))))
+
 (extend-type SAMReader
   ISAMReader
   (reader-path [this]
@@ -22,18 +29,16 @@
     (.header this))
   (read-refs [this]
     (vec (make-refs (.header this))))
-  (read-alignments [this _]
-    (when-let [line (.readLine ^BufferedReader (.reader this))]
-      (if-not (= (first line) \@)
-        (cons (parse-alignment line) (lazy-seq (read-alignments this {})))
-        (lazy-seq (read-alignments this {})))))
+  (read-alignments
+    ([this]
+       (read-alignments* this))
+    ([this _]
+       (read-alignments* this)))
   (read-blocks
     ([this]
        (logging/info "SAMReader does not support read-blocks"))
     ([this option]
-       (logging/info "SAMReader does not support read-blocks")))
-  (read-coordinate-blocks [this]
-    (logging/info "SAMReader does not support read-coordinate-blocks")))
+       (logging/info "SAMReader does not support read-blocks"))))
 
 (defn- read-header* [^BufferedReader rdr]
   (when-let [line (.readLine rdr)]

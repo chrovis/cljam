@@ -36,7 +36,7 @@
   (let [ref-map (apply merge
                        (map-indexed (fn [i val] {val i})
                                     (map :name (sam-util/make-refs (io/read-header rdr)))))]
-    (sort (partial compare-key-pos ref-map) (io/read-coordinate-blocks rdr))))
+    (sort (partial compare-key-pos ref-map) (io/read-blocks rdr {:mode :coordinate}))))
 
 ;; Queryname sorter
 ;; ----------------
@@ -104,11 +104,11 @@
     (with-open [wtr wtr]
       (io/write-header wtr header)
       (io/write-refs wtr header)
-      (loop [blocks-list (map #(io/read-coordinate-blocks %) rdrs)]
+      (loop [blocks-list (map #(io/read-blocks % {:mode :coordinate}) rdrs)]
         (let [candidates (map first blocks-list)]
           (when-not (every? nil? candidates)
             (let [[i b] (head candidates ref-map)]
-              (io/write-coordinate-blocks wtr [b])
+              (io/write-blocks wtr [b])
               (recur (map
                       (fn [[idx blocks]]
                         (if (= idx i)
@@ -148,7 +148,7 @@
             (with-open [w (bam/writer (sorted-cache-name-fn i))]
               (io/write-header w hdr)
               (io/write-refs w hdr)
-              (io/write-coordinate-blocks w blks))))
+              (io/write-blocks w blks))))
         idxs)))
     (merge-sam wtr hdr sorted-cache-name-fn num-splited)
     (clean-split-merge-cache cache-name-fn sorted-cache-name-fn num-splited)))

@@ -32,6 +32,16 @@
   (str "The following errors occurred while parsing your command:\n\n"
        (str/join \newline errors)))
 
+(defn- candidate-msg
+  "Returns a message  of candidate sub-commands."
+  [candidates]
+  (->> candidates
+       (map (partial str "        "))
+       (cons (if (= (count candidates) 1)
+               "Did you mean this?"
+               "Did you mean one of these?"))
+       (str/join \newline)))
+
 ;; Sub-commands
 ;; ------------
 
@@ -283,17 +293,18 @@
 ;; ------------
 
 (defn run [args]
-  (let [[opts cmd args help] (sub-command args
-                                          "Usage: cljam {view,convert,sort,index,pileup,faidx,dict} ..."
-                                          :options  [["-h" "--help" "Show help" :default false :flag true]]
-                                          :commands [["view"    "Extract/print all or sub alignments in SAM or BAM format."]
-                                                     ["convert" "Convert SAM to BAM or BAM to SAM."]
-                                                     ["normalize" "Normalize references of alignments"]
-                                                     ["sort"    "Sort alignments by leftmost coordinates."]
-                                                     ["index"   "Index sorted alignment for fast random access."]
-                                                     ["pileup"  "Generate pileup for the BAM file."]
-                                                     ["faidx"   "Index reference sequence in the FASTA format."]
-                                                     ["dict"    "Create a FASTA sequence dictionary file."]])]
+  (let [[opts cmd args help cands]
+        (sub-command args
+                     "Usage: cljam {view,convert,sort,index,pileup,faidx,dict} ..."
+                     :options  [["-h" "--help" "Show help" :default false :flag true]]
+                     :commands [["view"    "Extract/print all or sub alignments in SAM or BAM format."]
+                                ["convert" "Convert SAM to BAM or BAM to SAM."]
+                                ["normalize" "Normalize references of alignments"]
+                                ["sort"    "Sort alignments by leftmost coordinates."]
+                                ["index"   "Index sorted alignment for fast random access."]
+                                ["pileup"  "Generate pileup for the BAM file."]
+                                ["faidx"   "Index reference sequence in the FASTA format."]
+                                ["dict"    "Create a FASTA sequence dictionary file."]])]
     (when (:help opts)
       (exit 0 help))
     (case cmd
@@ -305,4 +316,7 @@
       :pileup  (pileup args)
       :faidx   (faidx args)
       :dict    (dict args)
-      (println help))))
+      (do (println "Invalid command. See 'foo --help'.")
+          (when (seq cands)
+            (newline)
+            (exit 1 (candidate-msg cands)))))))

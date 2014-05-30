@@ -1,11 +1,15 @@
 (ns cljam.t-util
-  (:use midje.sweet)
-  (:require [cljam.util :as util]))
+  "Tests for cljam.util."
+  (:require [midje.sweet :refer :all]
+            [cljam.util :as util]))
 
-(fact
-  (util/ubyte 0)   => (byte 0)
-  (util/ubyte 127) => (byte 127)
-  (util/ubyte 128) => (byte -128)
-  (util/ubyte 255) => (byte -1)
-  (util/ubyte -1)  => (throws AssertionError)
-  (util/ubyte 256) => (throws AssertionError))
+(tabular
+ (fact "about ubyte"
+   (util/ubyte ?n) => ?expected)
+ ?n   ?expected
+ 0    (byte 0)
+ 127  (byte 127)
+ 128  (byte -128)
+ 255  (byte -1)
+ -1   (throws AssertionError)
+ 256  (throws AssertionError))

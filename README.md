@@ -1,6 +1,6 @@
 # cljam
 
-A DNA Sequence Alignment/Map (SAM) library for Clojure.
+A DNA Sequence Alignment/Map (SAM) library for Clojure. [API Reference](http://chrovis.github.io/cljam)
 
 [![Build Status](https://travis-ci.org/chrovis/cljam.svg?branch=master)](https://travis-ci.org/chrovis/cljam)
 

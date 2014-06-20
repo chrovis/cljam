@@ -18,14 +18,22 @@
   [line]
   (= (first line) \>))
 
+(def ^:private vertial-bar (char 0x7c))
+
+(defn- vertial-bar?
+  [c]
+  (= c vertial-bar))
+
 (defn- parse-header-line
   [line]
   (let [line (subs line 1)]
     {:name (->> line
-                (take-while (complement space?))
+                (take-while #(and ((complement space?) %)
+                                  ((complement vertial-bar?) %)))
                 (apply str))
      :desc (->> line
-                (drop-while (complement space?))
+                (drop-while #(and ((complement space?) %)
+                                  ((complement vertial-bar?) %)))
                 (drop 1)
                 (apply str))}))
 

@@ -332,3 +332,12 @@
   "Returns true if the two files' MD5 hash are same, false if not."
   [f1 f2]
   (= (md5-file f1) (md5-file f2)))
+
+;;;; FASTA
+
+(def test-fa-header [{:desc "", :name "ref", :offset 5} {:desc "", :name "ref2", :offset 57}])
+
+(def test-fa-sequences '({:name "ref",
+                          :sequence "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"}
+                         {:name "ref2",
+                          :sequence "aggttttataaaacaattaagtctacagagcaactacgcg"}))

@@ -1,12 +1,14 @@
 (ns cljam.fasta.reader
   (:refer-clojure :exclude [read slurp])
-  (:require [cljam.util :refer [graph? space?]])
+  (:require [clojure.string :as cstr]
+            [cljam.util :refer [graph? space?]]
+            [cljam.fasta-index.core :as fasta-index])
   (:import java.io.RandomAccessFile))
 
 ;; FASTAReader
 ;; -----------
 
-(deftype FASTAReader [reader f headers]
+(deftype FASTAReader [reader f index]
   java.io.Closeable
   (close [this]
     (.close ^java.io.Closeable (.reader this))))
@@ -60,6 +62,7 @@
 
 (defn load-headers
   [^RandomAccessFile rdr]
+  (.seek rdr 0)
   (loop [line (.readLine rdr), headers []]
     (if line
       (if (header-line? line)
@@ -82,13 +85,26 @@
   "Reads sequences by line, returning the line-separated sequences
   as lazy sequence."
   [^FASTAReader rdr]
-  (let [reader ^RandomAccessFile (.reader rdr)
-        read-fn (fn read-fn* [^FASTAReader rdr name]
+  (.seek (.reader rdr) 0)
+  (let [read-fn (fn read-fn* [^FASTAReader rdr name]
                   (let [s (read-sequence* rdr name)]
                     (cond
                      (string? s) (read-fn* rdr s)
                      (map? s) (cons s (lazy-seq (read-fn* rdr name))))))]
     (read-fn rdr nil)))
+
+(defn read-sequence
+  [^FASTAReader rdr name start end]
+  (when-let [fai (.index rdr)]
+    (let [[offset-start offset-end] (fasta-index/get-span fai name start end)
+          len (inc (- offset-end offset-start))
+          ba (byte-array len)
+          r (.reader rdr)]
+      (.seek r offset-start)
+      (.read r ba 0 len)
+      (cstr/upper-case
+       (cstr/replace (cstr/join "" (map char (seq ba)))
+                     #"(\n|\r)" "")))))
 
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."

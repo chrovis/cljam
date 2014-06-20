@@ -9,5 +9,5 @@
   [in-fa out-fai]
   (with-open [r (fasta/reader in-fa)]
     (fai-core/create-index out-fai
-                           (.headers r)
+                           (fasta/read-headers r)
                            (fasta/read-sequences r))))

@@ -24,3 +24,7 @@
   as lazy sequence."
   [rdr]
   (fa-core/read-sequences rdr))
+
+(defn read-sequence
+  [rdr name start end]
+  (fa-core/read-sequence rdr name start end))

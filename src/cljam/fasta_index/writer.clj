@@ -54,7 +54,7 @@
                                                   :offset (offset headers name)))
                        indices)]
         (recur rest name' idx-status' indices'))
-      (assoc indices name (assoc  idx-status
+      (assoc indices name (assoc idx-status
                                  :offset (offset headers name))))))
 
 ;; Writing
@@ -65,6 +65,7 @@
   (let [indices (make-index headers sequences)]
     (doseq [header headers]
       (let [index (get indices (:name header))]
+        ;; (println (:name header) index)
         (.write wtr (str/join "\t"
                               [(:name header)
                                (:len index)

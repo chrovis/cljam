@@ -93,16 +93,29 @@
                      (map? s) (cons s (lazy-seq (read-fn* rdr name))))))]
     (read-fn rdr nil)))
 
+(def ^:private newline-character (char 10))
+(def ^:private return-character (char 13))
+
+(defn- newline*?
+  [c]
+  (or (= c newline-character)
+      (= c return-character)))
+
+(def newline? (memoize newline*?))
+
 (defn- read-sequence-with-offset
   [rdr offset-start offset-end]
   (let [len (- offset-end offset-start)
         ba (byte-array len)
-        r (.reader rdr)]
+        r (.reader rdr)
+        buf (StringBuffer. len)]
     (.seek r offset-start)
     (.read r ba 0 len)
-    (cstr/upper-case
-       (cstr/replace (cstr/join "" (map char (seq ba)))
-                     #"(\n|\r)" ""))))
+    (doseq [b ^byte ba]
+      (let [c (char ^byte b)]
+        (when-not (newline? c)
+          (.append buf (Character/toUpperCase c)))))
+    (.toString buf)))
 
 (defn read-whole-sequence
   [^FASTAReader rdr name]

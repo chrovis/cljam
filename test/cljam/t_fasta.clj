@@ -12,6 +12,10 @@
   (let [rdr (fasta/reader test-fa-file)]
     (fasta/read-sequences rdr)) => test-fa-sequences
   (let [rdr (fasta/reader test-fa-file)]
-    (fasta/read-sequence rdr "ref" 4 10) => "TGTTAGA"
+    (fasta/read-sequence rdr "ref" 4 10) => "TGTTAG"
   (let [rdr (fasta/reader test-fa-file)]
-    (fasta/read-sequence rdr "ref2" 0 16) => "AGGTTTTATAAAACAAT")))
+    (fasta/read-sequence rdr "ref2" 0 16) => "AGGTTTTATAAAACAA")
+  (let [rdr (fasta/reader test-fa-file)]
+    (fasta/read-sequence rdr "ref") => "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT")
+  (let [rdr (fasta/reader test-fa-file)]
+    (fasta/read-sequence rdr "ref2") => "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG")))

@@ -32,8 +32,10 @@
   (reader/read-sequences rdr))
 
 (defn read-sequence
-  [rdr name start end]
-  (reader/read-sequence rdr name start end))
+  ([rdr name]
+     (reader/read-whole-sequence rdr name))
+  ([rdr name start end]
+     (reader/read-sequence rdr name start end)))
 
 (defn read
   [rdr]

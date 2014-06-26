@@ -34,6 +34,11 @@
      (reader/parse-fai rdr))
    (.getAbsolutePath (io/file f))))
 
+(defn get-header
+  [^cljam.fasta_index.reader.FAIReader fai name]
+  (merge {:name name}
+         (get (.indices fai) name nil)))
+
 (defn get-headers
   [^cljam.fasta_index.reader.FAIReader fai]
   (vec

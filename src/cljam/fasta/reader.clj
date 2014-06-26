@@ -93,18 +93,29 @@
                      (map? s) (cons s (lazy-seq (read-fn* rdr name))))))]
     (read-fn rdr nil)))
 
+(defn- read-sequence-with-offset
+  [rdr offset-start offset-end]
+  (let [len (- offset-end offset-start)
+        ba (byte-array len)
+        r (.reader rdr)]
+    (.seek r offset-start)
+    (.read r ba 0 len)
+    (cstr/upper-case
+       (cstr/replace (cstr/join "" (map char (seq ba)))
+                     #"(\n|\r)" ""))))
+
+(defn read-whole-sequence
+  [^FASTAReader rdr name]
+  (when-let [fai (.index rdr)]
+    (let [header (fasta-index/get-header fai name)
+          [offset-start offset-end] (fasta-index/get-span fai name 0 (:len header))]
+      (read-sequence-with-offset rdr offset-start offset-end))))
+
 (defn read-sequence
   [^FASTAReader rdr name start end]
   (when-let [fai (.index rdr)]
-    (let [[offset-start offset-end] (fasta-index/get-span fai name start end)
-          len (inc (- offset-end offset-start))
-          ba (byte-array len)
-          r (.reader rdr)]
-      (.seek r offset-start)
-      (.read r ba 0 len)
-      (cstr/upper-case
-       (cstr/replace (cstr/join "" (map char (seq ba)))
-                     #"(\n|\r)" "")))))
+    (let [[offset-start offset-end] (fasta-index/get-span fai name start end)]
+      (read-sequence-with-offset rdr offset-start offset-end))))
 
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."

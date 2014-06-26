@@ -21,7 +21,9 @@
 
 (defn read-headers
   [^FASTAReader rdr]
-  (reader/load-headers (.reader rdr)))
+  (if (.index rdr)
+    (fasta-index/get-headers (.index rdr))
+    (reader/load-headers (.reader rdr))))
 
 (defn read-sequences
   "Reads sequences by line, returning the line-separated sequences

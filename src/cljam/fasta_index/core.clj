@@ -34,6 +34,17 @@
      (reader/parse-fai rdr))
    (.getAbsolutePath (io/file f))))
 
+(defn get-headers
+  [^cljam.fasta_index.reader.FAIReader fai]
+  (vec
+   (sort
+    #(compare (:offset %1) (:offset %2))
+    (map (fn [[k v]]
+           {:name k
+            :desc ""
+            :offset (:offset v)})
+         (.indices fai)))))
+
 (defn get-span
   "Calculate byte spans for FASTA file"
   [^cljam.fasta_index.reader.FAIReader fai name start end]

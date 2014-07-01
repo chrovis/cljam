@@ -49,10 +49,25 @@
                        from-hex-digit (nth s (inc (* % 2)))))
         (range (count s)))))
 
-(defn str->int [str]
-  (try
-    (Integer. ^String (re-find #"\d+" str))
-    (catch Exception e nil)))
+(defn str->long [s]
+  (if-not (nil? s)
+    (try
+      (let [[n _ _] (re-matches #"(|-|\+)(\d+)" s)]
+        (Long. n))
+      (catch Exception e
+        nil))
+    nil))
+
+(defn str->int [s]
+  (if-not (nil? s)
+    (try
+      (let [[n _ _] (re-matches #"(|-|\+)(\d+)" s)]
+        (Integer. n))
+      (catch NumberFormatException e
+        (str->long s))
+      (catch Exception e
+        nil))
+    nil))
 
 (defn graph?
   "Returns true if c is a visible character, false if not."

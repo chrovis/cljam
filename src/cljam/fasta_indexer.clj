@@ -8,6 +8,4 @@
   "Create a FASTA index file from the FASTA file."
   [in-fa out-fai]
   (with-open [r (fasta/reader in-fa)]
-    (fai-core/create-index out-fai
-                           (fasta/read-headers r)
-                           (fasta/read-sequences r))))
+    (fai-core/create-index r out-fai)))

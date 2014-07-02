@@ -19,6 +19,11 @@
   [rdr]
   (fa-core/read-headers rdr))
 
+(defn read-indices
+  ""
+  [rdr]
+  (fa-core/read-indices rdr))
+
 (defn read-sequences
   "Reads sequences by line, returning the line-separated sequences
   as lazy sequence."

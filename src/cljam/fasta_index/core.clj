@@ -50,6 +50,14 @@
             :offset (:offset v)})
          (.indices fai)))))
 
+(defn get-indices
+  [^cljam.fasta_index.reader.FAIReader fai]
+  (vec
+   (sort
+    #(compare (:offset %1) (:offset %2))
+    (map (fn [[k v]] (merge {:name k} v))
+         (.indices fai)))))
+
 (defn get-span
   "Calculate byte spans for FASTA file"
   [^cljam.fasta_index.reader.FAIReader fai name start end]

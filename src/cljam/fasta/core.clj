@@ -25,6 +25,11 @@
     (fasta-index/get-headers (.index rdr))
     (reader/load-headers (.reader rdr))))
 
+(defn read-indices
+  [^FASTAReader rdr]
+  (when (.index rdr)
+    (fasta-index/get-indices (.index rdr))))
+
 (defn read-sequences
   "Reads sequences by line, returning the line-separated sequences
   as lazy sequence."

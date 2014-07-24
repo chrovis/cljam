@@ -141,7 +141,7 @@ Sorted by first commit.
 
 ## License
 
-Copyright 2013 [Xcoo, Inc.][xcoo]
+Copyright 2013-2014 [Xcoo, Inc.][xcoo]
 
 Licensed under the [Apache License, Version 2.0][apache-license-2.0].
 

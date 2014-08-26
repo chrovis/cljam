@@ -316,7 +316,7 @@
       :pileup  (pileup args)
       :faidx   (faidx args)
       :dict    (dict args)
-      (do (println "Invalid command. See 'foo --help'.")
+      (do (println "Invalid command. See 'cljam --help'.")
           (when (seq cands)
             (newline)
             (exit 1 (candidate-msg cands)))))))

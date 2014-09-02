@@ -1,5 +1,5 @@
 (ns cljam.pileup.mpileup
-  (:require [clojure.string :as str]
+  (:require [clojure.string :as cstr]
             [clojure.java.io :refer [writer]]
             [clojure.tools.logging :as logging]
             [me.raynes.fs :as fs]
@@ -116,8 +116,8 @@
           plp1 (apply map (fn [& a]
                             {:rname rname
                              :count (reduce + (map :count a))
-                             :seq   (str/join (map :seq a))
-                             :qual  (str/join (map :qual a))}) cfas)]
+                             :seq   (cstr/join (map :seq a))
+                             :qual  (cstr/join (map :qual a))}) cfas)]
       (map #(assoc %2 :pos %1 :ref (pickup-ref (:seq ref-line) %1))
            positions plp1))
     (let [plp1 (repeat (count positions) {:rname rname
@@ -177,7 +177,7 @@
 (defn- write-line!
   [^java.io.BufferedWriter w line]
   ;; FIXME: order of tab-delimitated elements
-  (.write w (str/join \tab (map val line)))
+  (.write w (cstr/join \tab (map val line)))
   (.newLine w))
 
 (defn create-mpileup

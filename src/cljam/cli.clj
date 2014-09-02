@@ -1,7 +1,7 @@
 (ns cljam.cli
   "Implementations of the command-line tool."
   (:refer-clojure :exclude [sort merge])
-  (:require [clojure.string :as str]
+  (:require [clojure.string :as cstr]
             [clj-sub-command.core :refer [sub-command]]
             [clojure.tools.cli :refer [parse-opts]]
             (cljam [core :refer [reader writer]]
@@ -30,7 +30,7 @@
   "Returns error message strings from the errors."
   [errors]
   (str "The following errors occurred while parsing your command:\n\n"
-       (str/join \newline errors)))
+       (cstr/join \newline errors)))
 
 (defn- candidate-msg
   "Returns a message  of candidate sub-commands."
@@ -40,7 +40,7 @@
        (cons (if (= (count candidates) 1)
                "Did you mean this?"
                "Did you mean one of these?"))
-       (str/join \newline)))
+       (cstr/join \newline)))
 
 ;; Sub-commands
 ;; ------------
@@ -60,7 +60,7 @@
         ""
         "Options:"
         options-summary]
-       (str/join \newline)))
+       (cstr/join \newline)))
 
 (defn view [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args view-cli-options)]
@@ -95,7 +95,7 @@
         ""
         "Options:"
         options-summary]
-       (str/join \newline)))
+       (cstr/join \newline)))
 
 (defn convert [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args convert-cli-options)]
@@ -125,7 +125,7 @@
         ""
         "Options:"
         options-summary]
-       (str/join \newline)))
+       (cstr/join \newline)))
 
 (defn normalize [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args normalize-cli-options)]
@@ -153,7 +153,7 @@
         ""
         "Options:"
         options-summary]
-       (str/join \newline)))
+       (cstr/join \newline)))
 
 (defn sort [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args sort-cli-options)]
@@ -181,7 +181,7 @@
         ""
         "Options:"
         options-summary]
-       (str/join \newline)))
+       (cstr/join \newline)))
 
 (defn index [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args index-cli-options)]
@@ -207,7 +207,7 @@
         ""
         "Options:"
         options-summary]
-       (str/join \newline)))
+       (cstr/join \newline)))
 
 (defn- pileup-with-ref
   [rdr ref-fa]
@@ -215,14 +215,14 @@
     (doseq [rname (map :name (io/read-refs rdr))
             line  (plp/mpileup rdr rname -1 -1 :ref-fasta fa-rdr)]
       (if-not (zero? (:count line))
-        (println (str/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
+        (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
 
 (defn- pileup-without-ref
   [rdr]
   (doseq [rname (map :name (io/read-refs rdr))
           line  (plp/mpileup rdr rname)]
     (if-not (zero? (:count line))
-      (println (str/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))
+      (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))
 
 (defn pileup [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args pileup-cli-options)]
@@ -253,7 +253,7 @@
         ""
         "Options:"
         options-summary]
-       (str/join \newline)))
+       (cstr/join \newline)))
 
 (defn faidx [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args faidx-cli-options)]
@@ -277,7 +277,7 @@
         ""
         "Options:"
         options-summary]
-       (str/join \newline)))
+       (cstr/join \newline)))
 
 (defn dict [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args dict-cli-options)]

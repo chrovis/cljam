@@ -1,6 +1,5 @@
 (ns cljam.pileup
-  (:require [clojure.string :as str]
-            [clojure.java.io :refer [writer]]
+  (:require [clojure.java.io :refer [writer]]
             [cljam.bam :as bam]
             [cljam.io :as io]
             [cljam.pileup.common :as plpc]

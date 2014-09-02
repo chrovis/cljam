@@ -1,7 +1,7 @@
 (ns cljam.sorter
   "Sorter of SAM/BAM format alignments."
   (:require [clojure.java.io :refer [file]]
-            [clojure.string :as str]
+            [clojure.string :as cstr]
             (cljam [sam :as sam]
                    [bam :as bam]
                    [common :refer [version]]
@@ -131,7 +131,7 @@
 
 (defn sort-by-pos [rdr wtr]
   (let [filename (.getName (file (io/reader-path rdr)))
-        basename (first (str/split filename #"\.(?=[^\.]+$)"))
+        basename (first (cstr/split filename #"\.(?=[^\.]+$)"))
         cache-name-fn (partial gen-cache-filename basename)
         sorted-cache-name-fn (partial gen-sorted-cache-filename basename)
         splited-files (split-sam rdr cache-name-fn)

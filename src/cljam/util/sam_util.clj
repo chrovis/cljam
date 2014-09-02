@@ -1,6 +1,6 @@
 (ns cljam.util.sam-util
   "Utilities related to SAM/BAM format."
-  (:require [clojure.string :as str]
+  (:require [clojure.string :as cstr]
             [cljam.cigar :refer [count-ref]]
             [cljam.util :refer [ubyte str->int]]))
 
@@ -11,7 +11,7 @@
   [keyvalues]
   (apply merge
          (map (fn [kv]
-                (let [[k v] (str/split kv #":")]
+                (let [[k v] (cstr/split kv #":")]
                   {(keyword k) (case k
                                  "LN" (Integer/parseInt v)
                                  "PI" (Integer/parseInt v)
@@ -19,7 +19,7 @@
               keyvalues)))
 
 (defn parse-header-line [line]
-  (let [[typ & kvs] (str/split line #"\t")]
+  (let [[typ & kvs] (cstr/split line #"\t")]
     {(keyword (subs typ 1)) (if (= typ "@HD")
                               (parse-header-keyvalues kvs)
                               (vector (parse-header-keyvalues kvs)))}))
@@ -31,7 +31,7 @@
 (defn parse-header
   "Parse a header string, returning a map of the header."
   [s]
-  (parse-header* (str/split s #"\n")))
+  (parse-header* (cstr/split s #"\n")))
 
 (defn- parse-tag-single [val-type val]
   (case val-type
@@ -49,7 +49,7 @@
 
 (defn- parse-optional-fields [options]
   (map (fn [op]
-         (let [[tag val-type-str val] (str/split op #":")
+         (let [[tag val-type-str val] (cstr/split op #":")
                val-type (first val-type-str)]
            {(keyword tag) {:type val-type-str
                            :value (if (= val-type \B)
@@ -58,12 +58,12 @@
        options))
 
 (defn- parse-seq-text [s]
-  (str/upper-case s))
+  (cstr/upper-case s))
 
 (defn parse-alignment
   "Parse an alignment line, returning a map of the alignment."
   [line]
-  (let [fields (str/split line #"\t")]
+  (let [fields (cstr/split line #"\t")]
     {:qname   (first fields)
      :flag    (Integer/parseInt (nth fields 1))
      :rname   (nth fields 2)
@@ -80,44 +80,44 @@
 ;;; stringify
 
 (defn- stringify-header-keyvalues [kv-map]
-  (str/join \tab
-        (map (fn [kv]
-               (let [[k v] (seq kv)]
-                 (str (name k) \: v)))
-             kv-map)))
+  (cstr/join \tab
+             (map (fn [kv]
+                    (let [[k v] (seq kv)]
+                      (str (name k) \: v)))
+                  kv-map)))
 
 (defn- stringify-optional-fields [options]
-  (str/join \tab
-        (map (fn [op]
-               (let [[tag entity] (first (seq op))]
-                 (str (name tag) \: (:type entity) \: (:value entity))))
-             options)))
+  (cstr/join \tab
+             (map (fn [op]
+                    (let [[tag entity] (first (seq op))]
+                      (str (name tag) \: (:type entity) \: (:value entity))))
+                  options)))
 
 (defn stringify-header [hdr]
-  (str/join \newline
-        (map (fn [h]
-               (let [[typ kvs] h]
-                 (if (= typ :HD)
-                   (str "@HD" \tab (stringify-header-keyvalues kvs))
-                   (str/join \newline
-                         (map #(str \@ (name typ) \tab (stringify-header-keyvalues %)) kvs)))))
-             (seq hdr))))
+  (cstr/join \newline
+             (map (fn [h]
+                    (let [[typ kvs] h]
+                      (if (= typ :HD)
+                        (str "@HD" \tab (stringify-header-keyvalues kvs))
+                        (cstr/join \newline
+                                   (map #(str \@ (name typ) \tab (stringify-header-keyvalues %)) kvs)))))
+                  (seq hdr))))
 
 (defn stringify-alignment [sa]
-  (str/trim
-   (str/join \tab
-         [(:qname sa)
-          (:flag  sa)
-          (:rname sa)
-          (:pos   sa)
-          (:mapq  sa)
-          (:cigar sa)
-          (:rnext sa)
-          (:pnext sa)
-          (:tlen  sa)
-          (:seq   sa)
-          (:qual  sa)
-          (stringify-optional-fields (:options sa))])))
+  (cstr/trim
+   (cstr/join \tab
+              [(:qname sa)
+               (:flag  sa)
+               (:rname sa)
+               (:pos   sa)
+               (:mapq  sa)
+               (:cigar sa)
+               (:rnext sa)
+               (:pnext sa)
+               (:tlen  sa)
+               (:seq   sa)
+               (:qual  sa)
+               (stringify-optional-fields (:options sa))])))
 
 ;;; indexing bin
 
@@ -306,7 +306,7 @@
 
 (defn normalize-bases [^bytes bases]
   (map-indexed (fn [idx _]
-                 (aset bases idx ^byte (str/upper-case (nth bases idx)))
+                 (aset bases idx ^byte (cstr/upper-case (nth bases idx)))
                  (if (= (nth bases idx) \.)
                    (aset bases idx (byte \N))))
                bases)
@@ -332,7 +332,7 @@
 (defmethod phred->fastq (class (byte-array nil))
   [b]
   (when-not (nil? b)
-    (str/join (map #(phred->fastq (int (bit-and % 0xff))) b))))
+    (cstr/join (map #(phred->fastq (int (bit-and % 0xff))) b))))
 
 (def ^:const max-phred-score 93)
 

@@ -1,6 +1,6 @@
 (ns cljam.fasta-index.writer
   "Writing features for a FASTA index file."
-  (:require [clojure.string :as str]
+  (:require [clojure.string :as cstr]
             [cljam.util :refer [graph?]]
             [cljam.util.fasta :refer [header-line? parse-header-line]])
   (:import [java.io BufferedWriter RandomAccessFile]))
@@ -52,12 +52,12 @@
 (defn- write-index*!
   [^BufferedWriter wtr indices]
   (doseq [i indices]
-    (.write wtr (str/join "\t"
-                          [(:name i)
-                           (:len i)
-                           (:offset i)
-                           (:line-blen i)
-                           (:line-len i)]))
+    (.write wtr (cstr/join "\t"
+                           [(:name i)
+                            (:len i)
+                            (:offset i)
+                            (:line-blen i)
+                            (:line-len i)]))
     (.newLine wtr)))
 
 (defn write-index!

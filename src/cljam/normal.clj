@@ -1,6 +1,5 @@
 (ns cljam.normal
   (:require [clojure.java.io :refer [file]]
-            [clojure.string :as str]
             (cljam [sam :as sam]
                    [bam :as bam]
                    [common :refer [version]]

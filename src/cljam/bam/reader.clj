@@ -137,12 +137,12 @@
                   :shallow light-read-alignment
                   :deep read-alignment
                   :pointer pointer-read-alignment)
-        candidates (delay (flatten (map (fn [[^Long begin ^Long finish]]
-                                          (.seek ^BGZFInputStream (.reader rdr) begin)
-                                          (doall (read-to-finish rdr finish read-fn))) spans)))]
+        candidates (flatten (map (fn [[^Long begin ^Long finish]]
+                                   (.seek ^BGZFInputStream (.reader rdr) begin)
+                                   (read-to-finish rdr finish read-fn)) spans))]
     (if (= deep-or-shallow :first-only)
       (read-alignments-first-only rdr spans window read-fn)
-      (filter window @candidates))))
+      (filter window candidates))))
 
 (defn read-alignments-sequentially*
   [^BAMReader rdr deep-or-shallow]

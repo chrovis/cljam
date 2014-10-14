@@ -20,9 +20,9 @@
     (fs/exists? (str temp-file-sorted ".bai")) => truthy
     (same-file? (str temp-file-sorted ".bai") test-bai-file) => truthy
     (with-open [r (bam/reader temp-file-sorted)]
-      (io/read-alignments r {:chr "ref" :start 0 :end 1000})
-      ) => (filter #(= "ref" (:rname %))
-                   (:alignments test-sam-sorted-by-pos))))
+      (doall (io/read-alignments r {:chr "ref" :start 0 :end 1000})))
+    => (filter #(= "ref" (:rname %))
+               (:alignments test-sam-sorted-by-pos))))
 
 (let [f (str temp-dir "/test.incomplete.bam")
       sorted-f (str temp-dir "/test.incomplete.sorted.bam")]
@@ -39,9 +39,9 @@
       (bai/create-index sorted-f (str sorted-f ".bai")) => anything
       (fs/exists? (str sorted-f ".bai")) => truthy
       (with-open [r (bam/reader sorted-f)]
-        (io/read-alignments r {:chr "ref" :start 0 :end 1000})
-        ) => (filter #(= "ref" (:rname %))
-                     (:alignments test-sam-incomplete-alignments-sorted-by-pos))
+        (doall (io/read-alignments r {:chr "ref" :start 0 :end 1000})))
+      => (filter #(= "ref" (:rname %))
+                 (:alignments test-sam-incomplete-alignments-sorted-by-pos))
       ;; TODO: need more strictly check to .bai files
       ;; (it will use https://gitlab.xcoo.jp/chrovis/cljam/issues/8 later)
       )))

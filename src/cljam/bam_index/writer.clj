@@ -1,5 +1,7 @@
 (ns cljam.bam-index.writer
   (:require [clojure.java.io :as io]
+            [com.climate.claypoole :as cp]
+            [cljam.common :refer [get-exec-n-threads]]
             [cljam.lsb :as lsb]
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
@@ -257,7 +259,7 @@
   (lsb/write-bytes wtr (.getBytes ^String bai-magic))
   ;; n_ref
   (lsb/write-int wtr (count refs))
-  (let [indices (make-index-from-blocks refs alns :concurrent true)]
+  (let [indices (make-index-from-blocks refs alns)]
     (doseq [ref refs]
       (let [index (get indices (:name ref))
             n-bin (count (:bin-index index))]
@@ -289,13 +291,15 @@
 (defn make-index
   "Calculates a BAM index from provided references and alignments. Optionally,
    you can do this process concurrently."
-  [refs alns & {:keys [concurrent] :or {concurrent false}}]
-  (let [make-index-fn (fn [refs alns]
-                        (if concurrent
-                          (->> (partition-all *alignments-partition-size* alns)
-                               (pmap (partial make-index* refs))
-                               (reduce merge-index))
-                          (make-index* refs alns)))]
+  [refs alns]
+  (let [n-threads (get-exec-n-threads)
+        make-index-fn (fn [refs alns]
+                        (if (= n-threads 1)
+                          (make-index* refs alns)
+                          (cp/with-shutdown! [pool (cp/threadpool n-threads)]
+                            (->> (partition-all *alignments-partition-size* alns)
+                                 (cp/pmap pool (partial make-index* refs))
+                                 (reduce merge-index)))))]
     (->> alns
          (make-index-fn refs)
          (finalize-index refs))))
@@ -303,18 +307,20 @@
 (defn make-index-from-blocks
   "Calculates a BAM index from provided references and alignment blocks.
   Optionally, you can do this process concurrently."
-  [refs blocks & {:keys [concurrent] :or {concurrent false}}]
-  (let [make-index-fn (fn [refs blocks]
-                        (if concurrent
-                          (->> (partition-all *alignments-partition-size* blocks)
-                               (pmap (fn [sub-blocks]
-                                       (->> sub-blocks
-                                            (map #(bam-decoder/pointer-decode-alignment-block % refs))
-                                            (make-index* refs))))
-                               (reduce merge-index))
+  [refs blocks]
+  (let [n-threads (get-exec-n-threads)
+        make-index-fn (fn [refs blocks]
+                        (if (= n-threads 1)
                           (->> blocks
                                (map #(bam-decoder/decode-alignment-block % refs :pointer))
-                               (make-index* refs))))]
+                               (make-index* refs))
+                          (cp/with-shutdown! [pool (cp/threadpool n-threads)]
+                            (->> (partition-all *alignments-partition-size* blocks)
+                                 (cp/pmap pool (fn [sub-blocks]
+                                                 (->> sub-blocks
+                                                      (map #(bam-decoder/pointer-decode-alignment-block % refs))
+                                                      (make-index* refs))))
+                                 (reduce merge-index)))))]
     (->> blocks
          (make-index-fn refs)
          (finalize-index refs))))

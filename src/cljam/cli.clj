@@ -172,12 +172,15 @@
 ;; ### index command
 
 (def ^:private index-cli-options
-  [["-h" "--help"]])
+  [["-t" "--thread THREAD" "Number of threads (0 is auto)"
+    :default 0
+    :parse-fn #(Integer/parseInt %)]
+   ["-h" "--help"]])
 
 (defn- index-usage [options-summary]
   (->> ["Index sorted alignment for fast random access."
         ""
-        "Usage: cljam index <in.bam>"
+        "Usage: cljam index [-t THREAD] <in.bam>"
         ""
         "Options:"
         options-summary]
@@ -190,7 +193,7 @@
      (not= (count arguments) 1) (exit 1 (index-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (bai/create-index f (str f ".bai"))))
+      (bai/create-index f (str f ".bai") :n-threads (:thread options))))
   nil)
 
 ;; ### pileup command

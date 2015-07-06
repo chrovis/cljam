@@ -62,7 +62,7 @@
   (if-not (nil? s)
     (try
       (let [[n _ _] (re-matches #"(|-|\+)(\d+)" s)]
-        (Integer. n))
+        (Integer. ^String n))
       (catch NumberFormatException e
         (str->long s))
       (catch Exception e

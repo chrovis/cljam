@@ -314,7 +314,7 @@
                           (->> blocks
                                (map #(bam-decoder/decode-alignment-block % refs :pointer))
                                (make-index* refs))
-                          (cp/with-shutdown! [pool (cp/threadpool n-threads)]
+                          (cp/with-shutdown! [pool (cp/threadpool (dec n-threads))]
                             (->> (partition-all *alignments-partition-size* blocks)
                                  (cp/pmap pool (fn [sub-blocks]
                                                  (->> sub-blocks

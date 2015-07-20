@@ -57,6 +57,7 @@
   (let [read-alignments-memo (memoize read-alignments)]
     (->> (rpositions start end)
          (partition-all step)
+         (map vec)
          (map (fn [positions]
                 (let [pos (if (= (count positions) step)
                             (nth positions center)

@@ -39,6 +39,20 @@
      (if (>= end n)
        (cons n (lazy-seq (rpositions start end (inc n)))))))
 
+(defn grouped-rpositions
+  "Returns a lazy seq of grouped positions. Equivalent of
+  (partition-all n (rpositions start end)). This implementation is faster."
+  [start end n]
+  (lazy-seq
+   (letfn [(rpositions* [s e]
+             (loop [i e xs `()]
+               (if (>= i s)
+                 (recur (dec i) (cons i xs))
+                 xs)))]
+     (when (<= start end)
+       (cons (rpositions* start (min (+ start n -1) end))
+             (grouped-rpositions (+ start n) end n))))))
+
 (defn- read-alignments
   "Reads alignments which have the rname and are included in a range defined by
   the pos and window size, returning the alignments as a lazy seq. Reading
@@ -55,8 +69,7 @@
   "Internal pileup function."
   [rdr rname rlength start end]
   (let [read-alignments-memo (memoize read-alignments)]
-    (->> (rpositions start end)
-         (partition-all step)
+    (->> (grouped-rpositions start end step)
          (map vec)
          (map (fn [positions]
                 (let [pos (if (= (count positions) step)

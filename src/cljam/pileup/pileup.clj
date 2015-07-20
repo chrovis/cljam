@@ -63,7 +63,7 @@
                             (nth positions (quot (count positions) 2)))
                       alns (read-alignments-memo rdr rname rlength pos)]
                   (count-for-positions alns rname positions))))
-         flatten)))
+         (apply concat))))
 
 (defn first-pos
   "Return a position of first alignment in left-right, or nil."

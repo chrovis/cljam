@@ -199,18 +199,25 @@
 ;; ### pileup command
 
 (def ^:private pileup-cli-options
-  [["-r" "--ref FASTA" "Reference file in the FASTA format."
+  [["-s" "--simple" "Output only pileup count."]
+   ["-r" "--ref FASTA" "Reference file in the FASTA format."
     :default nil]
    ["-h" "--help"]])
 
 (defn- pileup-usage [options-summary]
   (->> ["Generate pileup for the BAM file."
         ""
-        "Usage: cljam pileup [-r FASTA] <in.bam>"
+        "Usage: cljam pileup [-s] [-r FASTA] <in.bam>"
         ""
         "Options:"
         options-summary]
        (cstr/join \newline)))
+
+(defn- pileup-simple
+  [rdr]
+  (doseq [rname (map :name (io/read-refs rdr))
+          line  (plp/pileup rdr rname)]
+    (println line)))
 
 (defn- pileup-with-ref
   [rdr ref-fa]
@@ -239,7 +246,8 @@
           (exit 1 "Not support SAM file"))
         (when-not (sorter/sorted-by? r)
           (exit 1 "Not sorted"))
-        (if (nil? (:ref options))
+        (cond
+          (:simple options) (pileup-simple r)
           (pileup-without-ref r)
           (pileup-with-ref r (:ref options))))))
   nil)

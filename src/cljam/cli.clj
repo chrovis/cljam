@@ -200,39 +200,61 @@
 
 (def ^:private pileup-cli-options
   [["-s" "--simple" "Output only pileup count."]
-   ["-r" "--ref FASTA" "Reference file in the FASTA format."
+   ["-r" "--region REGION" "Only pileup in region. (e.g. chr6:1000-2000)"]
+   ["-f" "--ref FASTA" "Reference file in the FASTA format."
     :default nil]
    ["-h" "--help"]])
 
 (defn- pileup-usage [options-summary]
   (->> ["Generate pileup for the BAM file."
         ""
-        "Usage: cljam pileup [-s] [-r FASTA] <in.bam>"
+        "Usage: cljam pileup [-s] [-r REGION] [-f FASTA] <in.bam>"
         ""
         "Options:"
         options-summary]
        (cstr/join \newline)))
 
 (defn- pileup-simple
-  [rdr]
-  (doseq [rname (map :name (io/read-refs rdr))
-          line  (plp/pileup rdr rname)]
-    (println line)))
+  ([rdr]
+   (doseq [rname (map :name (io/read-refs rdr))
+           line  (plp/pileup rdr rname)]
+     (println line)))
+  ([rdr rname start end]
+   (doseq [line (plp/pileup rdr rname start end)]
+     (println line))))
 
 (defn- pileup-with-ref
-  [rdr ref-fa]
-  (with-open [fa-rdr (fa/reader ref-fa)]
-    (doseq [rname (map :name (io/read-refs rdr))
-            line  (plp/mpileup rdr rname -1 -1 :ref-fasta fa-rdr)]
-      (if-not (zero? (:count line))
-        (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
+  ([rdr ref-fa]
+   (with-open [fa-rdr (fa/reader ref-fa)]
+     (doseq [rname (map :name (io/read-refs rdr))
+             line  (plp/mpileup rdr rname -1 -1 :ref-fasta fa-rdr)]
+       (if-not (zero? (:count line))
+         (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
+  ([rdr ref-fa rname start end]
+   (with-open [fa-rdr (fa/reader ref-fa)]
+     (doseq [line  (plp/mpileup rdr rname start end :ref-fasta fa-rdr)]
+       (if-not (zero? (:count line))
+         (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))))
 
 (defn- pileup-without-ref
-  [rdr]
-  (doseq [rname (map :name (io/read-refs rdr))
-          line  (plp/mpileup rdr rname)]
-    (if-not (zero? (:count line))
-      (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))
+  ([rdr]
+   (doseq [rname (map :name (io/read-refs rdr))
+           line  (plp/mpileup rdr rname)]
+     (if-not (zero? (:count line))
+       (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))
+  ([rdr rname start end]
+   (doseq [line  (plp/mpileup rdr rname start end)]
+     (if-not (zero? (:count line))
+       (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
+
+(defn- parse-region
+  [region-str]
+  (if-let [m (re-find #"^([^:]+)$" region-str)]
+    (conj (vec (rest m)) -1 -1)
+    (if-let [m (re-find #"^([^:]+):([0-9]+)-([0-9]+)$" region-str)]
+      (-> (vec (rest m))
+          (update-in [1] #(Integer/parseInt %))
+          (update-in [2] #(Integer/parseInt %))))))
 
 (defn pileup [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args pileup-cli-options)]
@@ -246,10 +268,17 @@
           (exit 1 "Not support SAM file"))
         (when-not (sorter/sorted-by? r)
           (exit 1 "Not sorted"))
-        (cond
-          (:simple options) (pileup-simple r)
-          (pileup-without-ref r)
-          (pileup-with-ref r (:ref options))))))
+        (if (:region options)
+          (if-let [region (parse-region (:region options))]
+            (cond
+              (:simple options) (apply pileup-simple r region)
+              (:ref options) (apply pileup-with-ref r (:ref options) region)
+              :else (apply pileup-without-ref r region))
+            (exit 1 "Invalid region format"))
+          (cond
+            (:simple options) (pileup-simple r)
+            (:ref options) (pileup-with-ref r (:ref options))
+            :else (pileup-without-ref r))))))
   nil)
 
 ;; ### faidx command

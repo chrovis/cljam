@@ -1,5 +1,6 @@
 (ns cljam.pileup
   (:require [clojure.java.io :refer [writer]]
+            [cljam.common :refer [*n-threads*]]
             [cljam.bam :as bam]
             [cljam.io :as io]
             [cljam.pileup.common :as plpc]
@@ -10,7 +11,16 @@
 
 (def first-pos plp/first-pos)
 
-(def pileup plp/pileup)
+(def ^:private default-pileup-option
+  {:n-threads 0})
+
+(defn pileup
+  ([bam-reader rname option]
+   (pileup bam-reader rname -1 -1 option))
+  ([bam-reader rname start end option]
+   (let [option* (merge default-pileup-option option)]
+     (binding [*n-threads* (:n-threads option*)]
+       (plp/pileup bam-reader rname start end)))))
 
 (def mpileup mplp/pileup)
 

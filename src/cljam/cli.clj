@@ -201,6 +201,9 @@
 (def ^:private pileup-cli-options
   [["-s" "--simple" "Output only pileup count."]
    ["-r" "--region REGION" "Only pileup in region. (e.g. chr6:1000-2000)"]
+   ["-t" "--thread THREAD" "Number of threads (0 is auto)"
+    :default 0
+    :parse-fn #(Integer/parseInt %)]
    ["-f" "--ref FASTA" "Reference file in the FASTA format."
     :default nil]
    ["-h" "--help"]])
@@ -208,19 +211,19 @@
 (defn- pileup-usage [options-summary]
   (->> ["Generate pileup for the BAM file."
         ""
-        "Usage: cljam pileup [-s] [-r REGION] [-f FASTA] <in.bam>"
+        "Usage: cljam pileup [-s] [-r REGION] [-f FASTA] [-t THREAD] <in.bam>"
         ""
         "Options:"
         options-summary]
        (cstr/join \newline)))
 
 (defn- pileup-simple
-  ([rdr]
+  ([rdr n-threads]
    (doseq [rname (map :name (io/read-refs rdr))
-           line  (plp/pileup rdr rname)]
+           line  (plp/pileup rdr rname {:n-threads n-threads})]
      (println line)))
-  ([rdr rname start end]
-   (doseq [line (plp/pileup rdr rname start end)]
+  ([rdr n-threads rname start end]
+   (doseq [line (plp/pileup rdr rname start end {:n-threads n-threads})]
      (println line))))
 
 (defn- pileup-with-ref
@@ -271,12 +274,12 @@
         (if (:region options)
           (if-let [region (parse-region (:region options))]
             (cond
-              (:simple options) (apply pileup-simple r region)
+              (:simple options) (apply pileup-simple r (:thread options) region)
               (:ref options) (apply pileup-with-ref r (:ref options) region)
               :else (apply pileup-without-ref r region))
             (exit 1 "Invalid region format"))
           (cond
-            (:simple options) (pileup-simple r)
+            (:simple options) (pileup-simple r (:thread options))
             (:ref options) (pileup-with-ref r (:ref options))
             :else (pileup-without-ref r))))))
   nil)

@@ -53,7 +53,7 @@
   (if-not (nil? s)
     (try
       (let [[n _ _] (re-matches #"(|-|\+)(\d+)" s)]
-        (Long. n))
+        (Long. ^String n))
       (catch Exception e
         nil))
     nil))

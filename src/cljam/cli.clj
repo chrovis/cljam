@@ -15,7 +15,8 @@
                    [fasta-indexer :as fai]
                    [dict :as dict]
                    [pileup :as plp])
-            [cljam.util.sam-util :refer [stringify-header stringify-alignment]]))
+            [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
+  (:import [java.io BufferedWriter OutputStreamWriter]))
 
 ;; CLI functions
 ;; -------------
@@ -219,12 +220,14 @@
 
 (defn- pileup-simple
   ([rdr n-threads]
-   (doseq [rname (map :name (io/read-refs rdr))
-           line  (plp/pileup rdr rname {:n-threads n-threads})]
-     (println line)))
+   (doseq [rname (map :name (io/read-refs rdr))]
+     (pileup-simple rdr n-threads rname -1 -1)))
   ([rdr n-threads rname start end]
-   (doseq [line (plp/pileup rdr rname start end {:n-threads n-threads})]
-     (println line))))
+   (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
+             *flush-on-newline* false]
+     (doseq [line (plp/pileup rdr rname start end {:n-threads n-threads})]
+       (println line))
+     (flush))))
 
 (defn- pileup-with-ref
   ([rdr ref-fa]

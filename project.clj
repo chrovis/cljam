@@ -1,4 +1,4 @@
-(defproject cljam "0.1.3-SNAPSHOT"
+(defproject cljam "0.1.3"
   :description "A DNA Sequence Alignment/Map (SAM) library for Clojure"
   :url "https://github.com/chrovis/cljam"
   :license {:name "Apache License, Version 2.0"
@@ -22,4 +22,5 @@
   :main cljam.main
   :aot [cljam.main]
   :bin {:name "cljam"}
-  :repl-options {:init-ns user})
+  :repl-options {:init-ns user}
+  :signing {:gpg-key "developer@xcoo.jp"})

@@ -11,7 +11,7 @@ cljam is available as a Maven artifact from [Clojars][clojars].
 To use with Leiningen, add the following dependency.
 
 ```clojure
-[cljam "0.1.2"]
+[cljam "0.1.3"]
 ```
 
 To use with Maven, add the following dependency.
@@ -20,7 +20,7 @@ To use with Maven, add the following dependency.
 <dependency>
   <groupId>cljam</groupId>
   <artifactId>cljam</artifactId>
-  <version>0.1.2</version>
+  <version>0.1.3</version>
 </dependency>
 ```
 
@@ -37,7 +37,7 @@ To read a SAM/BAM format file,
   ;; Retrieve header
   (io/read-header r)
   ;; Retrieve alignments
-  (take 5 (io/read-alignments r {})))
+  (doall (take 5 (io/read-alignments r)))
 ```
 
 To create a sorted file,
@@ -67,9 +67,10 @@ To pileup,
 (require '[cljam.core :refer [reader]]
          '[cljam.pileup :as plp])
 
-(with-open [r (reader "path/to/sorted.bam")]
+(with-open [r (reader "path/to/sorted.bam" :ignore-index false)]
   ;; Pileup "chr1" alignments
-  (take 10 (plp/pileup r "chr1")))
+  (take 10 (plp/pileup r "chr1" nil)))
+;; => (0 0 1 1 3 3 3 3 2 3)
 ```
 
 Check https://chrovis.github.io/cljam for more information.
@@ -84,8 +85,8 @@ Run `lein-bin` plugin and it creates standalone console executable into `target`
 
 ```bash
 $ lein bin
-Created /path/to/cljam/target/cljam-0.1.2.jar
-Created /path/to/cljam/target/cljam-0.1.2-standalone.jar
+Created /path/to/cljam/target/cljam-0.1.3.jar
+Created /path/to/cljam/target/cljam-0.1.3-standalone.jar
 Creating standalone executable: /path/to/cljam/target/cljam
 ```
 
@@ -141,7 +142,7 @@ Sorted by first commit.
 
 ## License
 
-Copyright 2013-2014 [Xcoo, Inc.][xcoo]
+Copyright 2013-2015 [Xcoo, Inc.][xcoo]
 
 Licensed under the [Apache License, Version 2.0][apache-license-2.0].
 

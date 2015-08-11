@@ -3031,6 +3031,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.bam-index.writer" name="cljam.bam-index.writer"><h1 class="project-name">cljam.bam-index.writer</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.bam-index.writer
   (:require [clojure.java.io :as io]
+            [com.climate.claypoole :as cp]
+            [cljam.common :refer [get-exec-n-threads]]
             [cljam.lsb :as lsb]
             [cljam.util.sam-util :as sam-util]
             [cljam.util.bgzf-util :as bgzf-util]
@@ -3246,7 +3248,7 @@ Record is faster than map for retrieving elements.</p>
   (lsb/write-bytes wtr (.getBytes ^String bai-magic))
   ;; n_ref
   (lsb/write-int wtr (count refs))
-  (let [indices (make-index-from-blocks refs alns :concurrent true)]
+  (let [indices (make-index-from-blocks refs alns)]
     (doseq [ref refs]
       (let [index (get indices (:name ref))
             n-bin (count (:bin-index index))]
@@ -3272,30 +3274,34 @@ Record is faster than map for retrieving elements.</p>
   10000)</pre></td></tr><tr><td class="docs"><p>Calculates a BAM index from provided references and alignments. Optionally,
    you can do this process concurrently.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn make-index
-  [refs alns &amp; {:keys [concurrent] :or {concurrent false}}]
-  (let [make-index-fn (fn [refs alns]
-                        (if concurrent
-                          (-&gt;&gt; (partition-all *alignments-partition-size* alns)
-                               (pmap (partial make-index* refs))
-                               (reduce merge-index))
-                          (make-index* refs alns)))]
+  [refs alns]
+  (let [n-threads (get-exec-n-threads)
+        make-index-fn (fn [refs alns]
+                        (if (= n-threads 1)
+                          (make-index* refs alns)
+                          (cp/with-shutdown! [pool (cp/threadpool n-threads)]
+                            (-&gt;&gt; (partition-all *alignments-partition-size* alns)
+                                 (cp/pmap pool (partial make-index* refs))
+                                 (reduce merge-index)))))]
     (-&gt;&gt; alns
          (make-index-fn refs)
          (finalize-index refs))))</pre></td></tr><tr><td class="docs"><p>Calculates a BAM index from provided references and alignment blocks.
   Optionally, you can do this process concurrently.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn make-index-from-blocks
-  [refs blocks &amp; {:keys [concurrent] :or {concurrent false}}]
-  (let [make-index-fn (fn [refs blocks]
-                        (if concurrent
-                          (-&gt;&gt; (partition-all *alignments-partition-size* blocks)
-                               (pmap (fn [sub-blocks]
-                                       (-&gt;&gt; sub-blocks
-                                            (map #(bam-decoder/pointer-decode-alignment-block % refs))
-                                            (make-index* refs))))
-                               (reduce merge-index))
+  [refs blocks]
+  (let [n-threads (get-exec-n-threads)
+        make-index-fn (fn [refs blocks]
+                        (if (= n-threads 1)
                           (-&gt;&gt; blocks
                                (map #(bam-decoder/decode-alignment-block % refs :pointer))
-                               (make-index* refs))))]
+                               (make-index* refs))
+                          (cp/with-shutdown! [pool (cp/threadpool (dec n-threads))]
+                            (-&gt;&gt; (partition-all *alignments-partition-size* blocks)
+                                 (cp/pmap pool (fn [sub-blocks]
+                                                 (-&gt;&gt; sub-blocks
+                                                      (map #(bam-decoder/pointer-decode-alignment-block % refs))
+                                                      (make-index* refs))))
+                                 (reduce merge-index)))))]
     (-&gt;&gt; blocks
          (make-index-fn refs)
          (finalize-index refs))))</pre></td></tr><tr><td class="docs"><p>Calculates a BAM index from alns, writing the index to a file.</p>

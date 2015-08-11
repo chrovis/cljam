@@ -3030,67 +3030,62 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.fasta-index.writer" name="cljam.fasta-index.writer"><h1 class="project-name">cljam.fasta-index.writer</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Writing features for a FASTA index file.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.fasta-index.writer
-  (:require [clojure.string :as str]
-            [cljam.util :refer [graph?]])
-  (:import [java.io BufferedWriter]))</pre></td></tr><tr><td class="docs"><h2>FAIWriter</h2>
+  (:require [clojure.string :as cstr]
+            [cljam.util :refer [graph?]]
+            [cljam.util.fasta :refer [header-line? parse-header-line]])
+  (:import [java.io BufferedWriter RandomAccessFile]))</pre></td></tr><tr><td class="docs"><p>FAIWriter</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype FAIWriter [writer f]
   java.io.Closeable
   (close [this]
-    (.close ^java.io.Closeable (.writer this))))</pre></td></tr><tr><td class="docs"><h2>Indexing</h2>
+    (.close ^java.io.Closeable (.writer this))))</pre></td></tr><tr><td class="docs"><p>Writing</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- init-index-status
-  []
-  {:len 0, :line-len -1, :line-blen -1})</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- update-index-status
-  [index-status sequence]
-  (let [sequence (:sequence sequence)]
-    (if (or (= (:line-len index-status) -1)
-            (= (:line-blen index-status) -1))
-      (assoc index-status
-        :len (+ (:len index-status) (count (filter graph? sequence)))
-        :line-len (inc (count sequence))
-        :line-blen (count (filter graph? sequence)))
-      (assoc index-status
-        :len (+ (:len index-status) (count (filter graph? sequence)))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- offset
-  [headers name]
-  (-&gt;&gt; headers
-       (filter #(= name (:name %)))
-       first
-       :offset))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn make-index
-  [headers sequences]
-  (loop [[sequence &amp; rest] sequences
-         name (:name sequence)
-         idx-status (init-index-status)
-         indices {}]
-    (if sequence
-      (let [name' (:name sequence)
-            new-name? (not= name' name)
-            idx-status' (update-index-status
-                         (if new-name? (init-index-status) idx-status) sequence)
-            indices' (if new-name?
-                       (assoc indices name (assoc idx-status
-                                                  :offset (offset headers name)))
-                       indices)]
-        (recur rest name' idx-status' indices'))
-      (assoc indices name (assoc  idx-status
-                                 :offset (offset headers name))))))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn make-indices
+  [rdr]
+  (let [r ^RandomAccessFile (.reader rdr)
+        indices (atom [])
+        current-index (atom nil)]
+    (.seek r 0)
+    (loop [l (.readLine r)
+           pos 0]
+      (when-not (nil? l)
+        (let [llen (count l)]
+          (if (header-line? l)
+            (let [h (parse-header-line l)
+                  i {:name (:name h)
+                     :len 0
+                     :offset (+ pos (inc llen))
+                     :line-blen nil
+                     :line-len nil}]
+              (when-not (nil? @current-index)
+                (swap! indices conj @current-index))
+              (reset! current-index i))
+            (do (swap! current-index
+                       assoc
+                       :len (+ (:len @current-index) llen))
+                (when (or (nil? (:line-blen @current-index))
+                          (nil? (:line-len @current-index)))
+                  (swap! current-index
+                         assoc
+                         :line-blen llen
+                         :line-len (inc llen)))))
+          (recur (.readLine r)
+                 (+ pos (inc llen))))))
+    (when-not (nil? @current-index)
+      (swap! indices conj @current-index))
+    @indices))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-index*!
-  [^BufferedWriter wtr headers sequences]
-  (let [indices (make-index headers sequences)]
-    (doseq [header headers]
-      (let [index (get indices (:name header))]
-        (.write wtr (str/join &quot;\t&quot;
-                              [(:name header)
-                               (:len index)
-                               (:offset index)
-                               (:line-blen index)
-                               (:line-len index)]))
-        (.newLine wtr)))))</pre></td></tr><tr><td class="docs">
+  [^BufferedWriter wtr indices]
+  (doseq [i indices]
+    (.write wtr (cstr/join &quot;\t&quot;
+                           [(:name i)
+                            (:len i)
+                            (:offset i)
+                            (:line-blen i)
+                            (:line-len i)]))
+    (.newLine wtr)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-index!
-  [^FAIWriter wtr headers sequences]
-  (write-index*! (.writer wtr) headers sequences))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  [rdr ^FAIWriter wtr]
+  (let [indices (make-indices rdr)]
+    (write-index*! (.writer wtr) indices)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
        SyntaxHighlighter.all()</script></body></html>

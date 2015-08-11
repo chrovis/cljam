@@ -3030,7 +3030,9 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.pileup.pileup" name="cljam.pileup.pileup"><h1 class="project-name">cljam.pileup.pileup</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Provides simple pileup functions.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.pileup.pileup
-  (:require [cljam.util.sam-util :as sam-util]
+  (:require [com.climate.claypoole :as cp]
+            [cljam.common :refer [get-exec-n-threads]]
+            [cljam.util.sam-util :as sam-util]
             [cljam.io :as io]
             [cljam.pileup.common :refer [window-width step center]]
             cljam.bam.reader)
@@ -3061,7 +3063,19 @@ net.brehaut.ClojureTools = (function (SH) {
      (rpositions start end start))
   ([start end n]
      (if (&gt;= end n)
-       (cons n (lazy-seq (rpositions start end (inc n)))))))</pre></td></tr><tr><td class="docs"><p>Reads alignments which have the rname and are included in a range defined by
+       (cons n (lazy-seq (rpositions start end (inc n)))))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy seq of grouped positions. Equivalent of
+  (partition-all n (rpositions start end)). This implementation is faster.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn grouped-rpositions
+  [start end n]
+  (lazy-seq
+   (letfn [(rpositions* [s e]
+             (loop [i e xs `()]
+               (if (&gt;= i s)
+                 (recur (dec i) (cons i xs))
+                 xs)))]
+     (when (&lt;= start end)
+       (cons (rpositions* start (min (+ start n -1) end))
+             (grouped-rpositions (+ start n) end n))))))</pre></td></tr><tr><td class="docs"><p>Reads alignments which have the rname and are included in a range defined by
   the pos and window size, returning the alignments as a lazy seq. Reading
   depth is shallow.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-alignments
@@ -3074,16 +3088,24 @@ net.brehaut.ClojureTools = (function (SH) {
                              :depth :shallow})))</pre></td></tr><tr><td class="docs"><p>Internal pileup function.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- pileup*
   [rdr rname rlength start end]
-  (let [read-alignments-memo (memoize read-alignments)]
-    (-&gt;&gt; (rpositions start end)
-         (partition-all step)
+  (let [n-threads (get-exec-n-threads)
+        count-fn (fn [xs]
+                   (if (= n-threads 1)
+                     (map (fn [[positions alns]]
+                            (count-for-positions alns rname positions)) xs)
+                     (cp/pmap (dec n-threads)
+                              (fn [[positions alns]]
+                                (count-for-positions alns rname positions)) xs)))]
+    (-&gt;&gt; (grouped-rpositions start end step)
+         (map vec)
          (map (fn [positions]
                 (let [pos (if (= (count positions) step)
                             (nth positions center)
                             (nth positions (quot (count positions) 2)))
-                      alns (read-alignments-memo rdr rname rlength pos)]
-                  (count-for-positions alns rname positions))))
-         flatten)))</pre></td></tr><tr><td class="docs"><p>Return a position of first alignment in left-right, or nil.</p>
+                      alns (doall (read-alignments rdr rname rlength pos))]
+                  [positions alns])))
+         count-fn
+         (apply concat))))</pre></td></tr><tr><td class="docs"><p>Return a position of first alignment in left-right, or nil.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn first-pos
   [bam-reader rname left right]
   (-&gt; (io/read-alignments bam-reader {:chr rname

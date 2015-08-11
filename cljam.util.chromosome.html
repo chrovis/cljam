@@ -3030,33 +3030,36 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.util.chromosome" name="cljam.util.chromosome"><h1 class="project-name">cljam.util.chromosome</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.util.chromosome
-  (:require [clojure.string :as str]))</pre></td></tr><tr><td class="docs">
+  (:require [clojure.string :as cstr]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn normalize-name
   [s]
   (-&gt; s
-      (str/replace #&quot;\.&quot;  &quot;_&quot;)
-      (str/replace #&quot;,&quot;  &quot;_&quot;)
-      (str/replace #&quot;\  )
-      (str/replace #&quot;\'&quot;  )))</pre></td></tr><tr><td class="docs">
+      (cstr/replace #&quot;\.&quot;  &quot;_&quot;)
+      (cstr/replace #&quot;,&quot;  &quot;_&quot;)
+      (cstr/replace #&quot;\  )
+      (cstr/replace #&quot;\'&quot;  )))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn trim-chromosome-key
   [s]
   (-&gt; s
-      (str/replace #&quot;Chr&quot; )
-      (str/replace #&quot;chr&quot; )))</pre></td></tr><tr><td class="docs">
+      (cstr/replace #&quot;Chr&quot; )
+      (cstr/replace #&quot;chr&quot; )))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- normalize-chromosome-prefix
   [s]
-  (let [m (re-matches #&quot;(?i)^chr([0-9]+|X|Y|M|MT)&quot; s)]
+  (let [m (re-matches #&quot;(?i)^chr([0-9]{1,2}|X|Y|M|MT)(.*)$&quot; s)]
     (if (nil? m)
       s
-      (let [[_ tail] m]
-        (str &quot;chr&quot; (str/upper-case tail))))))</pre></td></tr><tr><td class="docs">
+      (let [[_ base leftover] m
+            base  (if (re-find #&quot;^\d+$&quot; base)
+                    (str (Integer. base))
+                    base)]
+        (str &quot;chr&quot; (cstr/upper-case (str base leftover)))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- prepend-chromosome-prefix
   [s]
-  (let [m (re-matches #&quot;(?i)^([0-9]+|X|Y|M|MT)&quot; s)]
+  (let [m (re-matches #&quot;(?i)^([0-9]{1,2}|X|Y|M|MT)(.*)$&quot; s)]
     (if (nil? m)
       s
-      (let [[_ tail] m]
-        (str &quot;chr&quot; (str/upper-case tail))))))</pre></td></tr><tr><td class="docs">
+      (let [[_ base leftover] m]
+        (str &quot;chr&quot; (cstr/upper-case (str base leftover)))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn normalize-chromosome-key
   [s]
   (-&gt; s

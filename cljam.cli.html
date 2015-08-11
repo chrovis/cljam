@@ -3031,7 +3031,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.cli" name="cljam.cli"><h1 class="project-name">cljam.cli</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Implementations of the command-line tool.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.cli
   (:refer-clojure :exclude [sort merge])
-  (:require [clojure.string :as str]
+  (:require [clojure.string :as cstr]
             [clj-sub-command.core :refer [sub-command]]
             [clojure.tools.cli :refer [parse-opts]]
             (cljam [core :refer [reader writer]]
@@ -3045,7 +3045,8 @@ net.brehaut.ClojureTools = (function (SH) {
                    [fasta-indexer :as fai]
                    [dict :as dict]
                    [pileup :as plp])
-            [cljam.util.sam-util :refer [stringify-header stringify-alignment]]))</pre></td></tr><tr><td class="docs"><h2>CLI functions</h2>
+            [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
+  (:import [java.io BufferedWriter OutputStreamWriter]))</pre></td></tr><tr><td class="docs"><h2>CLI functions</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Exits the program with the status after printing the message.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- exit
   [status message]
@@ -3054,7 +3055,15 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- error-msg
   [errors]
   (str &quot;The following errors occurred while parsing your command:\n\n&quot;
-       (str/join \newline errors)))</pre></td></tr><tr><td class="docs"><h2>Sub-commands</h2>
+       (cstr/join \newline errors)))</pre></td></tr><tr><td class="docs"><p>Returns a message  of candidate sub-commands.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- candidate-msg
+  [candidates]
+  (-&gt;&gt; candidates
+       (map (partial str &quot;        &quot;))
+       (cons (if (= (count candidates) 1)
+               &quot;Did you mean this?&quot;
+               &quot;Did you mean one of these?&quot;))
+       (cstr/join \newline)))</pre></td></tr><tr><td class="docs"><h2>Sub-commands</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><h3>view command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private view-cli-options
@@ -3067,7 +3076,7 @@ net.brehaut.ClojureTools = (function (SH) {
         &quot;Usage: cljam view [--header] [-f FORMAT] &lt;in.bam|sam&gt;&quot;
         &quot;Options:&quot;
         options-summary]
-       (str/join \newline)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn view [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args view-cli-options)]
     (cond
@@ -3096,7 +3105,7 @@ net.brehaut.ClojureTools = (function (SH) {
         &quot;Usage: cljam convert [-if FORMAT] [-of FORMAT] &lt;in.bam|sam&gt; &lt;out.bam|sam&gt;&quot;
         &quot;Options:&quot;
         options-summary]
-       (str/join \newline)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn convert [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args convert-cli-options)]
     (cond
@@ -3120,7 +3129,7 @@ net.brehaut.ClojureTools = (function (SH) {
         &quot;Usage: cljam normalize &lt;in.bam|sam&gt; &lt;out.bam|sam&gt;&quot;
         &quot;Options:&quot;
         options-summary]
-       (str/join \newline)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn normalize [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args normalize-cli-options)]
     (cond
@@ -3142,7 +3151,7 @@ net.brehaut.ClojureTools = (function (SH) {
         &quot;Usage: cljam sort [-o ORDER] &lt;in.bam|sam&gt; &lt;out.bam|sam&gt;&quot;
         &quot;Options:&quot;
         options-summary]
-       (str/join \newline)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn sort [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args sort-cli-options)]
     (cond
@@ -3158,13 +3167,16 @@ net.brehaut.ClojureTools = (function (SH) {
   nil)</pre></td></tr><tr><td class="docs"><h3>index command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private index-cli-options
-  [[&quot;-h&quot; &quot;--help&quot;]])</pre></td></tr><tr><td class="docs">
+  [[&quot;-t&quot; &quot;--thread THREAD&quot; &quot;Number of threads (0 is auto)&quot;
+    :default 0
+    :parse-fn #(Integer/parseInt %)]
+   [&quot;-h&quot; &quot;--help&quot;]])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- index-usage [options-summary]
   (-&gt;&gt; [&quot;Index sorted alignment for fast random access.&quot;
-        &quot;Usage: cljam index &lt;in.bam&gt;&quot;
+        &quot;Usage: cljam index [-t THREAD] &lt;in.bam&gt;&quot;
         &quot;Options:&quot;
         options-summary]
-       (str/join \newline)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn index [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args index-cli-options)]
     (cond
@@ -3172,32 +3184,64 @@ net.brehaut.ClojureTools = (function (SH) {
      (not= (count arguments) 1) (exit 1 (index-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (bai/create-index f (str f &quot;.bai&quot;))))
+      (bai/create-index f (str f &quot;.bai&quot;) :n-threads (:thread options))))
   nil)</pre></td></tr><tr><td class="docs"><h3>pileup command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private pileup-cli-options
-  [[&quot;-r&quot; &quot;--ref FASTA&quot; &quot;Reference file in the FASTA format.&quot;
+  [[&quot;-s&quot; &quot;--simple&quot; &quot;Output only pileup count.&quot;]
+   [&quot;-r&quot; &quot;--region REGION&quot; &quot;Only pileup in region. (e.g. chr6:1000-2000)&quot;]
+   [&quot;-t&quot; &quot;--thread THREAD&quot; &quot;Number of threads (0 is auto)&quot;
+    :default 0
+    :parse-fn #(Integer/parseInt %)]
+   [&quot;-f&quot; &quot;--ref FASTA&quot; &quot;Reference file in the FASTA format.&quot;
     :default nil]
    [&quot;-h&quot; &quot;--help&quot;]])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- pileup-usage [options-summary]
   (-&gt;&gt; [&quot;Generate pileup for the BAM file.&quot;
-        &quot;Usage: cljam pileup [-r FASTA] &lt;in.bam&gt;&quot;
+        &quot;Usage: cljam pileup [-s] [-r REGION] [-f FASTA] [-t THREAD] &lt;in.bam&gt;&quot;
         &quot;Options:&quot;
         options-summary]
-       (str/join \newline)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- pileup-simple
+  ([rdr n-threads]
+   (doseq [rname (map :name (io/read-refs rdr))]
+     (pileup-simple rdr n-threads rname -1 -1)))
+  ([rdr n-threads rname start end]
+   (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
+             *flush-on-newline* false]
+     (doseq [line (plp/pileup rdr rname start end {:n-threads n-threads})]
+       (println line))
+     (flush))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- pileup-with-ref
-  [rdr ref-fa]
-  (with-open [fa-rdr (fa/reader ref-fa)]
-    (doseq [rname (map :name (io/read-refs rdr))
-            line  (plp/mpileup rdr rname -1 -1 :ref-fasta fa-rdr)]
-      (if-not (zero? (:count line))
-        (println (str/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))</pre></td></tr><tr><td class="docs">
+  ([rdr ref-fa]
+   (with-open [fa-rdr (fa/reader ref-fa)]
+     (doseq [rname (map :name (io/read-refs rdr))
+             line  (plp/mpileup rdr rname -1 -1 :ref-fasta fa-rdr)]
+       (if-not (zero? (:count line))
+         (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
+  ([rdr ref-fa rname start end]
+   (with-open [fa-rdr (fa/reader ref-fa)]
+     (doseq [line  (plp/mpileup rdr rname start end :ref-fasta fa-rdr)]
+       (if-not (zero? (:count line))
+         (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- pileup-without-ref
-  [rdr]
-  (doseq [rname (map :name (io/read-refs rdr))
-          line  (plp/mpileup rdr rname)]
-    (if-not (zero? (:count line))
-      (println (str/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))</pre></td></tr><tr><td class="docs">
+  ([rdr]
+   (doseq [rname (map :name (io/read-refs rdr))
+           line  (plp/mpileup rdr rname)]
+     (if-not (zero? (:count line))
+       (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))
+  ([rdr rname start end]
+   (doseq [line  (plp/mpileup rdr rname start end)]
+     (if-not (zero? (:count line))
+       (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- parse-region
+  [region-str]
+  (if-let [m (re-find #&quot;^([^:]+)$&quot; region-str)]
+    (conj (vec (rest m)) -1 -1)
+    (if-let [m (re-find #&quot;^([^:]+):([0-9]+)-([0-9]+)$&quot; region-str)]
+      (-&gt; (vec (rest m))
+          (update-in [1] #(Integer/parseInt %))
+          (update-in [2] #(Integer/parseInt %))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn pileup [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args pileup-cli-options)]
     (cond
@@ -3210,9 +3254,17 @@ net.brehaut.ClojureTools = (function (SH) {
           (exit 1 &quot;Not support SAM file&quot;))
         (when-not (sorter/sorted-by? r)
           (exit 1 &quot;Not sorted&quot;))
-        (if (nil? (:ref options))
-          (pileup-without-ref r)
-          (pileup-with-ref r (:ref options))))))
+        (if (:region options)
+          (if-let [region (parse-region (:region options))]
+            (cond
+              (:simple options) (apply pileup-simple r (:thread options) region)
+              (:ref options) (apply pileup-with-ref r (:ref options) region)
+              :else (apply pileup-without-ref r region))
+            (exit 1 &quot;Invalid region format&quot;))
+          (cond
+            (:simple options) (pileup-simple r (:thread options))
+            (:ref options) (pileup-with-ref r (:ref options))
+            :else (pileup-without-ref r))))))
   nil)</pre></td></tr><tr><td class="docs"><h3>faidx command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private faidx-cli-options
@@ -3222,7 +3274,7 @@ net.brehaut.ClojureTools = (function (SH) {
         &quot;Usage: cljam faidx &lt;ref.fasta&gt;&quot;
         &quot;Options:&quot;
         options-summary]
-       (str/join \newline)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn faidx [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args faidx-cli-options)]
     (cond
@@ -3240,7 +3292,7 @@ net.brehaut.ClojureTools = (function (SH) {
         &quot;Usage: cljam dict &lt;ref.fasta&gt; &lt;out.dict&gt;&quot;
         &quot;Options:&quot;
         options-summary]
-       (str/join \newline)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn dict [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args dict-cli-options)]
     (cond
@@ -3252,17 +3304,18 @@ net.brehaut.ClojureTools = (function (SH) {
   nil)</pre></td></tr><tr><td class="docs"><h2>Main command</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn run [args]
-  (let [[opts cmd args help] (sub-command args
-                                          &quot;Usage: cljam {view,convert,sort,index,pileup,faidx,dict} ...&quot;
-                                          :options  [[&quot;-h&quot; &quot;--help&quot; &quot;Show help&quot; :default false :flag true]]
-                                          :commands [[&quot;view&quot;    &quot;Extract/print all or sub alignments in SAM or BAM format.&quot;]
-                                                     [&quot;convert&quot; &quot;Convert SAM to BAM or BAM to SAM.&quot;]
-                                                     [&quot;normalize&quot; &quot;Normalize references of alignments&quot;]
-                                                     [&quot;sort&quot;    &quot;Sort alignments by leftmost coordinates.&quot;]
-                                                     [&quot;index&quot;   &quot;Index sorted alignment for fast random access.&quot;]
-                                                     [&quot;pileup&quot;  &quot;Generate pileup for the BAM file.&quot;]
-                                                     [&quot;faidx&quot;   &quot;Index reference sequence in the FASTA format.&quot;]
-                                                     [&quot;dict&quot;    &quot;Create a FASTA sequence dictionary file.&quot;]])]
+  (let [[opts cmd args help cands]
+        (sub-command args
+                     &quot;Usage: cljam {view,convert,sort,index,pileup,faidx,dict} ...&quot;
+                     :options  [[&quot;-h&quot; &quot;--help&quot; &quot;Show help&quot; :default false :flag true]]
+                     :commands [[&quot;view&quot;    &quot;Extract/print all or sub alignments in SAM or BAM format.&quot;]
+                                [&quot;convert&quot; &quot;Convert SAM to BAM or BAM to SAM.&quot;]
+                                [&quot;normalize&quot; &quot;Normalize references of alignments&quot;]
+                                [&quot;sort&quot;    &quot;Sort alignments by leftmost coordinates.&quot;]
+                                [&quot;index&quot;   &quot;Index sorted alignment for fast random access.&quot;]
+                                [&quot;pileup&quot;  &quot;Generate pileup for the BAM file.&quot;]
+                                [&quot;faidx&quot;   &quot;Index reference sequence in the FASTA format.&quot;]
+                                [&quot;dict&quot;    &quot;Create a FASTA sequence dictionary file.&quot;]])]
     (when (:help opts)
       (exit 0 help))
     (case cmd
@@ -3274,5 +3327,8 @@ net.brehaut.ClojureTools = (function (SH) {
       :pileup  (pileup args)
       :faidx   (faidx args)
       :dict    (dict args)
-      (println help))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+      (do (println &quot;Invalid command. See 'cljam --help'.&quot;)
+          (when (seq cands)
+            (newline)
+            (exit 1 (candidate-msg cands)))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
        SyntaxHighlighter.all()</script></body></html>

@@ -3030,8 +3030,8 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.pileup" name="cljam.pileup"><h1 class="project-name">cljam.pileup</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.pileup
-  (:require [clojure.string :as str]
-            [clojure.java.io :refer [writer]]
+  (:require [clojure.java.io :refer [writer]]
+            [cljam.common :refer [*n-threads*]]
             [cljam.bam :as bam]
             [cljam.io :as io]
             [cljam.pileup.common :as plpc]
@@ -3039,7 +3039,15 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.pileup.mpileup :as mplp]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def window-width plpc/window-width)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def first-pos plp/first-pos)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def pileup plp/pileup)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private default-pileup-option
+  {:n-threads 0})</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn pileup
+  ([bam-reader rname option]
+   (pileup bam-reader rname -1 -1 option))
+  ([bam-reader rname start end option]
+   (let [option* (merge default-pileup-option option)]
+     (binding [*n-threads* (:n-threads option*)]
+       (plp/pileup bam-reader rname start end)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def mpileup mplp/pileup)</pre></td></tr><tr><td class="docs"><p>Creates a mpileup file from the BAM file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn create-mpileup
   [in-bam out-mplp]

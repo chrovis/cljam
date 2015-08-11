@@ -3031,7 +3031,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.sorter" name="cljam.sorter"><h1 class="project-name">cljam.sorter</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Sorter of SAM/BAM format alignments.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.sorter
   (:require [clojure.java.io :refer [file]]
-            [clojure.string :as str]
+            [clojure.string :as cstr]
             (cljam [sam :as sam]
                    [bam :as bam]
                    [common :refer [version]]
@@ -3136,7 +3136,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn sort-by-pos [rdr wtr]
   (let [filename (.getName (file (io/reader-path rdr)))
-        basename (first (str/split filename #&quot;\.(?=[^\.]+$)&quot;))
+        basename (first (cstr/split filename #&quot;\.(?=[^\.]+$)&quot;))
         cache-name-fn (partial gen-cache-filename basename)
         sorted-cache-name-fn (partial gen-sorted-cache-filename basename)
         splited-files (split-sam rdr cache-name-fn)

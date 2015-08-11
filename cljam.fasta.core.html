@@ -3032,24 +3032,38 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.fasta.core
   (:refer-clojure :exclude [read slurp])
   (:require [clojure.java.io :as io]
+            [cljam.fasta-index.core :as fasta-index]
             [cljam.fasta.reader :as reader])
   (:import java.io.RandomAccessFile
            cljam.fasta.reader.FASTAReader))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader reader
   [^String f]
-  (let [headers (with-open [r (RandomAccessFile. f &quot;r&quot;)]
-                  (reader/load-headers r))]
+  (let [f (.getAbsolutePath (io/file f))
+        index-f (str f &quot;.fai&quot;)
+        index (when (.exists (io/file index-f))
+                (fasta-index/reader index-f))]
     (FASTAReader. (RandomAccessFile. f &quot;r&quot;)
-                  (.getAbsolutePath (io/file f))
-                  headers)))</pre></td></tr><tr><td class="docs">
+                  f
+                  index)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-headers
   [^FASTAReader rdr]
-  (.headers rdr))</pre></td></tr><tr><td class="docs"><p>Reads sequences by line, returning the line-separated sequences
+  (if (.index rdr)
+    (fasta-index/get-headers (.index rdr))
+    (reader/load-headers (.reader rdr))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn read-indices
+  [^FASTAReader rdr]
+  (when (.index rdr)
+    (fasta-index/get-indices (.index rdr))))</pre></td></tr><tr><td class="docs"><p>Reads sequences by line, returning the line-separated sequences
   as lazy sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-sequences
   [rdr]
   (reader/read-sequences rdr))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn read-sequence
+  ([rdr name]
+     (reader/read-whole-sequence rdr name))
+  ([rdr name start end]
+     (reader/read-sequence rdr name start end)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read
   [rdr]
   (reader/read rdr))</pre></td></tr><tr><td class="docs"><p>Opens a reader on a FASTA file and reads all its contents, returning

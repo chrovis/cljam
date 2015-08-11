@@ -3144,12 +3144,12 @@ net.brehaut.ClojureTools = (function (SH) {
                   :shallow light-read-alignment
                   :deep read-alignment
                   :pointer pointer-read-alignment)
-        candidates (delay (flatten (map (fn [[^Long begin ^Long finish]]
-                                          (.seek ^BGZFInputStream (.reader rdr) begin)
-                                          (doall (read-to-finish rdr finish read-fn))) spans)))]
+        candidates (flatten (map (fn [[^Long begin ^Long finish]]
+                                   (.seek ^BGZFInputStream (.reader rdr) begin)
+                                   (read-to-finish rdr finish read-fn)) spans))]
     (if (= deep-or-shallow :first-only)
       (read-alignments-first-only rdr spans window read-fn)
-      (filter window @candidates))))</pre></td></tr><tr><td class="docs">
+      (filter window candidates))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-alignments-sequentially*
   [^BAMReader rdr deep-or-shallow]
   (let [read-aln-fn (case deep-or-shallow

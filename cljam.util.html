@@ -3061,10 +3061,24 @@ net.brehaut.ClojureTools = (function (SH) {
    (map #(byte (bit-or (bit-shift-left (from-hex-digit (nth s (* % 2))) 4)
                        from-hex-digit (nth s (inc (* % 2)))))
         (range (count s)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn str-&gt;int [str]
-  (try
-    (Integer. ^String (re-find #&quot;\d+&quot; str))
-    (catch Exception e nil)))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a visible character, false if not.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn str-&gt;long [s]
+  (if-not (nil? s)
+    (try
+      (let [[n _ _] (re-matches #&quot;(|-|\+)(\d+)&quot; s)]
+        (Long. ^String n))
+      (catch Exception e
+        nil))
+    nil))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn str-&gt;int [s]
+  (if-not (nil? s)
+    (try
+      (let [[n _ _] (re-matches #&quot;(|-|\+)(\d+)&quot; s)]
+        (Integer. ^String n))
+      (catch NumberFormatException e
+        (str-&gt;long s))
+      (catch Exception e
+        nil))
+    nil))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a visible character, false if not.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn graph?
   [c]
   (&lt;= 0x20 (byte c) 0x7E))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a character that creates "white space" in displayed

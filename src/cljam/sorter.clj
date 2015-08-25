@@ -101,20 +101,19 @@
         ref-map (apply merge
                        (map-indexed (fn [i val] {val i})
                                     (map :name (sam-util/make-refs header))))]
-    (with-open [wtr wtr]
-      (io/write-header wtr header)
-      (io/write-refs wtr header)
-      (loop [blocks-list (map #(io/read-blocks % {:mode :coordinate}) rdrs)]
-        (let [candidates (map first blocks-list)]
-          (when-not (every? nil? candidates)
-            (let [[i b] (head candidates ref-map)]
-              (io/write-blocks wtr [b])
-              (recur (map
-                      (fn [[idx blocks]]
-                        (if (= idx i)
-                          (drop 1 blocks)
-                          blocks))
-                      (map-indexed vector blocks-list))))))))))
+    (io/write-header wtr header)
+    (io/write-refs wtr header)
+    (loop [blocks-list (map #(io/read-blocks % {:mode :coordinate}) rdrs)]
+      (let [candidates (map first blocks-list)]
+        (when-not (every? nil? candidates)
+          (let [[i b] (head candidates ref-map)]
+            (io/write-blocks wtr [b])
+            (recur (map
+                    (fn [[idx blocks]]
+                      (if (= idx i)
+                        (drop 1 blocks)
+                        blocks))
+                    (map-indexed vector blocks-list)))))))))
 
 (defn clean-split-merge-cache
   [name-fn sorted-name-fn count]
@@ -158,10 +157,9 @@
         hdr (replace-header (io/read-header rdr)
                             version
                             (name order-queryname))]
-    (with-open [wtr wtr]
-      (io/write-header wtr hdr)
-      (io/write-refs wtr hdr)
-      (io/write-alignments wtr alns hdr))))
+    (io/write-header wtr hdr)
+    (io/write-refs wtr hdr)
+    (io/write-alignments wtr alns hdr)))
 
 (defn sorted-by?
   "Returns true if the sam is sorted, false if not. It is detected by

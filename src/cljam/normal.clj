@@ -32,11 +32,9 @@
 
 (defmethod normalize :bam
   [rdr wtr]
-  (with-open [rdr rdr]
-    (let [hdr (normalize-header (io/read-header rdr))]
-      (with-open [wtr wtr]
-        (io/write-header wtr hdr)
-        (io/write-refs wtr hdr)
-        ;; TODO copy all rest of stream for performance. (do not read, parse and write)
-        (doseq [blks (partition-all chunk-size (io/read-blocks rdr))]
-          (io/write-blocks wtr blks))))))
+  (let [hdr (normalize-header (io/read-header rdr))]
+    (io/write-header wtr hdr)
+    (io/write-refs wtr hdr)
+    ;; TODO copy all rest of stream for performance. (do not read, parse and write)
+    (doseq [blks (partition-all chunk-size (io/read-blocks rdr))]
+      (io/write-blocks wtr blks))))

@@ -31,9 +31,9 @@
                                           (spit-bam-for-test
                                             f test-sam-incomplete-alignments)
                                           ;; TODO: go independent from sorter
-                                          (sorter/sort-by-pos
-                                            (bam/reader f :ignore-index true)
-                                            (bam/writer sorted-f))))
+                                          (with-open [rdr (bam/reader f :ignore-index true)
+                                                      wtr (bam/writer sorted-f)]
+                                            (sorter/sort-by-pos rdr wtr))))
                        (after :facts (clean-cache!))]
     (fact "about BAM indexer (for incomplete alignments)"
       (bai/create-index sorted-f (str sorted-f ".bai")) => anything

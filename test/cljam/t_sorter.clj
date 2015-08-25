@@ -41,8 +41,9 @@
                                  (str "invalid file suffix " dst-file))))
                   nil)]
     (if-not (nil? dst-wtr)
-      (target-fn src-rdr dst-wtr)
-      (target-fn src-rdr))))
+      (with-open [src src-rdr
+                  dst dst-wtr] (target-fn src dst))
+      (with-open [src src-rdr] (target-fn src)))))
 
 (with-state-changes [(before :facts (do (prepare-cache!)
                                         (prepare-shuffled-files!)))

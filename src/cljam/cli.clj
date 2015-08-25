@@ -162,12 +162,12 @@
      (:help options) (exit 0 (sort-usage summary))
      (not= (count arguments) 2) (exit 1 (sort-usage summary))
      errors (exit 1 (error-msg errors)))
-    (let [[in out] arguments
-          r (reader in)
-          w (writer out)]
-      (condp = (:order options)
-        (name sorter/order-coordinate) (sorter/sort-by-pos r w)
-        (name sorter/order-queryname) (sorter/sort-by-qname r w))))
+    (let [[in out] arguments]
+      (with-open [r (reader in)
+                  w (writer out)]
+        (condp = (:order options)
+          (name sorter/order-coordinate) (sorter/sort-by-pos r w)
+          (name sorter/order-queryname) (sorter/sort-by-qname r w)))))
   nil)
 
 ;; ### index command

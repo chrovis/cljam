@@ -8,7 +8,7 @@
                  [org.clojure/tools.cli "0.3.3"]
                  [me.raynes/fs "1.4.6"]
                  [pandect "0.5.3"]
-                 [clj-sub-command "0.2.1"]
+                 [clj-sub-command "0.2.2"]
                  [bgzf4j "0.1.0"]
                  [com.climate/claypoole "1.0.0"]]
   :plugins [[lein-midje "3.1.3"]

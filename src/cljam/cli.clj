@@ -233,12 +233,12 @@
   ([rdr ref-fa]
    (with-open [fa-rdr (fa/reader ref-fa)]
      (doseq [rname (map :name (io/read-refs rdr))
-             line  (plp/mpileup rdr rname -1 -1 :ref-fasta fa-rdr)]
+             line  (plp/mpileup fa-rdr rdr rname -1 -1)]
        (if-not (zero? (:count line))
          (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
   ([rdr ref-fa rname start end]
    (with-open [fa-rdr (fa/reader ref-fa)]
-     (doseq [line  (plp/mpileup rdr rname start end :ref-fasta fa-rdr)]
+     (doseq [line  (plp/mpileup fa-rdr rdr rname start end)]
        (if-not (zero? (:count line))
          (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))))
 

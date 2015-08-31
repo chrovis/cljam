@@ -35,3 +35,7 @@
      (fa-core/read-sequence rdr name))
   ([rdr name start end]
      (fa-core/read-sequence rdr name start end)))
+
+(defn reset
+  [rdr]
+  (fa-core/reset rdr))

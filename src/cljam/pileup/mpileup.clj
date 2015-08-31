@@ -8,13 +8,12 @@
             [cljam.io :as io]
             [cljam.fasta :as fa]
             [cljam.pileup.common :refer [window-width step center]]
-            [cljam.pileup.pileup :refer [rpositions]])
-  (:import cljam.fasta.reader.FASTAReader))
+            [cljam.pileup.pileup :refer [rpositions]]))
 
 (defn- pickup-qual [aln pos]
   (if (= (:qual aln) "*")
     \~
-    (nth (:qual aln) pos)))
+    (nth (:qual aln) pos \~)))
 
 (defn- encode-seq* [seq*]
   (loop [[f & r] (filter #(nil? (#{\P} (:op %))) seq*)
@@ -53,7 +52,7 @@
        => (\"^?TA\" ... \"C$\")"
   [seq*]
   (let [seq** (encode-seq* seq*)]
-    (-> (update-in seq** [(dec (count seq**))] str "$") ; Append "$" to the end
+    (-> (update-in seq** [(max 0 (dec (count seq**)))] str "$") ; Append "$" to the end
         (update-in [0] #(str "^?" %)))))                ; Insert "^?" before the begin
 
 (defrecord ^:private PileupStatus [count seq qual])
@@ -140,14 +139,18 @@
                              :depth :deep})))
 
 (defn- read-ref-fasta-line
+  ;; TODO Reduce memroy usage
   [fa-rdr rname]
-  (if-not (nil? fa-rdr)
-    (first
-     (filter #(= (:rname %) rname) (fa/read fa-rdr)))))
+  (if (nil? fa-rdr)
+    nil
+    (let [line (first
+                (filter #(= (:rname %) rname) (fa/read fa-rdr)))]
+      (fa/reset fa-rdr)
+      line)))
 
 (defn- pileup*
   "Internal pileup function."
-  [rdr ^FASTAReader fa-rdr rname rlength start end]
+  [fa-rdr rdr rname rlength start end]
   (->> (rpositions start end)
        (partition-all step)
        (map (fn [positions]
@@ -161,34 +164,41 @@
 
 (defn pileup
   ([bam-reader rname]
-     (pileup bam-reader rname -1 -1))
-  ([bam-reader rname start end & {:keys [ref-fasta] :or {ref-fasta nil}}]
-     (try
-       (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
-         (pileup* bam-reader ref-fasta rname (:len r)
-                  (if (neg? start) 0 start)
-                  (if (neg? end) (:len r) end)))
-       (catch bgzf4j.BGZFException _
-         (throw (RuntimeException. "Invalid file format"))))))
+   (pileup nil bam-reader rname -1 -1))
+  ([fa-rdr bam-reader rname]
+   (pileup fa-rdr bam-reader rname -1 -1))
+  ([fa-rdr bam-reader rname start end]
+   (try
+     (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
+       (pileup* fa-rdr
+                bam-reader rname (:len r)
+                (if (neg? start) 0 start)
+                (if (neg? end) (:len r) end)))
+     (catch bgzf4j.BGZFException _
+       (throw (RuntimeException. "Invalid file format"))))))
 
 ;; Writing
 ;; -------
 
 (defn- write-line!
   [^java.io.BufferedWriter w line]
-  ;; FIXME: order of tab-delimitated elements
-  (.write w (cstr/join \tab (map val line)))
+  (.write w (cstr/join \tab [(:rname line)
+                             (:pos line)
+                             (:ref line)
+                             (:count line)
+                             (:seq line)
+                             (:qual line)]))
   (.newLine w))
 
 (defn create-mpileup
   "Creates a mpileup file from the BAM file."
-  [f bam-reader]
+  [f fa-rdr bam-reader]
   (try
     (with-open [w (writer f)]
-      (doseq [rname (map :name (io/read-refs bam-reader))
-              line (pileup bam-reader rname)]
-        (when-not (zero? (:count line))
-          (write-line! w line))))
+      (doseq [rname (map :name (io/read-refs bam-reader))]
+        (doseq [line (pileup fa-rdr bam-reader rname)]
+          (when-not (zero? (:count line))
+            (write-line! w line)))))
     (catch Exception e (do
                          (fs/delete f)
                          (logging/error "Failed to create mpileup")

@@ -46,6 +46,10 @@
   [rdr]
   (reader/read rdr))
 
+(defn reset
+  [rdr]
+  (reader/reset rdr))
+
 (defn slurp
   "Opens a reader on a FASTA file and reads all its contents, returning
   a sequence about the data."

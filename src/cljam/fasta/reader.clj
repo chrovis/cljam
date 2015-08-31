@@ -113,3 +113,8 @@
   [^FASTAReader rdr]
   (let [r (.reader rdr)]
     (read* (.readLine r) r)))
+
+(defn reset
+  [^FASTAReader rdr]
+  (let [r (.reader rdr)]
+    (.seek r 0)))

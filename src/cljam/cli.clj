@@ -235,23 +235,35 @@
      (doseq [rname (map :name (io/read-refs rdr))
              line  (plp/mpileup fa-rdr rdr rname -1 -1)]
        (if-not (zero? (:count line))
-         (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
+         (println (cstr/join \tab (map #(case %
+                                          :qual (cstr/join (% line))
+                                          :seq (cstr/join (% line))
+                                          (% line)) [:rname :pos :ref :count :seq :qual])))))))
   ([rdr ref-fa rname start end]
    (with-open [fa-rdr (fa/reader ref-fa)]
      (doseq [line  (plp/mpileup fa-rdr rdr rname start end)]
        (if-not (zero? (:count line))
-         (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))))
+         (println (cstr/join \tab (map #(case %
+                                          :qual (cstr/join (% line))
+                                          :seq (cstr/join (% line))
+                                          (% line)) [:rname :pos :ref :count :seq :qual]))))))))
 
 (defn- pileup-without-ref
   ([rdr]
    (doseq [rname (map :name (io/read-refs rdr))
            line  (plp/mpileup rdr rname)]
      (if-not (zero? (:count line))
-       (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual]))))))
+       (println (cstr/join \tab (map #(case %
+                                        :qual (cstr/join (% line))
+                                        :seq (cstr/join (% line))
+                                        (% line)) [:rname :pos :ref :count :seq :qual]))))))
   ([rdr rname start end]
    (doseq [line  (plp/mpileup rdr rname start end)]
      (if-not (zero? (:count line))
-       (println (cstr/join \tab (map #(% line) [:rname :pos :ref :count :seq :qual])))))))
+       (println (cstr/join \tab (map #(case %
+                                        :qual (cstr/join (% line))
+                                        :seq (cstr/join (% line))
+                                        (% line)) [:rname :pos :ref :count :seq :qual])))))))
 
 (defn- parse-region
   [region-str]

@@ -52,8 +52,10 @@
        => (\"^?TA\" ... \"C$\")"
   [seq*]
   (let [seq** (encode-seq* seq*)]
-    (-> (update-in seq** [(max 0 (dec (count seq**)))] str "$") ; Append "$" to the end
-        (update-in [0] #(str "^?" %)))))                ; Insert "^?" before the begin
+    ;; NOTE: Disable for convenience for variant call
+    ;; (-> (update-in seq** [(max 0 (dec (count seq**)))] str "$") ; Append "$" to the end
+    ;;     (update-in [0] #(str "^?" %))) ; Insert "^?" before the begin
+    seq**))
 
 (defrecord ^:private PileupStatus [count seq qual])
 
@@ -115,8 +117,8 @@
           plp1 (apply map (fn [& a]
                             {:rname rname
                              :count (reduce + (map :count a))
-                             :seq   (cstr/join (map :seq a))
-                             :qual  (cstr/join (map :qual a))}) cfas)]
+                             :seq   (filterv (complement nil?) (map :seq a))
+                             :qual  (filterv (complement nil?) (map :qual a))}) cfas)]
       (map #(assoc %2 :pos %1 :ref (pickup-ref (:seq ref-line) %1))
            positions plp1))
     (let [plp1 (repeat (count positions) {:rname rname
@@ -186,8 +188,8 @@
                              (:pos line)
                              (:ref line)
                              (:count line)
-                             (:seq line)
-                             (:qual line)]))
+                             (cstr/join (:seq line))
+                             (cstr/join (:qual line))]))
   (.newLine w))
 
 (defn create-mpileup

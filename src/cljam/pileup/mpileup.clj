@@ -15,20 +15,26 @@
     \~
     (nth (:qual aln) pos \~)))
 
-(defn- encode-seq* [seq*]
+(defn- append-seq**
+  [op target current]
+  (case op
+    \M (apply conj current (map str (:seq target)))
+    \I (if (seq current)
+         (update-in current [(dec (count current))]
+                    vector
+                    (str "+" (:n target) (apply str (:seq target))))
+         current)
+    \D (apply conj current (map str (:seq target)))
+    \N (apply conj current (map str (:seq target)))
+    current))
+
+(defn encode-seq* [seq*]
   (loop [[f & r] (filter #(nil? (#{\P} (:op %))) seq*)
          ret     []
          op      nil
          tmp     {:n 0, :op nil, :seq nil}]
     (if (nil? f)
-      (case op
-        \M (apply conj ret (map str (:seq tmp)))
-        \I (if (seq ret)
-             (update-in ret [(dec (count ret))] str "+" (:n tmp) (apply str (:seq tmp)))
-             ret)
-        \D (apply conj ret (map str (:seq tmp)))
-        \N (apply conj ret (map str (:seq tmp)))
-        ret)
+      (append-seq** op tmp ret)
       (if (nil? op)
         (recur r ret (:op f) f)
         (if (= (:op f) op)
@@ -36,14 +42,7 @@
                                    (update-in [:n] + (:n f))
                                    (assoc :op (:op f))
                                    (update-in [:seq] (partial apply conj) (:seq f))))
-          (let [new-ret (case op
-                          \M (apply conj ret (map str (:seq tmp)))
-                          \I (if (seq ret)
-                               (update-in ret [(dec (count ret))] str "+" (:n tmp) (apply str (:seq tmp)))
-                               ret)
-                          \D (apply conj ret (map str (:seq tmp)))
-                          \N (apply conj ret (map str (:seq tmp)))
-                          ret)]
+          (let [new-ret (append-seq** op tmp ret)]
             (recur r new-ret (:op f) f)))))))
 
 (defn- encode-seq
@@ -117,8 +116,12 @@
           plp1 (apply map (fn [& a]
                             {:rname rname
                              :count (reduce + (map :count a))
-                             :seq   (filterv (complement nil?) (map :seq a))
-                             :qual  (filterv (complement nil?) (map :qual a))}) cfas)]
+                             :seq   (->> (map :seq a)
+                                         (filterv identity)
+                                         (map #(cond
+                                                 (vector? %) (second %)
+                                                 :else %)))
+                             :qual  (filterv identity (map :qual a))}) cfas)]
       (map #(assoc %2 :pos %1 :ref (pickup-ref (:seq ref-line) %1))
            positions plp1))
     (let [plp1 (repeat (count positions) {:rname rname

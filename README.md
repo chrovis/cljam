@@ -141,10 +141,11 @@ Sorted by first commit.
 - Toshiki Takeuchi ([@totakke](https://github.com/totakke))
 - Takashi Aoki ([@federkasten](https://github.com/federkasten))
 - Atsuo Yamada ([@ayamada](https://github.com/ayamada))
+- Jun Imura ([@alumi](https://github.com/alumi))
 
 ## License
 
-Copyright 2013-2015 [Xcoo, Inc.][xcoo]
+Copyright 2013-2016 [Xcoo, Inc.][xcoo]
 
 Licensed under the [Apache License, Version 2.0][apache-license-2.0].
 

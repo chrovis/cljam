@@ -129,8 +129,7 @@
 ;; ------
 
 (defn sort-by-pos [rdr wtr]
-  (let [filename (.getName (file (io/reader-path rdr)))
-        basename (first (cstr/split filename #"\.(?=[^\.]+$)"))
+  (let [basename (util/basename (.getName (file (io/reader-path rdr))))
         cache-name-fn (partial gen-cache-filename basename)
         sorted-cache-name-fn (partial gen-sorted-cache-filename basename)
         splited-files (split-sam rdr cache-name-fn)

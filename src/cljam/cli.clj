@@ -135,10 +135,10 @@
      (:help options) (exit 0 (normalize-usage summary))
      (not= (count arguments) 2) (exit 1 (normalize-usage summary))
      errors (exit 1 (error-msg errors)))
-    (let [[in out] arguments
-          r (reader in)
-          w (writer out)]
-      (normal/normalize r w)))
+    (let [[in out] arguments]
+      (with-open [r (reader in)
+                  w (writer out)]
+        (normal/normalize r w))))
   nil)
 
 ;; ### sort command
@@ -368,12 +368,10 @@
       (:help options) (exit 0 (level-usage summary))
       (not= (count arguments) 2) (exit 1 (level-usage summary))
       errors (exit 1 (error-msg errors)))
-    (let [[in out] arguments
-          r (reader in)
-          w (writer out)]
-      (try (level/add-level r w)
-           (catch clojure.lang.ExceptionInfo e
-             (println e)))))
+    (let [[in out] arguments]
+      (with-open [r (reader in)
+                  w (writer out)]
+        (level/add-level r w))))
   nil)
 
 ;; Main command

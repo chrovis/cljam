@@ -1,7 +1,6 @@
 (ns cljam.level
   "Analyze level of alignments in BAM."
   (:require [clojure.java.io :refer [file]]
-            [clojure.string :as cstr]
             [cljam.core :as core]
             [cljam.io :as io]
             [cljam.util :as util]
@@ -76,9 +75,9 @@
   Level calculation process is multithreaded."
   [rdr wtr]
   (let [source-path (io/reader-path rdr)
-        filename (.getName (file source-path))
-        basename (first (cstr/split filename #"\.(?=[^\.]+$)"))
-        cache-name-fn #(format "%s/%s_%s.bam" util/temp-dir basename %)
+        cache-name-fn #(->> (str (util/basename source-path) "_" % ".bam")
+                            (file util/temp-dir)
+                            (.getPath))
         hdr (io/read-header rdr)
         ;; Split into BAM files according to chromosomes.
         caches (pmap (fn [{:keys [SN LN]}]

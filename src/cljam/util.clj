@@ -1,6 +1,7 @@
 (ns cljam.util
   "General utilities."
-  (:require [clojure.java.io :refer [file]]))
+  (:require [clojure.java.io :refer [file]]
+            [clojure.string :as cstr]))
 
 ;; CPU info
 ;; --------
@@ -95,3 +96,13 @@
 (defmacro swap
   [m k f]
   `(assoc ~m ~k (~f (get ~m ~k))))
+
+
+;; file utils
+;; ---------
+
+(defn basename
+  [path]
+  (let [filename (.getName (file path))]
+    (first (cstr/split filename #"\.(?=[^\.]+$)"))))
+

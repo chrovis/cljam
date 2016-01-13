@@ -14,7 +14,8 @@
                    [fasta :as fa]
                    [fasta-indexer :as fai]
                    [dict :as dict]
-                   [pileup :as plp])
+                   [pileup :as plp]
+                   [level :as level])
             [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
   (:import [java.io BufferedWriter OutputStreamWriter]))
 
@@ -134,10 +135,10 @@
      (:help options) (exit 0 (normalize-usage summary))
      (not= (count arguments) 2) (exit 1 (normalize-usage summary))
      errors (exit 1 (error-msg errors)))
-    (let [[in out] arguments
-          r (reader in)
-          w (writer out)]
-      (normal/normalize r w)))
+    (let [[in out] arguments]
+      (with-open [r (reader in)
+                  w (writer out)]
+        (normal/normalize r w))))
   nil)
 
 ;; ### sort command
@@ -347,6 +348,32 @@
       (dict/create-dict in out)))
   nil)
 
+;; ### level command
+
+(def ^:private level-cli-options
+  [["-h" "--help"]])
+
+(defn- level-usage [options-summary]
+  (->> ["Analyze a BAM file and add level information of alignments."
+        ""
+        "Usage: cljam level <in.bam> <out.bam>"
+        ""
+        "Options:"
+        options-summary]
+       (cstr/join \newline)))
+
+(defn level [args]
+  (let [{:keys [options arguments errors summary]} (parse-opts args level-cli-options)]
+    (cond
+      (:help options) (exit 0 (level-usage summary))
+      (not= (count arguments) 2) (exit 1 (level-usage summary))
+      errors (exit 1 (error-msg errors)))
+    (let [[in out] arguments]
+      (with-open [r (reader in)
+                  w (writer out)]
+        (level/add-level r w))))
+  nil)
+
 ;; Main command
 ;; ------------
 
@@ -362,7 +389,8 @@
                                 ["index"   "Index sorted alignment for fast random access."]
                                 ["pileup"  "Generate pileup for the BAM file."]
                                 ["faidx"   "Index reference sequence in the FASTA format."]
-                                ["dict"    "Create a FASTA sequence dictionary file."]])]
+                                ["dict"    "Create a FASTA sequence dictionary file."]
+                                ["level"   "Add level of alignments."]])]
     (when (:help opts)
       (exit 0 help))
     (case cmd
@@ -374,6 +402,7 @@
       :pileup  (pileup args)
       :faidx   (faidx args)
       :dict    (dict args)
+      :level   (level args)
       (do (println "Invalid command. See 'cljam --help'.")
           (when (seq cands)
             (newline)

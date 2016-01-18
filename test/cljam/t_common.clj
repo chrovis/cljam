@@ -8,17 +8,17 @@
 
 (defprofile mycavia
   {:resources [{:id "large.bam"
-                :url "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/data/HG04238/alignment/HG04238.unmapped.ILLUMINA.bwa.ITU.low_coverage.20130415.bam"
-                :sha1 "f62c94eb80aa68f5c8d36e6147e66aefd879ae5d"
-                :auth {:user "anonymous", :password "test%40example.com"}}
+                :url "https://test.chrov.is/data/GSM721144_H3K36me3.nodup.bam"
+                :sha1 "ad282c3779120057abc274ad8fad1910a4ad867b"}
                {:id "large.bai"
-                :url "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/data/HG04238/alignment/HG04238.chrom11.ILLUMINA.bwa.ITU.low_coverage.20130415.bam.bai"
-                :sha1 "396d3d87eea458c20b8222841a60a0f181587140"
-                :auth {:user "anonymous"}}
+                :url "https://test.chrov.is/data/GSM721144_H3K36me3.nodup.bam.bai"
+                :sha1 "afe9ffea88433f35f9395360201583e52c3b3cd9"}
+               {:id "large.bed.gz"
+                :url "https://test.chrov.is/data/test3_summits.bed.gz"
+                :sha1 "dcc3ba10c8432be3094cbf5d6fb1b577317e3429"}
                {:id "large.tbi"
-                :url "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/release/20110521/ALL.chr1.phase1_release_v3.20101123.snps_indels_svs.genotypes.vcf.gz.tbi"
-                :sha1 "ebc756953ba502e6aba8f9b673c683318f6c63ee"
-                :auth {:user "anonymous"}}]})
+                :url "https://test.chrov.is/data/test3_summits.bed.gz.tbi"
+                :sha1 "1aff56f9961c0b93c6de3a190f02d3264c27a9c7"}]})
 
 (defn prepare-cavia! []
   (with-profile mycavia
@@ -168,93 +168,33 @@
                       {:name "chr22", :len 51304566}
                       {:name "chrX",  :len 155270560}
                       {:name "chrY",  :len 59373566}])
-(def large-sam-refs [{:name "1",          :len 249250621}
-                     {:name "2",          :len 243199373}
-                     {:name "3",          :len 198022430}
-                     {:name "4",          :len 191154276}
-                     {:name "5",          :len 180915260}
-                     {:name "6",          :len 171115067}
-                     {:name "7",          :len 159138663}
-                     {:name "8",          :len 146364022}
-                     {:name "9",          :len 141213431}
-                     {:name "10",         :len 135534747}
-                     {:name "11",         :len 135006516}
-                     {:name "12",         :len 133851895}
-                     {:name "13",         :len 115169878}
-                     {:name "14",         :len 107349540}
-                     {:name "15",         :len 102531392}
-                     {:name "16",         :len 90354753}
-                     {:name "17",         :len 81195210}
-                     {:name "18",         :len 78077248}
-                     {:name "19",         :len 59128983}
-                     {:name "20",         :len 63025520}
-                     {:name "21",         :len 48129895}
-                     {:name "22",         :len 51304566}
-                     {:name "X",          :len 155270560}
-                     {:name "Y",          :len 59373566}
-                     {:name "MT",         :len 16569}
-                     {:name "GL000207.1", :len 4262}
-                     {:name "GL000226.1", :len 15008}
-                     {:name "GL000229.1", :len 19913}
-                     {:name "GL000231.1", :len 27386}
-                     {:name "GL000210.1", :len 27682}
-                     {:name "GL000239.1", :len 33824}
-                     {:name "GL000235.1", :len 34474}
-                     {:name "GL000201.1", :len 36148}
-                     {:name "GL000247.1", :len 36422}
-                     {:name "GL000245.1", :len 36651}
-                     {:name "GL000197.1", :len 37175}
-                     {:name "GL000203.1", :len 37498}
-                     {:name "GL000246.1", :len 38154}
-                     {:name "GL000249.1", :len 38502}
-                     {:name "GL000196.1", :len 38914}
-                     {:name "GL000248.1", :len 39786}
-                     {:name "GL000244.1", :len 39929}
-                     {:name "GL000238.1", :len 39939}
-                     {:name "GL000202.1", :len 40103}
-                     {:name "GL000234.1", :len 40531}
-                     {:name "GL000232.1", :len 40652}
-                     {:name "GL000206.1", :len 41001}
-                     {:name "GL000240.1", :len 41933}
-                     {:name "GL000236.1", :len 41934}
-                     {:name "GL000241.1", :len 42152}
-                     {:name "GL000243.1", :len 43341}
-                     {:name "GL000242.1", :len 43523}
-                     {:name "GL000230.1", :len 43691}
-                     {:name "GL000237.1", :len 45867}
-                     {:name "GL000233.1", :len 45941}
-                     {:name "GL000204.1", :len 81310}
-                     {:name "GL000198.1", :len 90085}
-                     {:name "GL000208.1", :len 92689}
-                     {:name "GL000191.1", :len 106433}
-                     {:name "GL000227.1", :len 128374}
-                     {:name "GL000228.1", :len 129120}
-                     {:name "GL000214.1", :len 137718}
-                     {:name "GL000221.1", :len 155397}
-                     {:name "GL000209.1", :len 159169}
-                     {:name "GL000218.1", :len 161147}
-                     {:name "GL000220.1", :len 161802}
-                     {:name "GL000213.1", :len 164239}
-                     {:name "GL000211.1", :len 166566}
-                     {:name "GL000199.1", :len 169874}
-                     {:name "GL000217.1", :len 172149}
-                     {:name "GL000216.1", :len 172294}
-                     {:name "GL000215.1", :len 172545}
-                     {:name "GL000205.1", :len 174588}
-                     {:name "GL000219.1", :len 179198}
-                     {:name "GL000224.1", :len 179693}
-                     {:name "GL000223.1", :len 180455}
-                     {:name "GL000195.1", :len 182896}
-                     {:name "GL000212.1", :len 186858}
-                     {:name "GL000222.1", :len 186861}
-                     {:name "GL000200.1", :len 187035}
-                     {:name "GL000193.1", :len 189789}
-                     {:name "GL000194.1", :len 191469}
-                     {:name "GL000225.1", :len 211173}
-                     {:name "GL000192.1", :len 547496}
-                     {:name "NC_007605",  :len 171823}
-                     {:name "hs37d5",     :len 35477943}
-                     ])
+
+(def large-sam-refs [{:len 247249719 :name "chr1"}
+                     {:len 135374737 :name "chr10"}
+                     {:len 134452384 :name "chr11"}
+                     {:len 132349534 :name "chr12"}
+                     {:len 114142980 :name "chr13"}
+                     {:len 106368585 :name "chr14"}
+                     {:len 100338915 :name "chr15"}
+                     {:len 88827254  :name "chr16"}
+                     {:len 78774742  :name "chr17"}
+                     {:len 76117153  :name "chr18"}
+                     {:len 63811651  :name "chr19"}
+                     {:len 242951149 :name "chr2"}
+                     {:len 62435964  :name "chr20"}
+                     {:len 46944323  :name "chr21"}
+                     {:len 49691432  :name "chr22"}
+                     {:len 199501827 :name "chr3"}
+                     {:len 191273063 :name "chr4"}
+                     {:len 180857866 :name "chr5"}
+                     {:len 170899992 :name "chr6"}
+                     {:len 158821424 :name "chr7"}
+                     {:len 146274826 :name "chr8"}
+                     {:len 140273252 :name "chr9"}
+                     {:len 48502     :name "chrL"}
+                     {:len 16571     :name "chrM"}
+                     {:len 154913754 :name "chrX"}
+                     {:len 57772954  :name "chrY"}])
 
 (def test-fa
   [{:rname "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}

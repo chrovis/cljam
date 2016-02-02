@@ -13,7 +13,7 @@ cljam is available as a Maven artifact from [Clojars][clojars].
 To use with Leiningen, add the following dependency.
 
 ```clojure
-[cljam "0.1.3"]
+[cljam "0.1.4"]
 ```
 
 To use with Maven, add the following dependency.
@@ -22,7 +22,7 @@ To use with Maven, add the following dependency.
 <dependency>
   <groupId>cljam</groupId>
   <artifactId>cljam</artifactId>
-  <version>0.1.3</version>
+  <version>0.1.4</version>
 </dependency>
 ```
 
@@ -85,10 +85,10 @@ cljam provides a command-line tool to use the features easily.
 
 Run `lein-bin` plugin and it creates standalone console executable into `target` directory.
 
-```bash
+```console
 $ lein bin
-Created /path/to/cljam/target/cljam-0.1.3.jar
-Created /path/to/cljam/target/cljam-0.1.3-standalone.jar
+Created /path/to/cljam/target/cljam-0.1.4.jar
+Created /path/to/cljam/target/cljam-0.1.4-standalone.jar
 Creating standalone executable: /path/to/cljam/target/cljam
 ```
 
@@ -98,13 +98,13 @@ Copy the executable somewhere in your `$PATH`.
 
 All commands are displayed by `cljam -h`, and detailed help for each command are displayed by `cljam [cmd] -h`.
 
-```bash
+```console
 $ cljam view -h
 ```
 
 For example, to display contents of a SAM file including the header,
 
-```bash
+```console
 $ cljam view --header path/to/file.sam
 ```
 
@@ -114,13 +114,13 @@ $ cljam view --header path/to/file.sam
 
 To run all basic tests,
 
-```bash
+```console
 $ lein midje
 ```
 
 To run heavy tests which uses remote large-size files,
 
-```bash
+```console
 $ lein midje :filter heavy
 ```
 
@@ -128,7 +128,7 @@ $ lein midje :filter heavy
 
 cljam uses [Marginalia][marginalia] for generating documents.
 
-```bash
+```console
 $ lein marg -m
 ```
 

@@ -2865,80 +2865,94 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.util" name="cljam.util"><h1 class="project-name">cljam.util</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>General utilities.</p>
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.util
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.level" name="cljam.level"><h1 class="project-name">cljam.level</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Analyze level of alignments in BAM.</p>
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.level
   (:require [clojure.java.io :refer [file]]
-            [clojure.string :as cstr]))</pre></td></tr><tr><td class="docs"><h2>CPU info</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>The number of processors available to the Java virtual machine.</p>
-</td><td class="codes"><pre class="brush: clojure">(def num-cores
-  (.availableProcessors (Runtime/getRuntime)))</pre></td></tr><tr><td class="docs"><h2>Disk cache</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def temp-dir (let [dir-path (.getPath (file (System/getProperty &quot;java.io.tmpdir&quot;) &quot;cljam&quot;))]
-                (.mkdirs (file dir-path))
-                dir-path))</pre></td></tr><tr><td class="docs"><h2>byte array</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Casts to byte avoiding an error about out of range for byte.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ubyte
-  [n]
-  {:pre [(&lt;= 0 n 255)]}
-  (byte (if (&lt; n 0x80) n (- n 0x100))))</pre></td></tr><tr><td class="docs"><h2>string utils</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn string-&gt;bytes [^String s]
-  (let [buf (byte-array (count s))]
-    (.getBytes s 0 (count buf) buf 0)
-    buf))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn ^String bytes-&gt;string [^bytes b]
-  (String. b 0 (count b)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn from-hex-digit [^Character c]
-  (let [d (Character/digit c 16)]
-    (when (= d -1)
-      (throw (NumberFormatException. (str &quot;Invalid hex digit: &quot; c))))
-    d))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn hex-string-&gt;bytes [s]
-  {:pre [(even? (count s))]}
-  (byte-array
-   (map #(byte (bit-or (bit-shift-left (from-hex-digit (nth s (* % 2))) 4)
-                       from-hex-digit (nth s (inc (* % 2)))))
-        (range (count s)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn str-&gt;long [s]
-  (if-not (nil? s)
-    (try
-      (let [[n _ _] (re-matches #&quot;(|-|\+)(\d+)&quot; s)]
-        (Long. ^String n))
-      (catch Exception e
-        nil))
-    nil))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn str-&gt;int [s]
-  (if-not (nil? s)
-    (try
-      (let [[n _ _] (re-matches #&quot;(|-|\+)(\d+)&quot; s)]
-        (Integer. ^String n))
-      (catch NumberFormatException e
-        (str-&gt;long s))
-      (catch Exception e
-        nil))
-    nil))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a visible character, false if not.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn graph?
-  [c]
-  (&lt;= 0x20 (byte c) 0x7E))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a character that creates "white space" in displayed
-  text.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn space?
-  [c]
-  (not (nil? (#{\space \tab \newline \formfeed \return (char 0x0b)} c))))</pre></td></tr><tr><td class="docs"><h2>seq utils</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn gen-vec
-  ([n]
-     (gen-vec n nil))
-  ([n ini]
-     (vec (repeat n ini))))</pre></td></tr><tr><td class="docs"><h2>map utils</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro swap
-  [m k f]
-  `(assoc ~m ~k (~f (get ~m ~k))))</pre></td></tr><tr><td class="docs"><h2>file utils</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn basename
+            [cljam.core :as core]
+            [cljam.io :as io]
+            [cljam.util :as util]
+            [cljam.bam :as bam]
+            [cljam.util.sam-util :as sam-util]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmulti add-level
+  (fn [rdr wtr]
+    (case (str (type rdr))
+      &quot;class cljam.sam.reader.SAMReader&quot; :sam
+      &quot;class cljam.bam.reader.BAMReader&quot; :bam
+      nil)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod add-level :sam
+  [rdr wtr]
+  (throw (ex-info &quot;SAM not supported yet.&quot; {:type :sam-not-supported}))
+  ;; TODO implement
+  )</pre></td></tr><tr><td class="docs"><p>Returns true if two given segments are overlapped.
+  Segment must be represented as a vector of length two.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- collide?
+  [[s1 e1] [s2 e2]]
+  (cond
+    (&lt; e1 s2) false
+    (&lt; e2 s1) false
+    :else true))</pre></td></tr><tr><td class="docs"><p>Like map, returns a lazy sequence consisting of the results of applying f to each items of coll.
+  The difference is that f must take a state and return the updated one.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- map-with-state
+  [f state coll]
+  (lazy-seq (when-let [s (seq coll)]
+              (let [[next-state result] (f state (first s))]
+                (cons result (map-with-state f next-state (rest s)))))))</pre></td></tr><tr><td class="docs"><p>Calculates updated alignments with level information as an option.
+  levels is a vector consisting of rightmost segments in each level.
+  alignment is a deeply parsed alignment data with pos and seq.
+  This returns updated levels and alignment as a vector.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- calc-level
+  [levels {:keys [pos] :as alignment}]
+  (let [segment [pos (sam-util/get-end alignment)]
+        level (or (some identity (map-indexed #(when-not (collide? segment %2) %1) levels))
+                  (count levels))]
+    [(assoc levels level segment)
+     (update alignment :options conj {:LV {:type &quot;i&quot; :value (int level)}})]))</pre></td></tr><tr><td class="docs"><p>Deletes a cache file at given path.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- clean!
   [path]
-  (let [filename (.getName (file path))]
-    (first (cstr/split filename #&quot;\.(?=[^\.]+$)&quot;))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (let [f (file path)]
+    (when (.exists f)
+      (.delete f))))</pre></td></tr><tr><td class="docs"><p>Create a temporary BAM file consisting of alignments of a single chromosome.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- create-level-cache!
+  [chr length source-path cache-path]
+  (with-open [local-rdr (bam/reader source-path :ignore-index false)
+              cache-wtr (bam/writer cache-path)]
+    (let [hdr (io/read-header local-rdr)
+          alignments (-&gt;&gt; {:chr chr :start 0 :end length :depth :deep}
+                          (io/read-alignments local-rdr)
+                          (map-with-state calc-level []))]
+      (io/write-header cache-wtr hdr)
+      (io/write-refs cache-wtr hdr)
+      (io/write-alignments cache-wtr alignments hdr))))</pre></td></tr><tr><td class="docs"><p>Adds level information to alignments from rdr and write them to wtr.
+  Level calculation process is multithreaded.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- add-level-mt
+  [rdr wtr]
+  (let [source-path (io/reader-path rdr)
+        cache-name-fn #(-&gt;&gt; (str (util/basename source-path) &quot;_&quot; % &quot;.bam&quot;)
+                            (file util/temp-dir)
+                            (.getPath))
+        hdr (io/read-header rdr)
+        ;; Split into BAM files according to chromosomes.
+        caches (pmap (fn [{:keys [SN LN]}]
+                       (let [cache-path (cache-name-fn SN)]
+                         (create-level-cache! SN LN source-path cache-path)
+                         cache-path))
+                     (hdr :SQ))]
+    ;; Merge cache files
+    (io/write-header wtr hdr)
+    (io/write-refs wtr hdr)
+    (doseq [cache caches]
+      (with-open [cache-rdr (bam/reader cache :ignore-index true)]
+        (io/write-blocks wtr (io/read-blocks cache-rdr)))
+      (clean! cache))))</pre></td></tr><tr><td class="docs"><p>Checks if the bam file is sorted by coordinate and throws an exception if not.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- check-bam-sorted!
+  [rdr]
+  (when-not (-&gt; rdr io/read-header :HD :SO (= &quot;coordinate&quot;))
+    (throw (ex-info &quot;Source BAM file must be sorted by coordinate.&quot;
+                    {:type :bam-not-sorted}))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod add-level :bam
+  [rdr wtr]
+  (check-bam-sorted! rdr)
+  (add-level-mt rdr wtr))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

@@ -153,17 +153,16 @@
       (fa/reset fa-rdr)
       line)))
 
-(defn- pileup*
+(defn pileup*
   "Internal pileup function."
-  [fa-rdr rdr rname rlength start end]
+  [ref-line aln-rdr-fn rname start end]
   (->> (rpositions start end)
        (partition-all step)
        (map (fn [positions]
               (let [pos (if (= (count positions) step)
                           (nth positions center)
                           (nth positions (quot (count positions) 2)))
-                    alns (read-alignments rdr rname rlength pos)
-                    ref-line (read-ref-fasta-line fa-rdr rname)]
+                    alns (aln-rdr-fn pos)]
                 (count-for-positions alns ref-line rname positions))))
        flatten))
 
@@ -175,8 +174,9 @@
   ([fa-rdr bam-reader rname start end]
    (try
      (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
-       (pileup* fa-rdr
-                bam-reader rname (:len r)
+       (pileup* (read-ref-fasta-line fa-rdr rname)
+                (partial read-alignments bam-reader rname (:len r))
+                rname
                 (if (neg? start) 0 start)
                 (if (neg? end) (:len r) end)))
      (catch bgzf4j.BGZFException _

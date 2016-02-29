@@ -81,6 +81,10 @@
 (def test-fai-file "test-resources/test.fa.fai")
 (def medium-fai-file "test-resources/medium.fa.fai")
 
+;; ### FASTQ files
+
+(def test-fq-file "test-resources/test.fq")
+
 ;; ### TABIX files
 
 (def test-tabix-file "test-resources/test.gtf.gz.tbi")
@@ -281,3 +285,27 @@
                           :sequence "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"}
                          {:name "ref2",
                           :sequence "aggttttataaaacaattaagtctacagagcaactacgcg"}))
+
+;;;; FASTQ
+
+(def test-fq-sequences
+  `({:name "SEQ_ID_1"
+     :sequence "GGGGGGGGGG"
+     :quality (0 1 2 3 4 5 6 7 8 9)}
+    {:name "SEQ_ID_2"
+     :sequence "ATGCATGCATGCATGCATGCATGCATGCATGCATGCATGC"
+     :quality ~(range 40)}
+    {:name "SEQ_ID_3"
+     :sequence "AAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGC"
+     :quality ~(range 94)}))
+
+(def test-fq-sequences-raw
+  `({:name "SEQ_ID_1"
+     :sequence "GGGGGGGGGG"
+     :quality "!\"#$%&'()*"}
+    {:name "SEQ_ID_2"
+     :sequence "ATGCATGCATGCATGCATGCATGCATGCATGCATGCATGC"
+     :quality "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGH"}
+    {:name "SEQ_ID_3"
+     :sequence "AAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGC"
+     :quality "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"}))

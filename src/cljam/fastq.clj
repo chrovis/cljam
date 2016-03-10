@@ -42,7 +42,7 @@
 
 (defn- decode-fastq
   [[name-line seq-line plus-line qual-line]
-   & {:keys [decode-quality] :or {decode-quality true}}]
+   & {:keys [decode-quality] :or {decode-quality :phred33}}]
   {:pre [(not-empty name-line)
          (not-empty seq-line)
          (not-empty plus-line)
@@ -53,10 +53,17 @@
          (or (empty? (rest plus-line))
              (= (rest plus-line) (rest name-line)))
          (= (count seq-line) (count qual-line))]
-   :post [(or (not decode-quality) (every? (fn [q] (<= 0 q 93)) (:quality %)))]}
+   :post [(every? (fn [q] (case decode-quality
+                            :phred33 (<= 0 q 93)
+                            :phred64 (<= 0 q 62)
+                            true))
+                  (:quality %))]}
   {:name (subs name-line 1)
    :sequence seq-line
-   :quality (if decode-quality (map #(- (int %) 33) qual-line) qual-line)})
+   :quality (case decode-quality
+              :phred33 (map #(- (int %) 33) qual-line)
+              :phred64 (map #(- (int %) 64) qual-line)
+              qual-line)})
 
 (defn read-sequence
   [^FASTQReader rdr & opts]
@@ -67,18 +74,29 @@
        (map #(apply decode-fastq % opts))))
 
 (defn- ^String encode-fastq
-  [{:keys [name sequence quality]}]
+  [{:keys [name sequence quality]}
+   & {:keys [encode-quality] :or {encode-quality :phred33}}]
   {:pre [(not-empty name)
          (not-empty sequence)
          (not-empty quality)
          (= (count sequence) (count quality))
-         (every? (fn [q] (<= 0 q 93)) quality)]}
-  (-> [(str "@" name) sequence "+" (apply str (map #(char (+ % 33)) quality))]
+         (every? #(case encode-quality
+                    :phred33 (<= 0 % 93)
+                    :phred64 (<= 0 % 62)
+                    true) quality)]}
+  (-> [(str "@" name)
+       sequence
+       "+"
+       (apply str (map #(case encode-quality
+                          :phred33 (char (+ % 33))
+                          :phred64 (char (+ % 64))
+                          %)
+                       quality))]
       (interleave (repeat \newline))
       (as-> x (apply str x))))
 
 (defn write-sequence
-  [^FASTQWriter wtr sequence]
+  [^FASTQWriter wtr sequence & opts]
   (let [w ^java.io.Writer (.writer wtr)]
     (doseq [s sequence]
-      (.write w (encode-fastq s)))))
+      (.write w ^String (apply encode-fastq s opts)))))

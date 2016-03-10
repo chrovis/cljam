@@ -6,6 +6,7 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/tools.logging "0.3.1"]
                  [org.clojure/tools.cli "0.3.3"]
+                 [org.apache.commons/commons-compress "1.10"]
                  [me.raynes/fs "1.4.6"]
                  [pandect "0.5.4"]
                  [clj-sub-command "0.2.2"]

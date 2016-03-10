@@ -84,6 +84,8 @@
 ;; ### FASTQ files
 
 (def test-fq-file "test-resources/test.fq")
+(def test-fq-gz-file "test-resources/test.fq.gz")
+(def test-fq-bz2-file "test-resources/test.fq.bz2")
 
 ;; ### TABIX files
 

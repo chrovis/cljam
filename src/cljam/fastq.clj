@@ -1,7 +1,10 @@
 (ns cljam.fastq
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
-  (:import java.io.Writer))
+  (:import java.io.Writer
+           [java.io BufferedReader BufferedWriter InputStreamReader OutputStreamWriter]
+           [java.util.zip GZIPInputStream GZIPOutputStream]
+           [org.apache.commons.compress.compressors.bzip2 BZip2CompressorInputStream BZip2CompressorOutputStream]))
 
 (deftype FASTQReader [reader f]
   java.io.Closeable
@@ -14,12 +17,28 @@
     (.close ^java.io.Closeable (.writer this))))
 
 (defn ^FASTQReader reader [^String f]
-  (let [p (.getAbsolutePath (io/file f))]
-    (FASTQReader. (io/reader p) p)))
+  (let [file (io/file f)
+        path (.getAbsolutePath file)
+        basename (.getName file)]
+    (-> (condp re-find basename
+          #"\.(gz|GZ|gzip|GZIP)$"
+          (-> (io/input-stream path) GZIPInputStream. InputStreamReader. BufferedReader.)
+          #"\.(bz2|BZ2|bzip2|BZIP2)$"
+          (-> (io/input-stream path) BZip2CompressorInputStream. InputStreamReader. BufferedReader.)
+          (io/reader path))
+        (FASTQReader. path))))
 
 (defn ^FASTQWriter writer [^String f]
-  (let [p (.getAbsolutePath (io/file f))]
-    (FASTQWriter. (io/writer p :encoding "UTF-8") p)))
+  (let [file (io/file f)
+        path (.getAbsolutePath file)
+        basename (.getName file)]
+    (-> (condp re-find basename
+          #"\.(gz|GZ|gzip|GZIP)$"
+          (-> (io/output-stream path) GZIPOutputStream. OutputStreamWriter. BufferedWriter.)
+          #"\.(bz2|BZ2|bzip2|BZIP2)$"
+          (-> (io/output-stream path) BZip2CompressorOutputStream. OutputStreamWriter. BufferedWriter.)
+          (io/writer path :encoding "UTF-8"))
+        (FASTQWriter. path))))
 
 (defn- decode-fastq
   [[name-line seq-line plus-line qual-line]

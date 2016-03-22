@@ -40,8 +40,10 @@
           (io/writer path :encoding "UTF-8"))
         (FASTQWriter. path))))
 
-(defn- decode-fastq
-  [[name-line seq-line plus-line qual-line]
+(defrecord FASTQRead [^String name ^String sequence quality])
+
+(defn- ^FASTQRead decode-fastq
+  [[^String name-line ^String seq-line ^String plus-line ^String qual-line]
    & {:keys [decode-quality] :or {decode-quality :phred33}}]
   {:pre [(not-empty name-line)
          (not-empty seq-line)
@@ -58,20 +60,21 @@
                             :phred64 (<= 0 q 62)
                             true))
                   (:quality %))]}
-  {:name (subs name-line 1)
-   :sequence seq-line
-   :quality (case decode-quality
-              :phred33 (map #(- (int %) 33) qual-line)
-              :phred64 (map #(- (int %) 64) qual-line)
-              qual-line)})
+  (FASTQRead.
+   (subs name-line 1)
+   seq-line
+   (case decode-quality
+     :phred33 (map #(- (int %) 33) qual-line)
+     :phred64 (map #(- (int %) 64) qual-line)
+     qual-line)))
 
 (defn read-sequence
   [^FASTQReader rdr & opts]
-  (->> (.reader rdr)
-       line-seq
-       (map string/trim)
-       (partition-all 4)
-       (map #(apply decode-fastq % opts))))
+  (sequence
+   (comp (map string/trim)
+         (partition-all 4)
+         (map #(apply decode-fastq % opts)))
+   (line-seq (.reader rdr))))
 
 (defn- ^String encode-fastq
   [{:keys [name sequence quality]}

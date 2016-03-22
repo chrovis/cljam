@@ -7,17 +7,17 @@
 (fact
  "FASTQ file input"
  (with-open [r (fq/reader test-fq-file)]
-   (doall (fq/read-sequence r))) => test-fq-sequences
+   (doall (map (partial into {}) (fq/read-sequence r)))) => test-fq-sequences
  (with-open [r (fq/reader test-fq-file)]
-   (doall (fq/read-sequence r :decode-quality :phred33))) => test-fq-sequences
+   (doall (map (partial into {}) (fq/read-sequence r :decode-quality :phred33)))) => test-fq-sequences
  (with-open [r (fq/reader test-fq-file)]
-   (doall (fq/read-sequence r :decode-quality nil))) => test-fq-sequences-raw
+   (doall (map (partial into {}) (fq/read-sequence r :decode-quality nil)))) => test-fq-sequences-raw
  (with-open [r (fq/reader test-fq-file)]
-   (doall (fq/read-sequence r :decode-quality :phred64))) => throws AssertionError
+   (doall (map (partial into {}) (fq/read-sequence r :decode-quality :phred64)))) => throws AssertionError
  (with-open [r (fq/reader test-fq-gz-file)]
-   (doall (fq/read-sequence r))) => test-fq-sequences
+   (doall (map (partial into {}) (fq/read-sequence r)))) => test-fq-sequences
  (with-open [r (fq/reader test-fq-bz2-file)]
-   (doall (fq/read-sequence r))) => test-fq-sequences)
+   (doall (map (partial into {}) (fq/read-sequence r)))) => test-fq-sequences)
 
 (with-state-changes
   [(before
@@ -33,40 +33,40 @@
      (with-open [w (fq/writer path)]
        (fq/write-sequence w test-fq-sequences))
      (with-open [r (fq/reader path)]
-       (doall (fq/read-sequence r))))
+       (doall (map (partial into {}) (fq/read-sequence r)))))
    => test-fq-sequences
 
    (let [path (.getAbsolutePath (io/file temp-dir "test-33.fq"))]
      (with-open [w (fq/writer path)]
        (fq/write-sequence w test-fq-sequences :encode-quality :phred33))
      (with-open [r (fq/reader path)]
-       (doall (fq/read-sequence r))))
+       (doall (map (partial into {}) (fq/read-sequence r)))))
    => test-fq-sequences
 
    (let [path (.getAbsolutePath (io/file temp-dir "test-raw.fq"))]
      (with-open [w (fq/writer path)]
        (fq/write-sequence w test-fq-sequences-raw :encode-quality nil))
      (with-open [r (fq/reader path)]
-       (doall (fq/read-sequence r))))
+       (doall (map (partial into {}) (fq/read-sequence r)))))
    => test-fq-sequences
 
    (let [path (.getAbsolutePath (io/file temp-dir "test-64.fq"))]
      (with-open [w (fq/writer path)]
        (fq/write-sequence w test-fq-sequences :encode-quality :phred64))
      (with-open [r (fq/reader path)]
-       (doall (fq/read-sequence r))))
+       (doall (map (partial into {}) (fq/read-sequence r)))))
    => throws AssertionError
 
    (let [path (.getAbsolutePath (io/file temp-dir "test.fq.gz"))]
      (with-open [w (fq/writer path)]
        (fq/write-sequence w test-fq-sequences))
      (with-open [r (fq/reader path)]
-       (doall (fq/read-sequence r))))
+       (doall (map (partial into {}) (fq/read-sequence r)))))
    => test-fq-sequences
 
    (let [path (.getAbsolutePath (io/file temp-dir "test.fq.bz2"))]
      (with-open [w (fq/writer path)]
        (fq/write-sequence w test-fq-sequences))
      (with-open [r (fq/reader path)]
-       (doall (fq/read-sequence r))))
+       (doall (map (partial into {}) (fq/read-sequence r)))))
    => test-fq-sequences))

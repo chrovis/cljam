@@ -70,3 +70,33 @@
      (with-open [r (fq/reader path)]
        (doall (map (partial into {}) (fq/read-sequence r)))))
    => test-fq-sequences))
+
+(fact
+ "FASTQ read ID parsing"
+ (fq/deserialize-name "@EAS139:136:FC706VJ:2:2104:15343:197393 1:Y:18:ATCACG")
+ => {:instrument "EAS139"
+     :run 136
+     :flowcell "FC706VJ"
+     :lane 2
+     :tile 2104
+     :x 15343
+     :y 197393
+     :pair 1
+     :filtered true
+     :control 18
+     :index "ATCACG"}
+
+ (fq/deserialize-name "@HWUSI-EAS100R:6:73:941:1973#0/1")
+ => {:instrument "HWUSI-EAS100R"
+     :lane 6
+     :tile 73
+     :x 941
+     :y 1973
+     :index 0
+     :pair 1}
+
+ (fq/deserialize-name "@EAS139:136:FC706VJ:2:2104:15343:197393_1:Y:18:ATCACG")
+ => nil
+
+ (fq/deserialize-name "@HWUSI-EAS100R:6:73:941:1973#N/1")
+ => nil)

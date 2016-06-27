@@ -107,3 +107,45 @@
   (let [w ^java.io.Writer (.writer wtr)]
     (doseq [s sequence]
       (.write w ^String (apply serialize-fastq s opts)))))
+
+(def casava-pattern #"^@?([^\s^:]+):(\d+):(\d+):(\d+):(\d+)#(\d+)/(\d)+$")
+(defn deserialize-casava-name
+  "Parse Casava-style name of fastq read."
+  [^String name]
+  (let [[match instrument lane tile x y index pair]
+        (re-matches casava-pattern name)]
+    (when match
+      {:instrument instrument
+       :lane (Integer/parseInt lane)
+       :tile (Integer/parseInt tile)
+       :x (Integer/parseInt x)
+       :y (Integer/parseInt y)
+       :index (Integer/parseInt index)
+       :pair (Integer/parseInt pair)})))
+
+(def casava-1_8-pattern #"^@?([^\s^:]+):(\d+):([^\s^\:]+):(\d+):(\d+):(\d+):(\d+)\s+(\d+):(Y|N):(\d+):(\S+)$")
+(defn deserialize-casava-1_8-name
+  "Parse Casava1.8-style name of fastq read."
+  [^String name]
+  (let [[match instrument run flowcell lane tile x y pair filtered control index]
+        (re-matches casava-1_8-pattern name)]
+    (when match
+      {:instrument instrument
+       :run (Integer/parseInt run)
+       :flowcell flowcell
+       :lane (Integer/parseInt lane)
+       :tile (Integer/parseInt tile)
+       :x (Integer/parseInt x)
+       :y (Integer/parseInt y)
+       :pair (Integer/parseInt pair)
+       :filtered (= filtered "Y")
+       :control (Integer/parseInt control)
+       :index index})))
+
+(defn deserialize-name
+  "Try parsing name of fastq read."
+  [^String name]
+  (if-let [casava-1_8 (deserialize-casava-1_8-name name)]
+    casava-1_8
+    (when-let [casava (deserialize-casava-name name)]
+      casava)))

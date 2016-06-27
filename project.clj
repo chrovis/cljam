@@ -19,7 +19,7 @@
                                   [primitive-math "0.1.4"]]
                    :plugins [[lein-bin "0.3.5"]
                              [lein-codox "0.9.5"]
-                             [lein-marginalia "0.8.0"]]
+                             [lein-marginalia "0.9.0"]]
                    :global-vars {*warn-on-reflection* true}}
              :uberjar {:aot :all}}
   :main cljam.main

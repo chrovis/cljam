@@ -46,8 +46,8 @@
 (fact "about mpileup"
   (with-open [br (bam/reader test-sorted-bam-file)
               fr (fa/reader test-fa-file)]
-    (let [mplp-ref (plp/mpileup br "ref")
-          mplp-ref2 (plp/mpileup br "ref2")]
+    (let [mplp-ref (doall (plp/mpileup br "ref"))
+          mplp-ref2 (doall (plp/mpileup br "ref2"))]
       (map :rname mplp-ref) => (repeat 46 "ref")
       (map :ref mplp-ref) => (repeat 46 \N)
       (map :count mplp-ref) => test-bam-pileup-ref
@@ -56,7 +56,7 @@
       (map :qual mplp-ref) => test-bam-mpileup-qual-ref
       (map :count mplp-ref2) => test-bam-pileup-ref2)
 
-    (let [mplp-ref (plp/mpileup fr br "ref")]
+    (let [mplp-ref (doall (plp/mpileup fr br "ref"))]
       (map :rname mplp-ref) => (repeat 46 "ref")
       (apply str (map :ref mplp-ref)) => "NAGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"
       (map :count mplp-ref) => test-bam-pileup-ref

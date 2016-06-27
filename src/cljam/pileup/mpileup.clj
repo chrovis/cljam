@@ -10,12 +10,7 @@
             [cljam.pileup.common :refer [window-width step center]]
             [cljam.pileup.pileup :refer [rpositions]]))
 
-(defn- pickup-qual [aln pos]
-  (if (= (:qual aln) "*")
-    \~
-    (nth (:qual aln) pos \~)))
-
-(defn- append-seq**
+(defn- append-seq
   [op target current]
   (case op
     \M (apply conj current (map str (:seq target)))
@@ -28,13 +23,13 @@
     \N (apply conj current (map str (:seq target)))
     current))
 
-(defn encode-seq* [seq*]
+(defn encode-seq [seq*]
   (loop [[f & r] (filter #(nil? (#{\P} (:op %))) seq*)
          ret     []
          op      nil
          tmp     {:n 0, :op nil, :seq nil}]
     (if (nil? f)
-      (append-seq** op tmp ret)
+      (append-seq op tmp ret)
       (if (nil? op)
         (recur r ret (:op f) f)
         (if (= (:op f) op)
@@ -42,143 +37,52 @@
                                    (update-in [:n] + (:n f))
                                    (assoc :op (:op f))
                                    (update-in [:seq] (partial apply conj) (:seq f))))
-          (let [new-ret (append-seq** op tmp ret)]
+          (let [new-ret (append-seq op tmp ret)]
             (recur r new-ret (:op f) f)))))))
 
-(defn- encode-seq
-  "Encode sequence strings, returning string sequence for mpileup output.
-  e.g. ({:n 2, :op \\M :seq [\\T \\A]} ... {:n 1, :op \\M :seq [\\C]})
-       => (\"^?TA\" ... \"C$\")"
-  [seq*]
-  (let [seq** (encode-seq* seq*)]
-    ;; NOTE: Disable for convenience for variant call
-    ;; (-> (update-in seq** [(max 0 (dec (count seq**)))] str "$") ; Append "$" to the end
-    ;;     (update-in [0] #(str "^?" %))) ; Insert "^?" before the begin
-    seq**))
+(defn pileup-seq
+  "Returns a lazy sequence that each element contains reads piled-up at the locus."
+  [^long start ^long end reads]
+  (letfn [(cover-locus? [pos aln]
+            (<= (:pos aln) pos (sam-util/get-end aln)))
+          (step [[pos buf alns]]
+            (let [[i o] (split-with (partial cover-locus? (inc pos)) alns)]
+              [(inc pos) (concat (filter (partial cover-locus? (inc pos)) buf) i) o]))]
+    (map second (rest (iterate step [(dec start) [] (remove (comp empty? :cigar) reads)])))))
 
-(defrecord ^:private PileupStatus [count seq qual])
+(defrecord MPileupElement [^String rname ^long pos ^Character ref ^long count seq qual reads])
 
-(defn- ref-wrap
-  "Modify sequence strings to referenced version.
-  e.g. ({:n 2, :op \\M :seq [\\T \\A]} ...)
-       => ({:n 2, :op \\M :seq [\\. \\.] :pos 7} ...)"
-  [seq* ref-seq left]
-  (let [positioned-seq (loop [ret     []
-                              [f & r] seq*
-                              pos     left]
-                         (if (nil? f)
-                           ret
-                           (recur (conj ret (assoc f :pos pos))
-                                  r
-                                  (if-not (nil? (#{\M \D \N \= \X} (:op f)))
-                                    (+ pos (count (:seq f)))
-                                    pos))))]
-    (map (fn [s]
-           (if-not (nil? (#{\M \D \N \= \X} (:op s)))
-             (update-in s [:seq] (partial map-indexed
-                                          (fn [idx itm]
-                                            (if (= itm (nth ref-seq (+ (dec (:pos s)) idx)))
-                                              \.
-                                              itm))))
-             s))
-         positioned-seq)))
-
-(defn- count-for-alignment
-  [aln ref-seq rname positions]
-  (if (= rname (:rname aln))
-    (let [left  (:pos aln)
-          right (sam-util/get-end aln)
-          seq** (cseq/parse (:seq aln) (:cigar aln))
-          seq*  (encode-seq (if (nil? ref-seq)
-                              seq**
-                              (ref-wrap seq** ref-seq left)))]
-      (map (fn [p]
-             (if (<= left p right)
-               (PileupStatus. 1 (nth seq* (- p left)) (pickup-qual aln (- p left)))
-               (PileupStatus. 0 nil nil))) positions))
-    (repeat (count positions) (PileupStatus. 0 nil nil))))
-
-(defn- pickup-ref
-  [ref-seq pos]
-  (if (nil? ref-seq)
-    \N
-    (let [idx (dec pos)]
-      (if (neg? idx)
-        \N
-        (if-let [ref (nth ref-seq idx)]
-          ref
-          \N)))))
-
-(defn- count-for-positions
-  [alns ref-line rname positions]
-  (if (pos? (count alns))
-    (let [cfas (map #(count-for-alignment % (:seq ref-line) rname positions) alns)
-          plp1 (apply map (fn [& a]
-                            {:rname rname
-                             :count (reduce + (map :count a))
-                             :seq   (->> (map :seq a)
-                                         (filterv identity)
-                                         (map #(cond
-                                                 (vector? %) (second %)
-                                                 :else %)))
-                             :qual  (filterv identity (map :qual a))}) cfas)]
-      (map #(assoc %2 :pos %1 :ref (pickup-ref (:seq ref-line) %1))
-           positions plp1))
-    (let [plp1 (repeat (count positions) {:rname rname
-                                          :count 0
-                                          :seq   nil
-                                          :qual  nil})]
-      (map #(assoc %2 :pos %1 :ref (pickup-ref (:seq ref-line) %1))
-           positions plp1))))
-
-(defn- read-alignments
-  "Reads alignments which have the rname and are included in a range defined by
-  the pos and window size, returning the alignments as a lazy seq. Reading
-  depth is deep."
-  [rdr rname rlength pos]
-  (let [left (max (- pos window-width) 0)
-        right (min rlength (+ pos window-width))]
-    (io/read-alignments rdr {:chr rname
-                             :start left
-                             :end right
-                             :depth :deep})))
-
-(defn- read-ref-fasta-line
-  ;; TODO Reduce memroy usage
-  [fa-rdr rname]
-  (if (nil? fa-rdr)
-    nil
-    (let [line (first
-                (filter #(= (:rname %) rname) (fa/read fa-rdr)))]
-      (fa/reset fa-rdr)
-      line)))
-
-(defn pileup*
-  "Internal pileup function."
-  [ref-line aln-rdr-fn rname start end]
-  (->> (rpositions start end)
-       (partition-all step)
-       (map (fn [positions]
-              (let [pos (if (= (count positions) step)
-                          (nth positions center)
-                          (nth positions (quot (count positions) 2)))
-                    alns (aln-rdr-fn pos)]
-                (count-for-positions alns ref-line rname positions))))
-       flatten))
+(defn- gen-mpileup
+  "Compute mpileup info from piled-up reads and reference."
+  [^String rname ^long locus ^Character reference reads]
+  (let [seq (mapv (fn [{:keys [^long pos ^String seq ^String cigar] :as aln}]
+                    (let [s (nth (encode-seq (cseq/parse seq cigar)) (- locus pos))]
+                      (cond
+                        (vector? s) (second s)
+                        (= reference (first s)) "."
+                        :else s))) reads)
+        qual (mapv (fn [{:keys [^long pos ^String qual] :as aln}]
+                (if (= qual "*") \~ (nth qual (- locus pos) \~))) reads)]
+    (MPileupElement. rname locus reference (count reads) seq qual reads)))
 
 (defn pileup
+  "Returns a lazy sequence of MPileupElement."
   ([bam-reader rname]
    (pileup nil bam-reader rname -1 -1))
-  ([fa-rdr bam-reader rname]
-   (pileup fa-rdr bam-reader rname -1 -1))
-  ([fa-rdr bam-reader rname start end]
+  ([fa-reader bam-reader rname]
+   (pileup fa-reader bam-reader rname -1 -1))
+  ([fa-reader bam-reader rname start end]
    (try
      (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
-       (pileup* (read-ref-fasta-line fa-rdr rname)
-                (partial read-alignments bam-reader rname (:len r))
-                rname
-                (if (neg? start) 0 start)
-                (if (neg? end) (:len r) end)))
+       (let [s (if (neg? start) 0 start)
+             e (if (neg? end) (:len r) end)]
+         (map
+          (partial gen-mpileup rname)
+          (range s (inc e))
+          (if fa-reader
+            (concat (if (zero? s) [\N] []) (fa/read-sequence fa-reader rname s e))
+            (repeat \N))
+          (pileup-seq s e (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})))))
      (catch bgzf4j.BGZFException _
        (throw (RuntimeException. "Invalid file format"))))))
 

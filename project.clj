@@ -19,10 +19,13 @@
                                   [criterium "0.4.3"]
                                   [cavia "0.2.1"]
                                   [primitive-math "0.1.4"]]
+                   :plugins [[lein-codox "0.9.5"]]
                    :global-vars {*warn-on-reflection* true}}
              :uberjar {:aot :all}}
   :main cljam.main
   :aot [cljam.main]
   :bin {:name "cljam"}
+  :codox {:namespaces [#"^cljam\.(?!cli)(?!lsb)(?!main)(?!util)[^\.]+$"]
+          :source-uri "https://github.com/chrovis/cljam/blob/{version}/{filepath}#L{line}"}
   :repl-options {:init-ns user}
   :signing {:gpg-key "developer@xcoo.jp"})

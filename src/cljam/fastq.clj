@@ -123,7 +123,14 @@
        :index (Integer/parseInt index)
        :pair (Integer/parseInt pair)})))
 
-(def casava-1_8-pattern #"^@?([^\s^:]+):(\d+):([^\s^\:]+):(\d+):(\d+):(\d+):(\d+)\s+(\d+):(Y|N):(\d+):(\S+)$")
+(defn ^String serialize-casava-name
+  "Encode fastq name map to Casava-style string."
+  [{:keys [instrument lane tile x y index pair]}]
+  (when (and instrument lane tile x y index pair)
+    (str instrument \: lane \: tile \: x \: y \# index \/ pair)))
+
+(def casava-1_8-pattern
+  #"^@?([^\s^:]+):(\d+):([^\s^\:]+):(\d+):(\d+):(\d+):(\d+)\s+(\d+):(Y|N):(\d+):(\S+)$")
 (defn deserialize-casava-1_8-name
   "Parse Casava1.8-style name of fastq read."
   [^String name]
@@ -142,10 +149,19 @@
        :control (Integer/parseInt control)
        :index index})))
 
+(defn ^String serialize-casava-1_8-name
+  "Encode fastq name map to Casava1.8-style string."
+  [{:keys [instrument run flowcell lane tile x y pair filtered control index]}]
+  (when (and instrument run flowcell lane tile x y pair (not (nil? filtered)) control index)
+    (str instrument \: run \: flowcell \: lane \: tile \: x \: y " "
+         pair \: (if filtered \Y \N) \: control \: index)))
+
 (defn deserialize-name
   "Try parsing name of fastq read."
   [^String name]
-  (if-let [casava-1_8 (deserialize-casava-1_8-name name)]
-    casava-1_8
-    (when-let [casava (deserialize-casava-name name)]
-      casava)))
+  (first (keep #(% name) [deserialize-casava-1_8-name deserialize-casava-name])))
+
+(defn ^String serialize-name
+  "Try encoding name of fastq read."
+  [name]
+  (first (keep #(% name) [serialize-casava-1_8-name serialize-casava-name])))

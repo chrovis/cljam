@@ -71,29 +71,54 @@
        (doall (map (partial into {}) (fq/read-sequence r)))))
    => test-fq-sequences))
 
+(def sample-1_8 {:instrument "EAS139"
+                 :run 136
+                 :flowcell "FC706VJ"
+                 :lane 2
+                 :tile 2104
+                 :x 15343
+                 :y 197393
+                 :pair 1
+                 :filtered true
+                 :control 18
+                 :index "ATCACG"})
+
+(def sample {:instrument "HWUSI-EAS100R"
+             :lane 6
+             :tile 73
+             :x 941
+             :y 1973
+             :index 0
+             :pair 1})
+
 (fact
  "FASTQ read ID parsing"
+ (fq/deserialize-name "EAS139:136:FC706VJ:2:2104:15343:197393 1:Y:18:ATCACG")
+ => sample-1_8
+
+ (fq/deserialize-casava-1_8-name "EAS139:136:FC706VJ:2:2104:15343:197393 1:Y:18:ATCACG")
+ => sample-1_8
+
  (fq/deserialize-name "@EAS139:136:FC706VJ:2:2104:15343:197393 1:Y:18:ATCACG")
- => {:instrument "EAS139"
-     :run 136
-     :flowcell "FC706VJ"
-     :lane 2
-     :tile 2104
-     :x 15343
-     :y 197393
-     :pair 1
-     :filtered true
-     :control 18
-     :index "ATCACG"}
+ => sample-1_8
+
+ (fq/serialize-name sample-1_8)
+ => "EAS139:136:FC706VJ:2:2104:15343:197393 1:Y:18:ATCACG"
+
+ (fq/serialize-casava-1_8-name sample-1_8)
+ => "EAS139:136:FC706VJ:2:2104:15343:197393 1:Y:18:ATCACG"
+
+ (fq/deserialize-name "HWUSI-EAS100R:6:73:941:1973#0/1")
+ => sample
 
  (fq/deserialize-name "@HWUSI-EAS100R:6:73:941:1973#0/1")
- => {:instrument "HWUSI-EAS100R"
-     :lane 6
-     :tile 73
-     :x 941
-     :y 1973
-     :index 0
-     :pair 1}
+ => sample
+
+ (fq/serialize-name sample)
+ => "HWUSI-EAS100R:6:73:941:1973#0/1"
+
+ (fq/serialize-casava-name sample)
+ => "HWUSI-EAS100R:6:73:941:1973#0/1"
 
  (fq/deserialize-name "@EAS139:136:FC706VJ:2:2104:15343:197393_1:Y:18:ATCACG")
  => nil

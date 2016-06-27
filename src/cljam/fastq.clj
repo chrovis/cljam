@@ -42,7 +42,8 @@
 
 (defrecord FASTQRead [^String name ^String sequence quality])
 
-(defn- ^FASTQRead decode-fastq
+(defn- ^FASTQRead deserialize-fastq
+  "Deserialize a read from 4 lines of fastq file."
   [[^String name-line ^String seq-line ^String plus-line ^String qual-line]
    & {:keys [decode-quality] :or {decode-quality :phred33}}]
   {:pre [(not-empty name-line)
@@ -69,15 +70,17 @@
      qual-line)))
 
 (defn read-sequence
+  "Returns a lazy sequence of FASTQReads deserialized from given reader."
   [^FASTQReader rdr & opts]
   (sequence
    (comp (map string/trim)
          (partition-all 4)
-         (map #(apply decode-fastq % opts)))
+         (map #(apply deserialize-fastq % opts)))
    (line-seq (.reader rdr))))
 
-(defn- ^String encode-fastq
-  [{:keys [name sequence quality]}
+(defn- ^String serialize-fastq
+  "Serialize a FASTQRead to FASTQ format string."
+  [^FASTQRead {:keys [name sequence quality]}
    & {:keys [encode-quality] :or {encode-quality :phred33}}]
   {:pre [(not-empty name)
          (not-empty sequence)
@@ -99,7 +102,8 @@
       (as-> x (apply str x))))
 
 (defn write-sequence
+  "Write given sequence of reads to a FASTQ file."
   [^FASTQWriter wtr sequence & opts]
   (let [w ^java.io.Writer (.writer wtr)]
     (doseq [s sequence]
-      (.write w ^String (apply encode-fastq s opts)))))
+      (.write w ^String (apply serialize-fastq s opts)))))

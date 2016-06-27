@@ -12,14 +12,14 @@
                  [clj-sub-command "0.2.2"]
                  [bgzf4j "0.1.0"]
                  [com.climate/claypoole "1.1.1"]]
-  :plugins [[lein-midje "3.2"]
-            [lein-marginalia "0.8.0"]]
+  :plugins [[lein-midje "3.2"]]
   :profiles {:dev {:dependencies [[midje "1.8.3" :exclusions [slingshot]]
                                   [criterium "0.4.3"]
                                   [cavia "0.2.1"]
                                   [primitive-math "0.1.4"]]
                    :plugins [[lein-bin "0.3.5"]
-                             [lein-codox "0.9.5"]]
+                             [lein-codox "0.9.5"]
+                             [lein-marginalia "0.8.0"]]
                    :global-vars {*warn-on-reflection* true}}
              :uberjar {:aot :all}}
   :main cljam.main

@@ -11,7 +11,7 @@
 ;; BAMReader
 ;; ---------
 
-(deftype BAMReader [f header refs reader data-reader index]
+(deftype BAMReader [f header refs reader data-reader index-delay]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this))))
@@ -122,9 +122,9 @@
   [^BAMReader rdr
    ^String chr ^Long start ^Long end
    deep-or-shallow]
-  (when (nil? (.index rdr))
+  (when (nil? @(.index-delay rdr))
     (throw (Exception. "BAM index not found")))
-  (let [^BAMIndex bai (.index rdr)
+  (let [^BAMIndex bai @(.index-delay rdr)
         spans (get-spans bai (ref-id (.refs rdr) chr) start end)
         window (fn [^clojure.lang.PersistentHashMap a]
                  (let [^Long left (:pos a)

@@ -48,15 +48,22 @@
     ([this]
        (reader/read-alignments-sequentially* this :deep))
     ([this {:keys [chr start end depth]
-            :or {chr nil, start -1, end -1, depth :deep}}]
+            :or {chr nil
+                 start -1 end -1
+                 depth :deep}}]
        (if (nil? chr)
          (reader/read-alignments-sequentially* this depth)
          (reader/read-alignments* this chr start end depth))))
   (read-blocks
     ([this]
        (reader/read-blocks-sequentially* this :normal))
-    ([this {:keys [mode] :or {mode :normal}}]
-       (reader/read-blocks-sequentially* this mode))))
+    ([this {:keys [chr start end mode]
+            :or {chr nil
+                 start -1 end -1
+                 mode :normal}}]
+     (if (nil? chr)
+       (reader/read-blocks-sequentially* this mode)
+       (reader/read-blocks* this chr start end)))))
 
 ;; Writing
 ;; -------

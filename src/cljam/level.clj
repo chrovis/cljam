@@ -44,7 +44,7 @@
   This returns updated levels and alignment as a vector."
   [levels {:keys [pos] :as alignment}]
   (let [segment [pos (sam-util/get-end alignment)]
-        level (or (some identity (map-indexed #(when-not (collide? segment %2) %1) levels))
+        level (or (some identity (map-indexed #(when-not (collide? segment %2) %1) (vals levels)))
                   (count levels))]
     [(assoc levels level segment)
      (update alignment :options conj {:LV {:type "i" :value (int level)}})]))
@@ -59,13 +59,12 @@
 (defn- create-level-cache!
   "Create a temporary BAM file consisting of alignments of a single chromosome."
   [chr length source-path cache-path]
-  (with-open [local-rdr (bam/reader source-path :ignore-index false)
+  (with-open [local-rdr (bam/reader source-path :ignore-index true)
               cache-wtr (bam/writer cache-path)]
     (let [hdr (io/read-header local-rdr)
-          alignments (->> {:chr chr :start 0 :end length :depth :deep}
+          alignments (->> {:depth :deep}
                           (io/read-alignments local-rdr)
-                          (map-with-state calc-level [])
-                          )]
+                          (map-with-state calc-level (sorted-map)))]
       (io/write-header cache-wtr hdr)
       (io/write-refs cache-wtr hdr)
       (io/write-alignments cache-wtr alignments hdr))))
@@ -75,20 +74,38 @@
   Level calculation process is multithreaded."
   [rdr wtr]
   (let [source-path (io/reader-path rdr)
-        cache-name-fn #(->> (str (util/basename source-path) "_" % ".bam")
+        cache-name-fn #(->> (str (util/basename source-path) "_" % ".cache")
                             (file util/temp-dir)
                             (.getPath))
+        level-cache-name-fn #(->> (str (util/basename source-path) "_" % ".level.cache")
+                                  (file util/temp-dir)
+                                  (.getPath))
         hdr (io/read-header rdr)
         ;; Split into BAM files according to chromosomes.
-        caches (pmap (fn [{:keys [SN LN]}]
-                       (let [cache-path (cache-name-fn SN)]
-                         (create-level-cache! SN LN source-path cache-path)
+        caches (doall
+                (map (fn [{:keys [SN LN]}]
+                       (let [cache-path (cache-name-fn SN)
+                             blocks (io/read-blocks rdr {:chr SN :start 0 :end LN})]
+                         (with-open [cache-wtr (bam/writer cache-path)]
+                           (io/write-header cache-wtr hdr)
+                           (io/write-refs cache-wtr hdr)
+                           (io/write-blocks cache-wtr blocks))
                          cache-path))
-                     (hdr :SQ))]
+                     (hdr :SQ)))
+        leval-caches (doall
+                      (pmap (fn [{:keys [SN LN]}]
+                              (let [cache-path (cache-name-fn SN)
+                                    level-cache-path (level-cache-name-fn SN)]
+                                (create-level-cache! SN LN cache-path level-cache-path)
+                                (clean! cache-path)
+                                level-cache-path))
+                            (hdr :SQ)))]
+    (doseq [cache caches]
+      (clean! cache))
     ;; Merge cache files
     (io/write-header wtr hdr)
     (io/write-refs wtr hdr)
-    (doseq [cache caches]
+    (doseq [cache leval-caches]
       (with-open [cache-rdr (bam/reader cache :ignore-index true)]
         (io/write-blocks wtr (io/read-blocks cache-rdr)))
       (clean! cache))))
@@ -104,4 +121,3 @@
   [rdr wtr]
   (check-bam-sorted! rdr)
   (add-level-mt rdr wtr))
-

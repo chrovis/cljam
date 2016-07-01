@@ -10,6 +10,7 @@
     		width :920px;
     		font-family: 'Lucida Grande', 'Trebuchet MS', 'Bitstream Vera Sans', Verdana, Helvetica, sans-serif;
     		list-style-type :none;
+    		color :#494949;
     		}
     		
     	#header {
@@ -17,21 +18,25 @@
     		overflow: hidden;
     	}
     	
+    	#logo{
+		background-image :url(img/cljam.png);
+		background-size:contain;
+		float :left;
+		width :200px;
+		height  :61px;
+    	}
+    	
     	 a{
     		text-decoration: none;
     	}
     	
-    	a:link { color: #494949; }
-	a:visited { color: #494949; }
-	a:hover { color: #D8553D; }
-    	
-    	#header img{
-    		width: 200px;
-    		float :left;
-    	}	
+    	#header a:link { color: #4078c0; }
+	#header a:visited { color: #4078c0; }
+	#header a:hover { color: #D8553D; 
+			text-decoration: underline;}
     	
 	  #header ul {
-	  	padding :18px 0 0 20px;
+	  	padding :14px 0 0 20px;
 	  	float :right;
 	  }
 	  
@@ -49,7 +54,6 @@
 	 #main{
 	 	margin :60px 0  100px 0;
 	 	overflow: hidden;
-	 	color :#494949;
 	 	}
 
 	  p {
@@ -73,8 +77,8 @@
 	<a herf="https://github.com/you">
 		<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/a6677b08c955af8400f44c6298f40e7d19cc5b2d/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f677261795f3664366436642e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"></a>
 	<div id="header">
-		<a href="/"><img src="cljam.png"></a>
-			<ul><li><a href="https://github.com/chrovis/cljam/blob/master/README.md">README</a></li>
+		<div id="logo"><a href="/"></a></div>
+		<ul><li><a href="https://github.com/chrovis/cljam/blob/master/README.md">README</a></li>
 				<li><a href="https://github.com/chrovis/cljam/wiki/Getting-Started-for-Clojure-Beginners">Getting Started</a></li>
 				<li><a href="/docs">API Reference</a></li>
 				<li><a href="/literate">Marginalia Documents</a></li>
@@ -84,6 +88,6 @@
 		<h2>A DNA Sequence Alignment/Map (SAM) library for Clojure</h2>
 		<p>Next generation sequencing (NGS) can determine DNA bases and the result of alignment files is generally stored in the Sequence Alignment/Map (SAM) format and its the compressed binary version file format (BAM). <br>SAMtools is a typical tool to deal with them, that has a various functions, such as, detection of variants, visualization of alignments, indexing, extraction of a part of the data and locus, and conversion of file formats. It is written in C and can execute fast. <br>However, it requires additional implementation to use it in parallel, with libraries like OpenMP. In the view point of accumulation of NGS data, a simple parallelization program that can support cloud and PC cluster environment are required. In this paper, we have been developed cljam that can deal with SAM/BAM format data with Clojure programing language which simplifies parallel programming. <br>Cljam can run on Java Runtime Environment (Windows, Linux, Mac OS X, etc.) with Clojure.</p>
 	  </div>
-	<div id="footer">Copyright © Xcoo, Inc. All rights reserved.</div>
+	<div id="footer">Copyright © <a herf="https://xcoo.jp/">Xcoo, Inc.</a> All rights reserved.</div>
   </body>
 </html>

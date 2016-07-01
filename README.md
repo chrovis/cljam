@@ -128,7 +128,19 @@ $ lein midje :filter heavy
 
 ### Generating document
 
-cljam uses [Marginalia][marginalia] for generating documents.
+#### API reference
+
+cljam uses [Codox](https://github.com/weavejester/codox) for generating documents.
+
+```console
+$ lein codox
+```
+
+generates HTML documents in `target/doc` directory.
+
+#### Annotated source code
+
+cljam uses [Marginalia](https://github.com/gdeer81/marginalia) for generating annotated source code.
 
 ```console
 $ lein marg -m
@@ -154,6 +166,5 @@ Licensed under the [Apache License, Version 2.0][apache-license-2.0].
 [clojars]: https://clojars.org/cljam
 [api-reference]: https://chrovis.github.io/cljam/docs
 [annotated-source]: https://chrovis.github.io/cljam/literate
-[marginalia]: http://gdeer81.github.io/marginalia/
 [xcoo]: http://www.xcoo.jp/
 [apache-license-2.0]: http://www.apache.org/licenses/LICENSE-2.0.html

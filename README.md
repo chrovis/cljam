@@ -77,6 +77,8 @@ To pileup,
 
 Check https://chrovis.github.io/cljam for more information.
 
+If you are Clojure beginner, read [Getting Started for Clojure Beginners](https://github.com/chrovis/cljam/wiki/Getting-Started-for-Clojure-Beginners).
+
 ## Command-line tool
 
 cljam provides a command-line tool to use the features easily.

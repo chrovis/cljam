@@ -1,6 +1,6 @@
 # cljam
 
-A DNA Sequence Alignment/Map (SAM) library for Clojure. [[API Reference]][api-reference]
+A DNA Sequence Alignment/Map (SAM) library for Clojure. [[API Reference]][api-reference] [[Annotated Source]][annotated-source]
 
 [![Build Status](https://travis-ci.org/chrovis/cljam.svg?branch=master)](https://travis-ci.org/chrovis/cljam)
 
@@ -77,6 +77,8 @@ To pileup,
 
 Check https://chrovis.github.io/cljam for more information.
 
+If you are Clojure beginner, read [Getting Started for Clojure Beginners](https://github.com/chrovis/cljam/wiki/Getting-Started-for-Clojure-Beginners).
+
 ## Command-line tool
 
 cljam provides a command-line tool to use the features easily.
@@ -126,7 +128,19 @@ $ lein midje :filter heavy
 
 ### Generating document
 
-cljam uses [Marginalia][marginalia] for generating documents.
+#### API reference
+
+cljam uses [Codox](https://github.com/weavejester/codox) for generating documents.
+
+```console
+$ lein codox
+```
+
+generates HTML documents in `target/doc` directory.
+
+#### Annotated source code
+
+cljam uses [Marginalia](https://github.com/gdeer81/marginalia) for generating annotated source code.
 
 ```console
 $ lein marg -m
@@ -150,7 +164,7 @@ Copyright 2013-2016 [Xcoo, Inc.][xcoo]
 Licensed under the [Apache License, Version 2.0][apache-license-2.0].
 
 [clojars]: https://clojars.org/cljam
-[api-reference]: http://chrovis.github.io/cljam
-[marginalia]: http://gdeer81.github.io/marginalia/
+[api-reference]: https://chrovis.github.io/cljam/docs
+[annotated-source]: https://chrovis.github.io/cljam/literate
 [xcoo]: http://www.xcoo.jp/
 [apache-license-2.0]: http://www.apache.org/licenses/LICENSE-2.0.html

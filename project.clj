@@ -3,8 +3,7 @@
   :url "https://github.com/chrovis/cljam"
   :license {:name "Apache License, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
-  :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/tools.logging "0.3.1"]
+  :dependencies [[org.clojure/tools.logging "0.3.1"]
                  [org.clojure/tools.cli "0.3.3"]
                  [org.apache.commons/commons-compress "1.10"]
                  [me.raynes/fs "1.4.6"]
@@ -21,6 +20,8 @@
                              [lein-codox "0.9.5"]
                              [lein-marginalia "0.9.0"]]
                    :global-vars {*warn-on-reflection* true}}
+             :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
+             :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :uberjar {:aot :all}}
   :main cljam.main
   :aot [cljam.main]

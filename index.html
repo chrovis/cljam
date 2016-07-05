@@ -63,7 +63,6 @@
      p {
        font-size: 15px;
        line-height: 25px;
-       margin: 0 0 50px 0;
      }
 
      #footer {
@@ -92,7 +91,9 @@
 
     <div id="main">
       <h2>A DNA Sequence Alignment/Map (SAM) library for Clojure</h2>
-      <p>Next generation sequencing (NGS) can determine DNA bases and the result of alignment files is generally stored in the Sequence Alignment/Map (SAM) format and its the compressed binary version file format (BAM). <br>SAMtools is a typical tool to deal with them, that has a various functions, such as, detection of variants, visualization of alignments, indexing, extraction of a part of the data and locus, and conversion of file formats. It is written in C and can execute fast. <br>However, it requires additional implementation to use it in parallel, with libraries like OpenMP. In the view point of accumulation of NGS data, a simple parallelization program that can support cloud and PC cluster environment are required. In this paper, we have been developed cljam that can deal with SAM/BAM format data with Clojure programing language which simplifies parallel programming. <br>Cljam can run on Java Runtime Environment (Windows, Linux, Mac OS X, etc.) with Clojure.</p>
+      <p>Next generation sequencing (NGS) can determine DNA bases and the result of alignment files is generally stored in the Sequence Alignment/Map (SAM) format and the compressed binary version file format (BAM). cljam is a Clojure library for easily manipulating SAM/BAM format files.  These files are huge in size from several GB to several hundred GB.</p>
+      <p>In the viewpoint of accumulation of huge NGS data, a simple parallelization program that can support cloud and PC cluster environment are required. Clojure is a lightweight programming language favorable for large data analysis with parallel processing. It provides convenient list processing functions and immutable data structures. cljam can deal with SAM/BAM formats simply and fast with such features.</p>
+      <p>With parallel processing, the performance of cljam is the almost same to similar SAM/BAM manipulating tools while it runs on JVM. Also, the codebase of cljam is much shorter and simpler than them.</p>
     </div>
 
     <div id="footer">

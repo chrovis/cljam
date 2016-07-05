@@ -1,6 +1,8 @@
 (ns cljam.level
   "Analyze level of alignments in BAM."
   (:require [clojure.java.io :refer [file]]
+            [com.climate.claypoole :as cp]
+            [cljam.common :refer [get-exec-n-threads *n-threads*]]
             [cljam.core :as core]
             [cljam.io :as io]
             [cljam.util :as util]
@@ -92,14 +94,16 @@
                            (io/write-blocks cache-wtr blocks))
                          cache-path))
                      (hdr :SQ)))
-        leval-caches (doall
-                      (pmap (fn [{:keys [SN LN]}]
-                              (let [cache-path (cache-name-fn SN)
-                                    level-cache-path (level-cache-name-fn SN)]
-                                (create-level-cache! SN LN cache-path level-cache-path)
-                                (clean! cache-path)
-                                level-cache-path))
-                            (hdr :SQ)))]
+        leval-caches (cp/with-shutdown! [pool (cp/threadpool (get-exec-n-threads))]
+                       (doall
+                        (cp/pmap pool
+                                 (fn [{:keys [SN LN]}]
+                                   (let [cache-path (cache-name-fn SN)
+                                         level-cache-path (level-cache-name-fn SN)]
+                                     (create-level-cache! SN LN cache-path level-cache-path)
+                                     (clean! cache-path)
+                                     level-cache-path))
+                                 (hdr :SQ))))]
     (doseq [cache caches]
       (clean! cache))
     ;; Merge cache files
@@ -118,6 +122,8 @@
                     {:type :bam-not-sorted}))))
 
 (defmethod add-level :bam
-  [rdr wtr]
+  [rdr wtr & {:keys [n-threads]
+              :or {n-threads 0}}]
   (check-bam-sorted! rdr)
-  (add-level-mt rdr wtr))
+  (binding [*n-threads* n-threads]
+    (add-level-mt rdr wtr)))

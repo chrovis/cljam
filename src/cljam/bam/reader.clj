@@ -169,6 +169,23 @@
                     (cons b (lazy-seq (read-fn* r refs)))))]
     (read-fn rdr (.refs rdr))))
 
+(defn read-blocks*
+  [^BAMReader rdr
+   ^String chr ^Long start ^Long end]
+  (when (nil? (.index rdr))
+    (throw (Exception. "BAM index not found")))
+  (let [^BAMIndex bai (.index rdr)
+        spans (get-spans bai (ref-id (.refs rdr) chr) start end)
+        window (fn [^clojure.lang.PersistentHashMap a]
+                 (let [^Long left (:pos a)]
+                   (and (= chr (:rname a))
+                        (<= start left)
+                        (>= end left))))
+        candidates (flatten (map (fn [[^Long begin ^Long finish]]
+                                   (.seek ^BGZFInputStream (.reader rdr) begin)
+                                   (read-to-finish rdr finish read-coordinate-alignment-block)) spans))]
+    (filter window candidates)))
+
 (defn load-headers
   [rdr]
   (let [header (parse-header (lsb/read-string rdr (lsb/read-int rdr)))

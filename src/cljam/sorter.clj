@@ -15,11 +15,19 @@
 (def order-coordinate :coordinate)
 (def order-queryname :queryname)
 
+(defn- make-ref-map
+  [hdr]
+  (->> hdr
+       sam-util/make-refs
+       (map :name)
+       (map-indexed (fn [i val] {val i}))
+       (into {})))
+
 ;; Coordinate sorter
 ;; -----------------
 
 (defn- replace-header [hdr vn so]
-  (conj hdr {:HD {:VN vn, :SO so}}))
+  (assoc hdr :HD {:VN vn, :SO so}))
 
 (defn- compare-key-pos [ref-map b1 b2]
   (if (= (:rname b1) (:rname b2))
@@ -33,9 +41,7 @@
                     (get ref-map (:rname b2))))))
 
 (defn- sort-alignments-by-pos [rdr]
-  (let [ref-map (apply merge
-                       (map-indexed (fn [i val] {val i})
-                                    (map :name (sam-util/make-refs (io/read-header rdr)))))]
+  (let [ref-map (make-ref-map (io/read-header rdr))]
     (sort (partial compare-key-pos ref-map) (io/read-blocks rdr {:mode :coordinate}))))
 
 ;; Queryname sorter
@@ -64,43 +70,42 @@
   (format "%s/%s_%05d.sorted.cache" util/temp-dir prefix i))
 
 (defn- find-head
-  ([keyfn l]
-     (reduce (fn [e1 e2]
-               (condp = (compare e1 e2)
-                 0 e1
-                 1 e2
-                 -1 e1))
-             l)))
+  [keyfn l]
+  (reduce (fn [e1 e2]
+            (let [v (keyfn e1 e2)]
+              (cond
+                (or (zero? v)
+                    (neg? v)) e1
+                (pos? v) e2)))
+          l))
 
 (defn- head
   [blocks ref-map]
-  (find-head
-         (fn [[idx1 b1] [idx2 b2]]
-           (compare-key-pos ref-map b1 b2))
-         (filter
-          (fn [[_ b]] (not (nil? b)))
-          (map-indexed vector blocks))))
+  (->> blocks
+       (map-indexed vector)
+       (filter (fn [[_ b]] (not (nil? b))))
+       (find-head (fn [[idx1 b1] [idx2 b2]]
+                    (compare-key-pos ref-map b1 b2)))))
 
 (defn split-sam
   [rdr name-fn]
-  (doall
-   (map
-    (fn [[i blks]]
-      (let [f (name-fn i)
-            hdr (io/read-header rdr)]
-        (with-open [wtr (bam/writer f)]
-          (io/write-header wtr hdr)
-          (io/write-refs wtr hdr)
-          (io/write-blocks wtr blks))
-        f))
-    (map-indexed vector (partition-all chunk-size (io/read-blocks rdr))))))
+  (let [hdr (io/read-header rdr)]
+    (doall
+     (->> (io/read-blocks rdr)
+          (partition-all chunk-size)
+          (map-indexed vector)
+          (map (fn [[i blks]]
+                 (let [f (name-fn i)]
+                   (with-open [wtr (bam/writer f)]
+                     (io/write-header wtr hdr)
+                     (io/write-refs wtr hdr)
+                     (io/write-blocks wtr blks))
+                   f)))))))
 
 (defn merge-sam
   [wtr header name-fn n]
   (let [rdrs (map #(bam/reader (name-fn %) :ignore-index true) (range n))
-        ref-map (apply merge
-                       (map-indexed (fn [i val] {val i})
-                                    (map :name (sam-util/make-refs header))))]
+        ref-map (make-ref-map header)]
     (io/write-header wtr header)
     (io/write-refs wtr header)
     (loop [blocks-list (map #(io/read-blocks % {:mode :coordinate}) rdrs)]
@@ -117,10 +122,10 @@
 
 (defn clean-split-merge-cache
   [name-fn sorted-name-fn count]
-  (let [clean (fn [path]
-                (let [f (file path)]
-                  (when (.exists f)
-                    (.delete f))))]
+  (letfn [(clean [path]
+            (let [f (file path)]
+              (when (.exists f)
+                (.delete f))))]
     (doseq [i (range count)]
       (clean (name-fn i))
       (clean (sorted-name-fn i)))))
@@ -134,7 +139,7 @@
         sorted-cache-name-fn (partial gen-sorted-cache-filename basename)
         splited-files (split-sam rdr cache-name-fn)
         num-splited (count splited-files)
-        hdr (replace-header (io/read-header rdr)
+        hdr (replace-header (into (sorted-map) (io/read-header rdr))
                             version
                             (name order-coordinate))]
     (doseq [idxs (partition-all util/num-cores (range num-splited))]
@@ -153,7 +158,7 @@
 
 (defn sort-by-qname [rdr wtr]
   (let [alns (sort-alignments-by-qname rdr)
-        hdr (replace-header (io/read-header rdr)
+        hdr (replace-header (into (sorted-map) (io/read-header rdr))
                             version
                             (name order-queryname))]
     (io/write-header wtr hdr)

@@ -46,8 +46,8 @@
   (write-header [this header]
     (write-header* this header))
   (write-refs [this refs]
-    (logging/info "SAMWriter does not support write-refs"))
+    (logging/debug "SAMWriter does not support write-refs"))
   (write-alignments [this alignments refs]
     (write-alignments* this alignments refs))
   (write-blocks [this blocks]
-    (logging/info "SAMWriter does not support write-blocks")))
+    (logging/debug "SAMWriter does not support write-blocks")))

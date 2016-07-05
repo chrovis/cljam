@@ -36,9 +36,9 @@
        (read-alignments* this)))
   (read-blocks
     ([this]
-       (logging/info "SAMReader does not support read-blocks"))
+       (logging/debug "SAMReader does not support read-blocks"))
     ([this option]
-       (logging/info "SAMReader does not support read-blocks"))))
+       (logging/debug "SAMReader does not support read-blocks"))))
 
 (defn- read-header* [^BufferedReader rdr]
   (when-let [line (.readLine rdr)]

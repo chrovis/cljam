@@ -32,9 +32,9 @@
     (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes ^String bam-magic))
       (throw (IOException. "Invalid BAM file")))
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
-          index (bam-index f :ignore ignore-index)]
+          index-delay (delay (bam-index f :ignore ignore-index))]
       (BAMReader. (.getAbsolutePath (file f))
-                  header refs rdr data-rdr index))))
+                  header refs rdr data-rdr index-delay))))
 
 (extend-type BAMReader
   cljam.io/ISAMReader

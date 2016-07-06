@@ -172,9 +172,9 @@
 (defn read-blocks*
   [^BAMReader rdr
    ^String chr ^Long start ^Long end]
-  (when (nil? (.index rdr))
+  (when (nil? @(.index-delay rdr))
     (throw (Exception. "BAM index not found")))
-  (let [^BAMIndex bai (.index rdr)
+  (let [^BAMIndex bai @(.index-delay rdr)
         spans (get-spans bai (ref-id (.refs rdr) chr) start end)
         window (fn [^clojure.lang.PersistentHashMap a]
                  (let [^Long left (:pos a)]

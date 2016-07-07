@@ -21,6 +21,13 @@
       (cons (parse-alignment line) (lazy-seq (read-alignments* sam-reader)))
       (lazy-seq (read-alignments* sam-reader)))))
 
+(defn- read-blocks*
+  [^SAMReader sam-reader]
+  (when-let [line (.readLine ^BufferedReader (.reader sam-reader))]
+    (if-not (= (first line) \@)
+      (cons {:line line} (lazy-seq (read-blocks* sam-reader)))
+      (lazy-seq (read-blocks* sam-reader)))))
+
 (extend-type SAMReader
   ISAMReader
   (reader-path [this]
@@ -36,9 +43,9 @@
        (read-alignments* this)))
   (read-blocks
     ([this]
-       (logging/debug "SAMReader does not support read-blocks"))
+       (read-blocks* this))
     ([this option]
-       (logging/debug "SAMReader does not support read-blocks"))))
+       (read-blocks* this))))
 
 (defn- read-header* [^BufferedReader rdr]
   (when-let [line (.readLine rdr)]

@@ -72,8 +72,7 @@
 
 (defn- parse-header-line
   [line]
-  (->> (cstr/split (subs line 1) #"\t")
-       (mapv cstr/lower-case)))
+  (cstr/split (subs line 1) #"\t"))
 
 (defn load-header
   [^java.io.BufferedReader rdr]

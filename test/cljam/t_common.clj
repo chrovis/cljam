@@ -92,6 +92,10 @@
 (def test-tabix-file "test-resources/test.gtf.gz.tbi")
 (def test-large-tabix-file (cavia/resource mycavia "large.tbi"))
 
+;; ### VCF files
+
+(def test-vcf-file "test-resources/test.vcf")
+
 (def test-sam
   {:header {:SQ [{:SN "ref", :LN 45} {:SN "ref2", :LN 40}]}
    :alignments
@@ -311,3 +315,58 @@
     {:name "SEQ_ID_3"
      :sequence "AAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGCCCAAATTTGGGC"
      :quality "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"}))
+
+;; ### VCF
+
+(def test-vcf-meta-info
+  {:fileformat "VCFv4.0"
+   :filedate "20090805"
+   :source "myImputationProgramV3.1"
+   :reference "1000GenomesPilot-NCBI36"
+   :phasing "partial"
+   :info [{:id "NS", :number 1, :type "Integer", :description "Number of Samples With Data"}
+          {:id "AN", :number 1, :type "Integer", :description "Total number of alleles in called genotypes"}
+          {:id "AC", :number nil, :type "Integer", :description "Allele count in genotypes, for each ALT allele, in the same order as listed"}
+          {:id "DP", :number 1, :type "Integer", :description "Total Depth"}
+          {:id "AF", :number nil, :type "Float", :description "Allele Frequency"}
+          {:id "AA", :number 1, :type "String", :description "Ancestral Allele"}
+          {:id "DB", :number 0, :type "Flag", :description "dbSNP membership, build 129"}
+          {:id "H2", :number 0, :type "Flag", :description "HapMap2 membership"}]
+   :filter [{:id "q10", :description "Quality below 10"}
+            {:id "s50", :description "Less than 50% of samples have data"}]
+   :format [{:id "GT", :number 1, :type "String", :description "Genotype"}
+            {:id "GQ", :number 1, :type "Integer", :description "Genotype Quality"}
+            {:id "DP", :number 1, :type "Integer", :description "Read Depth"}
+            {:id "HQ", :number 2, :type "Integer", :description "Haplotype Quality"}]
+   :alt [{:id "DEL:ME:ALU", :description "Deletion of ALU element"}
+         {:id "CNV", :description "Copy number variable region"}]})
+
+(def test-vcf-header
+  ["CHROM" "POS" "ID" "REF" "ALT" "QUAL" "FILTER" "INFO" "FORMAT" "NA00001"
+   "NA00002" "NA00003"])
+
+(def test-vcf-variants
+  '({:chrom "19", :pos 111, :id nil, :ref "A", :alt ["C"], :qual 9.6, :filter nil, :info nil,
+     :FORMAT "GT:HQ", :NA00001 "0|0:10,10", :NA00002 "0|0:10,10", :NA00003 "0/1:3,3"}
+    {:chrom "19", :pos 112, :id nil, :ref "A", :alt ["G"], :qual 10.0, :filter nil, :info nil,
+     :FORMAT "GT:HQ", :NA00001 "0|0:10,10", :NA00002 "0|0:10,10", :NA00003 "0/1:3,3"}
+    {:chrom "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter "PASS", :info nil,
+     :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:48:1:51,51", :NA00002 "1|0:48:8:51,51", :NA00003 "1/1:43:5:.,."}
+    {:chrom "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter "q10", :info nil,
+     :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:49:3:58,50", :NA00002 "0|1:3:5:65,3", :NA00003 "0/0:41:3:.,."}
+    {:chrom "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter "PASS", :info nil,
+     :FORMAT "GT:GQ:DP:HQ",:NA00001 "1|2:21:6:23,27", :NA00002 "2|1:2:0:18,2", :NA00003 "2/2:35:4:.,."}
+    {:chrom "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter "PASS", :info nil,
+     :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:54:.:56,60", :NA00002 "0|0:48:4:51,51", :NA00003 "0/0:61:2:.,."}
+    {:chrom "20", :pos 1234567, :id "microsat1", :ref "G", :alt ["GA" "GAC"], :qual 50.0, :filter "PASS", :info nil,
+     :FORMAT "GT:GQ:DP", :NA00001 "0/1:.:4", :NA00002 "0/2:17:2", :NA00003 "1/1:40:3"}
+    {:chrom "20", :pos 1235237, :id nil, :ref "T", :alt nil, :qual nil, :filter nil, :info nil,
+     :FORMAT "GT", :NA00001 "0/0", :NA00002 "0|0", :NA00003 "./."}
+    {:chrom "X", :pos 9, :id nil, :ref "A", :alt ["T"], :qual 12.1, :filter nil, :info nil,
+     :FORMAT "GT", :NA00001 "0", :NA00002 "0/1", :NA00003 "1/0"}
+    {:chrom "X", :pos 10, :id "rsTest", :ref "AC", :alt ["A" "ATG"], :qual 10.0, :filter "PASS", :info nil,
+     :FORMAT "GT", :NA00001 "0", :NA00002 "0/1", :NA00003 "0|2"}
+    {:chrom "X", :pos 11, :id "rsTest2", :ref "T", :alt ["A" "<DEL:ME:ALU>"], :qual 10.0, :filter "q10;s50", :info nil,
+     :FORMAT "GT:DP:GQ", :NA00001 ".:3:10", :NA00002 "./.:.:.", :NA00003 "0|2:3:."}
+    {:chrom "X", :pos 12, :id nil, :ref "T", :alt ["A"], :qual 13.0, :filter nil, :info nil,
+     :FORMAT "GT", :NA00001 "0", :NA00002 "1/0", :NA00003 "1/1"}))

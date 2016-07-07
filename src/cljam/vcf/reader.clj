@@ -94,7 +94,7 @@
             :pos (str->long (nth fields 1))
             :id (nth fields 2)
             :ref (nth fields 3)
-            :alt (nth fields 4)
+            :alt (some-> (nth fields 4) (cstr/split #","))
             :qual (some-> (nth fields 5) Double/parseDouble)
             :filter (nth fields 6)
             :info (nth fields 7)}

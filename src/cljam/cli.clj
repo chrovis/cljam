@@ -15,6 +15,7 @@
                    [fasta-indexer :as fai]
                    [dict :as dict]
                    [pileup :as plp]
+                   [convert :as convert]
                    [level :as level])
             [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
   (:import [java.io BufferedWriter OutputStreamWriter]))
@@ -106,14 +107,11 @@
      (not= (count arguments) 2) (exit 1 (convert-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (with-open [wtr (writer out)]
-        (with-open [rdr (reader in)]
-          (let [hdr (io/read-header rdr)]
-            (io/write-header wtr hdr)
-            (io/write-refs wtr hdr)
-            (doseq [alns (partition-all 10000 (io/read-alignments rdr {}))]
-              (io/write-alignments wtr alns hdr)))))))
-  nil)
+      (try
+        (convert/convert in out)
+        (catch Throwable e
+          (exit 1 (.getMessage e))))
+      nil)))
 
 ;; ### normalize command
 

@@ -29,7 +29,7 @@
 ;; string utils
 ;; ------------
 
-(defn string->bytes [^String s]
+(defn ^"[B" string->bytes [^String s]
   (let [buf (byte-array (count s))]
     (.getBytes s 0 (count buf) buf 0)
     buf))
@@ -70,6 +70,16 @@
         nil))
     nil))
 
+(defn str->float
+  [s]
+  (if-not (nil? s)
+    (try
+      (let [[n _ _ _] (re-matches #"(|-|\+)(\d+)\.?(\d*)" s)]
+        (Float. ^String n))
+      (catch Exception e
+        nil))
+    nil))
+
 (defn graph?
   "Returns true if c is a visible character, false if not."
   [c]
@@ -105,4 +115,3 @@
   [path]
   (let [filename (.getName (file path))]
     (first (cstr/split filename #"\.(?=[^\.]+$)"))))
-

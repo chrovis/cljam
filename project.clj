@@ -24,9 +24,11 @@
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :uberjar {:aot :all}}
   :main cljam.main
+  :aliases {"docs" ["do" "codox" ["marg" "-d" "target/literate" "-m"]]}
   :aot [cljam.main]
   :bin {:name "cljam"}
   :codox {:namespaces [#"^cljam\.(?!cli)(?!lsb)(?!main)(?!util)[^\.]+$"]
+          :output-path "target/docs"
           :source-uri "https://github.com/chrovis/cljam/blob/{version}/{filepath}#L{line}"}
   :repl-options {:init-ns user}
   :signing {:gpg-key "developer@xcoo.jp"})

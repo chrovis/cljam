@@ -65,8 +65,17 @@
                 (if (= qual "*") \~ (nth qual (- locus pos) \~))) reads)]
     (MPileupElement. rname locus reference (count reads) seq qual reads)))
 
+(defn pileup*
+  "Internal pileup function independent from I/O."
+  [refseq alns rname start end]
+  (map
+   (partial gen-mpileup rname)
+   (range start (inc end))
+   (concat (if (zero? start) [\N] []) refseq)
+   (pileup-seq start end alns)))
+
 (defn pileup
-  "Returns a lazy sequence of MPileupElement."
+  "Returns a lazy sequence of MPileupElement calculated from FASTA and BAM."
   ([bam-reader rname]
    (pileup nil bam-reader rname -1 -1))
   ([fa-reader bam-reader rname]
@@ -75,14 +84,10 @@
    (try
      (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
        (let [s (if (neg? start) 0 start)
-             e (if (neg? end) (:len r) end)]
-         (map
-          (partial gen-mpileup rname)
-          (range s (inc e))
-          (if fa-reader
-            (concat (if (zero? s) [\N] []) (fa/read-sequence fa-reader rname s e))
-            (repeat \N))
-          (pileup-seq s e (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})))))
+             e (if (neg? end) (:len r) end)
+             refseq (if fa-reader (fa/read-sequence fa-reader rname s e) (repeat \N))
+             alns (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})]
+         (pileup* refseq alns rname s e)))
      (catch bgzf4j.BGZFException _
        (throw (RuntimeException. "Invalid file format"))))))
 

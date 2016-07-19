@@ -82,18 +82,16 @@
 (def newline? (memoize newline*?))
 
 (defn- read-sequence-with-offset
-  [rdr offset-start offset-end]
+  [^FASTAReader rdr offset-start offset-end]
   (let [len (- offset-end offset-start)
         ba (byte-array len)
-        r (.reader rdr)
-        buf (StringBuffer. len)]
-    (.seek r offset-start)
-    (.read r ba 0 len)
-    (doseq [b ^byte ba]
-      (let [c (char ^byte b)]
-        (when-not (newline? c)
-          (.append buf (Character/toUpperCase c)))))
-    (.toString buf)))
+        r ^RandomAccessFile (.reader rdr)]
+    (doto r
+      (.seek offset-start)
+      (.read ba 0 len))
+    (-> (String. ba)
+        (cstr/replace #"\n" "")
+        cstr/upper-case)))
 
 (defn read-whole-sequence
   [^FASTAReader rdr name]
@@ -111,10 +109,10 @@
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."
   [^FASTAReader rdr]
-  (let [r (.reader rdr)]
+  (let [r ^RandomAccessFile (.reader rdr)]
     (read* (.readLine r) r)))
 
 (defn reset
   [^FASTAReader rdr]
-  (let [r (.reader rdr)]
+  (let [r ^RandomAccessFile (.reader rdr)]
     (.seek r 0)))

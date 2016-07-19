@@ -320,7 +320,7 @@
 
 (def test-vcf-meta-info
   {:fileformat "VCFv4.0"
-   :filedate "20090805"
+   :file-date "20090805"
    :source "myImputationProgramV3.1"
    :reference "1000GenomesPilot-NCBI36"
    :phasing "partial"

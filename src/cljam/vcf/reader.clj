@@ -2,6 +2,7 @@
   "A type of VCF reader and internal functions to read VCF contents. See
   https://samtools.github.io/hts-specs/ for the detail VCF specifications."
   (:require [clojure.string :as cstr]
+            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [cljam.util :refer [str->long]]))
 
 ;; VCFReader
@@ -33,7 +34,7 @@
   [s]
   (->> (re-seq #"([\w:/\.\?\-]*)=((?:\"(.*)\")|([\w:/\.\?\-]*))" s)
        (map (fn [[_ k v1 v2 _]]
-              {(keyword (cstr/lower-case k)) (dot->nil (or v2 v1))}))
+              {(->kebab-case-keyword k) (dot->nil (or v2 v1))}))
        (apply merge)))
 
 (defn- parse-meta-info-info
@@ -43,7 +44,7 @@
 (defn- parse-meta-info-line
   [line]
   (let [[_ k* v] (re-find #"^##([\w:/\.\?\-]*)=(.*)$" line)
-        k (keyword (cstr/lower-case k*))]
+        k (->kebab-case-keyword k*)]
     [k (if-let [[_ s] (re-find #"^<(.+)>$" v)]
          (if (#{:info :format} k)
            (parse-meta-info-info s)

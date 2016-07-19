@@ -1,8 +1,13 @@
 (ns cljam.vcf
   "Functions to read and write the Variant Call Format (VCF)."
   (:require [clojure.java.io :as io]
-            [cljam.vcf.reader :as vcf-reader])
-  (:import cljam.vcf.reader.VCFReader))
+            [cljam.vcf.reader :as vcf-reader]
+            [cljam.vcf.writer :as vcf-writer])
+  (:import cljam.vcf.reader.VCFReader
+           cljam.vcf.writer.VCFWriter))
+
+;; Reading
+;; -------
 
 (defn ^VCFReader reader
   "Returns an open cljam.vcf.reader.VCFReader of f. Should be used inside
@@ -31,3 +36,30 @@
   implement cljam.vcf.reader.VCFReader."
   [rdr]
   (vcf-reader/read-variants rdr))
+
+;; Writing
+;; -------
+
+(defn ^VCFWriter writer
+  "Returns an open cljam.vcf.writer.VCFWriter of f. Meta-information lines and
+  a header line will be written in this function. Should be used inside
+  with-open to ensure the Writer is properly closed. e.g.
+
+    (with-open [wtr (writer \"out.vcf\"
+                            {:file-date \"20090805\", :source \"myImpu...\" ...}
+                            [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
+      (WRITING-VCF))"
+  [f meta-info header]
+  (doto (VCFWriter. (.getAbsolutePath (io/file f)) (io/writer f) header)
+    (vcf-writer/write-meta-info meta-info)
+    (vcf-writer/write-header header)))
+
+(defn write-variants
+  "Writes data lines on wtr, returning nil. variants must be a sequence of
+  maps. e.g.
+
+    (write-variants [{:chrom \"19\", :pos 111, :id nil, :ref \"A\",
+                      :alt [\"C\"], :qual 9.6, :filter nil, :info nil,
+                      :FORMAT \"GT:HQ\"}])"
+  [wtr variants]
+  (vcf-writer/write-variants wtr variants))

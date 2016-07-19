@@ -31,6 +31,13 @@
      (.write wtr ^String (stringify-alignment a))
      (.newLine wtr))))
 
+(defn- write-blocks*
+  [^SAMWriter sam-writer blocks]
+  (let [wtr ^BufferedWriter (.writer sam-writer)]
+   (doseq [b blocks]
+     (.write wtr ^String (:line b))
+     (.newLine wtr))))
+
 ;; Public
 ;; ------
 
@@ -50,4 +57,4 @@
   (write-alignments [this alignments refs]
     (write-alignments* this alignments refs))
   (write-blocks [this blocks]
-    (logging/debug "SAMWriter does not support write-blocks")))
+    (write-blocks* this blocks)))

@@ -3,7 +3,7 @@
   (:require [clojure.java.io :refer [file]]
             [com.climate.claypoole :as cp]
             [cljam.common :refer [get-exec-n-threads *n-threads*]]
-            [cljam.core :as core]
+            [cljam.core :as core :refer [sam-reader? bam-reader?]]
             [cljam.io :as io]
             [cljam.util :as util]
             [cljam.bam :as bam]
@@ -11,10 +11,10 @@
 
 (defmulti add-level
   (fn [rdr wtr]
-    (case (str (type rdr))
-      "class cljam.sam.reader.SAMReader" :sam
-      "class cljam.bam.reader.BAMReader" :bam
-      nil)))
+    (cond
+      (sam-reader? rdr) :sam
+      (bam-reader? rdr) :bam
+      :else nil)))
 
 (defmethod add-level :sam
   [rdr wtr]

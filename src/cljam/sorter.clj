@@ -1,8 +1,10 @@
 (ns cljam.sorter
   "Sorter of SAM/BAM format alignments."
   (:require [clojure.java.io :refer [file]]
+            [clojure.tools.logging :as logging]
             [clojure.string :as cstr]
-            (cljam [sam :as sam]
+            (cljam [core :refer [sam-reader? sam-writer? bam-reader? bam-writer?]]
+                   ;; [sam :as sam]
                    [bam :as bam]
                    [common :refer [version]]
                    [util :as util]
@@ -52,11 +54,9 @@
 ;;    (:qname aln)
 ;;    (bit-and (:flag aln) 0xc0)])
 
-;; FIXME
-(defn- sort-alignments-by-qname [rdr]
-  ;; (->> (sort-by (partial compkey-qname (:header sam)) (:alignments sam))
-  ;;      (assoc sam :alignments))
-  )
+;; (defn- sort-alignments-by-qname [rdr]
+;;   (->> (sort-by (partial compkey-qname (:header sam)) (:alignments sam))
+;;        (assoc sam :alignments)))
 
 ;; split/merge
 ;; -----------
@@ -133,37 +133,52 @@
 ;; Sorter
 ;; ------
 
-(defn sort-by-pos [rdr wtr]
-  (let [basename (util/basename (.getName (file (io/reader-path rdr))))
-        cache-name-fn (partial gen-cache-filename basename)
-        sorted-cache-name-fn (partial gen-sorted-cache-filename basename)
-        splited-files (split-sam rdr cache-name-fn)
-        num-splited (count splited-files)
-        hdr (replace-header (into (sorted-map) (io/read-header rdr))
-                            version
-                            (name order-coordinate))]
-    (doseq [idxs (partition-all util/num-cores (range num-splited))]
-      (doall
-       (pmap
-        (fn [i]
-          (let [r (bam/reader (cache-name-fn i) :ignore-index true)
-                blks (sort-alignments-by-pos r)]
-            (with-open [w (bam/writer (sorted-cache-name-fn i))]
-              (io/write-header w hdr)
-              (io/write-refs w hdr)
-              (io/write-blocks w blks))))
-        idxs)))
-    (merge-sam wtr hdr sorted-cache-name-fn num-splited)
-    (clean-split-merge-cache cache-name-fn sorted-cache-name-fn num-splited)))
+(defmulti sort-by-pos (fn [rdr wtr]
+                        (cond
+                          (and (sam-reader? rdr) (sam-writer? wtr)) :sam
+                          (and (bam-reader? rdr) (bam-writer? wtr)) :bam
+                          :else nil)))
+
+(defmethod sort-by-pos :sam [rdr wtr]
+  (throw (ex-info "SAM not supported yet." {:type :sam-not-supported}))
+  ;; TODO implement
+  )
+
+(defmethod sort-by-pos :bam [rdr wtr]
+  (when (and (bam-reader? rdr)
+             (bam-writer? wtr))
+    (let [basename (util/basename (.getName (file (io/reader-path rdr))))
+          cache-name-fn (partial gen-cache-filename basename)
+          sorted-cache-name-fn (partial gen-sorted-cache-filename basename)
+          splited-files (split-sam rdr cache-name-fn)
+          num-splited (count splited-files)
+          hdr (replace-header (into (sorted-map) (io/read-header rdr))
+                              version
+                              (name order-coordinate))]
+      (doseq [idxs (partition-all util/num-cores (range num-splited))]
+        (doall
+         (pmap
+          (fn [i]
+            (let [r (bam/reader (cache-name-fn i) :ignore-index true)
+                  blks (sort-alignments-by-pos r)]
+              (with-open [w (bam/writer (sorted-cache-name-fn i))]
+                (io/write-header w hdr)
+                (io/write-refs w hdr)
+                (io/write-blocks w blks))))
+          idxs)))
+      (merge-sam wtr hdr sorted-cache-name-fn num-splited)
+      (clean-split-merge-cache cache-name-fn sorted-cache-name-fn num-splited))))
 
 (defn sort-by-qname [rdr wtr]
-  (let [alns (sort-alignments-by-qname rdr)
-        hdr (replace-header (into (sorted-map) (io/read-header rdr))
-                            version
-                            (name order-queryname))]
-    (io/write-header wtr hdr)
-    (io/write-refs wtr hdr)
-    (io/write-alignments wtr alns hdr)))
+  (throw (ex-info "Query name sortor is not available yet." {:type :method-not-available}))
+  ;; (let [alns (sort-alignments-by-qname rdr)
+  ;;       hdr (replace-header (into (sorted-map) (io/read-header rdr))
+  ;;                           version
+  ;;                           (name order-queryname))]
+  ;;   (io/write-header wtr hdr)
+  ;;   (io/write-refs wtr hdr)
+  ;;   (io/write-alignments wtr alns hdr))
+  )
 
 (defn sorted-by?
   "Returns true if the sam is sorted, false if not. It is detected by

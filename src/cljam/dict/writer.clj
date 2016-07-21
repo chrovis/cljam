@@ -77,7 +77,7 @@
 
 (defn- write-sequence!
   [^BufferedWriter wtr name blen ur m5]
-  (.write wtr (str "@SQ\tSN:" name "\tLN:" blen "\tUR:" ur "\tM5:" m5))
+  (.write wtr (str "@SQ\tSN:" name "\tLN:" blen "\tM5:" m5 "\tUR:" ur))
   (.newLine wtr))
 
 (defn- write-dict*!

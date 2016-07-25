@@ -107,11 +107,8 @@
      (not= (count arguments) 2) (exit 1 (convert-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (try
-        (convert/convert in out)
-        (catch Throwable e
-          (exit 1 (.getMessage e))))
-      nil)))
+      (convert/convert in out)))
+  nil)
 
 ;; ### normalize command
 

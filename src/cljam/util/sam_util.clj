@@ -220,13 +220,12 @@
                    [\d \D]    (:d  compressed-bases-low)
                    [\b \B]    (:b  compressed-bases-low)}))
 
-(definline char->compressed-base-low
+(defn char->compressed-base-low
   "Convert from a char to BAM nybble representation of a base in low-order nybble."
   [base]
-  `(let [base# ~base]
-     (or
-       (_char->compressed-base-low base#)
-       (throw (IllegalArgumentException. (str "Bad type: " base#))))))
+  (or
+   (_char->compressed-base-low base)
+   (throw (IllegalArgumentException. (str "Bad type: " base)))))
 
 (def ^:private _char->compressed-base-high
   (unfold-ksv-map {[\=]       (:eq compressed-bases-high)
@@ -246,13 +245,12 @@
                    [\d \D]    (:d  compressed-bases-high)
                    [\b \B]    (:b  compressed-bases-high)}))
 
-(definline char->compressed-base-high
+(defn char->compressed-base-high
   "Convert from a char to BAM nybble representation of a base in high-order nybble."
   [base]
-  `(let [base# ~base]
-     (or
-       (_char->compressed-base-high base#)
-       (throw (IllegalArgumentException. (str "Bad type: " base#))))))
+  (or
+   (_char->compressed-base-high base)
+   (throw (IllegalArgumentException. (str "Bad type: " base)))))
 
 (def ^:private _compressed-base->char-low
   {(:eq compressed-bases-low) \=
@@ -272,13 +270,12 @@
    (:d  compressed-bases-low) \D
    (:b  compressed-bases-low) \B})
 
-(definline compressed-base->char-low
+(defn compressed-base->char-low
   "Convert from BAM nybble representation of a base in low-order nybble to a char."
   [base]
-  `(let [base# ~base]
-     (or
-       (_compressed-base->char-low (ubyte (bit-and base# 0xf)))
-       (throw (IllegalArgumentException. (str "Bad type: " base#))))))
+  (or
+   (_compressed-base->char-low (ubyte (bit-and base 0xf)))
+   (throw (IllegalArgumentException. (str "Bad type: " base)))))
 
 (def ^:private _compressed-base->char-high
   {(:eq compressed-bases-high) \=
@@ -298,13 +295,12 @@
    (:d  compressed-bases-high) \D
    (:b  compressed-bases-high) \B})
 
-(definline compressed-base->char-high
+(defn compressed-base->char-high
   "Convert from BAM nybble representation of a base in high-order nybble to a char."
   [base]
-  `(let [base# ~base]
-     (or
-       (_compressed-base->char-high (ubyte (bit-and base# 0xf0)))
-       (throw (IllegalArgumentException. (str "Bad type: " base#))))))
+  (or
+   (_compressed-base->char-high (ubyte (bit-and base 0xf0)))
+   (throw (IllegalArgumentException. (str "Bad type: " base)))))
 
 (defn bytes->compressed-bases [^bytes read-bases]
   (let [rlen (alength read-bases)
@@ -342,10 +338,10 @@
 
 ;;; fastq and phred
 
-(definline fastq-char->phred-byte [ch]
-  `(let [ch# (int ~ch)]
-     (assert (<= 33 ch# 126))
-     (byte (- ch# 33))))
+(defn fastq-char->phred-byte [ch]
+  [ch]
+  {:pre [(<= 33 (int ch) 126)]}
+  (byte (- (int ch) 33)))
 
 (defn fastq->phred [^String fastq]
   (let [length (count fastq)

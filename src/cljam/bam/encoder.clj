@@ -127,14 +127,11 @@
            \c nil
            \C nil
            \s nil
-           \S (let [bb (lsb/gen-byte-buffer)
-                    total-len (+ 1 4 (* 2 (count array)))]
-                ;; (lsb/write-bytes writer (byte-array 1 (byte \S)))
-                (.put bb (byte-array 1 (byte \S)) 1)
-                ;; (lsb/write-int writer (count array))
+           \S (let [total-len (+ 1 4 (* 2 (count array)))
+                    bb (lsb/gen-byte-buffer total-len)]
+                (.put bb (byte-array 1 (byte \S)) 0 1)
                 (.putInt bb (count array))
                 (doseq [v array]
-                  ;; (lsb/write-short writer (Short/parseShort v))
                   (.putShort bb (Short/parseShort v)))
                 (Arrays/copyOfRange (.array bb) 0 total-len))
            \i nil

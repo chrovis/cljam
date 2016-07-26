@@ -13,7 +13,7 @@ cljam is available as a Maven artifact from [Clojars][clojars].
 To use with Leiningen, add the following dependency.
 
 ```clojure
-[cljam "0.1.4"]
+[cljam "0.1.5"]
 ```
 
 To use with Maven, add the following dependency.
@@ -22,7 +22,7 @@ To use with Maven, add the following dependency.
 <dependency>
   <groupId>cljam</groupId>
   <artifactId>cljam</artifactId>
-  <version>0.1.4</version>
+  <version>0.1.5</version>
 </dependency>
 ```
 
@@ -88,9 +88,9 @@ cljam provides a command-line tool to use the features easily.
 Run `lein-bin` plugin and it creates standalone console executable into `target` directory.
 
 ```console
-$ lein bin
-Created /path/to/cljam/target/cljam-0.1.4.jar
-Created /path/to/cljam/target/cljam-0.1.4-standalone.jar
+$ lein with-profile 1.8 bin
+Created /path/to/cljam/target/cljam-0.1.5.jar
+Created /path/to/cljam/target/cljam-0.1.5-standalone.jar
 Creating standalone executable: /path/to/cljam/target/cljam
 ```
 

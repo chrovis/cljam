@@ -2895,9 +2895,9 @@ net.brehaut.ClojureTools = (function (SH) {
     (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes ^String bam-magic))
       (throw (IOException. &quot;Invalid BAM file&quot;)))
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
-          index (bam-index f :ignore ignore-index)]
+          index-delay (delay (bam-index f :ignore ignore-index))]
       (BAMReader. (.getAbsolutePath (file f))
-                  header refs rdr data-rdr index))))</pre></td></tr><tr><td class="docs">
+                  header refs rdr data-rdr index-delay))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(extend-type BAMReader
   cljam.io/ISAMReader
   (reader-path [this]
@@ -2910,15 +2910,22 @@ net.brehaut.ClojureTools = (function (SH) {
     ([this]
        (reader/read-alignments-sequentially* this :deep))
     ([this {:keys [chr start end depth]
-            :or {chr nil, start -1, end -1, depth :deep}}]
+            :or {chr nil
+                 start -1 end -1
+                 depth :deep}}]
        (if (nil? chr)
          (reader/read-alignments-sequentially* this depth)
          (reader/read-alignments* this chr start end depth))))
   (read-blocks
     ([this]
        (reader/read-blocks-sequentially* this :normal))
-    ([this {:keys [mode] :or {mode :normal}}]
-       (reader/read-blocks-sequentially* this mode))))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
+    ([this {:keys [chr start end mode]
+            :or {chr nil
+                 start -1 end -1
+                 mode :normal}}]
+     (if (nil? chr)
+       (reader/read-blocks-sequentially* this mode)
+       (reader/read-blocks* this chr start end)))))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^BAMWriter writer [f]
   (BAMWriter. (.getAbsolutePath (file f))

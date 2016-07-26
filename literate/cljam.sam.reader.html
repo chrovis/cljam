@@ -2885,6 +2885,12 @@ net.brehaut.ClojureTools = (function (SH) {
     (if-not (= (first line) \@)
       (cons (parse-alignment line) (lazy-seq (read-alignments* sam-reader)))
       (lazy-seq (read-alignments* sam-reader)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- read-blocks*
+  [^SAMReader sam-reader]
+  (when-let [line (.readLine ^BufferedReader (.reader sam-reader))]
+    (if-not (= (first line) \@)
+      (cons {:line line} (lazy-seq (read-blocks* sam-reader)))
+      (lazy-seq (read-blocks* sam-reader)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(extend-type SAMReader
   ISAMReader
   (reader-path [this]
@@ -2900,9 +2906,9 @@ net.brehaut.ClojureTools = (function (SH) {
        (read-alignments* this)))
   (read-blocks
     ([this]
-       (logging/info &quot;SAMReader does not support read-blocks&quot;))
+       (read-blocks* this))
     ([this option]
-       (logging/info &quot;SAMReader does not support read-blocks&quot;))))</pre></td></tr><tr><td class="docs">
+       (read-blocks* this))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-header* [^BufferedReader rdr]
   (when-let [line (.readLine rdr)]
     (if (= (first line) \@)

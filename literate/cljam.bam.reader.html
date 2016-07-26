@@ -2876,7 +2876,7 @@ net.brehaut.ClojureTools = (function (SH) {
            java.nio.ByteBuffer
            bgzf4j.BGZFInputStream))</pre></td></tr><tr><td class="docs"><h2>BAMReader</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype BAMReader [f header refs reader data-reader index]
+</td><td class="codes"><pre class="brush: clojure">(deftype BAMReader [f header refs reader data-reader index-delay]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this))))</pre></td></tr><tr><td class="docs"><h2>Reading a single block</h2>
@@ -2966,9 +2966,9 @@ net.brehaut.ClojureTools = (function (SH) {
   [^BAMReader rdr
    ^String chr ^Long start ^Long end
    deep-or-shallow]
-  (when (nil? (.index rdr))
+  (when (nil? @(.index-delay rdr))
     (throw (Exception. &quot;BAM index not found&quot;)))
-  (let [^BAMIndex bai (.index rdr)
+  (let [^BAMIndex bai @(.index-delay rdr)
         spans (get-spans bai (ref-id (.refs rdr) chr) start end)
         window (fn [^clojure.lang.PersistentHashMap a]
                  (let [^Long left (:pos a)
@@ -3010,6 +3010,22 @@ net.brehaut.ClojureTools = (function (SH) {
                                   (catch EOFException e nil))]
                     (cons b (lazy-seq (read-fn* r refs)))))]
     (read-fn rdr (.refs rdr))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn read-blocks*
+  [^BAMReader rdr
+   ^String chr ^Long start ^Long end]
+  (when (nil? @(.index-delay rdr))
+    (throw (Exception. &quot;BAM index not found&quot;)))
+  (let [^BAMIndex bai @(.index-delay rdr)
+        spans (get-spans bai (ref-id (.refs rdr) chr) start end)
+        window (fn [^clojure.lang.PersistentHashMap a]
+                 (let [^Long left (:pos a)]
+                   (and (= chr (:rname a))
+                        (&lt;= start left)
+                        (&gt;= end left))))
+        candidates (flatten (map (fn [[^Long begin ^Long finish]]
+                                   (.seek ^BGZFInputStream (.reader rdr) begin)
+                                   (read-to-finish rdr finish read-coordinate-alignment-block)) spans))]
+    (filter window candidates)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn load-headers
   [rdr]
   (let [header (parse-header (lsb/read-string rdr (lsb/read-int rdr)))

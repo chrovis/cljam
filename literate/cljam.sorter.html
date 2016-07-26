@@ -2868,8 +2868,10 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.sorter" name="cljam.sorter"><h1 class="project-name">cljam.sorter</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Sorter of SAM/BAM format alignments.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.sorter
   (:require [clojure.java.io :refer [file]]
+            [clojure.tools.logging :as logging]
             [clojure.string :as cstr]
-            (cljam [sam :as sam]
+            (cljam [core :refer [sam-reader? sam-writer? bam-reader? bam-writer?]]
+                   ;; [sam :as sam]
                    [bam :as bam]
                    [common :refer [version]]
                    [util :as util]
@@ -2878,10 +2880,17 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(def ^:private chunk-size 1500000)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def order-unknown :unknown)
 (def order-coordinate :coordinate)
-(def order-queryname :queryname)</pre></td></tr><tr><td class="docs"><h2>Coordinate sorter</h2>
+(def order-queryname :queryname)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- make-ref-map
+  [hdr]
+  (-&gt;&gt; hdr
+       sam-util/make-refs
+       (map :name)
+       (map-indexed (fn [i val] {val i}))
+       (into {})))</pre></td></tr><tr><td class="docs"><h2>Coordinate sorter</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- replace-header [hdr vn so]
-  (conj hdr {:HD {:VN vn, :SO so}}))</pre></td></tr><tr><td class="docs">
+  (assoc hdr :HD {:VN vn, :SO so}))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- compare-key-pos [ref-map b1 b2]
   (if (= (:rname b1) (:rname b2))
     (if (= (:pos b1) (:pos b2))
@@ -2893,18 +2902,16 @@ net.brehaut.ClojureTools = (function (SH) {
      :else (compare (get ref-map (:rname b1))
                     (get ref-map (:rname b2))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- sort-alignments-by-pos [rdr]
-  (let [ref-map (apply merge
-                       (map-indexed (fn [i val] {val i})
-                                    (map :name (sam-util/make-refs (io/read-header rdr)))))]
+  (let [ref-map (make-ref-map (io/read-header rdr))]
     (sort (partial compare-key-pos ref-map) (io/read-blocks rdr {:mode :coordinate}))))</pre></td></tr><tr><td class="docs"><h2>Queryname sorter</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>(defn- compkey-qname [hdr aln]
   [(.indexOf ^List (map :name (sam-util/make-refs hdr)) (:rname aln))
    (:qname aln)
    (bit-and (:flag aln) 0xc0)])</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>FIXME</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- sort-alignments-by-qname [rdr]
-  ;; (-&gt;&gt; (sort-by (partial compkey-qname (:header sam)) (:alignments sam))
-  ;;      (assoc sam :alignments)))</pre></td></tr><tr><td class="docs"><h2>split/merge</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>(defn- sort-alignments-by-qname [rdr]
+  (->> (sort-by (partial compkey-qname (:header sam)) (:alignments sam))
+       (assoc sam :alignments)))</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>split/merge</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn gen-cache-filename
   [prefix i]
@@ -2913,40 +2920,39 @@ net.brehaut.ClojureTools = (function (SH) {
   [prefix i]
   (format &quot;%s/%s_%05d.sorted.cache&quot; util/temp-dir prefix i))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- find-head
-  ([keyfn l]
-     (reduce (fn [e1 e2]
-               (condp = (compare e1 e2)
-                 0 e1
-                 1 e2
-                 -1 e1))
-             l)))</pre></td></tr><tr><td class="docs">
+  [keyfn l]
+  (reduce (fn [e1 e2]
+            (let [v (keyfn e1 e2)]
+              (cond
+                (or (zero? v)
+                    (neg? v)) e1
+                (pos? v) e2)))
+          l))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- head
   [blocks ref-map]
-  (find-head
-         (fn [[idx1 b1] [idx2 b2]]
-           (compare-key-pos ref-map b1 b2))
-         (filter
-          (fn [[_ b]] (not (nil? b)))
-          (map-indexed vector blocks))))</pre></td></tr><tr><td class="docs">
+  (-&gt;&gt; blocks
+       (map-indexed vector)
+       (filter (fn [[_ b]] (not (nil? b))))
+       (find-head (fn [[idx1 b1] [idx2 b2]]
+                    (compare-key-pos ref-map b1 b2)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn split-sam
   [rdr name-fn]
-  (doall
-   (map
-    (fn [[i blks]]
-      (let [f (name-fn i)
-            hdr (io/read-header rdr)]
-        (with-open [wtr (bam/writer f)]
-          (io/write-header wtr hdr)
-          (io/write-refs wtr hdr)
-          (io/write-blocks wtr blks))
-        f))
-    (map-indexed vector (partition-all chunk-size (io/read-blocks rdr))))))</pre></td></tr><tr><td class="docs">
+  (let [hdr (io/read-header rdr)]
+    (doall
+     (-&gt;&gt; (io/read-blocks rdr)
+          (partition-all chunk-size)
+          (map-indexed vector)
+          (map (fn [[i blks]]
+                 (let [f (name-fn i)]
+                   (with-open [wtr (bam/writer f)]
+                     (io/write-header wtr hdr)
+                     (io/write-refs wtr hdr)
+                     (io/write-blocks wtr blks))
+                   f)))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn merge-sam
   [wtr header name-fn n]
   (let [rdrs (map #(bam/reader (name-fn %) :ignore-index true) (range n))
-        ref-map (apply merge
-                       (map-indexed (fn [i val] {val i})
-                                    (map :name (sam-util/make-refs header))))]
+        ref-map (make-ref-map header)]
     (io/write-header wtr header)
     (io/write-refs wtr header)
     (loop [blocks-list (map #(io/read-blocks % {:mode :coordinate}) rdrs)]
@@ -2962,44 +2968,56 @@ net.brehaut.ClojureTools = (function (SH) {
                     (map-indexed vector blocks-list)))))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn clean-split-merge-cache
   [name-fn sorted-name-fn count]
-  (let [clean (fn [path]
-                (let [f (file path)]
-                  (when (.exists f)
-                    (.delete f))))]
+  (letfn [(clean [path]
+            (let [f (file path)]
+              (when (.exists f)
+                (.delete f))))]
     (doseq [i (range count)]
       (clean (name-fn i))
       (clean (sorted-name-fn i)))))</pre></td></tr><tr><td class="docs"><h2>Sorter</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn sort-by-pos [rdr wtr]
-  (let [basename (util/basename (.getName (file (io/reader-path rdr))))
-        cache-name-fn (partial gen-cache-filename basename)
-        sorted-cache-name-fn (partial gen-sorted-cache-filename basename)
-        splited-files (split-sam rdr cache-name-fn)
-        num-splited (count splited-files)
-        hdr (replace-header (io/read-header rdr)
-                            version
-                            (name order-coordinate))]
-    (doseq [idxs (partition-all util/num-cores (range num-splited))]
-      (doall
-       (pmap
-        (fn [i]
-          (let [r (bam/reader (cache-name-fn i) :ignore-index true)
-                blks (sort-alignments-by-pos r)]
-            (with-open [w (bam/writer (sorted-cache-name-fn i))]
-              (io/write-header w hdr)
-              (io/write-refs w hdr)
-              (io/write-blocks w blks))))
-        idxs)))
-    (merge-sam wtr hdr sorted-cache-name-fn num-splited)
-    (clean-split-merge-cache cache-name-fn sorted-cache-name-fn num-splited)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmulti sort-by-pos (fn [rdr wtr]
+                        (cond
+                          (and (sam-reader? rdr) (sam-writer? wtr)) :sam
+                          (and (bam-reader? rdr) (bam-writer? wtr)) :bam
+                          :else nil)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod sort-by-pos :sam [rdr wtr]
+  (throw (ex-info &quot;SAM not supported yet.&quot; {:type :sam-not-supported}))
+  ;; TODO implement
+  )</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod sort-by-pos :bam [rdr wtr]
+  (when (and (bam-reader? rdr)
+             (bam-writer? wtr))
+    (let [basename (util/basename (.getName (file (io/reader-path rdr))))
+          cache-name-fn (partial gen-cache-filename basename)
+          sorted-cache-name-fn (partial gen-sorted-cache-filename basename)
+          splited-files (split-sam rdr cache-name-fn)
+          num-splited (count splited-files)
+          hdr (replace-header (into (sorted-map) (io/read-header rdr))
+                              version
+                              (name order-coordinate))]
+      (doseq [idxs (partition-all util/num-cores (range num-splited))]
+        (doall
+         (pmap
+          (fn [i]
+            (let [r (bam/reader (cache-name-fn i) :ignore-index true)
+                  blks (sort-alignments-by-pos r)]
+              (with-open [w (bam/writer (sorted-cache-name-fn i))]
+                (io/write-header w hdr)
+                (io/write-refs w hdr)
+                (io/write-blocks w blks))))
+          idxs)))
+      (merge-sam wtr hdr sorted-cache-name-fn num-splited)
+      (clean-split-merge-cache cache-name-fn sorted-cache-name-fn num-splited))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn sort-by-qname [rdr wtr]
-  (let [alns (sort-alignments-by-qname rdr)
-        hdr (replace-header (io/read-header rdr)
-                            version
-                            (name order-queryname))]
-    (io/write-header wtr hdr)
-    (io/write-refs wtr hdr)
-    (io/write-alignments wtr alns hdr)))</pre></td></tr><tr><td class="docs"><p>Returns true if the sam is sorted, false if not. It is detected by
+  (throw (ex-info &quot;Query name sortor is not available yet.&quot; {:type :method-not-available}))
+  ;; (let [alns (sort-alignments-by-qname rdr)
+  ;;       hdr (replace-header (into (sorted-map) (io/read-header rdr))
+  ;;                           version
+  ;;                           (name order-queryname))]
+  ;;   (io/write-header wtr hdr)
+  ;;   (io/write-refs wtr hdr)
+  ;;   (io/write-alignments wtr alns hdr)))</pre></td></tr><tr><td class="docs"><p>Returns true if the sam is sorted, false if not. It is detected by
   <code>@HD SO:***</code> tag in the header.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn sorted-by?
   [rdr]

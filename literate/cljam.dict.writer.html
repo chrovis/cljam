@@ -2867,7 +2867,7 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.dict.writer" name="cljam.dict.writer"><h1 class="project-name">cljam.dict.writer</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Makes a sequence dictionary from FASTA data, and writes it to a file.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.dict.writer
-  (:require [pandect.core :refer [md5]]
+  (:require [digest]
             [cljam.common :refer [version]]
             [cljam.util :refer [string-&gt;bytes graph?]])
   (:import java.io.BufferedWriter))</pre></td></tr><tr><td class="docs"><h2>DICTWriter</h2>
@@ -2891,7 +2891,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (when (&lt; i (count bases))
         (aset bases i ^byte (upper-case (nth bases i)))
         (recur (inc i))))
-    (md5 bases)))</pre></td></tr><tr><td class="docs">
+    (digest/md5 bases)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- init-dict-status
   []
   {:sequence , :len 0})</pre></td></tr><tr><td class="docs">
@@ -2927,7 +2927,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (.newLine wtr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-sequence!
   [^BufferedWriter wtr name blen ur m5]
-  (.write wtr (str &quot;@SQ\tSN:&quot; name &quot;\tLN:&quot; blen &quot;\tUR:&quot; ur &quot;\tM5:&quot; m5))
+  (.write wtr (str &quot;@SQ\tSN:&quot; name &quot;\tLN:&quot; blen &quot;\tM5:&quot; m5 &quot;\tUR:&quot; ur))
   (.newLine wtr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-dict*!
   [wtr headers sequences ur]

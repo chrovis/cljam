@@ -2882,7 +2882,7 @@ net.brehaut.ClojureTools = (function (SH) {
   {:pre [(&lt;= 0 n 255)]}
   (byte (if (&lt; n 0x80) n (- n 0x100))))</pre></td></tr><tr><td class="docs"><h2>string utils</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn string-&gt;bytes [^String s]
+</td><td class="codes"><pre class="brush: clojure">(defn ^&quot;[B&quot; string-&gt;bytes [^String s]
   (let [buf (byte-array (count s))]
     (.getBytes s 0 (count buf) buf 0)
     buf))</pre></td></tr><tr><td class="docs">
@@ -2914,6 +2914,15 @@ net.brehaut.ClojureTools = (function (SH) {
         (Integer. ^String n))
       (catch NumberFormatException e
         (str-&gt;long s))
+      (catch Exception e
+        nil))
+    nil))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn str-&gt;float
+  [s]
+  (if-not (nil? s)
+    (try
+      (let [[n _ _ _] (re-matches #&quot;(|-|\+)(\d+)\.?(\d*)&quot; s)]
+        (Float. ^String n))
       (catch Exception e
         nil))
     nil))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a visible character, false if not.</p>

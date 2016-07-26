@@ -128,25 +128,14 @@ $ lein midje :filter heavy
 
 ### Generating document
 
-#### API reference
-
-cljam uses [Codox](https://github.com/weavejester/codox) for generating documents.
-
-```console
-$ lein codox
-```
-
-generates HTML documents in `target/doc` directory.
-
-#### Annotated source code
-
-cljam uses [Marginalia](https://github.com/gdeer81/marginalia) for generating annotated source code.
+cljam uses [Codox](https://github.com/weavejester/codox) for API reference and
+[Marginalia](https://github.com/gdeer81/marginalia) for annotated source code.
 
 ```console
-$ lein marg -m
+$ lein docs
 ```
 
-generates HTML documents in `docs` directory.
+generates these documents in `target/docs` and `target/literate` directories.
 
 ## Contributors
 

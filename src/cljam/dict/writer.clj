@@ -1,6 +1,6 @@
 (ns cljam.dict.writer
   "Makes a sequence dictionary from FASTA data, and writes it to a file."
-  (:require [pandect.core :refer [md5]]
+  (:require [digest]
             [cljam.common :refer [version]]
             [cljam.util :refer [string->bytes graph?]])
   (:import java.io.BufferedWriter))
@@ -33,7 +33,7 @@
       (when (< i (count bases))
         (aset bases i ^byte (upper-case (nth bases i)))
         (recur (inc i))))
-    (md5 bases)))
+    (digest/md5 bases)))
 
 (defn- init-dict-status
   []
@@ -77,7 +77,7 @@
 
 (defn- write-sequence!
   [^BufferedWriter wtr name blen ur m5]
-  (.write wtr (str "@SQ\tSN:" name "\tLN:" blen "\tUR:" ur "\tM5:" m5))
+  (.write wtr (str "@SQ\tSN:" name "\tLN:" blen "\tM5:" m5 "\tUR:" ur))
   (.newLine wtr))
 
 (defn- write-dict*!

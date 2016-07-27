@@ -3,7 +3,8 @@
   (:require [clojure.java.io :as io]
             [cljam.fasta-index.core :as fasta-index]
             [cljam.fasta.reader :as reader])
-  (:import java.io.RandomAccessFile
+  (:import [java.io RandomAccessFile FileInputStream BufferedInputStream File InputStream]
+           [org.apache.commons.compress.compressors CompressorStreamFactory CompressorException]
            cljam.fasta.reader.FASTAReader))
 
 ;; Reading
@@ -56,3 +57,9 @@
   [f]
   (with-open [r (reader f)]
     (doall (reader/read r))))
+
+(defn sequential-read
+  [^String f]
+  (with-open [stream (try (.createCompressorInputStream (CompressorStreamFactory.) (io/input-stream f))
+                          (catch CompressorException e (FileInputStream. f)))]
+    (reader/sequential-read-string stream (* 1024 1024 10) 536870912)))

@@ -74,7 +74,9 @@
 ;; ### FASTA files
 
 (def test-fa-file  "test-resources/test.fa")
+(def test-fa-bz2-file  "test-resources/test.fa.bz2")
 (def medium-fa-file "test-resources/medium.fa")
+(def medium-fa-gz-file "test-resources/medium.fa.gz")
 
 ;; ### FASTA index files
 

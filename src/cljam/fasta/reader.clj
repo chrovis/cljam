@@ -4,7 +4,7 @@
             [cljam.util :refer [graph?]]
             [cljam.util.fasta :refer [header-line? parse-header-line]]
             [cljam.fasta-index.core :as fasta-index])
-  (:import java.io.RandomAccessFile))
+  (:import [java.io RandomAccessFile InputStream]))
 
 ;; FASTAReader
 ;; -----------
@@ -116,3 +116,65 @@
   [^FASTAReader rdr]
   (let [r ^RandomAccessFile (.reader rdr)]
     (.seek r 0)))
+
+(definline create-ba [^java.nio.ByteBuffer buffer]
+  `(when (pos? (.position ~buffer))
+       (let [ba# (byte-array (.position ~buffer))]
+         (.clear ~buffer)
+         (.get ~buffer ba#)
+         (.clear ~buffer)
+         ba#)))
+
+(defn- sequqntial-read*
+  "Core function to read FASTA sequentially.
+   Function f is called every time a single sequence finishes reading.
+   When finished reading entire file, f is called with nil."
+  [^InputStream stream page-size seq-buf-size ^bytes byte-map f]
+  (let [buf (byte-array page-size)
+        n-buf (java.nio.ByteBuffer/allocate 1024)
+        s-buf (java.nio.ByteBuffer/allocate seq-buf-size)]
+    (loop [rname* nil]
+      (let [bytes (.read stream buf)]
+        (if (pos? bytes)
+          (recur
+           (loop [i 0 name-line? false rname rname*]
+             (if (< i bytes)
+               (let [b (aget buf i)]
+                 (if (= b 62) ; \>
+                   (do (when-let [s (create-ba s-buf)] (f {:name rname :sequence s}))
+                       (recur (inc i) true rname))
+                   (if (= b 10) ; \newline
+                     (if name-line?
+                       (recur (inc i) false (create-ba n-buf))
+                       (recur (inc i) name-line? rname))
+                     (do (if name-line?
+                           (.put n-buf b)
+                           (.put s-buf (aget byte-map b)))
+                         (recur (inc i) name-line? rname)))))
+               rname)))
+          (f {:name rname* :sequence (create-ba s-buf)}))))
+    (f nil)))
+
+(defn sequential-read-byte-array
+  "Returns list of maps containing sequence as byte-array.
+   Bases ACGTN are encoded as 1~5"
+  [^InputStream stream page-size seq-buf-size]
+  (let [s (atom [])
+        byte-map (byte-array (range 128))]
+    (doseq [[i v] [[\a 1] [\A 1] [\c 2] [\C 2] [\g 3] [\G 3] [\t 4] [\T 4] [\n 5] [\N 5]]]
+      (aset-byte byte-map (byte i) (byte v)))
+    (sequqntial-read* stream page-size seq-buf-size byte-map #(when % (swap! s conj %)))
+    @s))
+
+(defn sequential-read-string
+  "Returns list of maps containing sequence as upper-case string."
+  [^InputStream stream page-size seq-buf-size]
+  (let [s (atom [])
+        byte-map (byte-array (range 128))
+        handler (fn [{:keys [name sequence]}]
+                  (when (and name sequence)
+                    (swap! s conj {:name (String. ^bytes name) :sequence (String. ^bytes sequence)})))]
+    (doseq [[i v] [[\a \A] [\c \C] [\g \G] [\t \T] [\n \N]]]
+      (aset-byte byte-map (byte i) (byte v)))
+    (sequqntial-read* stream page-size seq-buf-size byte-map handler)
+    @s))

@@ -39,3 +39,10 @@
 (defn reset
   [rdr]
   (fa-core/reset rdr))
+
+(defn sequential-read
+  "Reads entire sequences sequentially on caller's thread,
+   blocking until entire file is loaded.
+   Supporting raw (.fa) and compressed FASTA (.fa.gz, .fa.bz2, etc.)."
+  [^String f]
+  (fa-core/sequential-read f))

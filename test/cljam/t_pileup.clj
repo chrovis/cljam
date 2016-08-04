@@ -58,9 +58,24 @@
 
     (let [mplp-ref (doall (plp/mpileup fr br "ref"))]
       (map :rname mplp-ref) => (repeat 46 "ref")
+      ;;                                  0123456789012345678901234567890123456789012345
+      ;;                                   AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT
       (apply str (map :ref mplp-ref)) => "NAGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"
       (map :count mplp-ref) => test-bam-pileup-ref
       (map :pos mplp-ref) => (range 46)
       (map :seq mplp-ref) => test-bam-mpileup-seq-ref2
       (map :qual mplp-ref) => test-bam-mpileup-qual-ref)))
+
+(fact "mpileup region"
+      (with-open [br (bam/reader test-sorted-bam-file)
+                  fr (fa/reader test-fa-file)]
+        ;; 1234567890123456789012345678901234567890
+        ;; aggttttataaaacaattaagtctacagagcaactacgcg
+        (let [mplp-ref1 (doall (plp/mpileup fr br "ref" 1 40))
+              mplp-ref2 (doall (plp/mpileup fr br "ref2" 1 40))]
+          (apply str (map :ref mplp-ref1)) => "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGC"
+          (map :count mplp-ref1) => (take 40 (rest test-bam-pileup-ref))
+          (map :pos mplp-ref1) => (range 1 41)
+          (map :seq mplp-ref1) => (take 40 (rest test-bam-mpileup-seq-ref2))
+          (apply str (map :ref mplp-ref2)) => "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG")))
 

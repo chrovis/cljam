@@ -71,7 +71,7 @@
   (map
    (partial gen-mpileup rname)
    (range start (inc end))
-   (concat (if (zero? start) [\N] []) refseq)
+   refseq
    (pileup-seq start end alns)))
 
 (defn pileup
@@ -85,7 +85,11 @@
      (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
        (let [s (if (neg? start) 0 start)
              e (if (neg? end) (:len r) end)
-             refseq (if fa-reader (fa/read-sequence fa-reader rname s e) (repeat \N))
+             refseq (if fa-reader
+                      (if (zero? s)
+                        (concat [\N] (fa/read-sequence fa-reader rname s e))
+                        (fa/read-sequence fa-reader rname (dec s) e))
+                      (repeat \N))
              alns (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})]
          (pileup* refseq alns rname s e)))
      (catch bgzf4j.BGZFException _

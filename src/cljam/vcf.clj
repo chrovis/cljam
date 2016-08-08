@@ -1,6 +1,7 @@
 (ns cljam.vcf
   "Functions to read and write the Variant Call Format (VCF)."
   (:require [clojure.java.io :as io]
+            [cljam.util :as util]
             [cljam.vcf.reader :as vcf-reader]
             [cljam.vcf.writer :as vcf-writer])
   (:import cljam.vcf.reader.VCFReader
@@ -13,12 +14,12 @@
   "Returns an open cljam.vcf.reader.VCFReader of f. Should be used inside
   with-open to ensure the Reader is properly closed."
   [f]
-  (let [meta-info (with-open [r (io/reader f)]
+  (let [meta-info (with-open [r (io/reader (util/compressor-input-stream f))]
                     (vcf-reader/load-meta-info r))
-        header (with-open [r (io/reader f)]
+        header (with-open [r (io/reader (util/compressor-input-stream f))]
                  (vcf-reader/load-header r))]
     (VCFReader. (.getAbsolutePath (io/file f)) meta-info header
-                (io/reader f))))
+                (io/reader (util/compressor-input-stream f)))))
 
 (defn meta-info
   "Returns meta-information of the VCF from rdr as a map."
@@ -50,7 +51,9 @@
                             [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
       (WRITING-VCF))"
   [f meta-info header]
-  (doto (VCFWriter. (.getAbsolutePath (io/file f)) (io/writer f) header)
+  (doto (VCFWriter. (.getAbsolutePath (io/file f))
+                    (io/writer (util/compressor-output-stream f))
+                    header)
     (vcf-writer/write-meta-info meta-info)
     (vcf-writer/write-header header)))
 

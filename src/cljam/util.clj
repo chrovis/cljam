@@ -1,7 +1,9 @@
 (ns cljam.util
   "General utilities."
-  (:require [clojure.java.io :refer [file]]
-            [clojure.string :as cstr]))
+  (:require [clojure.java.io :refer [file] :as io]
+            [clojure.string :as cstr])
+  (:import [org.apache.commons.compress.compressors
+            CompressorStreamFactory CompressorException]))
 
 ;; CPU info
 ;; --------
@@ -115,3 +117,38 @@
   [path]
   (let [filename (.getName (file path))]
     (first (cstr/split filename #"\.(?=[^\.]+$)"))))
+
+(def ^:private compressor-map
+  {:gzip CompressorStreamFactory/GZIP
+   :bzip2 CompressorStreamFactory/BZIP2})
+
+(defn ^java.io.InputStream compressor-input-stream
+  "Returns an compressor input stream from f, autodetecting the compressor type
+  from the first few bytes of f. Returns java.io.BufferedInputStream if the
+  compressor type is not known. Should be used inside with-open to ensure the
+  InputStream is properly closed."
+  [f]
+  (let [is (io/input-stream f)]
+    (try
+      (-> (CompressorStreamFactory.)
+          (.createCompressorInputStream is))
+      (catch CompressorException _
+        is))))
+
+(defn ^java.io.OutputStream compressor-output-stream
+  "Returns an compressor output stream from f and a compressor type k. k must be
+  selected from :gzip or :bzip2. Autodetects the compressor type from the
+  extension of f if k is not passed. Returns java.io.BufferedOutputStream if the
+  compressor type is not known. Should be used inside with-open to ensure the
+  OutputStream is properly closed."
+  ([f]
+   (compressor-output-stream f (condp re-find (.getName (file f))
+                                 #"(?i)\.(gz|gzip)$" :gzip
+                                 #"(?i)\.(bz2|bzip2)$" :bzip2
+                                 nil)))
+  ([f k]
+   (let [os (io/output-stream f)]
+     (if-let [s (get compressor-map k)]
+       (-> (CompressorStreamFactory.)
+           (.createCompressorOutputStream s os))
+       os))))

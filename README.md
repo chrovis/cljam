@@ -137,6 +137,10 @@ $ lein docs
 
 generates these documents in `target/docs` and `target/literate` directories.
 
+## Citing cljam
+
+T. Takeuchi, A. Yamada, T. Aoki, and K. Nishimura. [cljam: a library for handling DNA sequence alignment/map (SAM) with parallel processing](http://dx.doi.org/10.1186/s13029-016-0058-6). Source Code for Biology and Medicine, Vol. 11, No. 1, pp. 1-4, 2016.
+
 ## Contributors
 
 Sorted by first commit.

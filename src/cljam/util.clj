@@ -15,7 +15,9 @@
 ;; Disk cache
 ;; ----------
 
-(def temp-dir (let [dir-path (.getPath (file (System/getProperty "java.io.tmpdir") "cljam"))]
+(def temp-dir (let [system-tmp-dir-path (or (System/getenv "TMPDIR")
+                                            (System/getProperty "java.io.tmpdir"))
+                    dir-path (.getPath (file system-tmp-dir-path "cljam"))]
                 (.mkdirs (file dir-path))
                 dir-path))
 

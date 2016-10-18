@@ -19,13 +19,14 @@
                    :plugins [[lein-bin "0.3.5"]
                              [lein-codox "0.9.5"]
                              [lein-marginalia "0.9.0"]]
+                   :main cljam.main
+                   :aot [cljam.main]
                    :global-vars {*warn-on-reflection* true}}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
-             :uberjar {:aot :all}}
-  :main cljam.main
+             :uberjar {:main cljam.main
+                       :aot :all}}
   :aliases {"docs" ["do" "codox" ["marg" "-d" "target/literate" "-m"]]}
-  :aot [cljam.main]
   :bin {:name "cljam"}
   :codox {:namespaces [#"^cljam\.(?!cli)(?!lsb)(?!main)(?!util)[^\.]+$"]
           :output-path "target/docs"

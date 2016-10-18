@@ -88,7 +88,7 @@ cljam provides a command-line tool to use the features easily.
 Run `lein-bin` plugin and it creates standalone console executable into `target` directory.
 
 ```console
-$ lein with-profile 1.8 bin
+$ lein with-profile +1.8 bin
 Created /path/to/cljam/target/cljam-0.1.5.jar
 Created /path/to/cljam/target/cljam-0.1.5-standalone.jar
 Creating standalone executable: /path/to/cljam/target/cljam

@@ -130,3 +130,31 @@
  "ref"        {:name "ref", :len 45}
  "ref2"       {:name "ref2", :len 40}
  "notfound"   nil?)
+
+(tabular
+ (facts "about flags"
+   (sam-util/decode-flags ?flag) => ?set
+   (sam-util/encode-flags ?set) => ?flag
+   (sam-util/primary? ?flag) => ?primary
+   (sam-util/primary? ?set) => ?primary)
+ ?flag ?primary  ?set
+ 0     truthy    #{}
+ 1     truthy    #{:multiple}
+ 2     truthy    #{:properly-aligned}
+ 3     truthy    #{:multiple :properly-aligned}
+ 4     truthy    #{:unmapped}
+ 16    truthy    #{:reversed}
+ 83    truthy    #{:multiple :properly-aligned :reversed :first}
+ 163   truthy    #{:multiple :properly-aligned :next-reversed :last}
+ 99    truthy    #{:multiple :properly-aligned :next-reversed :first}
+ 147   truthy    #{:multiple :properly-aligned :reversed :last}
+ 121   truthy    #{:multiple :next-unmapped :reversed :next-reversed :first}
+ 181   truthy    #{:multiple :unmapped :reversed :next-reversed :last}
+ 77    truthy    #{:multiple :unmapped :next-unmapped :first}
+ 141   truthy    #{:multiple :unmapped :next-unmapped :last}
+ 256   falsey    #{:secondary}
+ 257   falsey    #{:multiple :secondary}
+ 2048  falsey    #{:supplementary}
+ 2049  falsey    #{:multiple :supplementary}
+ 2304  falsey    #{:secondary :supplementary}
+ 0x900 falsey    #{:secondary :supplementary})

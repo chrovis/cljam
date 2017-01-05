@@ -6,13 +6,22 @@
             [cljam.io :as cio]
             [cljam.bam :as bam]
             [cljam.util.sam-util :as sam-util])
-  (:import [java.io BufferedReader InputStreamReader ByteArrayInputStream]))
+  (:import [java.io BufferedReader InputStreamReader ByteArrayInputStream
+            ByteArrayOutputStream OutputStreamWriter BufferedWriter]))
 
 (defn- str->bed [^String s]
   (with-open [bais (ByteArrayInputStream. (.getBytes s))
               isr (InputStreamReader. bais)
               br (BufferedReader. isr)]
     (doall (bed/read-fields br))))
+
+(defn- bed->str [xs]
+  (with-open [bao (ByteArrayOutputStream.)
+              osw (OutputStreamWriter. bao)
+              bw (BufferedWriter. osw)]
+    (bed/write-fields bw xs)
+    (.flush bw)
+    (.toString bao)))
 
 (facts "bed file reader"
  (str->bed "1 0 100 N 0 + 0 0 255,0,0 2 10,90 0,10")
@@ -152,3 +161,15 @@
      => ["TAACCCTAAC"]
      (read-region "1 0 10\n1 10 20")
      => ["TAACCCTAAC" "CCTAACCCTA"])))
+
+(facts
+ "bed writer"
+ (bed->str (str->bed "1 0 1")) => "chr1 0 1"
+ (bed->str (str->bed "1 0 10")) => "chr1 0 10"
+ (bed->str (str->bed "1 0 1\n1 1 2")) => "chr1 0 1\nchr1 1 2"
+ (with-open [r (io/reader "test-resources/test1.bed")] (str->bed (bed->str (bed/read-fields r))))
+ => (with-open [r (io/reader "test-resources/test1.bed")] (doall (bed/read-fields r)))
+ (with-open [r (io/reader "test-resources/test2.bed")] (str->bed (bed->str (bed/read-fields r))))
+ => (with-open [r (io/reader "test-resources/test2.bed")] (doall (bed/read-fields r)))
+ (with-open [r (io/reader "test-resources/test3.bed")] (str->bed (bed->str (bed/read-fields r))))
+ => (with-open [r (io/reader "test-resources/test3.bed")] (doall (bed/read-fields r))))

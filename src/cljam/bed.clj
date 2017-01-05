@@ -2,7 +2,7 @@
   (:require [clojure.string :as cstr]
             [cljam.util :as util]
             [cljam.util.chromosome :as chr-util])
-  (:import [java.io BufferedReader]))
+  (:import [java.io BufferedReader BufferedWriter]))
 
 (def ^:const bed-columns
   [:chr :start :end :name :score :strand :thick-start :thick-end :item-rgb :block-count :block-sizes :block-starts])
@@ -14,6 +14,12 @@
   [^String s]
   (when-not (nil? s)
     (map util/str->long (cstr/split s #","))))
+
+(defn- long-list->str
+  "Inverse function of str->long-list."
+  [xs]
+  (when-not (nil? xs)
+    (apply str (interpose "," xs))))
 
 (defn- update-some
   "Same as update if map 'm' contains key 'k'. Otherwise returns the original map 'm'."
@@ -58,6 +64,18 @@
     :block-sizes str->long-list
     :block-starts str->long-list}))
 
+(defn- serialize-bed
+  "Serialize bed fields into string."
+  [m]
+  (->> (-> m
+           (update-some :strand #(case % :plus "+" :minus "-" :no-strand "."))
+           (update-some :block-sizes long-list->str)
+           (update-some :block-starts long-list->str))
+       ((apply juxt bed-columns))
+       (take-while identity)
+       (interpose " ")
+       (apply str)))
+
 (defn- header-or-comment?
   "Checks if given string is neither a header nor a comment line."
   [^String s]
@@ -75,6 +93,14 @@
       (update :chr chr-util/normalize-chromosome-key)
       (update :start inc)
       (update-some :thick-start inc)))
+
+(defn- denormalize
+  "De-normalize BED fields.
+  This is an inverse function of normalize."
+  [m]
+  (-> m
+      (update :start dec)
+      (update-some :thick-start dec)))
 
 (defn read-raw-fields
   "Returns a lazy sequence of unnormalized BED fields."
@@ -119,3 +145,21 @@
          (conj r m))))
    []
    (sort-fields xs)))
+
+(defn write-raw-fields
+  "Write sequence of BED fields to writer without converting :start and :thick-start values."
+  [^BufferedWriter wtr xs]
+  (->> xs
+       (map serialize-bed)
+       (interpose "\n")
+       ^String (apply str)
+       (.write wtr)))
+
+(defn write-fields
+  "Write sequence of BED fields to writer."
+  [^BufferedWriter wtr xs]
+  (->> xs
+       (map (comp serialize-bed denormalize))
+       (interpose "\n")
+       ^String (apply str)
+       (.write wtr)))

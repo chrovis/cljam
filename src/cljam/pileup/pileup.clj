@@ -110,7 +110,7 @@
        (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
          (pileup* bam-reader
                   rname (:len r)
-                  (if (neg? start) 0 start)
+                  (if (neg? start) 1 start)
                   (if (neg? end) (:len r) end)))
        (catch bgzf4j.BGZFException _
          (throw (RuntimeException. "Invalid file format"))))))

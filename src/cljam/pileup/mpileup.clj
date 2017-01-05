@@ -83,12 +83,10 @@
   ([fa-reader bam-reader rname start end]
    (try
      (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
-       (let [s (if (neg? start) 0 start)
+       (let [s (if (neg? start) 1 start)
              e (if (neg? end) (:len r) end)
              refseq (if fa-reader
-                      (if (zero? s)
-                        (concat [\N] (fa/read-sequence fa-reader rname s e))
-                        (fa/read-sequence fa-reader rname (dec s) e))
+                      (fa/read-sequence fa-reader {:chr rname :start s :end e})
                       (repeat \N))
              alns (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})]
          (pileup* refseq alns rname s e)))

@@ -1,7 +1,11 @@
 (ns cljam.t-bed
   (:use [midje.sweet])
   (:require [clojure.java.io :as io]
-            [cljam.bed :as bed])
+            [cljam.bed :as bed]
+            [cljam.fasta :as fa]
+            [cljam.io :as cio]
+            [cljam.bam :as bam]
+            [cljam.util.sam-util :as sam-util])
   (:import [java.io BufferedReader InputStreamReader ByteArrayInputStream]))
 
 (defn- str->bed [^String s]
@@ -116,3 +120,35 @@
  (bed/merge-fields
   [{:chr "chr1" :start 1 :end 10 :name "chr1:1-10"} {:chr "chr1" :start 4 :end 13 :name "chr1:4-13"}])
  => [{:chr "chr1" :start 1 :end 13 :name "chr1:1-10+chr1:4-13"}])
+
+(facts "bed reader and bam reader"
+ (with-open [bam (bam/reader "test-resources/test.sorted.bam")]
+   (letfn [(ref-pos-end [m] {:rname (:rname m) :pos (:pos m) :end (sam-util/get-end m)})
+           (read-region [s] (->> (str->bed s) (mapcat #(cio/read-alignments bam %)) (map ref-pos-end)))]
+     (read-region "ref 0 6")
+     => []
+     (read-region "ref 6 7")
+     => [{:rname "ref" :pos 7 :end 22}]
+     (read-region "ref 7 8")
+     => [{:rname "ref" :pos 7 :end 22}]
+     (read-region "ref 8 9")
+     => [{:rname "ref" :pos 7 :end 22} {:rname "ref" :pos 9 :end 18} {:rname "ref" :pos 9 :end 14}]
+     (read-region "ref 21 22")
+     => [{:rname "ref" :pos 7 :end 22} {:rname "ref" :pos 16 :end 40}]
+     (read-region "ref 22 23")
+     => [{:rname "ref" :pos 16 :end 40}]
+     (read-region "ref 0 45")
+     => [{:rname "ref" :pos 7  :end 22} {:rname "ref" :pos 9  :end 18} {:rname "ref" :pos 9  :end 14}
+         {:rname "ref" :pos 16 :end 40} {:rname "ref" :pos 29 :end 33} {:rname "ref" :pos 37 :end 45}])))
+
+(facts
+ "bed reader and fasta reader"
+ (with-open [fa (fa/reader "test-resources/medium.fa")]
+   (comment "chr1" "TAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCC...")
+   (letfn [(read-region [s] (->> (str->bed s) (map #(fa/read-sequence fa %))))]
+     (read-region "1 0 1")
+     => ["T"]
+     (read-region "1 0 10")
+     => ["TAACCCTAAC"]
+     (read-region "1 0 10\n1 10 20")
+     => ["TAACCCTAAC" "CCTAACCCTA"])))

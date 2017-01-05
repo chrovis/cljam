@@ -103,8 +103,12 @@
 (defn read-sequence
   [^FASTAReader rdr name start end]
   (when-let [fai (.index rdr)]
-    (let [[offset-start offset-end] (fasta-index/get-span fai name start end)]
-      (read-sequence-with-offset rdr offset-start offset-end))))
+    (let [header (fasta-index/get-header fai name)]
+      (when-let [[offset-start offset-end] (fasta-index/get-span fai name (dec start) end)]
+        (->> (concat (repeat (max 0 (- 1 start)) \N)
+                       (read-sequence-with-offset rdr offset-start offset-end)
+                       (repeat (max 0 (- end (:len header))) \N))
+             (apply str))))))
 
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."

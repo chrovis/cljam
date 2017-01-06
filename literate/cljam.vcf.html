@@ -2868,6 +2868,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.vcf" name="cljam.vcf"><h1 class="project-name">cljam.vcf</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to read and write the Variant Call Format (VCF).</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.vcf
   (:require [clojure.java.io :as io]
+            [cljam.util :as util]
             [cljam.vcf.reader :as vcf-reader]
             [cljam.vcf.writer :as vcf-writer])
   (:import cljam.vcf.reader.VCFReader
@@ -2876,12 +2877,12 @@ net.brehaut.ClojureTools = (function (SH) {
   with-open to ensure the Reader is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^VCFReader reader
   [f]
-  (let [meta-info (with-open [r (io/reader f)]
+  (let [meta-info (with-open [r (io/reader (util/compressor-input-stream f))]
                     (vcf-reader/load-meta-info r))
-        header (with-open [r (io/reader f)]
+        header (with-open [r (io/reader (util/compressor-input-stream f))]
                  (vcf-reader/load-header r))]
     (VCFReader. (.getAbsolutePath (io/file f)) meta-info header
-                (io/reader f))))</pre></td></tr><tr><td class="docs"><p>Returns meta-information of the VCF from rdr as a map.</p>
+                (io/reader (util/compressor-input-stream f)))))</pre></td></tr><tr><td class="docs"><p>Returns meta-information of the VCF from rdr as a map.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn meta-info
   [^VCFReader rdr]
   (.meta-info rdr))</pre></td></tr><tr><td class="docs"><p>Returns header of the VCF from rdr as a vector including header field
@@ -2904,7 +2905,9 @@ net.brehaut.ClojureTools = (function (SH) {
 </code></pre>
 </td><td class="codes"><pre class="brush: clojure">(defn ^VCFWriter writer
   [f meta-info header]
-  (doto (VCFWriter. (.getAbsolutePath (io/file f)) (io/writer f) header)
+  (doto (VCFWriter. (.getAbsolutePath (io/file f))
+                    (io/writer (util/compressor-output-stream f))
+                    header)
     (vcf-writer/write-meta-info meta-info)
     (vcf-writer/write-header header)))</pre></td></tr><tr><td class="docs"><p>Writes data lines on wtr, returning nil. variants must be a sequence of
   maps. e.g.</p>

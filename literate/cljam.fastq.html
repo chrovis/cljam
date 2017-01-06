@@ -2868,11 +2868,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.fastq" name="cljam.fastq"><h1 class="project-name">cljam.fastq</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.fastq
   (:require [clojure.java.io :as io]
-            [clojure.string :as string])
-  (:import java.io.Writer
-           [java.io BufferedReader BufferedWriter InputStreamReader OutputStreamWriter]
-           [java.util.zip GZIPInputStream GZIPOutputStream]
-           [org.apache.commons.compress.compressors.bzip2 BZip2CompressorInputStream BZip2CompressorOutputStream]))</pre></td></tr><tr><td class="docs">
+            [clojure.string :as string]
+            [cljam.util :as util]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype FASTQReader [reader f]
   java.io.Closeable
   (close [this]
@@ -2883,25 +2880,15 @@ net.brehaut.ClojureTools = (function (SH) {
     (.close ^java.io.Closeable (.writer this))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTQReader reader [^String f]
   (let [file (io/file f)
-        path (.getAbsolutePath file)
-        basename (.getName file)]
-    (-&gt; (condp re-find basename
-          #&quot;\.(gz|GZ|gzip|GZIP)$&quot;
-          (-&gt; (io/input-stream path) GZIPInputStream. InputStreamReader. BufferedReader.)
-          #&quot;\.(bz2|BZ2|bzip2|BZIP2)$&quot;
-          (-&gt; (io/input-stream path) BZip2CompressorInputStream. InputStreamReader. BufferedReader.)
-          (io/reader path))
+        path (.getAbsolutePath file)]
+    (-&gt; (util/compressor-input-stream path)
+        io/reader
         (FASTQReader. path))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTQWriter writer [^String f]
   (let [file (io/file f)
-        path (.getAbsolutePath file)
-        basename (.getName file)]
-    (-&gt; (condp re-find basename
-          #&quot;\.(gz|GZ|gzip|GZIP)$&quot;
-          (-&gt; (io/output-stream path) GZIPOutputStream. OutputStreamWriter. BufferedWriter.)
-          #&quot;\.(bz2|BZ2|bzip2|BZIP2)$&quot;
-          (-&gt; (io/output-stream path) BZip2CompressorOutputStream. OutputStreamWriter. BufferedWriter.)
-          (io/writer path :encoding &quot;UTF-8&quot;))
+        path (.getAbsolutePath file)]
+    (-&gt; (util/compressor-output-stream path)
+        io/writer
         (FASTQWriter. path))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord FASTQRead [^String name ^String sequence quality])</pre></td></tr><tr><td class="docs"><p>Deserialize a read from 4 lines of fastq file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- ^FASTQRead deserialize-fastq

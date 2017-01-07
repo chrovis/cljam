@@ -31,10 +31,11 @@
   (fa-core/read-sequences rdr))
 
 (defn read-sequence
-  ([rdr name]
-     (fa-core/read-sequence rdr name))
-  ([rdr name start end]
-     (fa-core/read-sequence rdr name start end)))
+  [rdr {:keys [chr start end]}]
+  (cond
+    (and chr start end) (fa-core/read-sequence rdr chr start end)
+    chr (fa-core/read-sequence rdr chr)
+    :else (fa-core/read-sequences rdr)))
 
 (defn reset
   [rdr]

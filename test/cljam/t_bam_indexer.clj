@@ -47,6 +47,20 @@
       )))
 
 (with-state-changes [(before :facts (do (prepare-cache!)
+                                        (fs/copy small-bam-file temp-file-sorted)))
+                     (after :facts (clean-cache!))]
+  (fact "about BAM indexer (small file)"
+    (bai/create-index
+     temp-file-sorted (str temp-file-sorted ".bai")) => anything
+    (fs/exists? (str temp-file-sorted ".bai")) => truthy
+    (with-open [r (bam/reader temp-file-sorted)]
+      ;; Random read with different number of spans.
+      (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 25000000 :depth :deep})) => 14858
+      (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 24500000 :depth :deep})) => 11424
+      (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 24000000 :depth :deep})) => 10010
+      (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 23500000 :depth :deep})) => 3806)))
+
+(with-state-changes [(before :facts (do (prepare-cache!)
                                         (fs/copy medium-bam-file
                                                  temp-file-sorted)))
                      (after :facts (clean-cache!))]

@@ -95,13 +95,17 @@
 
 (defn- read-to-finish
   [^BAMReader rdr
+   ^Long start
    ^Long finish
    ^clojure.lang.IFn read-fn]
   (let [r ^BGZFInputStream (.reader rdr)]
-    (when (and (not (zero? (.available r)))
-               (> finish (.getFilePointer r)))
-      (cons (read-fn rdr (.refs rdr))
-            (lazy-seq (read-to-finish rdr finish read-fn))))))
+    (when (< start finish)
+      (.seek r start)
+      (when-not (zero? (.available r))
+        (let [result (read-fn rdr (.refs rdr))
+              curr (.getFilePointer r)]
+          (cons result
+                (lazy-seq (read-to-finish rdr curr finish read-fn))))))))
 
 (defn- read-alignments-first-only
   "It should be equivalent to [(first (filter window @candidates))]"
@@ -109,9 +113,8 @@
   (loop [left-spans spans]
     (when-let [span (first left-spans)]
       (let [[^Long begin ^Long finish] span]
-        (.seek ^BGZFInputStream (.reader rdr) begin)
         (or
-          (loop [left (read-to-finish rdr finish read-fn)]
+          (loop [left (read-to-finish rdr begin finish read-fn)]
             (when-let [one (first left)]
               (if (window one)
                 [one]
@@ -138,8 +141,7 @@
                   :deep read-alignment
                   :pointer pointer-read-alignment)
         candidates (flatten (map (fn [[^Long begin ^Long finish]]
-                                   (.seek ^BGZFInputStream (.reader rdr) begin)
-                                   (read-to-finish rdr finish read-fn)) spans))]
+                                   (read-to-finish rdr begin finish read-fn)) spans))]
     (if (= deep-or-shallow :first-only)
       (read-alignments-first-only rdr spans window read-fn)
       (filter window candidates))))
@@ -182,8 +184,7 @@
                         (<= start left)
                         (>= end left))))
         candidates (flatten (map (fn [[^Long begin ^Long finish]]
-                                   (.seek ^BGZFInputStream (.reader rdr) begin)
-                                   (read-to-finish rdr finish read-coordinate-alignment-block)) spans))]
+                                   (read-to-finish rdr begin finish read-coordinate-alignment-block)) spans))]
     (filter window candidates)))
 
 (defn load-headers

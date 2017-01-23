@@ -63,6 +63,7 @@
 
 (def test-bam-file "test-resources/test.bam")
 (def test-sorted-bam-file "test-resources/test.sorted.bam")
+(def small-bam-file "test-resources/small.bam")
 (def medium-bam-file "test-resources/medium.bam")
 (def large-bam-file (cavia/resource mycavia "large.bam"))
 

@@ -2,7 +2,9 @@
   "Utilities related to SAM/BAM format."
   (:require [clojure.string :as cstr]
             [cljam.cigar :refer [count-ref]]
-            [cljam.util :refer [ubyte str->int str->float]]))
+            [cljam.util :refer [ubyte str->int str->float]])
+  (:import [java.nio CharBuffer ByteBuffer]
+           [java.nio.charset StandardCharsets]))
 
 ;;; parse
 
@@ -318,6 +320,26 @@
           (aset-byte result i (byte (bit-or h l)))
           (recur (inc i)))))))
 
+(def ^:const ^:private seq-byte-table
+  (let [nibble-table "=ACMGRSVTWYHKDBN"]
+    (->> (for [i nibble-table j nibble-table] [i j])
+         (apply concat)
+         cstr/join)))
+
+(defn compressed-bases->str
+  "Decode a sequence from byte array to String."
+  [^long length ^bytes compressed-bases ^long compressed-offset]
+  (let [cb (CharBuffer/allocate (inc length))
+        bb (ByteBuffer/wrap compressed-bases)]
+    (.position bb compressed-offset)
+    (dotimes [_ (quot (inc length) 2)]
+      (let [i (-> (.get bb) (bit-and 0xff) (* 2))]
+        (.put cb (.charAt seq-byte-table i))
+        (.put cb (.charAt seq-byte-table (inc i)))))
+    (.limit cb length)
+    (.flip cb)
+    (.toString cb)))
+
 (defn compressed-bases->chars [length compressed-bases compressed-offset]
   (let [bases (apply concat
                      (for [i (range 1 length) :when (odd? i)]
@@ -353,9 +375,16 @@
 (defmulti phred->fastq class)
 
 (defmethod phred->fastq (class (byte-array nil))
-  [b]
+  [^bytes b]
   (when-not (nil? b)
-    (cstr/join (map #(phred->fastq (int (bit-and % 0xff))) b))))
+    (let [bb (ByteBuffer/wrap b)
+          cb (CharBuffer/allocate (alength b))]
+      (loop []
+        (when (.hasRemaining bb)
+          (.put cb (char (+ 33 (.get bb))))
+          (recur)))
+      (.flip cb)
+      (.toString cb))))
 
 (def ^:const max-phred-score 93)
 

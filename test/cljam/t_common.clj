@@ -1,6 +1,6 @@
 (ns cljam.t-common
   (:use [clojure.java.io :only [file]])
-  (:require [pandect.core :refer [md5-file]]
+  (:require [digest]
             [cljam.sam :as sam]
             [cljam.bam :as bam]
             [cljam.io :as io]
@@ -284,7 +284,7 @@
 (defn same-file?
   "Returns true if the two files' MD5 hash are same, false if not."
   [f1 f2]
-  (= (md5-file f1) (md5-file f2)))
+  (= (digest/sha1 (file f1)) (digest/sha1 (file f2))))
 
 ;;;; FASTA
 

@@ -2,8 +2,7 @@
   "Decoder of BAM alignment blocks."
   (:require [clojure.string :refer [join]]
             [cljam.util :refer [ubyte hex-string->bytes]]
-            [cljam.util.sam-util :refer [phred->fastq compressed-bases->chars
-                                         ref-name]]
+            [cljam.util.sam-util :refer [phred->fastq compressed-bases->str ref-name]]
             [cljam.lsb :as lsb]
             [cljam.bam.common :refer [fixed-block-size]])
   (:import java.util.Arrays
@@ -80,7 +79,7 @@
     (phred->fastq b)))
 
 (defn decode-seq [seq-bytes length]
-  (join (compressed-bases->chars length seq-bytes 0)))
+  (compressed-bases->str length seq-bytes 0))
 
 (defn decode-next-ref-id [refs n rname]
   (cond
@@ -133,7 +132,7 @@
           qname       (lsb/read-string buffer (dec l-read-name))
           _           (lsb/skip buffer 1)
           cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
-          seq         (decode-seq (lsb/read-bytes buffer (/ (inc l-seq) 2)) l-seq)
+          seq         (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
           qual        (decode-qual (lsb/read-bytes buffer l-seq))
           rest        (lsb/read-bytes buffer (options-size (:size block)
                                                            l-read-name

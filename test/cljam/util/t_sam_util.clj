@@ -3,7 +3,8 @@
   (:require [midje.sweet :refer :all]
             [cljam.t-common :refer :all]
             [cljam.util :as util]
-            [cljam.util.sam-util :as sam-util]))
+            [cljam.util.sam-util :as sam-util]
+            [clojure.string :as cstr]))
 
 (tabular
  (fact "about char->compressed-base-high"
@@ -98,6 +99,29 @@
  (util/ubyte 0xc0)   \K
  (util/ubyte 0xd0)   \D
  (util/ubyte 0xe0)   \B)
+
+(def nibble-table "=ACMGRSVTWYHKDBN")
+
+(tabular
+ (fact
+  "about compressed-bases->str"
+  (let [ba (byte-array (mapv util/ubyte ?bases))]
+    (cstr/join (sam-util/compressed-bases->chars ?length ba ?offset)) => ?expected
+    (sam-util/compressed-bases->str ?length ba ?offset) => ?expected))
+ ?length  ?bases                                    ?offset  ?expected
+ 1        [0x00]                                    0        "="
+ 2        [0x00]                                    0        "=="
+ 1        [0x10]                                    0        "A"
+ 2        [0x12]                                    0        "AC"
+ 4        [0x12 0x8F]                               0        "ACTN"
+ 1        [0x12 0x8F]                               1        "T"
+ 2        [0x12 0x8F]                               1        "TN"
+ 16       [0x01 0x23 0x45 0x67 0x89 0xAB 0xCD 0xEF] 0        nibble-table
+ 14       [0x01 0x23 0x45 0x67 0x89 0xAB 0xCD 0xEF] 1        (subs nibble-table 2)
+ 2        [0x01 0x23 0x45 0x67 0x89 0xAB 0xCD 0xEF] 7        "BN"
+ 512      (range 256)                               0        (->> (for [i nibble-table j nibble-table] [i j])
+                                                                  (apply concat)
+                                                                  cstr/join))
 
 ;; Reference functions
 ;; -------------------

@@ -2,7 +2,7 @@
   "Implementations of the command-line tool."
   (:refer-clojure :exclude [sort merge])
   (:require [clojure.string :as cstr]
-            [clj-sub-command.core :refer [sub-command]]
+            [clj-sub-command.core :refer [sub-command candidate-message]]
             [clojure.tools.cli :refer [parse-opts]]
             (cljam [core :refer [reader writer]]
                    [sam :as sam]
@@ -34,16 +34,6 @@
   [errors]
   (str "The following errors occurred while parsing your command:\n\n"
        (cstr/join \newline errors)))
-
-(defn- candidate-msg
-  "Returns a message  of candidate sub-commands."
-  [candidates]
-  (->> candidates
-       (map (partial str "        "))
-       (cons (if (= (count candidates) 1)
-               "Did you mean this?"
-               "Did you mean one of these?"))
-       (cstr/join \newline)))
 
 ;; Sub-commands
 ;; ------------
@@ -401,4 +391,4 @@
       (do (println "Invalid command. See 'cljam --help'.")
           (when (seq cands)
             (newline)
-            (exit 1 (candidate-msg cands)))))))
+            (exit 1 (candidate-message cands)))))))

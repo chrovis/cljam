@@ -152,12 +152,12 @@ Sorted by first commit.
 
 ## License
 
-Copyright 2013-2016 [Xcoo, Inc.][xcoo]
+Copyright 2013-2017 [Xcoo, Inc.][xcoo]
 
 Licensed under the [Apache License, Version 2.0][apache-license-2.0].
 
 [clojars]: https://clojars.org/cljam
 [api-reference]: https://chrovis.github.io/cljam/docs
 [annotated-source]: https://chrovis.github.io/cljam/literate
-[xcoo]: http://www.xcoo.jp/
+[xcoo]: https://xcoo.jp/
 [apache-license-2.0]: http://www.apache.org/licenses/LICENSE-2.0.html

@@ -74,7 +74,7 @@
      l-seq))
 
 (defn decode-qual [^bytes b]
-  (if (Arrays/equals b (byte-array (count b) (ubyte 0xff)))
+  (if (Arrays/equals b (byte-array (alength b) (ubyte 0xff)))
     "*"
     (phred->fastq b)))
 

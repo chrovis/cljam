@@ -43,7 +43,10 @@
 
 (defn- parse-meta-info-info
   [m]
-  (update m :number str->long))
+  (update m :number (fn [s]
+                      (if (#{"A" "R" "G"} s)
+                        s
+                        (str->long s)))))
 
 (defn- parse-meta-info-line
   [line]

@@ -2,6 +2,7 @@
   (:require [cljam.lsb :as lsb]
             [cljam.util.sam-util :refer [ref-id ref-name parse-header get-end]]
             [cljam.bam-index :refer [get-spans]]
+            [cljam.bam-index.core :as bai]
             [cljam.bam.common :refer [fixed-block-size]]
             [cljam.bam.decoder :as decoder])
   (:import [java.io Closeable EOFException]
@@ -128,19 +129,24 @@
   (when (nil? @(.index-delay rdr))
     (throw (Exception. "BAM index not found")))
   (let [^BAMIndex bai @(.index-delay rdr)
-        spans (get-spans bai (ref-id (.refs rdr) chr) start end)
+        spans (if (= chr "*")
+                (bai/get-unplaced-spans bai)
+                (get-spans bai (ref-id (.refs rdr) chr) start end))
         window (fn [^clojure.lang.PersistentHashMap a]
                  (let [^Long left (:pos a)
                        ^Long right (get-end a)]
                    (and (= chr (:rname a))
-                        (<= start right)
-                        (>= end left))))
+                        (if (= chr "*")
+                          true
+                          (and
+                           (<= start right)
+                           (>= end left))))))
         read-fn (case deep-or-shallow
                   :first-only light-read-alignment
                   :shallow light-read-alignment
                   :deep read-alignment
                   :pointer pointer-read-alignment)
-        candidates (flatten (map (fn [[^Long begin ^Long finish]]
+        candidates (flatten (keep (fn [[^Long begin ^Long finish]]
                                    (read-to-finish rdr begin finish read-fn)) spans))]
     (if (= deep-or-shallow :first-only)
       (read-alignments-first-only rdr spans window read-fn)

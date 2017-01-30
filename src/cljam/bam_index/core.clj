@@ -61,6 +61,18 @@
     (->> (chunk/optimize-chunks chunks min-offset)
          (map vals))))
 
+(defn get-unplaced-spans
+  [^BAMIndex bai]
+  (if-let [begin (some->>
+                  (for [[ref-id bins] (.bidx bai)
+                        [bin chunks] bins
+                        {:keys [beg end]} chunks]
+                    end)
+                  seq
+                  (reduce max))]
+    [[begin Long/MAX_VALUE]]
+    []))
+
 ;; ## Writing
 
 (defn ^BAIWriter writer

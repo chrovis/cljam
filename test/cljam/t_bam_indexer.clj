@@ -58,7 +58,8 @@
       (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 25000000 :depth :deep})) => 14858
       (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 24500000 :depth :deep})) => 11424
       (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 24000000 :depth :deep})) => 10010
-      (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 23500000 :depth :deep})) => 3806)))
+      (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 23500000 :depth :deep})) => 3806
+      (count (io/read-alignments r {:chr "*"})) => 0)))
 
 (with-state-changes [(before :facts (do (prepare-cache!)
                                         (fs/copy medium-bam-file
@@ -67,6 +68,13 @@
   (fact "about BAM indexer (medium file)" :slow
     (bai/create-index
       temp-file-sorted (str temp-file-sorted ".bai")) => anything
+    (with-open [r (bam/reader temp-file-sorted)]
+      (count (io/read-alignments r {:chr "*"})) => 4348
+      (every? (fn [a] (and (= (:mapq a) 0)
+                           (= (:pos a) 0)
+                           (= (:tlen a) 0)
+                           (pos? (bit-and (:flag a) 4))))
+              (io/read-alignments r {:chr "*"})) => truthy)
     (fs/exists? (str temp-file-sorted ".bai")) => truthy))
 
 (with-state-changes [(before :facts (do (prepare-cavia!)

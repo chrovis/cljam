@@ -97,7 +97,8 @@
 
 ;; ### VCF files
 
-(def test-vcf-file "test-resources/test.vcf")
+(def test-vcf-v4_0-file "test-resources/vcf/test-v4_0.vcf")
+(def test-vcf-v4_3-file "test-resources/vcf/test-v4_3.vcf")
 
 (def test-sam
   {:header {:SQ [{:SN "ref", :LN 45} {:SN "ref2", :LN 40}]}
@@ -321,7 +322,7 @@
 
 ;; ### VCF
 
-(def test-vcf-meta-info
+(def test-vcf-v4_0-meta-info
   {:fileformat "VCFv4.0"
    :file-date "20090805"
    :source "myImputationProgramV3.1"
@@ -344,11 +345,11 @@
    :alt [{:id "DEL:ME:ALU", :description "Deletion of ALU element"}
          {:id "CNV", :description "Copy number variable region"}]})
 
-(def test-vcf-header
+(def test-vcf-v4_0-header
   ["CHROM" "POS" "ID" "REF" "ALT" "QUAL" "FILTER" "INFO" "FORMAT" "NA00001"
    "NA00002" "NA00003"])
 
-(def test-vcf-variants
+(def test-vcf-v4_0-variants
   '({:chrom "19", :pos 111, :id nil, :ref "A", :alt ["C"], :qual 9.6, :filter nil, :info nil,
      :FORMAT "GT:HQ", :NA00001 "0|0:10,10", :NA00002 "0|0:10,10", :NA00003 "0/1:3,3"}
     {:chrom "19", :pos 112, :id nil, :ref "A", :alt ["G"], :qual 10.0, :filter nil, :info nil,
@@ -373,3 +374,40 @@
      :FORMAT "GT:DP:GQ", :NA00001 ".:3:10", :NA00002 "./.:.:.", :NA00003 "0|2:3:."}
     {:chrom "X", :pos 12, :id nil, :ref "T", :alt ["A"], :qual 13.0, :filter nil, :info nil,
      :FORMAT "GT", :NA00001 "0", :NA00002 "1/0", :NA00003 "1/1"}))
+
+(def test-vcf-v4_3-meta-info
+  {:fileformat "VCFv4.3"
+   :file-date "20090805"
+   :source "myImputationProgramV3.1"
+   :reference "file:///seq/references/1000GenomesPilot-NCBI36.fasta"
+   :contig [{:id "20", :length 62435964, :assembly "B36",
+             :md-5 "f126cdf8a6e0c7f379d618ff66beb2da", :species "Homo sapiens", :taxonomy "x"}]
+   :phasing "partial"
+   :info [{:id "NS", :number 1, :type "Integer", :description "Number of Samples With Data"}
+          {:id "DP", :number 1, :type "Integer", :description "Total Depth"}
+          {:id "AF", :number "A", :type "Float", :description "Allele Frequency"}
+          {:id "AA", :number 1, :type "String", :description "Ancestral Allele"}
+          {:id "DB", :number 0, :type "Flag", :description "dbSNP membership, build 129"}
+          {:id "H2", :number 0, :type "Flag", :description "HapMap2 membership"}]
+   :filter [{:id "q10", :description "Quality below 10"}
+            {:id "s50", :description "Less than 50% of samples have data"}]
+   :format [{:id "GT", :number 1, :type "String", :description "Genotype"}
+            {:id "GQ", :number 1, :type "Integer", :description "Genotype Quality"}
+            {:id "DP", :number 1, :type "Integer", :description "Read Depth"}
+            {:id "HQ", :number 2, :type "Integer", :description "Haplotype Quality"}]})
+
+(def test-vcf-v4_3-header
+  ["CHROM" "POS" "ID" "REF" "ALT" "QUAL" "FILTER" "INFO" "FORMAT" "NA00001"
+   "NA00002" "NA00003"])
+
+(def test-vcf-v4_3-variants
+  '({:chrom "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter "PASS", :info "NS=3;DP=14;AF=0.5;DB;H2",
+     :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:48:1:51,51", :NA00002 "1|0:48:8:51,51", :NA00003 "1/1:43:5:.,."}
+    {:chrom "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter "q10", :info "NS=3;DP=11;AF=0.017",
+     :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:49:3:58,50", :NA00002 "0|1:3:5:65,3", :NA00003 "0/0:41:3"}
+    {:chrom "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter "PASS", :info "NS=2;DP=10;AF=0.333,0.667;AA=T;DB",
+     :FORMAT "GT:GQ:DP:HQ",:NA00001 "1|2:21:6:23,27", :NA00002 "2|1:2:0:18,2", :NA00003 "2/2:35:4"}
+    {:chrom "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter "PASS", :info "NS=3;DP=13;AA=T",
+     :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:54:7:56,60", :NA00002 "0|0:48:4:51,51", :NA00003 "0/0:61:2"}
+    {:chrom "20", :pos 1234567, :id "microsat1", :ref "GTC", :alt ["G" "GTCT"], :qual 50.0, :filter "PASS", :info "NS=3;DP=9;AA=G",
+     :FORMAT "GT:GQ:DP", :NA00001 "0/1:35:4", :NA00002 "0/2:17:2", :NA00003 "1/1:40:3"}))

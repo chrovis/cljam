@@ -142,7 +142,7 @@
 
 (defn write-bytes
   [^DataOutputStream w ^bytes b]
-  (.write w b 0 (count b))
+  (.write w b 0 (alength b))
   nil)
 
 (defn write-ubyte
@@ -190,5 +190,5 @@
 (defn write-string
   [^DataOutputStream w s]
   (let [data-bytes (string->bytes s)]
-   (.write w data-bytes 0 (count data-bytes))
+   (.write w data-bytes 0 (alength data-bytes))
    nil))

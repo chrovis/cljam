@@ -35,11 +35,11 @@
 
 (defn ^"[B" string->bytes [^String s]
   (let [buf (byte-array (count s))]
-    (.getBytes s 0 (count buf) buf 0)
+    (.getBytes s 0 (alength buf) buf 0)
     buf))
 
 (defn ^String bytes->string [^bytes b]
-  (String. b 0 (count b)))
+  (String. b 0 (alength b)))
 
 (defn from-hex-digit [^Character c]
   (let [d (Character/digit c 16)]

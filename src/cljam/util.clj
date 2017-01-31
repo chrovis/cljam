@@ -132,7 +132,7 @@
   [f]
   (let [is (io/input-stream f)]
     (try
-      (-> (CompressorStreamFactory.)
+      (-> (CompressorStreamFactory. true)
           (.createCompressorInputStream is))
       (catch CompressorException _
         is))))

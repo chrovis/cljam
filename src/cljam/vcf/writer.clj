@@ -33,6 +33,23 @@
 ;; Writing meta-information
 ;; ------------------------
 
+(defn- stringify-key
+  [k]
+  (if (#{:info :filter :format :alt :sample :pedigree} k)
+    (cstr/upper-case (name k))
+    (->camelCaseString k)))
+
+(defn- stringify-meta-info-contig
+  [m]
+  (->> (cond-> [(str "ID=" (:id m))
+                (str "length=" (:length m))
+                (str "assembly=" (:assembly m))
+                (str "md5=" (:md-5 m))]
+         (:species m) (conj (str "species=\"" (:species m) "\""))
+         (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m))))
+       (interpose ",")
+       (apply str)))
+
 (defn- stringify-meta-info-info
   [m]
   (->> (cond-> [(str "ID=" (:id m))
@@ -87,6 +104,7 @@
 (defn- stringify-structured-line
   [k m]
   (let [f (case k
+            :contig stringify-meta-info-contig
             :info stringify-meta-info-info
             :filter stringify-meta-info-filter
             :format stringify-meta-info-format
@@ -95,18 +113,25 @@
             :pedigree stringify-meta-info-pedigree)]
     (f m)))
 
+(defn- write-meta-info1
+  [^VCFWriter wtr k v]
+  (if-not (nil? v)
+    (if (vector? v)
+      (doseq [x v]
+        (write-line (.writer wtr) (str meta-info-prefix
+                                       (stringify-key k)
+                                       "=<" (stringify-structured-line k x) ">")))
+      (write-line (.writer wtr) (str meta-info-prefix
+                                     (stringify-key k)
+                                     "=" v)))))
+
 (defn write-meta-info
   [^VCFWriter wtr meta-info]
-  (write-line (.writer wtr) (str meta-info-prefix "fileformat="
-                                 (:fileformat meta-info default-fileformat)))
-  (doseq [[k v] (dissoc meta-info :fileformat :info :filter :format :alt :sample
-                        :pedigree)]
-    (write-line (.writer wtr) (str meta-info-prefix (->camelCaseString k) "="
-                                   v)))
-  (doseq [k [:info :filter :format :alt :sample :pedigree]
-          v (get meta-info k)]
-    (write-line (.writer wtr) (str meta-info-prefix (cstr/upper-case (name k))
-                                   "=<" (stringify-structured-line k v) ">"))))
+  (write-meta-info1 wtr :fileformat (:fileformat meta-info default-fileformat))
+  (doseq [k [:file-date :source :reference :contig :phasing]]
+    (write-meta-info1 wtr k (get meta-info k)))
+  (doseq [k [:info :filter :format :alt :sample :pedigree]]
+    (write-meta-info1 wtr k (get meta-info k))))
 
 ;; Writing header
 ;; --------------

@@ -37,18 +37,25 @@
               {(->kebab-case-keyword k) (dot->nil (or v2 v1))}))
        (apply merge)))
 
+(defn- parse-meta-info-contig
+  [m]
+  (update m :length str->long))
+
 (defn- parse-meta-info-info
-  [s]
-  (update (parse-structured-line s) :number str->long))
+  [m]
+  (update m :number (fn [s]
+                      (if (#{"A" "R" "G"} s)
+                        s
+                        (str->long s)))))
 
 (defn- parse-meta-info-line
   [line]
   (let [[_ k* v] (re-find #"^##([\w:/\.\?\-]*)=(.*)$" line)
         k (->kebab-case-keyword k*)]
     [k (if-let [[_ s] (re-find #"^<(.+)>$" v)]
-         (if (#{:info :format} k)
-           (parse-meta-info-info s)
-           (parse-structured-line s))
+         (cond-> (parse-structured-line s)
+           (#{:info :format} k) parse-meta-info-info
+           (= k :contig) parse-meta-info-contig)
          v)]))
 
 (defn load-meta-info
@@ -57,7 +64,7 @@
     (if (meta-line? line)
       (let [[k v] (parse-meta-info-line line)]
         (recur (.readLine rdr)
-               (if (#{:info :filter :format :alt :sample :pedigree} k)
+               (if (#{:contig :info :filter :format :alt :sample :pedigree} k)
                  (if (get meta-info k)
                    (update meta-info k conj v)
                    (assoc meta-info k [v]))

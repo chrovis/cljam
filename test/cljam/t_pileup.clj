@@ -3,7 +3,8 @@
         cljam.t-common)
   (:require [cljam.bam :as bam]
             [cljam.fasta :as fa]
-            [cljam.pileup :as plp]))
+            [cljam.pileup :as plp]
+            [cljam.pileup.mpileup :as mplp]))
 
 (def test-bam-pileup-ref '(0 0 0 0 0 0 1 1 3 3 3 3 3 3 2 3 3 3 2 2 2 2 1 1 1 1 1 1 2 2 2 2 2 1 1 1 2 2 2 2 1 1 1 1 1))
 (def test-bam-pileup-ref2 '(1 2 2 2 2 3 3 3 3 4 4 5 5 6 6 6 6 6 6 6 5 5 4 4 4 4 4 3 3 3 3 3 3 3 2 1 0 0 0 0))
@@ -42,6 +43,58 @@
 
 (fact "about first-pos"
   (plp/first-pos (bam/reader test-sorted-bam-file) "ref2" 0 64) => 1)
+
+(fact
+ "about pileup-seq"
+
+ ;; ----------
+ ;; 1234567890...
+ (map
+  (fn [xs] (map #(dissoc % :end) xs))
+  (mplp/pileup-seq 1 2 [{:pos 1 :cigar "10M"}]))
+ => [[{:pos 1 :cigar "10M"}] [{:pos 1 :cigar "10M"}]]
+
+ ;;    ----------
+ ;;   ----------
+ ;;  ----------
+ ;; ----------
+ ;; 1234567890123...
+ (map
+  count
+  (mplp/pileup-seq 1 20 (map #(hash-map :pos (inc %) :cigar "10M") (range))))
+ => [1 2 3 4 5 6 7 8 9 10 10 10 10 10 10 10 10 10 10 10]
+ (map
+  count
+  (mplp/pileup-seq 101 120 (map #(hash-map :pos (inc %) :cigar "10M") (range))))
+ => [10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10]
+ (map
+  :pos
+  (last (mplp/pileup-seq 1 1000000 (map #(hash-map :pos (inc %) :cigar "10M") (range)))))
+ => [999991 999992 999993 999994 999995 999996 999997 999998 999999 1000000]
+
+ ;;     -----
+ ;;    ----
+ ;;   ---
+ ;;  --
+ ;; -
+ ;; 1234567890...
+ (map
+  count
+  (mplp/pileup-seq 1 10 (map #(hash-map :pos (inc %) :cigar (str (inc %) "M")) (range))))
+ => [1 1 2 2 3 3 4 4 5 5]
+
+ ;;       --------
+ ;;      ----------
+ ;;     --
+ ;;    ----
+ ;;   ------
+ ;;  --------
+ ;; ----------
+ ;; 1234567890...
+ (map
+  count
+  (mplp/pileup-seq 1 10 (map #(hash-map :pos (inc %) :cigar (str (- 10 (* (mod % 5) 2)) "M")) (range))))
+ => [1 2 3 4 5 6 6 6 6 6])
 
 (fact "about mpileup"
   (with-open [br (bam/reader test-sorted-bam-file)

@@ -244,7 +244,7 @@
                                         :seq (cstr/join (% line))
                                         (% line)) [:rname :pos :ref :count :seq :qual]))))))
   ([rdr rname start end]
-   (doseq [line  (plp/mpileup rdr rname start end)]
+   (doseq [line  (plp/mpileup nil rdr rname start end)]
      (if-not (zero? (:count line))
        (println (cstr/join \tab (map #(case %
                                         :qual (cstr/join (% line))

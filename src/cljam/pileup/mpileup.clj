@@ -44,35 +44,46 @@
   "Returns a lazy sequence that each element contains reads piled-up at the locus."
   [^long start ^long end reads]
   (letfn [(cover-locus? [pos aln]
-            (<= (:pos aln) pos (sam-util/get-end aln)))
-          (step [[pos buf alns]]
-            (let [[i o] (split-with (partial cover-locus? (inc pos)) alns)]
-              [(inc pos) (concat (filter (partial cover-locus? (inc pos)) buf) i) o]))]
-    (map second (rest (iterate step [(dec start) [] (remove (comp empty? :cigar) reads)])))))
+            (<= (:pos aln) pos (:end aln)))
+          (step [pos buf alns]
+            (lazy-seq
+             (when (< pos end)
+               (let [[i o] (split-with (partial cover-locus? (inc pos)) alns)
+                     b (doall (concat (filter #(<= (inc pos) (:end %)) buf) i))]
+                 (cons b (step (inc pos) b o))))))]
+    (->> reads
+         (sequence
+          (comp
+           (remove #(and (empty? (:cigar %)) (nil? (:cigar-bytes (:meta %)))))
+           (map #(assoc % :end (sam-util/get-end %)))
+           (drop-while #(< (:end %) start))))
+         (step (dec start) []))))
 
 (defrecord MPileupElement [^String rname ^long pos ^Character ref ^long count seq qual reads])
 
 (defn- gen-mpileup
   "Compute mpileup info from piled-up reads and reference."
   [^String rname ^long locus ^Character reference reads]
-  (let [seq (mapv (fn [{:keys [^long pos ^String seq ^String cigar] :as aln}]
-                    (let [s (nth (encode-seq (cseq/parse seq cigar)) (- locus pos))]
-                      (cond
-                        (vector? s) (second s)
-                        (= reference (first s)) "."
-                        :else s))) reads)
-        qual (mapv (fn [{:keys [^long pos ^String qual] :as aln}]
-                (if (= qual "*") \~ (nth qual (- locus pos) \~))) reads)]
+  (let [seq (map (fn [{:keys [^long pos ^String seq ^String cigar encoded-seq] :as aln}]
+                   (let [s (nth (or encoded-seq (encode-seq (cseq/parse seq cigar))) (- locus pos))]
+                     (cond
+                       (vector? s) (second s)
+                       (= reference (first s)) "."
+                       :else s))) reads)
+        qual (map (fn [{:keys [^long pos ^String qual] :as aln}]
+                    (if (= qual "*") \~ (nth qual (- locus pos) \~))) reads)]
     (MPileupElement. rname locus reference (count reads) seq qual reads)))
 
 (defn pileup*
   "Internal pileup function independent from I/O."
   [refseq alns rname start end]
-  (map
-   (partial gen-mpileup rname)
-   (range start (inc end))
-   refseq
-   (pileup-seq start end alns)))
+  (->> alns
+       (sequence (map (fn [a] (assoc a :encoded-seq (encode-seq (cseq/parse (:seq a) (:cigar a)))))))
+       (pileup-seq start end)
+       (map
+        (partial gen-mpileup rname)
+        (range start (inc end))
+        refseq)))
 
 (defn pileup
   "Returns a lazy sequence of MPileupElement calculated from FASTA and BAM."

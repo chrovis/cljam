@@ -9,17 +9,24 @@
 (def test-bam-pileup-ref '(0 0 0 0 0 0 1 1 3 3 3 3 3 3 2 3 3 3 2 2 2 2 1 1 1 1 1 1 2 2 2 2 2 1 1 1 2 2 2 2 1 1 1 1 1))
 (def test-bam-pileup-ref2 '(1 2 2 2 2 3 3 3 3 4 4 5 5 6 6 6 6 6 6 6 5 5 4 4 4 4 4 3 3 3 3 3 3 3 2 1 0 0 0 0))
 (def test-bam-mpileup-seq-ref
-  '(() () () () () () ("T") ("T") ("A" "A" "A") ("G" "G" "G") ("A" "A" "C") ("T" "T" "T")
-    ("A" "A" "A") ("+4AGAG" "+2GG" "A") ("G" "G") ("A" "A" "A") ("T" "T" "T") ("A" "+2AA" "A")
-    ("*" "G") ("C" "C") ("T" "T") ("G" ">") (">") (">") (">") (">") (">") (">") (">" "T") (">" "A")
-    (">" "G") (">" "G") (">" "C") (">") ("+1C") ("T") ("C" "C") ("A" "A") ("G" "G") ("C" "C")
-    ("G") ("C") ("C") ("A") ("T")))
+  '(() () () () () () ("T") ("T") ("A" "A" "A") ("G" "G" "G") ("A" "A" "C") ("T" "T" "T") ("A" "A" "A")
+    ("A+4AGAG" "A+2GG" "A") ("G" "G") ("A" "A" "A") ("T" "T" "T") ("A-1N" "A+2AA" "A") ("*" "G") ("C" "C")
+    ("T" "T") ("G" ">") (">") (">") (">") (">") (">") (">") (">" "T") (">" "A") (">" "G") (">" "G") (">" "C")
+    (">") (">+1C") ;; adjacent indel >+1T
+    ("T") ("C" "C") ("A" "A") ("G" "G") ("C" "C") ("G") ("C") ("C") ("A") ("T")))
 (def test-bam-mpileup-seq-ref2
-  '(() () () () () () (".") (".") ("." "." ".") ("." "." ".") ("." "." "C") ("." "." ".")
-    ("." "." ".") ("+4AGAG" "+2GG" ".") ("." ".") ("." "." ".") ("." "." ".") ("." "+2AA" ".")
-    ("*" ".") ("." ".") ("." ".") ("." ">") (">") (">") (">") (">") (">") (">") (">" ".") (">" ".")
-    (">" ".") (">" ".") (">" ".") (">") ("+1C") (".") ("." ".") ("." ".") ("." ".") ("." ".")
-    (".") (".") (".") (".") (".")))
+  '(("A") ("G" "G") ("G" "G") ("T" "T") ("T" "T") ("T" "T" "T") ("T" "T" "T") ("A" "A" "A") ("T" "T" "T")
+    ("A" "A" "A" "C") ("A" "A" "A" "A") ("A" "A" "A" "A" "A") ("A" "A" "A" "A" "A") ("C" "C" "C+4AAAT" "T" "T" "T")
+    ("A" "A" "A" "A" "A" "A") ("A" "A" "A" "A" "A" "A") ("A" "A" "T" "T" "T" "T") ("T" "T" "T" "T" "T" "T")
+    ("A" "A" "A" "A" "A" "A") ("A" "A" "A" "A" "A" "A") ("T" "G" "G" "G" "G") ("T" "T" "T" "T" "T")
+    ("C" "C" "C" "C") ("T" "T" "T" "T") ("A" "A" "A" "A") ("C" "C" "C" "C") ("A" "A" "A" "A") ("G" "G" "G")
+    ("A" "A" "A") ("G" "G" "G") ("C" "C" "C") ("A" "A" "A") ("A" "A" "A") ("C" "C" "C") ("T" "T") ("A") () () () ()))
+(def test-bam-mpileup-seq-ref-with-ref
+  '(() () () () () () (".") (".") ("." "." ".") ("." "." ".") ("." "." "C") ("." "." ".") ("." "." ".")
+    (".+4AGAG" ".+2GG" ".") ("." ".") ("." "." ".") ("." "." ".") (".-1G" ".+2AA" ".") ("*" ".") ("." ".")
+    ("." ".") ("." ">") (">") (">") (">") (">") (">") (">") (">" ".") (">" ".") (">" ".") (">" ".") (">" ".")
+    (">") (">+1C") ;; adjacent indel >+1T
+    (".") ("." ".") ("." ".") ("." ".") ("." ".") (".") (".") (".") (".") (".")))
 (def test-bam-mpileup-qual-ref
   '([] [] [] [] [] [] [\~] [\~] [\~ \~ \~] [\~ \~ \~] [\~ \~ \~] [\~ \~ \~] [\~ \~ \~] [\~ \~ \~]
     [\~ \~] [\~ \~ \~] [\~ \~ \~] [\~ \~ \~] [\~ \~] [\~ \~] [\~ \~] [\~ \~] [\~] [\~] [\~] [\~]
@@ -107,7 +114,8 @@
       (map :pos mplp-ref) => (range 1 46)
       (map :seq mplp-ref) => test-bam-mpileup-seq-ref
       (map :qual mplp-ref) => test-bam-mpileup-qual-ref
-      (map :count mplp-ref2) => test-bam-pileup-ref2)
+      (map :count mplp-ref2) => test-bam-pileup-ref2
+      (map :seq mplp-ref2) => test-bam-mpileup-seq-ref2)
 
     (let [mplp-ref (doall (plp/mpileup fr br "ref"))]
       (map :rname mplp-ref) => (repeat 45 "ref")
@@ -115,7 +123,7 @@
       (apply str (map :ref mplp-ref)) => "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"
       (map :count mplp-ref) => test-bam-pileup-ref
       (map :pos mplp-ref) => (range 1 46)
-      (map :seq mplp-ref) => test-bam-mpileup-seq-ref2
+      (map :seq mplp-ref) => test-bam-mpileup-seq-ref-with-ref
       (map :qual mplp-ref) => test-bam-mpileup-qual-ref)))
 
 (fact "mpileup region"
@@ -128,6 +136,6 @@
           (apply str (map :ref mplp-ref1)) => "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGC"
           (map :count mplp-ref1) => (take 40 test-bam-pileup-ref)
           (map :pos mplp-ref1) => (range 1 41)
-          (map :seq mplp-ref1) => (take 40 test-bam-mpileup-seq-ref2)
+          (map :seq mplp-ref1) => (take 40 test-bam-mpileup-seq-ref-with-ref)
           (apply str (map :ref mplp-ref2)) => "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG")))
 

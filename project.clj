@@ -24,6 +24,8 @@
                    :global-vars {*warn-on-reflection* true}}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
+             :1.9 {:dependencies [[org.clojure/clojure "1.9.0-alpha14"]
+                                  [midje "1.9.0-alpha6"]]}
              :uberjar {:main cljam.main
                        :aot :all}}
   :aliases {"docs" ["do" "codox" ["marg" "-d" "target/literate" "-m"]]}

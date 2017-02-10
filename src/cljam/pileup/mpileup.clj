@@ -7,72 +7,77 @@
             [cljam.sequence :as cseq]
             [cljam.io :as io]
             [cljam.fasta :as fa]
+            [cljam.cigar :as cig]
             [cljam.pileup.common :refer [window-width step center]]
             [cljam.pileup.pileup :refer [rpositions]]))
 
-(defn- append-seq
-  [op target current]
-  (case op
-    \M (apply conj current (map str (:seq target)))
-    \I (if (seq current)
-         (update-in current [(dec (count current))]
-                    vector
-                    (str "+" (:n target) (apply str (:seq target))))
-         current)
-    \D (apply conj current (map str (:seq target)))
-    \N (apply conj current (map str (:seq target)))
-    current))
+(defn to-mpileup
+  "Stringify mpileup sequence."
+  [x]
+  (if (vector? x)
+    (let [[y op xs] x] (apply str y op (count xs) xs))
+    (str x)))
 
-(defn encode-seq [seq*]
-  (loop [[f & r] (filter #(nil? (#{\P} (:op %))) seq*)
-         ret     []
-         op      nil
-         tmp     {:n 0, :op nil, :seq nil}]
-    (if (nil? f)
-      (append-seq op tmp ret)
-      (if (nil? op)
-        (recur r ret (:op f) f)
-        (if (= (:op f) op)
-          (recur r ret (:op f) (-> tmp
-                                   (update-in [:n] + (:n f))
-                                   (assoc :op (:op f))
-                                   (update-in [:seq] (partial apply conj) (:seq f))))
-          (let [new-ret (append-seq op tmp ret)]
-            (recur r new-ret (:op f) f)))))))
+(defn substitute-seq
+  "Substitute sequence with mpileup index."
+  [[^Character r & refs] ^String s [op x xs]]
+  (letfn [(get-char [i] (if (number? i) (let [c (.charAt s i)] (if (= c r) \. c)) i))]
+    (case op
+      :m (get-char x)
+      :d [(get-char x) \- (take (count xs) refs)]
+      :i [(get-char x) \+ (map #(.charAt s %) xs)]
+      x)))
+
+(defn substitute-qual
+  "Substitute base quality with mpileup index."
+  [^String q [op x]]
+  (if (and (number? x) (not= q "*")) (.charAt q x) \~))
 
 (defn pileup-seq
   "Returns a lazy sequence that each element contains reads piled-up at the locus."
   [^long start ^long end reads]
   (letfn [(cover-locus? [pos aln]
-            (<= (:pos aln) pos (sam-util/get-end aln)))
-          (step [[pos buf alns]]
-            (let [[i o] (split-with (partial cover-locus? (inc pos)) alns)]
-              [(inc pos) (concat (filter (partial cover-locus? (inc pos)) buf) i) o]))]
-    (map second (rest (iterate step [(dec start) [] (remove (comp empty? :cigar) reads)])))))
+            (<= (:pos aln) pos (:end aln)))
+          (step [pos buf alns]
+            (lazy-seq
+             (when (< pos end)
+               (let [[i o] (split-with (partial cover-locus? (inc pos)) alns)
+                     b (doall (concat (filter #(<= (inc pos) (:end %)) buf) i))]
+                 (cons b (step (inc pos) b o))))))]
+    (->> reads
+         (sequence
+          (comp
+           (remove #(and (empty? (:cigar %)) (nil? (:cigar-bytes (:meta %)))))
+           (map #(assoc % :end (sam-util/get-end %)))
+           (drop-while #(< (:end %) start))))
+         (step (dec start) []))))
 
 (defrecord MPileupElement [^String rname ^long pos ^Character ref ^long count seq qual reads])
 
-(defn- gen-mpileup
+(defn gen-mpileup
   "Compute mpileup info from piled-up reads and reference."
-  [^String rname ^long locus ^Character reference reads]
-  (let [seq (mapv (fn [{:keys [^long pos ^String seq ^String cigar] :as aln}]
-                    (let [s (nth (encode-seq (cseq/parse seq cigar)) (- locus pos))]
-                      (cond
-                        (vector? s) (second s)
-                        (= reference (first s)) "."
-                        :else s))) reads)
-        qual (mapv (fn [{:keys [^long pos ^String qual] :as aln}]
-                (if (= qual "*") \~ (nth qual (- locus pos) \~))) reads)]
-    (MPileupElement. rname locus reference (count reads) seq qual reads)))
+  [^String rname ^long locus [^Character ref-base :as refs] reads]
+  (let [seqs (map (fn gen-mpileup-seq [{:keys [^long pos ^String seq cig-index]}]
+                   (substitute-seq refs seq (nth cig-index (- locus pos)))) reads)
+        qual (map (fn gen-mpileup-qual [{:keys [^long pos ^String qual cig-index]}]
+                    (substitute-qual qual (nth cig-index (- locus pos)))) reads)]
+    (MPileupElement. rname locus ref-base (count reads) seqs qual reads)))
 
 (defn pileup*
-  "Internal pileup function independent from I/O."
-  [refseq alns rname start end]
-  (map
-   (partial gen-mpileup rname)
-   (range start (inc end))
-   refseq
-   (pileup-seq start end alns)))
+  "Internal mpileup function independent from I/O.
+   Can take multiple alignments seqs."
+  [refseq rname start end & aln-seqs]
+  (->> aln-seqs
+       (map
+        (fn [alns]
+          (->> alns
+               (sequence (map (fn [a] (assoc a :cig-index (cig/to-index (:cigar a))))))
+               (pileup-seq start end))))
+       (apply map
+              (fn [index refs & plps]
+                (map (fn [plp] (gen-mpileup rname index refs plp)) plps))
+              (range start (inc end))
+              (partition 10 1 (concat refseq (repeat \N))))))
 
 (defn pileup
   "Returns a lazy sequence of MPileupElement calculated from FASTA and BAM."
@@ -89,7 +94,7 @@
                       (fa/read-sequence fa-reader {:chr rname :start s :end e})
                       (repeat \N))
              alns (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})]
-         (pileup* refseq alns rname s e)))
+         (map (fn [p] (update (first p) :seq (fn [s] (map to-mpileup s)))) (pileup* refseq rname s e alns))))
      (catch bgzf4j.BGZFException _
        (throw (RuntimeException. "Invalid file format"))))))
 

@@ -3,7 +3,8 @@
   https://samtools.github.io/hts-specs/ for the detail VCF specifications."
   (:require [clojure.string :as cstr]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            [cljam.util :refer [str->long]]))
+            [cljam.util :refer [str->long]])
+  (:import [clojure.lang LazilyPersistentVector]))
 
 ;; VCFReader
 ;; ---------
@@ -17,8 +18,9 @@
 ;; ---------
 
 (defn- dot->nil
-  [s]
-  (if (= s ".") nil s))
+  [^String s]
+  ;; Avoid calling equiv on strings.
+  (if (and (= 1 (.length s)) (= \. (.charAt s 0))) nil s))
 
 ;; Loading meta-information
 ;; ------------------------
@@ -93,28 +95,35 @@
 ;; ------------------
 
 (defn- parse-data-line
-  [line header]
-  (let [[fields gt-fields] (->> (cstr/split line #"\t")
+  [line header kws]
+  ;; When splitting a string with single-character delimiter,
+  ;; `java.lang.String#split` is slightly faster than `clojure.string/split`.
+  ;; For more details, please refer to https://github.com/chrovis/cljam/pull/29.
+  (let [[fields gt-fields] (->> (.split ^String line "\t")
+                                LazilyPersistentVector/createOwning
                                 (map dot->nil)
                                 (split-at 8))]
-    (merge {:chrom (first fields)
-            :pos (str->long (nth fields 1))
-            :id (nth fields 2)
-            :ref (nth fields 3)
-            :alt (some-> (nth fields 4) (cstr/split #","))
-            :qual (some-> (nth fields 5) Double/parseDouble)
-            :filter (nth fields 6)
-            :info (nth fields 7)}
-           (zipmap (map keyword (drop 8 header)) gt-fields))))
+    (->> gt-fields
+         (interleave kws)
+         (concat [:chrom (first fields)
+                  :pos (str->long (nth fields 1))
+                  :id (nth fields 2)
+                  :ref (nth fields 3)
+                  :alt (some-> (nth fields 4) (cstr/split #","))
+                  :qual (some-> (nth fields 5) Double/parseDouble)
+                  :filter (nth fields 6)
+                  :info (nth fields 7)])
+         (apply hash-map))))
 
 (defn- read-data-lines
-  [^java.io.BufferedReader rdr header]
+  [^java.io.BufferedReader rdr header kws]
   (when-let [line (.readLine rdr)]
     (if-not (or (meta-line? line) (header-line? line))
-      (cons (parse-data-line line header)
-            (lazy-seq (read-data-lines rdr header)))
-      (read-data-lines rdr header))))
+      (cons (parse-data-line line header kws)
+            (lazy-seq (read-data-lines rdr header kws)))
+      (read-data-lines rdr header kws))))
 
 (defn read-variants
   [^VCFReader rdr]
-  (read-data-lines (.reader rdr) (.header rdr)))
+  (let [kws (mapv keyword (drop 8 (.header rdr)))]
+    (read-data-lines (.reader rdr) (.header rdr) kws)))

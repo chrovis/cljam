@@ -1,5 +1,35 @@
 # Change Log
 
+## [0.2.0] - 2017-02-20
+
+### BREAKING
+
+From this release, ranges are represented as one-based closed intervals. For example,
+
+```clojure
+{:chr "chr1", :start 1, :end 3}
+```
+
+represents the first three bases of chromosome 1.
+
+### Added
+
+* BED file reader/writer. [#20](https://github.com/chrovis/cljam/pull/20)
+* Read unplaced reads in BAM. [#24](https://github.com/chrovis/cljam/pull/24)
+
+### Changed
+
+* Improve performance of reading BAM files. [#22](https://github.com/chrovis/cljam/pull/22)
+* Replace candidate-message function with one in clj-sub-command.
+* Improve performance of reading vcf file. [#29](https://github.com/chrovis/cljam/pull/29)
+
+### Fixed
+
+* Fix a bug in BAM random reader. [#21](https://github.com/chrovis/cljam/pull/21)
+* Read multiple contigs in VCF meta info. [#23](https://github.com/chrovis/cljam/issues/23) [#25](https://github.com/chrovis/cljam/pull/25)
+* Enable decompressUntilEOF of CompressorStreamFactory. [#26](https://github.com/chrovis/cljam/pull/26)
+* Fix bugs in mpileup. [#27](https://github.com/chrovis/cljam/pull/27) [#28](https://github.com/chrovis/cljam/issues/28)
+
 ## [0.1.6] - 2017-01-06
 
 * Sequential reading function for FASTA [#16](https://github.com/chrovis/cljam/pull/16)
@@ -53,6 +83,7 @@
 
 First release
 
+[0.2.0]: https://github.com/chrovis/cljam/compare/0.1.6...0.2.0
 [0.1.6]: https://github.com/chrovis/cljam/compare/0.1.5...0.1.6
 [0.1.5]: https://github.com/chrovis/cljam/compare/0.1.4...0.1.5
 [0.1.4]: https://github.com/chrovis/cljam/compare/0.1.3...0.1.4

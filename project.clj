@@ -15,9 +15,9 @@
   :plugins [[lein-midje "3.2.1"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.8.0"]
                                   [midje "1.8.3" :exclusions [slingshot]]
-                                  [cavia "0.3.0"]]
+                                  [cavia "0.3.1"]]
                    :plugins [[lein-bin "0.3.5"]
-                             [lein-codox "0.10.2"]
+                             [lein-codox "0.10.3"]
                              [lein-marginalia "0.9.0"]]
                    :main cljam.main
                    :aot [cljam.main]

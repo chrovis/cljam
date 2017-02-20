@@ -26,6 +26,16 @@ To use with Maven, add the following dependency.
 </dependency>
 ```
 
+## Breaking changes in 0.2.0
+
+From 0.2.0 release, ranges are represented as one-based closed intervals. For example,
+
+```clojure
+{:chr "chr1", :start 1, :end 3}
+```
+
+represents the first three bases of chromosome 1.
+
 ## Getting started
 
 To read a SAM/BAM format file,

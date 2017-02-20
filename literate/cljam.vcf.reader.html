@@ -2870,7 +2870,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.vcf.reader
   (:require [clojure.string :as cstr]
             [camel-snake-kebab.core :refer [-&gt;kebab-case-keyword]]
-            [cljam.util :refer [str-&gt;long]]))</pre></td></tr><tr><td class="docs"><h2>VCFReader</h2>
+            [cljam.util :refer [str-&gt;long]])
+  (:import [clojure.lang LazilyPersistentVector]))</pre></td></tr><tr><td class="docs"><h2>VCFReader</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype VCFReader [f meta-info header reader]
   java.io.Closeable
@@ -2878,8 +2879,9 @@ net.brehaut.ClojureTools = (function (SH) {
     (.close ^java.io.Closeable (.reader this))))</pre></td></tr><tr><td class="docs"><h2>Utilities</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- dot-&gt;nil
-  [s]
-  (if (= s &quot;.&quot;) nil s))</pre></td></tr><tr><td class="docs"><h2>Loading meta-information</h2>
+  [^String s]
+  ;; Avoid calling equiv on strings.
+  (if (and (= 1 (.length s)) (= \. (.charAt s 0))) nil s))</pre></td></tr><tr><td class="docs"><h2>Loading meta-information</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- meta-line?
   [line]
@@ -2892,17 +2894,23 @@ net.brehaut.ClojureTools = (function (SH) {
        (map (fn [[_ k v1 v2 _]]
               {(-&gt;kebab-case-keyword k) (dot-&gt;nil (or v2 v1))}))
        (apply merge)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- parse-meta-info-contig
+  [m]
+  (update m :length str-&gt;long))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-meta-info-info
-  [s]
-  (update (parse-structured-line s) :number str-&gt;long))</pre></td></tr><tr><td class="docs">
+  [m]
+  (update m :number (fn [s]
+                      (if (#{&quot;A&quot; &quot;R&quot; &quot;G&quot;} s)
+                        s
+                        (str-&gt;long s)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-meta-info-line
   [line]
   (let [[_ k* v] (re-find #&quot;^##([\w:/\.\?\-]*)=(.*)$&quot; line)
         k (-&gt;kebab-case-keyword k*)]
     [k (if-let [[_ s] (re-find #&quot;^&lt;(.+)&gt;$&quot; v)]
-         (if (#{:info :format} k)
-           (parse-meta-info-info s)
-           (parse-structured-line s))
+         (cond-&gt; (parse-structured-line s)
+           (#{:info :format} k) parse-meta-info-info
+           (= k :contig) parse-meta-info-contig)
          v)]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn load-meta-info
   [^java.io.BufferedReader rdr]
@@ -2910,7 +2918,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (if (meta-line? line)
       (let [[k v] (parse-meta-info-line line)]
         (recur (.readLine rdr)
-               (if (#{:info :filter :format :alt :sample :pedigree} k)
+               (if (#{:contig :info :filter :format :alt :sample :pedigree} k)
                  (if (get meta-info k)
                    (update meta-info k conj v)
                    (assoc meta-info k [v]))
@@ -2931,29 +2939,36 @@ net.brehaut.ClojureTools = (function (SH) {
       (recur (.readLine rdr)))))</pre></td></tr><tr><td class="docs"><h2>Reading data lines</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-data-line
-  [line header]
-  (let [[fields gt-fields] (-&gt;&gt; (cstr/split line #&quot;\t&quot;)
+  [line header kws]
+  ;; When splitting a string with single-character delimiter,
+  ;; `java.lang.String#split` is slightly faster than `clojure.string/split`.
+  ;; For more details, please refer to https://github.com/chrovis/cljam/pull/29.
+  (let [[fields gt-fields] (-&gt;&gt; (.split ^String line &quot;\t&quot;)
+                                LazilyPersistentVector/createOwning
                                 (map dot-&gt;nil)
                                 (split-at 8))]
-    (merge {:chrom (first fields)
-            :pos (str-&gt;long (nth fields 1))
-            :id (nth fields 2)
-            :ref (nth fields 3)
-            :alt (some-&gt; (nth fields 4) (cstr/split #&quot;,&quot;))
-            :qual (some-&gt; (nth fields 5) Double/parseDouble)
-            :filter (nth fields 6)
-            :info (nth fields 7)}
-           (zipmap (map keyword (drop 8 header)) gt-fields))))</pre></td></tr><tr><td class="docs">
+    (-&gt;&gt; gt-fields
+         (interleave kws)
+         (concat [:chrom (first fields)
+                  :pos (str-&gt;long (nth fields 1))
+                  :id (nth fields 2)
+                  :ref (nth fields 3)
+                  :alt (some-&gt; (nth fields 4) (cstr/split #&quot;,&quot;))
+                  :qual (some-&gt; (nth fields 5) Double/parseDouble)
+                  :filter (nth fields 6)
+                  :info (nth fields 7)])
+         (apply hash-map))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-data-lines
-  [^java.io.BufferedReader rdr header]
+  [^java.io.BufferedReader rdr header kws]
   (when-let [line (.readLine rdr)]
     (if-not (or (meta-line? line) (header-line? line))
-      (cons (parse-data-line line header)
-            (lazy-seq (read-data-lines rdr header)))
-      (read-data-lines rdr header))))</pre></td></tr><tr><td class="docs">
+      (cons (parse-data-line line header kws)
+            (lazy-seq (read-data-lines rdr header kws)))
+      (read-data-lines rdr header kws))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-variants
   [^VCFReader rdr]
-  (read-data-lines (.reader rdr) (.header rdr)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (let [kws (mapv keyword (drop 8 (.header rdr)))]
+    (read-data-lines (.reader rdr) (.header rdr) kws)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

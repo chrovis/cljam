@@ -2888,10 +2888,10 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^&quot;[B&quot; string-&gt;bytes [^String s]
   (let [buf (byte-array (count s))]
-    (.getBytes s 0 (count buf) buf 0)
+    (.getBytes s 0 (alength buf) buf 0)
     buf))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^String bytes-&gt;string [^bytes b]
-  (String. b 0 (count b)))</pre></td></tr><tr><td class="docs">
+  (String. b 0 (alength b)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn from-hex-digit [^Character c]
   (let [d (Character/digit c 16)]
     (when (= d -1)
@@ -2962,7 +2962,7 @@ net.brehaut.ClojureTools = (function (SH) {
   [f]
   (let [is (io/input-stream f)]
     (try
-      (-&gt; (CompressorStreamFactory.)
+      (-&gt; (CompressorStreamFactory. true)
           (.createCompressorInputStream is))
       (catch CompressorException _
         is))))</pre></td></tr><tr><td class="docs"><p>Returns an compressor output stream from f and a compressor type k. k must be

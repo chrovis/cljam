@@ -2875,63 +2875,64 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.sequence :as cseq]
             [cljam.io :as io]
             [cljam.fasta :as fa]
+            [cljam.cigar :as cig]
             [cljam.pileup.common :refer [window-width step center]]
-            [cljam.pileup.pileup :refer [rpositions]]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- append-seq
-  [op target current]
-  (case op
-    \M (apply conj current (map str (:seq target)))
-    \I (if (seq current)
-         (update-in current [(dec (count current))]
-                    vector
-                    (str &quot;+&quot; (:n target) (apply str (:seq target))))
-         current)
-    \D (apply conj current (map str (:seq target)))
-    \N (apply conj current (map str (:seq target)))
-    current))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn encode-seq [seq*]
-  (loop [[f &amp; r] (filter #(nil? (#{\P} (:op %))) seq*)
-         ret     []
-         op      nil
-         tmp     {:n 0, :op nil, :seq nil}]
-    (if (nil? f)
-      (append-seq op tmp ret)
-      (if (nil? op)
-        (recur r ret (:op f) f)
-        (if (= (:op f) op)
-          (recur r ret (:op f) (-&gt; tmp
-                                   (update-in [:n] + (:n f))
-                                   (assoc :op (:op f))
-                                   (update-in [:seq] (partial apply conj) (:seq f))))
-          (let [new-ret (append-seq op tmp ret)]
-            (recur r new-ret (:op f) f)))))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence that each element contains reads piled-up at the locus.</p>
+            [cljam.pileup.pileup :refer [rpositions]]))</pre></td></tr><tr><td class="docs"><p>Stringify mpileup sequence.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn to-mpileup
+  [x]
+  (if (vector? x)
+    (let [[y op xs] x] (apply str y op (count xs) xs))
+    (str x)))</pre></td></tr><tr><td class="docs"><p>Substitute sequence with mpileup index.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn substitute-seq
+  [[^Character r &amp; refs] ^String s [op x xs]]
+  (letfn [(get-char [i] (if (number? i) (let [c (.charAt s i)] (if (= c r) \. c)) i))]
+    (case op
+      :m (get-char x)
+      :d [(get-char x) \- (take (count xs) refs)]
+      :i [(get-char x) \+ (map #(.charAt s %) xs)]
+      x)))</pre></td></tr><tr><td class="docs"><p>Substitute base quality with mpileup index.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn substitute-qual
+  [^String q [op x]]
+  (if (and (number? x) (not= q &quot;*&quot;)) (.charAt q x) \~))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence that each element contains reads piled-up at the locus.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn pileup-seq
   [^long start ^long end reads]
   (letfn [(cover-locus? [pos aln]
-            (&lt;= (:pos aln) pos (sam-util/get-end aln)))
-          (step [[pos buf alns]]
-            (let [[i o] (split-with (partial cover-locus? (inc pos)) alns)]
-              [(inc pos) (concat (filter (partial cover-locus? (inc pos)) buf) i) o]))]
-    (map second (rest (iterate step [(dec start) [] (remove (comp empty? :cigar) reads)])))))</pre></td></tr><tr><td class="docs">
+            (&lt;= (:pos aln) pos (:end aln)))
+          (step [pos buf alns]
+            (lazy-seq
+             (when (&lt; pos end)
+               (let [[i o] (split-with (partial cover-locus? (inc pos)) alns)
+                     b (doall (concat (filter #(&lt;= (inc pos) (:end %)) buf) i))]
+                 (cons b (step (inc pos) b o))))))]
+    (-&gt;&gt; reads
+         (sequence
+          (comp
+           (remove #(and (empty? (:cigar %)) (nil? (:cigar-bytes (:meta %)))))
+           (map #(assoc % :end (sam-util/get-end %)))
+           (drop-while #(&lt; (:end %) start))))
+         (step (dec start) []))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord MPileupElement [^String rname ^long pos ^Character ref ^long count seq qual reads])</pre></td></tr><tr><td class="docs"><p>Compute mpileup info from piled-up reads and reference.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- gen-mpileup
-  [^String rname ^long locus ^Character reference reads]
-  (let [seq (mapv (fn [{:keys [^long pos ^String seq ^String cigar] :as aln}]
-                    (let [s (nth (encode-seq (cseq/parse seq cigar)) (- locus pos))]
-                      (cond
-                        (vector? s) (second s)
-                        (= reference (first s)) &quot;.&quot;
-                        :else s))) reads)
-        qual (mapv (fn [{:keys [^long pos ^String qual] :as aln}]
-                (if (= qual &quot;*&quot;) \~ (nth qual (- locus pos) \~))) reads)]
-    (MPileupElement. rname locus reference (count reads) seq qual reads)))</pre></td></tr><tr><td class="docs"><p>Internal pileup function independent from I/O.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn gen-mpileup
+  [^String rname ^long locus [^Character ref-base :as refs] reads]
+  (let [seqs (map (fn gen-mpileup-seq [{:keys [^long pos ^String seq cig-index]}]
+                   (substitute-seq refs seq (nth cig-index (- locus pos)))) reads)
+        qual (map (fn gen-mpileup-qual [{:keys [^long pos ^String qual cig-index]}]
+                    (substitute-qual qual (nth cig-index (- locus pos)))) reads)]
+    (MPileupElement. rname locus ref-base (count reads) seqs qual reads)))</pre></td></tr><tr><td class="docs"><p>Internal mpileup function independent from I/O.
+   Can take multiple alignments seqs.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn pileup*
-  [refseq alns rname start end]
-  (map
-   (partial gen-mpileup rname)
-   (range start (inc end))
-   refseq
-   (pileup-seq start end alns)))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of MPileupElement calculated from FASTA and BAM.</p>
+  [refseq rname start end &amp; aln-seqs]
+  (-&gt;&gt; aln-seqs
+       (map
+        (fn [alns]
+          (-&gt;&gt; alns
+               (sequence (map (fn [a] (assoc a :cig-index (cig/to-index (:cigar a))))))
+               (pileup-seq start end))))
+       (apply map
+              (fn [index refs &amp; plps]
+                (map (fn [plp] (gen-mpileup rname index refs plp)) plps))
+              (range start (inc end))
+              (partition 10 1 (concat refseq (repeat \N))))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of MPileupElement calculated from FASTA and BAM.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn pileup
   ([bam-reader rname]
    (pileup nil bam-reader rname -1 -1))
@@ -2940,15 +2941,13 @@ net.brehaut.ClojureTools = (function (SH) {
   ([fa-reader bam-reader rname start end]
    (try
      (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
-       (let [s (if (neg? start) 0 start)
+       (let [s (if (neg? start) 1 start)
              e (if (neg? end) (:len r) end)
              refseq (if fa-reader
-                      (if (zero? s)
-                        (concat [\N] (fa/read-sequence fa-reader rname s e))
-                        (fa/read-sequence fa-reader rname (dec s) e))
+                      (fa/read-sequence fa-reader {:chr rname :start s :end e})
                       (repeat \N))
              alns (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})]
-         (pileup* refseq alns rname s e)))
+         (map (fn [p] (update (first p) :seq (fn [s] (map to-mpileup s)))) (pileup* refseq rname s e alns))))
      (catch bgzf4j.BGZFException _
        (throw (RuntimeException. &quot;Invalid file format&quot;))))))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">

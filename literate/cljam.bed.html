@@ -2865,106 +2865,143 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.pileup.pileup" name="cljam.pileup.pileup"><h1 class="project-name">cljam.pileup.pileup</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Provides simple pileup functions.</p>
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.pileup.pileup
-  (:require [com.climate.claypoole :as cp]
-            [cljam.common :refer [get-exec-n-threads]]
-            [cljam.util.sam-util :as sam-util]
-            [cljam.io :as io]
-            [cljam.pileup.common :refer [window-width step center]]
-            cljam.bam.reader)
-  (:import cljam.bam.reader.BAMReader))</pre></td></tr><tr><td class="docs"><p>Updates the pile vector from the alignment, returning the updated pile
-  vector. pile must be a vector.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- update-pile
-  [aln rname pile positions]
-  (if (= rname (:rname aln))
-    (let [win-beg (first positions)
-          win-end (last positions)
-          left (max (:pos aln) win-beg)
-          right (min (sam-util/get-end aln) win-end)]
-      (loop [i left, pile* pile]
-        (if (&lt;= i right)
-          (recur (inc i) (update-in pile* [(- i win-beg)] inc))
-          pile*)))
-    (vec (repeat (count pile) 0))))</pre></td></tr><tr><td class="docs"><p>Piles the alignments up and counts them in the positions, returning it as a
-  vector.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- count-for-positions
-  [alns rname positions]
-  (loop [[aln &amp; rest] alns
-         pile (vec (repeat (count positions) 0))]
-    (if aln
-      (recur rest (update-pile aln rname pile positions))
-      pile)))</pre></td></tr><tr><td class="docs"><p>Returns a lazy seq of nums from start (inclusive) to end (inclusive).</p>
-</td><td class="codes"><pre class="brush: clojure">(defn rpositions
-  ([start end]
-     (rpositions start end start))
-  ([start end n]
-     (if (&gt;= end n)
-       (cons n (lazy-seq (rpositions start end (inc n)))))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy seq of grouped positions. Equivalent of
-  (partition-all n (rpositions start end)). This implementation is faster.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn grouped-rpositions
-  [start end n]
-  (lazy-seq
-   (letfn [(rpositions* [s e]
-             (loop [i e xs `()]
-               (if (&gt;= i s)
-                 (recur (dec i) (cons i xs))
-                 xs)))]
-     (when (&lt;= start end)
-       (cons (rpositions* start (min (+ start n -1) end))
-             (grouped-rpositions (+ start n) end n))))))</pre></td></tr><tr><td class="docs"><p>Reads alignments which have the rname and are included in a range defined by
-  the pos and window size, returning the alignments as a lazy seq. Reading
-  depth is shallow.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- read-alignments
-  [rdr rname rlength pos]
-  (let [left (max (- pos window-width) 0)
-        right (min rlength (+ pos window-width))]
-    (io/read-alignments rdr {:chr rname
-                             :start left
-                             :end right
-                             :depth :shallow})))</pre></td></tr><tr><td class="docs"><p>Internal pileup function.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- pileup*
-  [rdr rname rlength start end]
-  (let [n-threads (get-exec-n-threads)
-        count-fn (fn [xs]
-                   (if (= n-threads 1)
-                     (map (fn [[positions alns]]
-                            (count-for-positions alns rname positions)) xs)
-                     (cp/pmap (dec n-threads)
-                              (fn [[positions alns]]
-                                (count-for-positions alns rname positions)) xs)))]
-    (-&gt;&gt; (grouped-rpositions start end step)
-         (map vec)
-         (map (fn [positions]
-                (let [pos (if (= (count positions) step)
-                            (nth positions center)
-                            (nth positions (quot (count positions) 2)))
-                      alns (doall (read-alignments rdr rname rlength pos))]
-                  [positions alns])))
-         count-fn
-         (apply concat))))</pre></td></tr><tr><td class="docs"><p>Return a position of first alignment in left-right, or nil.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn first-pos
-  [bam-reader rname left right]
-  (-&gt; (io/read-alignments bam-reader {:chr rname
-                                      :start left
-                                      :end right
-                                      :depth :first-only})
-      first
-      :pos))</pre></td></tr><tr><td class="docs"><p>Piles alignments up, returning the pileup as a lazy seq. Requires a
-  <code>cljam.bam.reader.BAMReader</code> instance and rname. If start and end are not
-  supplied, piles whole range up.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn pileup
-  ([bam-reader rname]
-     (pileup bam-reader rname -1 -1))
-  ([bam-reader rname start end]
-     (try
-       (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
-         (pileup* bam-reader
-                  rname (:len r)
-                  (if (neg? start) 1 start)
-                  (if (neg? end) (:len r) end)))
-       (catch bgzf4j.BGZFException _
-         (throw (RuntimeException. &quot;Invalid file format&quot;))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.bed" name="cljam.bed"><h1 class="project-name">cljam.bed</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.bed
+  (:require [clojure.string :as cstr]
+            [cljam.util :as util]
+            [cljam.util.chromosome :as chr-util])
+  (:import [java.io BufferedReader BufferedWriter]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const bed-columns
+  [:chr :start :end :name :score :strand :thick-start :thick-end :item-rgb :block-count :block-sizes :block-starts])</pre></td></tr><tr><td class="docs"><p>Convert string of comma-separated long values into list of longs.
+  Comma at the end of input string will be ignored.
+  Returns nil if input is nil.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- str-&gt;long-list
+  [^String s]
+  (when-not (nil? s)
+    (map util/str-&gt;long (cstr/split s #&quot;,&quot;))))</pre></td></tr><tr><td class="docs"><p>Inverse function of str->long-list.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- long-list-&gt;str
+  [xs]
+  (when-not (nil? xs)
+    (apply str (interpose &quot;,&quot; xs))))</pre></td></tr><tr><td class="docs"><p>Same as update if map 'm' contains key 'k'. Otherwise returns the original map 'm'.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- update-some
+  [m k f &amp; args]
+  (if (get m k)
+    (apply update m k f args)
+    m))</pre></td></tr><tr><td class="docs"><p>Parse BED fields string and returns a map.
+  Based on information at https://genome.ucsc.edu/FAQ/FAQformat#format1.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- deserialize-bed
+  [^String s]
+  {:post [(and (:chr %) (:start %) (:end %))
+          ;; First 3 fields are required.
+          (&lt; (:start %) (:end %))
+          ;; The chromEnd base is not included in the display of the feature.
+          (every? true? (drop-while false? (map nil? ((apply juxt bed-columns) %))))
+          ;; Lower-numbered fields must be populated if higher-numbered fields are used.
+          (if-let [s (:score %)] (&lt;= 0 s 1000) true)
+          ;; A score between 0 and 1000.
+          (if-let [xs (:block-sizes %)] (= (count xs) (:block-count %)) true)
+          ;; The number of items in this list should correspond to blockCount.
+          (if-let [xs (:block-starts %)] (= (count xs) (:block-count %)) true)
+          ;; The number of items in this list should correspond to blockCount.
+          (if-let [[f] (:block-starts %)] (= 0 f) true)
+          ;; The first blockStart value must be 0.
+          (if-let [xs (:block-starts %)] (= (+ (last xs) (last (:block-sizes %))) (- (:end %) (:start %))) true)
+          ;; The final blockStart position plus the final blockSize value must equal chromEnd.
+          (if-let [xs (:block-starts %)] (apply &lt;= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes %))) true)
+          ;; Blocks may not overlap.
+          ]}
+  (reduce
+   (fn deserialize-bed-reduce-fn [m [k f]] (update-some m k f))
+   (zipmap bed-columns (cstr/split s #&quot;\s+&quot;))
+   {:start util/str-&gt;long
+    :end util/str-&gt;long
+    :score util/str-&gt;long
+    :strand #(case % &quot;.&quot; :no-strand &quot;+&quot; :plus &quot;-&quot; :minus)
+    :thick-start util/str-&gt;long
+    :thick-end util/str-&gt;long
+    :block-count util/str-&gt;long
+    :block-sizes str-&gt;long-list
+    :block-starts str-&gt;long-list}))</pre></td></tr><tr><td class="docs"><p>Serialize bed fields into string.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- serialize-bed
+  [m]
+  (-&gt;&gt; (-&gt; m
+           (update-some :strand #(case % :plus &quot;+&quot; :minus &quot;-&quot; :no-strand &quot;.&quot;))
+           (update-some :block-sizes long-list-&gt;str)
+           (update-some :block-starts long-list-&gt;str))
+       ((apply juxt bed-columns))
+       (take-while identity)
+       (interpose &quot; &quot;)
+       (apply str)))</pre></td></tr><tr><td class="docs"><p>Checks if given string is neither a header nor a comment line.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- header-or-comment?
+  [^String s]
+  (or (empty? s)
+      (.startsWith s &quot;browser&quot;)
+      (.startsWith s &quot;track&quot;)
+      (.startsWith s &quot;#&quot;)))</pre></td></tr><tr><td class="docs"><p>Normalize BED fields.
+  BED fields are stored in format: 0-origin and inclusive-start / exclusive-end.
+  This function converts the coordinate into cljam style: 1-origin and inclusice-start / inclusive-end.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- normalize
+  [m]
+  (-&gt; m
+      (update :chr chr-util/normalize-chromosome-key)
+      (update :start inc)
+      (update-some :thick-start inc)))</pre></td></tr><tr><td class="docs"><p>De-normalize BED fields.
+  This is an inverse function of normalize.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- denormalize
+  [m]
+  (-&gt; m
+      (update :start dec)
+      (update-some :thick-start dec)))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of unnormalized BED fields.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-raw-fields
+  [^BufferedReader rdr]
+  (sequence
+   (comp (remove header-or-comment?)
+         (map deserialize-bed))
+   (line-seq rdr)))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of normalized BED fields.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-fields
+  [^BufferedReader rdr]
+  (sequence
+   (comp (remove header-or-comment?)
+         (map deserialize-bed)
+         (map normalize))
+   (line-seq rdr)))</pre></td></tr><tr><td class="docs"><p>Sort BED fields based on :chr, :start and :end.
+  :chr with common names come first, in order of (chr1, chr2, ..., chrX, chrY, chrM).
+  Other chromosomes follow after in lexicographic order.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn sort-fields
+  [xs]
+  (sort-by
+   (fn [m]
+     [(or (util/str-&gt;int (last (re-find #&quot;(chr)?(\d+)&quot; (:chr m)))) Integer/MAX_VALUE)
+      (or ({&quot;X&quot; 23 &quot;Y&quot; 24 &quot;M&quot; 25} (last (re-find #&quot;(chr)?([X|Y|M])&quot; (:chr m)))) Integer/MAX_VALUE)
+      (:chr m)
+      (:start m)
+      (:end m)])
+   xs))</pre></td></tr><tr><td class="docs"><p>Sort and merge overlapped regions.
+  Currently, this function affects only :end and :name fields.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn merge-fields
+  [xs]
+  (reduce
+   (fn [r m]
+     (let [l (last r)]
+       (if (and l (= (:chr l) (:chr m)) (&lt;= (:start m) (:end l)) (&lt;= (:start l) (:end m)))
+         (update r (dec (count r)) (fn [n m] (-&gt; n (assoc :end (:end m)) (update-some :name str &quot;+&quot; (:name m)))) m)
+         (conj r m))))
+   []
+   (sort-fields xs)))</pre></td></tr><tr><td class="docs"><p>Write sequence of BED fields to writer without converting :start and :thick-start values.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn write-raw-fields
+  [^BufferedWriter wtr xs]
+  (-&gt;&gt; xs
+       (map serialize-bed)
+       (interpose &quot;\n&quot;)
+       ^String (apply str)
+       (.write wtr)))</pre></td></tr><tr><td class="docs"><p>Write sequence of BED fields to writer.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn write-fields
+  [^BufferedWriter wtr xs]
+  (-&gt;&gt; xs
+       (map (comp serialize-bed denormalize))
+       (interpose &quot;\n&quot;)
+       ^String (apply str)
+       (.write wtr)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

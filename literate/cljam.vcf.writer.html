@@ -2888,6 +2888,21 @@ net.brehaut.ClojureTools = (function (SH) {
     (.write s)
     (.newLine)))</pre></td></tr><tr><td class="docs"><h2>Writing meta-information</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- stringify-key
+  [k]
+  (if (#{:info :filter :format :alt :sample :pedigree} k)
+    (cstr/upper-case (name k))
+    (-&gt;camelCaseString k)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-contig
+  [m]
+  (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
+                (str &quot;length=&quot; (:length m))
+                (str &quot;assembly=&quot; (:assembly m))
+                (str &quot;md5=&quot; (:md-5 m))]
+         (:species m) (conj (str &quot;species=\ (:species m) &quot;\))
+         (:taxonomy m) (conj (str &quot;taxonomy=&quot; (:taxonomy m))))
+       (interpose &quot;,&quot;)
+       (apply str)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-info
   [m]
   (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
@@ -2936,6 +2951,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-structured-line
   [k m]
   (let [f (case k
+            :contig stringify-meta-info-contig
             :info stringify-meta-info-info
             :filter stringify-meta-info-filter
             :format stringify-meta-info-format
@@ -2943,18 +2959,24 @@ net.brehaut.ClojureTools = (function (SH) {
             :sample stringify-meta-info-sample
             :pedigree stringify-meta-info-pedigree)]
     (f m)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- write-meta-info1
+  [^VCFWriter wtr k v]
+  (if-not (nil? v)
+    (if (vector? v)
+      (doseq [x v]
+        (write-line (.writer wtr) (str meta-info-prefix
+                                       (stringify-key k)
+                                       &quot;=&lt;&quot; (stringify-structured-line k x) &quot;&gt;&quot;)))
+      (write-line (.writer wtr) (str meta-info-prefix
+                                     (stringify-key k)
+                                     &quot;=&quot; v)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-meta-info
   [^VCFWriter wtr meta-info]
-  (write-line (.writer wtr) (str meta-info-prefix &quot;fileformat=&quot;
-                                 (:fileformat meta-info default-fileformat)))
-  (doseq [[k v] (dissoc meta-info :fileformat :info :filter :format :alt :sample
-                        :pedigree)]
-    (write-line (.writer wtr) (str meta-info-prefix (-&gt;camelCaseString k) &quot;=&quot;
-                                   v)))
-  (doseq [k [:info :filter :format :alt :sample :pedigree]
-          v (get meta-info k)]
-    (write-line (.writer wtr) (str meta-info-prefix (cstr/upper-case (name k))
-                                   &quot;=&lt;&quot; (stringify-structured-line k v) &quot;&gt;&quot;))))</pre></td></tr><tr><td class="docs"><h2>Writing header</h2>
+  (write-meta-info1 wtr :fileformat (:fileformat meta-info default-fileformat))
+  (doseq [k [:file-date :source :reference :contig :phasing]]
+    (write-meta-info1 wtr k (get meta-info k)))
+  (doseq [k [:info :filter :format :alt :sample :pedigree]]
+    (write-meta-info1 wtr k (get meta-info k))))</pre></td></tr><tr><td class="docs"><h2>Writing header</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- ^String stringify-header
   [header]

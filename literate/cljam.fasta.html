@@ -2888,10 +2888,11 @@ net.brehaut.ClojureTools = (function (SH) {
   [rdr]
   (fa-core/read-sequences rdr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-sequence
-  ([rdr name]
-     (fa-core/read-sequence rdr name))
-  ([rdr name start end]
-     (fa-core/read-sequence rdr name start end)))</pre></td></tr><tr><td class="docs">
+  [rdr {:keys [chr start end]}]
+  (cond
+    (and chr start end) (fa-core/read-sequence rdr chr start end)
+    chr (fa-core/read-sequence rdr chr)
+    :else (fa-core/read-sequences rdr)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn reset
   [rdr]
   (fa-core/reset rdr))</pre></td></tr><tr><td class="docs"><p>Reads entire sequences sequentially on caller's thread,

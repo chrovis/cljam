@@ -2955,8 +2955,12 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn read-sequence
   [^FASTAReader rdr name start end]
   (when-let [fai (.index rdr)]
-    (let [[offset-start offset-end] (fasta-index/get-span fai name start end)]
-      (read-sequence-with-offset rdr offset-start offset-end))))</pre></td></tr><tr><td class="docs"><p>Reads FASTA sequence data, returning its information as a lazy sequence.</p>
+    (let [header (fasta-index/get-header fai name)]
+      (when-let [[offset-start offset-end] (fasta-index/get-span fai name (dec start) end)]
+        (-&gt;&gt; (concat (repeat (max 0 (- 1 start)) \N)
+                       (read-sequence-with-offset rdr offset-start offset-end)
+                       (repeat (max 0 (- end (:len header))) \N))
+             (apply str))))))</pre></td></tr><tr><td class="docs"><p>Reads FASTA sequence data, returning its information as a lazy sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read
   [^FASTAReader rdr]
   (let [r ^RandomAccessFile (.reader rdr)]

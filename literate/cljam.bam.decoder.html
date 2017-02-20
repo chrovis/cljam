@@ -2869,8 +2869,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.bam.decoder
   (:require [clojure.string :refer [join]]
             [cljam.util :refer [ubyte hex-string-&gt;bytes]]
-            [cljam.util.sam-util :refer [phred-&gt;fastq compressed-bases-&gt;chars
-                                         ref-name]]
+            [cljam.util.sam-util :refer [phred-&gt;fastq compressed-bases-&gt;str ref-name]]
             [cljam.lsb :as lsb]
             [cljam.bam.common :refer [fixed-block-size]])
   (:import java.util.Arrays
@@ -2935,11 +2934,11 @@ net.brehaut.ClojureTools = (function (SH) {
      (int (/ (inc l-seq) 2))
      l-seq))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn decode-qual [^bytes b]
-  (if (Arrays/equals b (byte-array (count b) (ubyte 0xff)))
+  (if (Arrays/equals b (byte-array (alength b) (ubyte 0xff)))
     &quot;*&quot;
     (phred-&gt;fastq b)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn decode-seq [seq-bytes length]
-  (join (compressed-bases-&gt;chars length seq-bytes 0)))</pre></td></tr><tr><td class="docs">
+  (compressed-bases-&gt;str length seq-bytes 0))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn decode-next-ref-id [refs n rname]
   (cond
     (= n -1) &quot;*&quot;
@@ -2987,7 +2986,7 @@ net.brehaut.ClojureTools = (function (SH) {
           qname       (lsb/read-string buffer (dec l-read-name))
           _           (lsb/skip buffer 1)
           cigar       (decode-cigar (lsb/read-bytes buffer (* n-cigar-op 4)))
-          seq         (decode-seq (lsb/read-bytes buffer (/ (inc l-seq) 2)) l-seq)
+          seq         (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
           qual        (decode-qual (lsb/read-bytes buffer l-seq))
           rest        (lsb/read-bytes buffer (options-size (:size block)
                                                            l-read-name

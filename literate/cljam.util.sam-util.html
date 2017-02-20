@@ -2869,7 +2869,9 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.util.sam-util
   (:require [clojure.string :as cstr]
             [cljam.cigar :refer [count-ref]]
-            [cljam.util :refer [ubyte str-&gt;int str-&gt;float]]))</pre></td></tr><tr><td class="docs"><p>parse</p>
+            [cljam.util :refer [ubyte str-&gt;int str-&gt;float]])
+  (:import [java.nio CharBuffer ByteBuffer]
+           [java.nio.charset StandardCharsets]))</pre></td></tr><tr><td class="docs"><p>parse</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>e.g. "LN:45 SN:ref" -> {:LN 45, :SN "ref"}</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-header-keyvalues
   [keyvalues]
@@ -3138,6 +3140,23 @@ net.brehaut.ClojureTools = (function (SH) {
                   (char-&gt;compressed-base-low (char (aget read-bases l-idx))))]
           (aset-byte result i (byte (bit-or h l)))
           (recur (inc i)))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private seq-byte-table
+  (let [nibble-table &quot;=ACMGRSVTWYHKDBN&quot;]
+    (-&gt;&gt; (for [i nibble-table j nibble-table] [i j])
+         (apply concat)
+         cstr/join)))</pre></td></tr><tr><td class="docs"><p>Decode a sequence from byte array to String.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn compressed-bases-&gt;str
+  [^long length ^bytes compressed-bases ^long compressed-offset]
+  (let [cb (CharBuffer/allocate (inc length))
+        bb (ByteBuffer/wrap compressed-bases)]
+    (.position bb compressed-offset)
+    (dotimes [_ (quot (inc length) 2)]
+      (let [i (-&gt; (.get bb) (bit-and 0xff) (* 2))]
+        (.put cb (.charAt seq-byte-table i))
+        (.put cb (.charAt seq-byte-table (inc i)))))
+    (.limit cb length)
+    (.flip cb)
+    (.toString cb)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn compressed-bases-&gt;chars [length compressed-bases compressed-offset]
   (let [bases (apply concat
                      (for [i (range 1 length) :when (odd? i)]
@@ -3167,9 +3186,16 @@ net.brehaut.ClojureTools = (function (SH) {
     result))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmulti phred-&gt;fastq class)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmethod phred-&gt;fastq (class (byte-array nil))
-  [b]
+  [^bytes b]
   (when-not (nil? b)
-    (cstr/join (map #(phred-&gt;fastq (int (bit-and % 0xff))) b))))</pre></td></tr><tr><td class="docs">
+    (let [bb (ByteBuffer/wrap b)
+          cb (CharBuffer/allocate (alength b))]
+      (loop []
+        (when (.hasRemaining bb)
+          (.put cb (char (+ 33 (.get bb))))
+          (recur)))
+      (.flip cb)
+      (.toString cb))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:const max-phred-score 93)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmethod phred-&gt;fastq Integer
   [n]

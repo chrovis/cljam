@@ -2917,7 +2917,18 @@ net.brehaut.ClojureTools = (function (SH) {
         chunks (flatten (filter (complement nil?) (map #(get bidx %) bins)))
         min-offset (or (first lidx) 0)]
     (-&gt;&gt; (chunk/optimize-chunks chunks min-offset)
-         (map vals))))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
+         (map vals))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn get-unplaced-spans
+  [^BAMIndex bai]
+  (if-let [begin (some-&gt;&gt;
+                  (for [[ref-id bins] (.bidx bai)
+                        [bin chunks] bins
+                        {:keys [beg end]} chunks]
+                    end)
+                  seq
+                  (reduce max))]
+    [[begin Long/MAX_VALUE]]
+    []))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^BAIWriter writer
   [f refs]

@@ -2,7 +2,7 @@
   "Reading/writing functions of stream and buffer for little-endian data."
   (:refer-clojure :exclude [read-string])
   (:require [cljam.util :refer [string->bytes bytes->string]])
-  (:import [java.io DataInputStream DataOutputStream EOFException]
+  (:import [java.io DataInputStream DataOutputStream EOFException RandomAccessFile InputStream]
            [java.nio ByteBuffer ByteOrder]))
 
 (defn ^ByteBuffer gen-byte-buffer
@@ -22,14 +22,15 @@
   (skip [this n] "Skip over n bytes of data, discarding the skipped bytes."))
 
 (extend-protocol Skippable
-  DataInputStream
-  (skip [^DataInputStream rdr n]
-    (.skipBytes rdr n)
-    nil)
+  InputStream
+  (skip [^DataInput rdr n]
+    (.skip rdr n))
   ByteBuffer
   (skip [^ByteBuffer bb n]
-    (.position bb (+ (.position bb) n))
-    nil))
+    (.position bb (+ (.position bb) n)))
+  RandomAccessFile
+  (skip [^RandomAccessFile raf n]
+    (.skipBytes raf n)))
 
 ;; Reading
 ;; -------
@@ -41,13 +42,13 @@
     "Reads up to len bytes of data."))
 
 (extend-protocol BytesReadble
-  DataInputStream
+  InputStream
   (read-bytes
-    ([^DataInputStream rdr l]
+    ([^InputStream rdr l]
        (let [ba (byte-array l)]
          (.read rdr ba 0 l)
          ba))
-    ([^DataInputStream rdr buffer offset l]
+    ([^InputStream rdr buffer offset l]
        (loop [total-read 0]
          (when (< total-read l)
            (let [n (.read rdr buffer (+ offset total-read) (- l total-read))]
@@ -61,7 +62,15 @@
          (.get bb ba 0 len)
          ba))
     ([^ByteBuffer bb buffer offset len]
-       (.get bb buffer offset len))))
+     (.get bb buffer offset len)))
+  RandomAccessFile
+  (read-bytes
+    ([^RandomAccessFile raf len]
+     (let [ba (byte-array len)]
+       (.readFully raf ba)
+       ba))
+    ([^RandomAccessFile raf buffer offset len]
+     (.readFully raf buffer offset len))))
 
 (defn- read-byte-buffer
   [rdr ^ByteBuffer bb l]

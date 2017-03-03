@@ -4,7 +4,8 @@
             [clojure.tools.logging :as logging]
             [me.raynes.fs :as fs]
             [cljam.fasta-index.writer :as writer]
-            [cljam.fasta-index.reader :as reader]))
+            [cljam.fasta-index.reader :as reader]
+            [cljam.util :as util]))
 
 ;;;; Writing
 
@@ -16,10 +17,11 @@
 
 (defn create-index
   "Creates a FASTA index file from the sequences."
-  [rdr f]
-  (with-open [w ^cljam.fasta_index.writer.FAIWriter (writer f)]
+  [in-fa out-fai]
+  (with-open [r (io/reader (util/compressor-input-stream in-fa))
+              w ^cljam.fasta_index.writer.FAIWriter (writer out-fai)]
     (try
-      (writer/write-index! rdr w)
+      (writer/write-index! r w)
       (catch Exception e (do
                            (fs/delete (.f w))
                            (logging/error "Failed to create FASTA index")

@@ -1,9 +1,8 @@
 (ns cljam.fasta-index.writer
   "Writing features for a FASTA index file."
   (:require [clojure.string :as cstr]
-            [cljam.util :refer [graph?]]
             [cljam.util.fasta :refer [header-line? parse-header-line]])
-  (:import [java.io BufferedWriter RandomAccessFile]))
+  (:import [java.io BufferedWriter]))
 
 ;;;; FAIWriter
 
@@ -15,11 +14,9 @@
 ;;;; Writing
 
 (defn make-indices
-  [rdr]
-  (let [r ^RandomAccessFile (.reader rdr)
-        indices (atom [])
+  [^java.io.BufferedReader r]
+  (let [indices (atom [])
         current-index (atom nil)]
-    (.seek r 0)
     (loop [l (.readLine r)
            pos 0]
       (when-not (nil? l)

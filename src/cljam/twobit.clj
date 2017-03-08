@@ -108,8 +108,8 @@
       (.readFully ^RandomAccessFile (.reader rdr) ba)
       (dotimes [out-pos (inc (- end' start'))]
         (let [ref-pos (+ out-pos start')
-              ba-pos (quot (- ref-pos (max 1 start')) 4)
-              bit-pos (mod (- ref-pos (max 1 start')) 4)]
+              ba-pos (- (quot (dec ref-pos) 4) start-offset)
+              bit-pos (mod (dec ref-pos) 4)]
           (if (<= 1 ref-pos len)
             (.put cb (.charAt ^String (twobit-to-str (+ (aget ba ba-pos) 128)) bit-pos))
             (.put cb \N))))

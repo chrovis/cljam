@@ -19,8 +19,7 @@
                    :plugins [[lein-bin "0.3.5"]
                              [lein-codox "0.10.3"]
                              [lein-marginalia "0.9.0"]]
-                   :main cljam.main
-                   :aot [cljam.main]
+                   :main ^:skip-aot cljam.main
                    :global-vars {*warn-on-reflection* true}}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}

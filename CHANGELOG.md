@@ -1,5 +1,20 @@
 # Change Log
 
+## [Unreleased]
+
+### Added
+
+* 2bit-encoded reference reader. [#31](https://github.com/chrovis/cljam/pull/31)
+* Add functions for deduplicating paired-end BAM. [#32](https://github.com/chrovis/cljam/pull/32)
+
+### Changed
+
+* Improve performance of FASTA indexing. [#30](https://github.com/chrovis/cljam/pull/30)
+
+### Fixed
+
+* Fix cider-refresh error. [#33](https://github.com/chrovis/cljam/pull/33)
+
 ## [0.2.0] - 2017-02-20
 
 ### BREAKING
@@ -83,6 +98,7 @@ represents the first three bases of chromosome 1.
 
 First release
 
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.2.0...HEAD
 [0.2.0]: https://github.com/chrovis/cljam/compare/0.1.6...0.2.0
 [0.1.6]: https://github.com/chrovis/cljam/compare/0.1.5...0.1.6
 [0.1.5]: https://github.com/chrovis/cljam/compare/0.1.4...0.1.5

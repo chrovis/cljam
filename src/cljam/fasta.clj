@@ -6,9 +6,12 @@
   (:import cljam.fasta.reader.FASTAReader))
 
 (defn ^FASTAReader reader
-  "Returns FASTA file reader of f."
-  [f]
-  (fa-core/reader f))
+  "Returns an open cljam.fasta.reader.FASTAReader of f with options.
+  The options:
+    :ignore-index - returns reader without index, default false.
+  Should be used inside with-open to ensure the Reader is properly closed."
+  [f & options]
+  (fa-core/reader f options))
 
 (defn read
   [rdr]

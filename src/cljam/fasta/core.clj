@@ -11,11 +11,15 @@
 ;; -------
 
 (defn ^FASTAReader reader
-  [^String f]
+  [^String f {:keys [ignore-index]
+              :or {ignore-index false}}]
   (let [f (.getAbsolutePath (io/file f))
         index-f (str f ".fai")
-        index (when (.exists (io/file index-f))
-                (fasta-index/reader index-f))]
+        index (if-not ignore-index
+                (if (.exists (io/file index-f))
+                  (fasta-index/reader index-f)
+                  (throw (java.io.FileNotFoundException.
+                          (str index-f " (No such FASTA index)")))))]
     (FASTAReader. (RandomAccessFile. f "r")
                   f
                   index)))

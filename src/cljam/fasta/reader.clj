@@ -95,20 +95,22 @@
 
 (defn read-whole-sequence
   [^FASTAReader rdr name]
-  (when-let [fai (.index rdr)]
+  (if-let [fai (.index rdr)]
     (let [header (fasta-index/get-header fai name)
           [offset-start offset-end] (fasta-index/get-span fai name 0 (:len header))]
-      (read-sequence-with-offset rdr offset-start offset-end))))
+      (read-sequence-with-offset rdr offset-start offset-end))
+    (throw (Exception. "FASTA index not found"))))
 
 (defn read-sequence
   [^FASTAReader rdr name start end]
-  (when-let [fai (.index rdr)]
+  (if-let [fai (.index rdr)]
     (let [header (fasta-index/get-header fai name)]
       (when-let [[offset-start offset-end] (fasta-index/get-span fai name (dec start) end)]
         (->> (concat (repeat (max 0 (- 1 start)) \N)
                        (read-sequence-with-offset rdr offset-start offset-end)
                        (repeat (max 0 (- end (:len header))) \N))
-             (apply str))))))
+             (apply str))))
+    (throw (Exception. "FASTA index not found"))))
 
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."

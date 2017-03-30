@@ -1,12 +1,14 @@
 (ns cljam.cigar
   "Parser of CIGAR strings."
-  (:import [java.nio ByteBuffer ByteOrder]))
+  #?(:clj (:import [java.nio ByteBuffer ByteOrder])))
 
 (defn parse
   "Parses CIGAR string, returning a sequence of lengths and operations."
   [^String s]
-  (for [[_ n op] (re-seq #"([0-9]*)([MIDNSHP=X])" s)]
-    [(Integer/parseInt n) (first op)]))
+  #?(:clj (for [[_ n op] (re-seq #"([0-9]*)([MIDNSHP=X])" s)]
+           [(Integer/parseInt n) (first op)])
+     :cljs (for [[_ n op] (re-seq #"([0-9]*)([MIDNSHP=X])" s)]
+           [(js/parseInt n) (first op)])))
 
 (defn simplify
   "Merge contiguous same operations of parsed CIGAR."
@@ -69,28 +71,33 @@
     (byte 7)
     (byte 8)})
 
-(defn- count-ref-bytes
+
+(defn- count-ref-bytes ;; TODO: cljs
   [cigar-bytes]
-  (let [buf (ByteBuffer/wrap cigar-bytes)]
-    (.order buf ByteOrder/LITTLE_ENDIAN)
-    (loop [len 0]
-      (if (.hasRemaining buf)
-        (let [b (.getInt buf)
-              op (bit-and b 0xF)
-              n (bit-shift-right b 4)]
-          (if (bases-op-bytes op)
-            (recur (+ len n))
-            (recur len)))
-        len))))
+  #?(:clj (let [buf (ByteBuffer/wrap cigar-bytes)]
+            (.order buf ByteOrder/LITTLE_ENDIAN)
+            (loop [len 0]
+              (if (.hasRemaining buf)
+                (let [b (.getInt buf)
+                      op (bit-and b 0xF)
+                      n (bit-shift-right b 4)]
+                  (if (bases-op-bytes op)
+                    (recur (+ len n))
+                    (recur len)))
+                len)))))
+
 
 (defmulti count-ref
   "Returns length of reference bases."
-  class)
+  (fn [s]
+    #?(:clj (if (= (class s) String) "string" "byte")
+       :cljs  (if (string? s) "string" "byte"))))
 
-(defmethod count-ref String
+(defmethod count-ref "string"
   [s]
   (count-ref-str s))
 
-(defmethod count-ref (Class/forName "[B")
+(defmethod count-ref "byte"
   [b]
   (count-ref-bytes b))
+

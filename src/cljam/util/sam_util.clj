@@ -350,12 +350,15 @@
       (conj (vec bases) (compressed-base->char-high (nth compressed-bases (+ (/ length 2) compressed-offset))))
       bases)))
 
-(defn normalize-bases [^bytes bases]
-  (map-indexed (fn [idx _]
-                 (aset bases idx ^byte (cstr/upper-case (nth bases idx)))
-                 (if (= (nth bases idx) \.)
-                   (aset bases idx (byte \N))))
-               bases)
+(defn normalize-bases
+  "Converts bases in given buffer to upper-case. Also converts '.' to 'N'.
+   Bases are represented as buffer of ASCII characters."
+  ^bytes [^bytes bases]
+  (dotimes [i (alength bases)]
+    (let [b (aget bases i)]
+      (cond
+        (= b (byte \.)) (aset-byte bases i (byte \N))
+        (<= (byte \a) b (byte \z)) (aset-byte bases i (- b 32))))) ;; Upper-case ASCII offset
   bases)
 
 ;;; fastq and phred

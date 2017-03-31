@@ -36,51 +36,9 @@
       (BAMReader. (.getAbsolutePath (file f))
                   header refs rdr data-rdr index-delay))))
 
-(extend-type BAMReader
-  cljam.io/ISAMReader
-  (reader-path [this]
-    (.f this))
-  (read-header [this]
-    (.header this))
-  (read-refs [this]
-    (.refs this))
-  (read-alignments
-    ([this]
-       (reader/read-alignments-sequentially* this :deep))
-    ([this {:keys [chr start end depth]
-            :or {chr nil
-                 start -1 end -1
-                 depth :deep}}]
-       (if (nil? chr)
-         (reader/read-alignments-sequentially* this depth)
-         (reader/read-alignments* this chr start end depth))))
-  (read-blocks
-    ([this]
-       (reader/read-blocks-sequentially* this :normal))
-    ([this {:keys [chr start end mode]
-            :or {chr nil
-                 start -1 end -1
-                 mode :normal}}]
-     (if (nil? chr)
-       (reader/read-blocks-sequentially* this mode)
-       (reader/read-blocks* this chr start end)))))
-
 ;; Writing
 ;; -------
 
 (defn ^BAMWriter writer [f]
   (BAMWriter. (.getAbsolutePath (file f))
               (DataOutputStream. (BGZFOutputStream. (file f)))))
-
-(extend-type BAMWriter
-  cljam.io/ISAMWriter
-  (writer-path [this]
-    (.f this))
-  (write-header [this header]
-    (writer/write-header* this header))
-  (write-refs [this header]
-    (writer/write-refs* this header))
-  (write-alignments [this alignments header]
-    (writer/write-alignments* this alignments header))
-  (write-blocks [this blocks]
-    (writer/write-blocks* this blocks)))

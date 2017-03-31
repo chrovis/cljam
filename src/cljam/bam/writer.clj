@@ -4,7 +4,7 @@
                    [lsb :as lsb]
                    [util :refer [string->bytes ubyte]])
             [cljam.util.sam-util :refer [reg->bin normalize-bases fastq->phred
-                                         bytes->compressed-bases make-refs ref-id
+                                         str->compressed-bases make-refs ref-id
                                          stringify-header]]
             [cljam.bam.common :refer [bam-magic fixed-block-size]])
   (:import [java.io DataOutputStream Closeable IOException EOFException]
@@ -76,7 +76,7 @@
   (encode-cigar (:cigar aln)))
 
 (defn- get-seq [sam-alignment]
-  (bytes->compressed-bases (normalize-bases (string->bytes (:seq sam-alignment)))))
+  (str->compressed-bases (:seq sam-alignment)))
 
 (defn- get-options-size [sam-alignment]
   (->> (map
@@ -104,7 +104,7 @@
        (reduce +)))
 
 (defn- get-block-size [aln]
-  (let [read-length (count (normalize-bases (string->bytes (:seq aln))))
+  (let [read-length (count (:seq aln))
         cigar-length (cgr/count-op (:cigar aln))]
     (+ fixed-block-size (count (:qname aln)) 1
        (* cigar-length 4)

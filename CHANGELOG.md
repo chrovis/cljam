@@ -6,10 +6,12 @@
 
 * 2bit-encoded reference reader. [#31](https://github.com/chrovis/cljam/pull/31)
 * Add functions for deduplicating paired-end BAM. [#32](https://github.com/chrovis/cljam/pull/32)
+* Add :ignore-index option to cljam.fasta/reader. [#34](https://github.com/chrovis/cljam/pull/34)
 
 ### Changed
 
 * Improve performance of FASTA indexing. [#30](https://github.com/chrovis/cljam/pull/30)
+* Improve performance of BAM sequence encoding. [#35](https://github.com/chrovis/cljam/pull/35)
 
 ### Fixed
 

@@ -153,7 +153,7 @@
                 (recur (rest left)))))
           (recur (rest left-spans)))))))
 
-(defn read-alignments*
+(defn- read-alignments*
   [^BAMReader rdr
    ^String chr ^Long start ^Long end
    deep-or-shallow]
@@ -183,7 +183,7 @@
       (read-alignments-first-only rdr spans window read-fn)
       (filter window candidates))))
 
-(defn read-alignments-sequentially*
+(defn- read-alignments-sequentially*
   [^BAMReader rdr deep-or-shallow]
   (let [read-aln-fn (case deep-or-shallow
                       :shallow light-read-alignment
@@ -196,7 +196,7 @@
                     (cons a (lazy-seq (read-fn* r refs)))))]
     (read-fn rdr (.refs rdr))))
 
-(defn read-blocks-sequentially*
+(defn- read-blocks-sequentially*
   [^BAMReader rdr mode]
   (let [read-block-fn (case mode
                         :normal read-alignment-block
@@ -208,7 +208,7 @@
                     (cons b (lazy-seq (read-fn* r refs)))))]
     (read-fn rdr (.refs rdr))))
 
-(defn read-blocks*
+(defn- read-blocks*
   [^BAMReader rdr
    ^String chr ^Long start ^Long end]
   (when (nil? @(.index-delay rdr))

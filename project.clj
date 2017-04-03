@@ -13,7 +13,12 @@
                  [bgzf4j "0.1.0"]
                  [com.climate/claypoole "1.1.4"]
                  [camel-snake-kebab "0.4.0"]]
-  :plugins [[lein-midje "3.2.1"]]
+  :plugins [[lein-midje "3.2.1"]
+            [lein-doo "0.1.7"]]
+  :cljsbuild {:builds {:test {:source-paths ["src/cljc" "test"]
+                              :compiler {:output-to "app_test/js/main.js"
+                                         :optimizations :simple
+                                         }}}}
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.8.0"]
                                   [midje "1.8.3" :exclusions [slingshot]]
                                   [cavia "0.3.1"]]
@@ -28,6 +33,8 @@
                                   [midje "1.9.0-alpha6"]]}
              :uberjar {:main cljam.main
                        :aot :all}}
+  :clean-targets ["app_test/js/main.js"]
+  :doo {:paths {:phantom "node_modules/.bin/phantomjs"}}
   :aliases {"docs" ["do" "codox" ["marg" "-d" "target/literate" "-m"]]}
   :bin {:name "cljam"}
   :codox {:namespaces [#"^cljam\.(?!cli)(?!lsb)(?!main)(?!util)[^\.]+$"]

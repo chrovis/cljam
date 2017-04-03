@@ -13,3 +13,6 @@ pom.xml.asc
 .nrepl-port
 /.cavia
 /docs
+/app_test
+/out
+/node_modules

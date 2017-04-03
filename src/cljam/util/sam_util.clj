@@ -161,170 +161,52 @@
         end (if (<= tmp-end 0) (inc beg) tmp-end)]
    (reg->bin beg end)))
 
-(def compressed-bases-low
-  "Representation of bases for when in low-order nybble."
-  {:eq (ubyte 0x0)
-   :a  (ubyte 0x1)
-   :c  (ubyte 0x2)
-   :g  (ubyte 0x4)
-   :t  (ubyte 0x8)
-   :n  (ubyte 0xf)
-   :m  (ubyte 0x3)
-   :r  (ubyte 0x5)
-   :s  (ubyte 0x6)
-   :v  (ubyte 0x7)
-   :w  (ubyte 0x9)
-   :y  (ubyte 0xa)
-   :h  (ubyte 0xb)
-   :k  (ubyte 0xc)
-   :d  (ubyte 0xd)
-   :b  (ubyte 0xe)})
+(def ^:private ^:const nibble-to-base-table
+  ;; Index: nibble of a compressed base.
+  ;; Value: base for the nibble.
+  "=ACMGRSVTWYHKDBN")
 
-(def compressed-bases-high
-  "Representation of bases for when in high-order nybble."
-  {:eq (ubyte 0x0)
-   :a  (ubyte 0x10)
-   :c  (ubyte 0x20)
-   :g  (ubyte 0x40)
-   :t  (ubyte 0x80)
-   :n  (ubyte 0xf0)
-   :m  (ubyte 0x30)
-   :r  (ubyte 0x50)
-   :s  (ubyte 0x60)
-   :v  (ubyte 0x70)
-   :w  (ubyte 0x90)
-   :y  (ubyte 0xa0)
-   :h  (ubyte 0xb0)
-   :k  (ubyte 0xc0)
-   :d  (ubyte 0xd0)
-   :b  (ubyte 0xe0)})
+(def ^:private two-bytes-to-compressed-bases-table
+  ;; Index: two bases (A,C) => ASCII (65,67) => 2r 1000001 1000011 => 8387
+  ;; Value: two bases (A,C) => nibbles (1,2) => 2r 0001 0010 => 18
+  (let [ba (byte-array (bit-shift-left 1 14))
+        byte-to-nibble-table (byte-array (bit-shift-left 1 7) (byte 15))]
+    (doseq [[i c] (map vector (range) nibble-to-base-table)]
+      (aset-byte byte-to-nibble-table (int c) i)
+      (aset-byte byte-to-nibble-table (int (.charAt (cstr/lower-case c) 0)) i))
+    (dotimes [i (alength ba)]
+      (let [u (unchecked-byte (bit-and 0x7F (unsigned-bit-shift-right i 7)))
+            l (unchecked-byte (bit-and 0x7F i))]
+        (->> (aget byte-to-nibble-table l)
+             (bit-or (bit-shift-left (aget byte-to-nibble-table u) 4))
+             unchecked-byte
+             (aset-byte ba i))))
+    ba))
 
-(defn- unfold-ksv-map [ksv-map]
-  (into {} (mapcat (fn [[ks v]]
-                     (map (fn [k] [k v]) ks))
-                   ksv-map)))
+(defn str->compressed-bases
+  "Creates a buffer consists of compressed bases from ASCII sequence."
+  ^bytes [^String s]
+  (let [b (.getBytes s)
+        length (alength b)
+        result-len (quot (inc length) 2)
+        in-bb (ByteBuffer/wrap b)
+        out-bb (ByteBuffer/allocate result-len)]
+    (dotimes [i result-len]
+      (let [u (.get in-bb)
+            l (byte (if (.hasRemaining in-bb) (.get in-bb) \=))]
+        (->> (bit-and 0x7F l)
+             (bit-or (bit-shift-left (bit-and 0x7F u) 7))
+             (aget ^bytes two-bytes-to-compressed-bases-table)
+             (.put out-bb))))
+    (.array out-bb)))
 
-(def ^:private _char->compressed-base-low
-  (unfold-ksv-map {[\=]       (:eq compressed-bases-low)
-                   [\a \A]    (:a  compressed-bases-low)
-                   [\c \C]    (:c  compressed-bases-low)
-                   [\g \G]    (:g  compressed-bases-low)
-                   [\t \T]    (:t  compressed-bases-low)
-                   [\n \N \.] (:n  compressed-bases-low)
-                   [\m \M]    (:m  compressed-bases-low)
-                   [\r \R]    (:r  compressed-bases-low)
-                   [\s \S]    (:s  compressed-bases-low)
-                   [\v \V]    (:v  compressed-bases-low)
-                   [\w \W]    (:w  compressed-bases-low)
-                   [\y \Y]    (:y  compressed-bases-low)
-                   [\h \H]    (:h  compressed-bases-low)
-                   [\k \K]    (:k  compressed-bases-low)
-                   [\d \D]    (:d  compressed-bases-low)
-                   [\b \B]    (:b  compressed-bases-low)}))
-
-(defn char->compressed-base-low
-  "Convert from a char to BAM nybble representation of a base in low-order nybble."
-  [base]
-  (or
-   (_char->compressed-base-low base)
-   (throw (IllegalArgumentException. (str "Bad type: " base)))))
-
-(def ^:private _char->compressed-base-high
-  (unfold-ksv-map {[\=]       (:eq compressed-bases-high)
-                   [\a \A]    (:a  compressed-bases-high)
-                   [\c \C]    (:c  compressed-bases-high)
-                   [\g \G]    (:g  compressed-bases-high)
-                   [\t \T]    (:t  compressed-bases-high)
-                   [\n \N \.] (:n  compressed-bases-high)
-                   [\m \M]    (:m  compressed-bases-high)
-                   [\r \R]    (:r  compressed-bases-high)
-                   [\s \S]    (:s  compressed-bases-high)
-                   [\v \V]    (:v  compressed-bases-high)
-                   [\w \W]    (:w  compressed-bases-high)
-                   [\y \Y]    (:y  compressed-bases-high)
-                   [\h \H]    (:h  compressed-bases-high)
-                   [\k \K]    (:k  compressed-bases-high)
-                   [\d \D]    (:d  compressed-bases-high)
-                   [\b \B]    (:b  compressed-bases-high)}))
-
-(defn char->compressed-base-high
-  "Convert from a char to BAM nybble representation of a base in high-order nybble."
-  [base]
-  (or
-   (_char->compressed-base-high base)
-   (throw (IllegalArgumentException. (str "Bad type: " base)))))
-
-(def ^:private _compressed-base->char-low
-  {(:eq compressed-bases-low) \=
-   (:a  compressed-bases-low) \A
-   (:c  compressed-bases-low) \C
-   (:g  compressed-bases-low) \G
-   (:t  compressed-bases-low) \T
-   (:n  compressed-bases-low) \N
-   (:m  compressed-bases-low) \M
-   (:r  compressed-bases-low) \R
-   (:s  compressed-bases-low) \S
-   (:v  compressed-bases-low) \V
-   (:w  compressed-bases-low) \W
-   (:y  compressed-bases-low) \Y
-   (:h  compressed-bases-low) \H
-   (:k  compressed-bases-low) \K
-   (:d  compressed-bases-low) \D
-   (:b  compressed-bases-low) \B})
-
-(defn compressed-base->char-low
-  "Convert from BAM nybble representation of a base in low-order nybble to a char."
-  [base]
-  (or
-   (_compressed-base->char-low (ubyte (bit-and base 0xf)))
-   (throw (IllegalArgumentException. (str "Bad type: " base)))))
-
-(def ^:private _compressed-base->char-high
-  {(:eq compressed-bases-high) \=
-   (:a  compressed-bases-high) \A
-   (:c  compressed-bases-high) \C
-   (:g  compressed-bases-high) \G
-   (:t  compressed-bases-high) \T
-   (:n  compressed-bases-high) \N
-   (:m  compressed-bases-high) \M
-   (:r  compressed-bases-high) \R
-   (:s  compressed-bases-high) \S
-   (:v  compressed-bases-high) \V
-   (:w  compressed-bases-high) \W
-   (:y  compressed-bases-high) \Y
-   (:h  compressed-bases-high) \H
-   (:k  compressed-bases-high) \K
-   (:d  compressed-bases-high) \D
-   (:b  compressed-bases-high) \B})
-
-(defn compressed-base->char-high
-  "Convert from BAM nybble representation of a base in high-order nybble to a char."
-  [base]
-  (or
-   (_compressed-base->char-high (ubyte (bit-and base 0xf0)))
-   (throw (IllegalArgumentException. (str "Bad type: " base)))))
-
-(defn bytes->compressed-bases [^bytes read-bases]
-  (let [rlen (alength read-bases)
-        result-len (quot (inc rlen) 2)
-        result (byte-array result-len)]
-    (loop [i 0]
-      (if (<= result-len i)
-        result
-        (let [h-idx (* 2 i)
-              h (char->compressed-base-high (char (aget read-bases h-idx)))
-              l-idx (inc h-idx)
-              l (if (<= rlen l-idx)
-                  0
-                  (char->compressed-base-low (char (aget read-bases l-idx))))]
-          (aset-byte result i (byte (bit-or h l)))
-          (recur (inc i)))))))
-
-(def ^:const ^:private seq-byte-table
-  (let [nibble-table "=ACMGRSVTWYHKDBN"]
-    (->> (for [i nibble-table j nibble-table] [i j])
-         (apply concat)
-         cstr/join)))
+(def ^:const ^:private compressed-bases-to-bases-table
+  ;; Index: compressed base n containing two nibbles => 2n
+  ;; Value 2n+0: base for upper nibble of n.
+  ;; Value 2n+1: base for lower nibble of n.
+  (->> (for [i nibble-to-base-table j nibble-to-base-table] [i j])
+       (apply concat)
+       cstr/join))
 
 (defn compressed-bases->str
   "Decode a sequence from byte array to String."
@@ -334,21 +216,11 @@
     (.position bb compressed-offset)
     (dotimes [_ (quot (inc length) 2)]
       (let [i (-> (.get bb) (bit-and 0xff) (* 2))]
-        (.put cb (.charAt seq-byte-table i))
-        (.put cb (.charAt seq-byte-table (inc i)))))
+        (.put cb (.charAt compressed-bases-to-bases-table i))
+        (.put cb (.charAt compressed-bases-to-bases-table (inc i)))))
     (.limit cb length)
     (.flip cb)
     (.toString cb)))
-
-(defn compressed-bases->chars [length compressed-bases compressed-offset]
-  (let [bases (apply concat
-                     (for [i (range 1 length) :when (odd? i)]
-                       (let [cidx (+ (/ i 2) compressed-offset)]
-                         [(compressed-base->char-high (nth compressed-bases cidx))
-                          (compressed-base->char-low  (nth compressed-bases cidx))])))]
-    (if (odd? length)
-      (conj (vec bases) (compressed-base->char-high (nth compressed-bases (+ (/ length 2) compressed-offset))))
-      bases)))
 
 (defn normalize-bases
   "Converts bases in given buffer to upper-case. Also converts '.' to 'N'.
@@ -368,12 +240,13 @@
   {:pre [(<= 33 (int ch) 126)]}
   (byte (- (int ch) 33)))
 
-(defn fastq->phred [^String fastq]
-  (let [length (count fastq)
-        result (byte-array length)]
-    (dotimes [i length]
-      (aset-byte result i (fastq-char->phred-byte (.charAt fastq i))))
-    result))
+(defn fastq->phred ^bytes [^String fastq]
+  (let [b (.getBytes fastq)
+        in-bb (ByteBuffer/wrap b)
+        out-bb (ByteBuffer/allocate (alength b))]
+    (while (.hasRemaining in-bb)
+      (.put out-bb (byte (- (int (.get in-bb)) 33))))
+    (.array out-bb)))
 
 (defmulti phred->fastq class)
 

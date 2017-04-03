@@ -6,107 +6,49 @@
             [cljam.util.sam-util :as sam-util]
             [clojure.string :as cstr]))
 
-(tabular
- (fact "about char->compressed-base-high"
-   (sam-util/char->compressed-base-high ?base) => ?expected)
- ?base    ?expected
- \=       (util/ubyte 0x0)
-
- \a       (util/ubyte 0x10)
- \A       (util/ubyte 0x10)
-
- \c       (util/ubyte 0x20)
- \C       (util/ubyte 0x20)
-
- \g       (util/ubyte 0x40)
- \G       (util/ubyte 0x40)
-
- \t       (util/ubyte 0x80)
- \T       (util/ubyte 0x80)
-
- \n       (util/ubyte 0xf0)
- \N       (util/ubyte 0xf0)
- \.       (util/ubyte 0xf0)
-
- \m       (util/ubyte 0x30)
- \M       (util/ubyte 0x30)
-
- \r       (util/ubyte 0x50)
- \R       (util/ubyte 0x50)
-
- \s       (util/ubyte 0x60)
- \S       (util/ubyte 0x60)
-
- \v       (util/ubyte 0x70)
- \V       (util/ubyte 0x70)
-
- \w       (util/ubyte 0x90)
- \W       (util/ubyte 0x90)
-
- \y       (util/ubyte 0xa0)
- \Y       (util/ubyte 0xa0)
-
- \h       (util/ubyte 0xb0)
- \H       (util/ubyte 0xb0)
-
- \k       (util/ubyte 0xc0)
- \K       (util/ubyte 0xc0)
-
- \d       (util/ubyte 0xd0)
- \D       (util/ubyte 0xd0)
-
- \b       (util/ubyte 0xe0)
- \B       (util/ubyte 0xe0))
-
-(tabular
- (fact "about compressed-base->char-low"
-   (sam-util/compressed-base->char-low ?base) => ?expected)
- ?base              ?expected
- (util/ubyte 0x0)   \=
- (util/ubyte 0x1)   \A
- (util/ubyte 0x2)   \C
- (util/ubyte 0x4)   \G
- (util/ubyte 0x8)   \T
- (util/ubyte 0xf)   \N
- (util/ubyte 0x3)   \M
- (util/ubyte 0x5)   \R
- (util/ubyte 0x6)   \S
- (util/ubyte 0x7)   \V
- (util/ubyte 0x9)   \W
- (util/ubyte 0xa)   \Y
- (util/ubyte 0xb)   \H
- (util/ubyte 0xc)   \K
- (util/ubyte 0xd)   \D
- (util/ubyte 0xe)   \B)
-
-(tabular
- (fact "about compressed-base->char-high"
-   (sam-util/compressed-base->char-high ?base) => ?expected)
- ?base               ?expected
- (util/ubyte 0x0)    \=
- (util/ubyte 0x10)   \A
- (util/ubyte 0x20)   \C
- (util/ubyte 0x40)   \G
- (util/ubyte 0x80)   \T
- (util/ubyte 0xf0)   \N
- (util/ubyte 0x30)   \M
- (util/ubyte 0x50)   \R
- (util/ubyte 0x60)   \S
- (util/ubyte 0x70)   \V
- (util/ubyte 0x90)   \W
- (util/ubyte 0xa0)   \Y
- (util/ubyte 0xb0)   \H
- (util/ubyte 0xc0)   \K
- (util/ubyte 0xd0)   \D
- (util/ubyte 0xe0)   \B)
-
 (def nibble-table "=ACMGRSVTWYHKDBN")
+
+(defn encode [^String s]
+  (->> (concat s [\=])
+       (partition 2)
+       (map (fn [[u l]]
+              (let [ui (.indexOf ^String nibble-table (cstr/upper-case u))
+                    li (.indexOf ^String nibble-table (cstr/upper-case l))
+                    uu (if-not (neg? ui) ui 15)
+                    ll (if-not (neg? li) li 15)]
+                (unchecked-byte (bit-or (bit-shift-left uu 4) (bit-and 0xff ll))))))))
+
+(tabular
+ (fact
+  "about str->compressed-bases"
+  (map #(bit-and 0xff %) (sam-util/str->compressed-bases ?str)) => ?expected
+  (map #(bit-and 0xff %) (sam-util/str->compressed-bases ?str)) => (map #(bit-and 0xff %) (encode ?str))
+  (map #(bit-and 0xff %) (sam-util/str->compressed-bases (cstr/lower-case ?str))) => ?expected)
+ ?str ?expected
+ "="    [0]
+ "=A"   [1]
+ "=C"   [2]
+ "=G"   [4]
+ "=T"   [8]
+ "=."   [15]
+ "A"    [16]
+ "C"    [32]
+ "G"    [64]
+ "T"    [128]
+ "."    [240]
+ "==A"  [0 16]
+ "===A" [0 1])
+
+(fact
+ "about str->compressed-bases"
+ (dotimes [_ 100]
+   (let [s (apply str (repeatedly (inc (rand-int 100)) #(rand-nth nibble-table)))]
+     (seq (sam-util/str->compressed-bases s)) => (encode s))))
 
 (tabular
  (fact
   "about compressed-bases->str"
   (let [ba (byte-array (mapv util/ubyte ?bases))]
-    (cstr/join (sam-util/compressed-bases->chars ?length ba ?offset)) => ?expected
     (sam-util/compressed-bases->str ?length ba ?offset) => ?expected))
  ?length  ?bases                                    ?offset  ?expected
  1        [0x00]                                    0        "="

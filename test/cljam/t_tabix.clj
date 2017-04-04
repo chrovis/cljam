@@ -1,26 +1,27 @@
 (ns cljam.t-tabix
-  (:require [midje.sweet :refer :all]
+  (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
             [cljam.tabix :as tbi]))
 
-(facts "about read-index"
-  (fact "done without errors"
-    (tbi/read-index test-tabix-file) => anything)
-  (let [index (tbi/read-index test-tabix-file)]
-    (fact "returns a map"
-      index => map?)
-    (fact "check the returning map's structure"
-      index => (just {:n-seq number?
-                      :preset number?
-                      :sc number?
-                      :bc number?
-                      :ec number?
-                      :meta number?
-                      :skip number?
-                      :seq vector?
-                      :bin-index vector?
-                      :linear-index vector?}))))
+(deftest about-read-index-done-without-errors
+  (is (not-throw? (tbi/read-index test-tabix-file))))
 
-(with-state-changes [(before :facts (prepare-cavia!))]
-  (fact "large file" :slow :heavy
-    (tbi/read-index test-large-tabix-file) => anything))
+(deftest about-read-index-returns-a-map
+  (is (map? (tbi/read-index test-tabix-file))))
+
+(deftest about-read-index-check-the-returning-maps-structure
+  (is (just-map? {:n-seq number?
+                  :preset number?
+                  :sc number?
+                  :bc number?
+                  :ec number?
+                  :meta number?
+                  :skip number?
+                  :seq vector?
+                  :bin-index vector?
+                  :linear-index vector?}
+                 (tbi/read-index test-tabix-file))))
+
+(deftest ^:slow ^:heavy large-file
+  (with-before-after {:before (prepare-cavia!)}
+    (is (not-throw? (tbi/read-index test-large-tabix-file)))))

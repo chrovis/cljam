@@ -6,6 +6,13 @@
             [cljam.util.sam-util :as sam-util]
             [clojure.string :as cstr]))
 
+(fact
+ "about parse-header"
+ (sam-util/parse-header "@HD	VN:1.3	SO:coordinate\n@SQ	SN:ref	LN:10\n@SQ	SN:ref2	LN:20\n@PG	ID:cljam	PN:cljam	VN:1.0	CL:java -jar cljam.jar")
+ => {:HD {:VN "1.3" :SO "coordinate"}
+     :SQ [{:SN "ref" :LN 10} {:SN "ref2" :LN 20}]
+     :PG [{:ID "cljam" :PN "cljam" :VN "1.0" :CL "java -jar cljam.jar"}]})
+
 (def nibble-table "=ACMGRSVTWYHKDBN")
 
 (defn encode [^String s]

@@ -11,29 +11,68 @@
 (defn- parse-header-keyvalues
   "e.g. \"LN:45 SN:ref\" -> {:LN 45, :SN \"ref\"}"
   [keyvalues]
-  (apply merge
-         (map (fn [kv]
-                (let [[k v] (cstr/split kv #":")]
-                  {(keyword k) (case k
-                                 "LN" (Integer/parseInt v)
-                                 "PI" (Integer/parseInt v)
-                                 v)}))
-              keyvalues)))
+  (into
+   {}
+   (map (fn [kv]
+          (let [[k v] (cstr/split kv #":")]
+            [(keyword k)
+             (case k
+               "LN" (Integer/parseInt v)
+               "PI" (Integer/parseInt v)
+               v)])))
+   keyvalues))
 
-(defn parse-header-line [line]
+(defn parse-header-line
+  "e.g. \"@SQ	SN:ref	LN:45\" => [:SQ {:SN \"ref\" :LN 45}]"
+  [line]
   (let [[typ & kvs] (cstr/split line #"\t")]
-    {(keyword (subs typ 1)) (if (= typ "@HD")
-                              (parse-header-keyvalues kvs)
-                              (vector (parse-header-keyvalues kvs)))}))
+    [(keyword (subs typ 1)) (parse-header-keyvalues kvs)]))
 
-(defn- parse-header* [col]
-  (when (seq col)
-    (merge-with #(vec (concat %1 %2)) (parse-header-line (first col)) (parse-header* (rest col)))))
+(defn- finalize-rf
+  "Wrap a reducing function with finalizing function."
+  [rf f]
+  (fn finalize-rf-inner
+    ([] (rf))
+    ([x] (f (rf x)))
+    ([x y] (rf x y))))
+
+(defn- into-rf
+  "Returns a reducing function which returns a new coll with elements conjoined."
+  [to]
+  (if (instance? clojure.lang.IEditableCollection to)
+      (fn into-rf-editable
+        ([] (transient to))
+        ([x] (with-meta (persistent! x) (meta to)))
+        ([r x] (conj! r x)))
+      (fn into-rf-non-editable
+        ([] to)
+        ([x] x)
+        ([r x] (conj r x)))))
+
+(defn- group-by-rf
+  "Returns a reducing function acts like `group-by`.
+  Second argument `rf` is a reducing function appliede to each group. Default is (into-rf [])."
+  ([keyfn] (group-by-rf keyfn (into-rf [])))
+  ([keyfn rf]
+   (fn group-by-rf-inner
+     ([] (transient {}))
+     ([x] (into {} (map (fn group-by-rf-finalize [[k v]] [k (rf v)])) (persistent! x)))
+     ([x y] (let [k (keyfn y)]
+              (if-let [old (get x k)]
+                (assoc! x k (rf old y))
+                (assoc! x k (rf (rf) y))))))))
+
+(def into-header
+  (-> (group-by-rf first ((map second) (into-rf [])))
+      (finalize-rf (fn [m] (if-let [hd (:HD m)] (update m :HD first) m)))))
 
 (defn parse-header
   "Parse a header string, returning a map of the header."
   [s]
-  (parse-header* (cstr/split s #"\n")))
+  (->> (cstr/split-lines s)
+       (transduce
+        (map parse-header-line)
+        into-header)))
 
 (defn- parse-tag-single [val-type val]
   (case val-type

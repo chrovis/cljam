@@ -3,8 +3,7 @@
   (:require [clojure.java.io :refer [file]]
             [clojure.tools.logging :as logging]
             [cljam.util.sam-util :refer [make-refs
-                                         parse-alignment
-                                         parse-header-line]])
+                                         parse-alignment] :as sam-util])
   (:import [java.io BufferedReader Closeable]))
 
 ;;; reader
@@ -48,9 +47,12 @@
        (read-blocks* this))))
 
 (defn- read-header* [^BufferedReader rdr]
-  (when-let [line (.readLine rdr)]
-    (if (= (first line) \@)
-      (merge-with #(vec (concat %1 %2)) (parse-header-line line) (read-header* rdr)))))
+  (->> (line-seq rdr)
+       (transduce
+        (comp
+         (take-while (fn [line] (= (first line) \@)))
+         (map sam-util/parse-header-line))
+        sam-util/into-header)))
 
 (defn reader [f]
   (let [header (with-open [r (clojure.java.io/reader f)]

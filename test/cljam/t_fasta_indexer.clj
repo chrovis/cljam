@@ -1,25 +1,25 @@
 (ns cljam.t-fasta-indexer
   "Tests for cljam.fasta-indexer."
-  (:require [clojure.java.io :as io]
+  (:require [clojure.test :refer :all]
+            [clojure.java.io :as io]
             [me.raynes.fs :as fs]
-            [midje.sweet :refer :all]
             [cljam.t-common :refer :all]
             [cljam.fasta-indexer :as fai]))
 
 (def temp-fa-file (str temp-dir "/test.fa"))
 
-(with-state-changes [(before :facts (do (prepare-cache!)
-                                        (fs/copy test-fa-file temp-fa-file)))
-                     (after :facts (clean-cache!))]
-  (fact "about FASTA indexer"
-    (fai/create-index temp-fa-file (str temp-fa-file ".fai")) => anything
-    (fs/exists? (str temp-fa-file ".fai")) => truthy
-    (same-file? (str temp-fa-file ".fai") test-fai-file) => truthy))
+(deftest about-fasta-indexer
+  (with-before-after {:before (do (prepare-cache!)
+                                  (fs/copy test-fa-file temp-fa-file))
+                      :after (clean-cache!)}
+    (is (not-throw? (fai/create-index temp-fa-file (str temp-fa-file ".fai"))))
+    (is (fs/exists? (str temp-fa-file ".fai")))
+    (is (same-file? (str temp-fa-file ".fai") test-fai-file))))
 
-(with-state-changes [(before :facts (do (prepare-cache!)
-                                        (fs/copy medium-fa-file temp-fa-file)))
-                     (after :facts (clean-cache!))]
-  (fact "about FASTA indexer (medium file)" :slow
-    (fai/create-index temp-fa-file (str temp-fa-file ".fai")) => anything
-    (fs/exists? (str temp-fa-file ".fai")) => truthy
-    (same-file? (str temp-fa-file ".fai") medium-fai-file) => truthy))
+(deftest ^:slow about-fasta-indexer-medium-file
+  (with-before-after {:before (do (prepare-cache!)
+                                  (fs/copy medium-fa-file temp-fa-file))
+                      :after (clean-cache!)}
+    (is (not-throw? (fai/create-index temp-fa-file (str temp-fa-file ".fai"))))
+    (is (fs/exists? (str temp-fa-file ".fai")))
+    (is (same-file? (str temp-fa-file ".fai") medium-fai-file))))

@@ -1,15 +1,14 @@
 (ns cljam.t-util
   "Tests for cljam.util."
-  (:require [midje.sweet :refer :all]
+  (:require [clojure.test :refer :all]
             [cljam.util :as util]))
 
-(tabular
- (fact "about ubyte"
-   (util/ubyte ?n) => ?expected)
- ?n   ?expected
- 0    (byte 0)
- 127  (byte 127)
- 128  (byte -128)
- 255  (byte -1)
- -1   (throws AssertionError)
- 256  (throws AssertionError))
+(deftest ubyte
+  (are [?n ?expected] (= (util/ubyte ?n) ?expected)
+    0    (byte 0)
+    127  (byte 127)
+    128  (byte -128)
+    255  (byte -1))
+  (are [?n] (thrown? AssertionError (util/ubyte ?n))
+    -1
+    256))

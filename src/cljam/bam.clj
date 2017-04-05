@@ -9,6 +9,11 @@
   [f & option]
   (bam-core/reader f option))
 
+(defn ^BAMReader clone-reader
+  "Clones bam reader sharing persistent objects."
+  [r]
+  (bam-core/clone-reader r))
+
 (defn ^BAMWriter writer
   "Returns BAM file writer of f."
   [f]

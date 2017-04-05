@@ -12,7 +12,7 @@
 ;; BAMReader
 ;; ---------
 
-(deftype BAMReader [f header refs reader data-reader index-delay]
+(deftype BAMReader [f header refs reader data-reader index-delay start-pos]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this))))

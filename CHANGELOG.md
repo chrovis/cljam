@@ -1,6 +1,6 @@
 # Change Log
 
-## [Unreleased]
+## [0.2.1] - 2017-04-06
 
 ### Added
 
@@ -16,6 +16,7 @@
 ### Fixed
 
 * Fix cider-refresh error. [#33](https://github.com/chrovis/cljam/pull/33)
+* Fix StackOverflowError in parse-header of SAM/BAM files. [#38](https://github.com/chrovis/cljam/pull/38)
 
 ## [0.2.0] - 2017-02-20
 
@@ -100,7 +101,8 @@ represents the first three bases of chromosome 1.
 
 First release
 
-[Unreleased]: https://github.com/chrovis/cljam/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.2.1...HEAD
+[0.2.1]: https://github.com/chrovis/cljam/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/chrovis/cljam/compare/0.1.6...0.2.0
 [0.1.6]: https://github.com/chrovis/cljam/compare/0.1.5...0.1.6
 [0.1.5]: https://github.com/chrovis/cljam/compare/0.1.4...0.1.5

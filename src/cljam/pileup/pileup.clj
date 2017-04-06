@@ -10,16 +10,16 @@
 
 (defn- update-pile
   "Updates the pile vector from the alignment, returning the updated pile
-  vector. pile must be a vector."
+  vector. positions and pile must be vectors."
   [aln rname pile positions]
   (if (= rname (:rname aln))
     (let [win-beg (first positions)
-          win-end (last positions)
+          win-end (peek positions)
           left (max (:pos aln) win-beg)
           right (min (sam-util/get-end aln) win-end)]
       (loop [i left, pile* pile]
         (if (<= i right)
-          (recur (inc i) (update-in pile* [(- i win-beg)] inc))
+          (recur (inc i) (update pile* (- i win-beg) inc))
           pile*)))
     (vec (repeat (count pile) 0))))
 
@@ -47,10 +47,10 @@
   [start end n]
   (lazy-seq
    (letfn [(rpositions* [s e]
-             (loop [i e xs `()]
-               (if (>= i s)
-                 (recur (dec i) (cons i xs))
-                 xs)))]
+             (loop [i s xs (transient [])]
+               (if (<= i e)
+                 (recur (inc i) (conj! xs i))
+                 (persistent! xs))))]
      (when (<= start end)
        (cons (rpositions* start (min (+ start n -1) end))
              (grouped-rpositions (+ start n) end n))))))

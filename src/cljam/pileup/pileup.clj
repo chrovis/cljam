@@ -2,36 +2,27 @@
   "Provides simple pileup functions."
   (:require [com.climate.claypoole :as cp]
             [cljam.common :refer [get-exec-n-threads]]
+            [cljam.cigar :as cigar]
             [cljam.util.sam-util :as sam-util]
             [cljam.io :as io]
             [cljam.pileup.common :refer [window-width step center]]
             cljam.bam.reader)
   (:import cljam.bam.reader.BAMReader))
 
-(defn- update-pile
-  "Updates the pile vector from the alignment, returning the updated pile
-  vector. positions and pile must be vectors."
-  [aln rname pile positions]
-  (if (= rname (:rname aln))
-    (let [win-beg (first positions)
-          win-end (peek positions)
-          left (max (:pos aln) win-beg)
-          right (min (sam-util/get-end aln) win-end)]
-      (loop [i left, pile* pile]
-        (if (<= i right)
-          (recur (inc i) (update pile* (- i win-beg) inc))
-          pile*)))
-    (vec (repeat (count pile) 0))))
-
 (defn- count-for-positions
   "Piles the alignments up and counts them in the positions, returning it as a
   vector."
   [alns rname positions]
-  (loop [[aln & rest] alns
-         pile (vec (repeat (count positions) 0))]
-    (if aln
-      (recur rest (update-pile aln rname pile positions))
-      pile)))
+  (let [pile (long-array (count positions))
+        win-beg (first positions)
+        win-end (peek positions)]
+    (doseq [aln alns
+            :when (= rname (:rname aln))]
+      (let [pos (max (:pos aln) win-beg)
+            length (min (cigar/count-ref (:cigar-bytes (:meta aln))) (- win-end (dec pos)))]
+        (dotimes [i length]
+          (aset-long pile (dec (+ i pos)) (inc (aget pile (dec (+ i pos))))))))
+    (seq pile)))
 
 (defn rpositions
   "Returns a lazy seq of nums from start (inclusive) to end (inclusive)."
@@ -69,7 +60,7 @@
 
 (defn- pileup*
   "Internal pileup function."
-  [rdr rname rlength start end]
+  [rdr rname rlength start end & {:as opts}]
   (let [n-threads (get-exec-n-threads)
         count-fn (fn [xs]
                    (if (= n-threads 1)
@@ -78,7 +69,7 @@
                      (cp/pmap (dec n-threads)
                               (fn [[positions alns]]
                                 (count-for-positions alns rname positions)) xs)))]
-    (->> (grouped-rpositions start end step)
+    (->> (grouped-rpositions start end (or (:step opts) step))
          (map vec)
          (map (fn [positions]
                 (let [pos (if (= (count positions) step)
@@ -105,12 +96,14 @@
   supplied, piles whole range up."
   ([bam-reader rname]
      (pileup bam-reader rname -1 -1))
-  ([bam-reader rname start end]
+  ([bam-reader rname start end & opts]
      (try
        (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
-         (pileup* bam-reader
-                  rname (:len r)
-                  (if (neg? start) 1 start)
-                  (if (neg? end) (:len r) end)))
+         (apply pileup*
+                bam-reader
+                rname (:len r)
+                (if (neg? start) 1 start)
+                (if (neg? end) (:len r) end)
+                opts))
        (catch bgzf4j.BGZFException _
          (throw (RuntimeException. "Invalid file format"))))))

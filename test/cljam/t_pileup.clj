@@ -40,7 +40,22 @@
   (type (plp/pileup (bam/reader test-sorted-bam-file) "ref2" nil)) => clojure.lang.LazySeq)
 
 (fact "about pileup"
-  (plp/pileup (bam/reader test-sorted-bam-file) "ref" nil) => test-bam-pileup-ref)
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (plp/pileup r "ref" nil) => test-bam-pileup-ref)
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (plp/pileup r "ref" {:step 2 :n-threads 4}) => test-bam-pileup-ref)
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (plp/pileup r "ref" {:step 3 :n-threads 4}) => test-bam-pileup-ref)
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (plp/pileup r "ref" {:step 5 :n-threads 4}) => test-bam-pileup-ref)
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (plp/pileup r "ref" {:step 7 :n-threads 4}) => test-bam-pileup-ref)
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (plp/pileup r "ref" {:step 11 :n-threads 4}) => test-bam-pileup-ref)
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (plp/pileup r "ref" {:step 13 :n-threads 4}) => test-bam-pileup-ref)
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (plp/pileup r "ref" {:n-threads 4}) => test-bam-pileup-ref))
 
 (fact "about pileup"
   (plp/pileup (bam/reader test-sorted-bam-file) "ref2" nil) => test-bam-pileup-ref2)

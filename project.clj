@@ -13,7 +13,7 @@
                  [com.climate/claypoole "1.1.4"]
                  [camel-snake-kebab "0.4.0"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.8.0"]
-                                  [cavia "0.3.1"]]
+                                  [cavia "0.4.0"]]
                    :plugins [[lein-bin "0.3.5"]
                              [lein-codox "0.10.3"]
                              [lein-marginalia "0.9.0"]]

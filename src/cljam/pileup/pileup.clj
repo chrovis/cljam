@@ -4,9 +4,7 @@
             [cljam.common :refer [get-exec-n-threads]]
             [cljam.util.sam-util :as sam-util]
             [cljam.io :as io]
-            [cljam.pileup.common :refer [window-width step center]]
-            cljam.bam.reader)
-  (:import cljam.bam.reader.BAMReader))
+            [cljam.pileup.common :refer [window-width step center]]))
 
 (defn- update-pile
   "Updates the pile vector from the alignment, returning the updated pile

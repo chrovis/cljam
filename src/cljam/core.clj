@@ -2,12 +2,7 @@
   "Core features of cljam."
   (:require [cljam.sam :as sam]
             [cljam.bam :as bam]
-            [cljam.fasta :as fasta])
-  (:import cljam.sam.reader.SAMReader
-           cljam.sam.writer.SAMWriter
-           cljam.bam.reader.BAMReader
-           cljam.bam.writer.BAMWriter
-           cljam.fasta.reader.FASTAReader))
+            [cljam.fasta :as fasta]))
 
 (defn reader
   "Selects suitable reader from f's extension, returning the reader. This
@@ -30,20 +25,20 @@
 
 (defn sam-reader?
   [rdr]
-  (= (type rdr) cljam.sam.reader.SAMReader))
+  (= (str (type rdr)) "class cljam.sam.reader.SAMReader"))
 
 (defn sam-writer?
   [wtr]
-  (= (type wtr) cljam.sam.writer.SAMWriter))
+  (= (str (type wtr)) "class cljam.sam.writer.SAMWriter"))
 
 (defn bam-reader?
   [rdr]
-  (= (type rdr) cljam.bam.reader.BAMReader))
+  (= (str (type rdr)) "class cljam.bam.reader.BAMReader"))
 
 (defn bam-writer?
   [wtr]
-  (= (type wtr) cljam.bam.writer.BAMWriter))
+  (= (str (type wtr)) "class cljam.bam.writer.BAMWriter"))
 
 (defn fasta-reader?
   [rdr]
-  (= (type rdr) cljam.fasta.reader.FASTAReader))
+  (= (str (type rdr)) "class cljam.fasta.reader.FASTAReader"))

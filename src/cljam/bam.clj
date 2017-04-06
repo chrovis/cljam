@@ -1,6 +1,8 @@
 (ns cljam.bam
   "Read/Write a BAM format file."
-  (:require [cljam.bam.core :as bam-core])
+  (:require [cljam.bam.core :as bam-core]
+            [cljam.bam.reader]
+            [cljam.bam.writer])
   (:import cljam.bam.reader.BAMReader
            cljam.bam.writer.BAMWriter))
 

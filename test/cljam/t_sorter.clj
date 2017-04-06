@@ -109,7 +109,7 @@
     ;;        (slurp-bam-for-test tmp-queryname-sorted-bam-file))) ; TODO: future
     ))
 
-(deftest ^:slow about-sorting-medium-file
+(deftest-slow about-sorting-medium-file
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
     (is (thrown? Exception
@@ -136,7 +136,7 @@
     (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-file))))
     (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file))))))
 
-(deftest ^:slow ^:heavy about-sorting-large-file
+(deftest-slow-heavy about-sorting-large-file
   (with-before-after {:before (do (prepare-cavia!)
                                   (prepare-cache!))
                       :after (clean-cache!)}

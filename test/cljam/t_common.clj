@@ -1,10 +1,34 @@
 (ns cljam.t-common
-  (:use [clojure.java.io :only [file]])
   (:require [digest]
+            [clojure.java.io :refer [file]]
             [cljam.sam :as sam]
             [cljam.bam :as bam]
             [cljam.io :as io]
             [cavia.core :as cavia :refer [defprofile with-profile]]))
+
+(defn- _in-cloverage? []
+  (let [in? (try
+              (eval '(var cloverage.coverage/*covered*))
+              true
+              (catch Throwable _ nil))]
+    ;; (prn :debug 'in-cloverage? in?)
+    in?))
+
+(def ^:private in-cloverage? (memoize _in-cloverage?))
+
+(defn- expand-deftest [sym args bodies]
+  (if (in-cloverage?)
+    nil
+    `(clojure.test/deftest ~sym ~args ~@bodies)))
+
+(defmacro deftest-slow [sym args & bodies]
+  (expand-deftest (with-meta sym {:slow true}) args bodies))
+
+(defmacro deftest-heavy [sym args & bodies]
+  (expand-deftest (with-meta sym {:heavy true}) args bodies))
+
+(defmacro deftest-slow-heavy [sym args & bodies]
+  (expand-deftest (with-meta sym {:slow true :heavy true}) args bodies))
 
 (defprofile mycavia
   {:resources [{:id "large.bam"

@@ -29,6 +29,24 @@
   (with-profile mycavia
     (cavia/clean!)))
 
+(def not-throw? (constantly true))
+
+(defmacro with-before-after [params & bodies]
+  (assert (map? params))
+  (let [before-expr (:before params)
+        after-expr (:after params)]
+    `(do
+       ~before-expr
+       (try
+         ~@bodies
+         (finally ~after-expr)))))
+
+(defn just-map? [checker-map target-map]
+  (when (= (set (keys checker-map)) (set (keys target-map)))
+    (every? (fn [[k pred]]
+              (pred (get target-map k)))
+            checker-map)))
+
 ;;; slurp (for test)
 (defn slurp-sam-for-test [f]
   (with-open [r (sam/reader f)]

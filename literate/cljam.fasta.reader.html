@@ -2948,19 +2948,21 @@ net.brehaut.ClojureTools = (function (SH) {
         cstr/upper-case)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-whole-sequence
   [^FASTAReader rdr name]
-  (when-let [fai (.index rdr)]
+  (if-let [fai (.index rdr)]
     (let [header (fasta-index/get-header fai name)
           [offset-start offset-end] (fasta-index/get-span fai name 0 (:len header))]
-      (read-sequence-with-offset rdr offset-start offset-end))))</pre></td></tr><tr><td class="docs">
+      (read-sequence-with-offset rdr offset-start offset-end))
+    (throw (Exception. &quot;FASTA index not found&quot;))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-sequence
   [^FASTAReader rdr name start end]
-  (when-let [fai (.index rdr)]
+  (if-let [fai (.index rdr)]
     (let [header (fasta-index/get-header fai name)]
       (when-let [[offset-start offset-end] (fasta-index/get-span fai name (dec start) end)]
         (-&gt;&gt; (concat (repeat (max 0 (- 1 start)) \N)
                        (read-sequence-with-offset rdr offset-start offset-end)
                        (repeat (max 0 (- end (:len header))) \N))
-             (apply str))))))</pre></td></tr><tr><td class="docs"><p>Reads FASTA sequence data, returning its information as a lazy sequence.</p>
+             (apply str))))
+    (throw (Exception. &quot;FASTA index not found&quot;))))</pre></td></tr><tr><td class="docs"><p>Reads FASTA sequence data, returning its information as a lazy sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read
   [^FASTAReader rdr]
   (let [r ^RandomAccessFile (.reader rdr)]

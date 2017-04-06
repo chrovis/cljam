@@ -2869,7 +2869,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.lsb
   (:refer-clojure :exclude [read-string])
   (:require [cljam.util :refer [string-&gt;bytes bytes-&gt;string]])
-  (:import [java.io DataInputStream DataOutputStream EOFException]
+  (:import [java.io DataInputStream DataOutputStream EOFException RandomAccessFile InputStream]
            [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs"><p>Generates a new <code>java.nio.ByteBuffer</code> instance with little-endian byte order.
   The default buffer size is 8.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^ByteBuffer gen-byte-buffer
@@ -2882,27 +2882,28 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defprotocol Skippable
   (skip [this n] &quot;Skip over n bytes of data, discarding the skipped bytes.&quot;))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(extend-protocol Skippable
-  DataInputStream
-  (skip [^DataInputStream rdr n]
-    (.skipBytes rdr n)
-    nil)
+  InputStream
+  (skip [^DataInput rdr n]
+    (.skip rdr n))
   ByteBuffer
   (skip [^ByteBuffer bb n]
-    (.position bb (+ (.position bb) n))
-    nil))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
+    (.position bb (+ (.position bb) n)))
+  RandomAccessFile
+  (skip [^RandomAccessFile raf n]
+    (.skipBytes raf n)))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Provides bytes reading feature. Note that this feature is implemented by
   Protocol instead of multimethods for performance.</p>
 </td><td class="codes"><pre class="brush: clojure">(defprotocol BytesReadble
   (read-bytes [this len] [this buffer offset len]
     &quot;Reads up to len bytes of data.&quot;))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(extend-protocol BytesReadble
-  DataInputStream
+  InputStream
   (read-bytes
-    ([^DataInputStream rdr l]
+    ([^InputStream rdr l]
        (let [ba (byte-array l)]
          (.read rdr ba 0 l)
          ba))
-    ([^DataInputStream rdr buffer offset l]
+    ([^InputStream rdr buffer offset l]
        (loop [total-read 0]
          (when (&lt; total-read l)
            (let [n (.read rdr buffer (+ offset total-read) (- l total-read))]
@@ -2916,7 +2917,15 @@ net.brehaut.ClojureTools = (function (SH) {
          (.get bb ba 0 len)
          ba))
     ([^ByteBuffer bb buffer offset len]
-       (.get bb buffer offset len))))</pre></td></tr><tr><td class="docs">
+     (.get bb buffer offset len)))
+  RandomAccessFile
+  (read-bytes
+    ([^RandomAccessFile raf len]
+     (let [ba (byte-array len)]
+       (.readFully raf ba)
+       ba))
+    ([^RandomAccessFile raf buffer offset len]
+     (.readFully raf buffer offset len))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-byte-buffer
   [rdr ^ByteBuffer bb l]
   {:pre (&lt;= l (.capacity bb))}

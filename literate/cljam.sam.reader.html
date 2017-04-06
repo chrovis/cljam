@@ -2871,8 +2871,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (:require [clojure.java.io :refer [file]]
             [clojure.tools.logging :as logging]
             [cljam.util.sam-util :refer [make-refs
-                                         parse-alignment
-                                         parse-header-line]])
+                                         parse-alignment] :as sam-util])
   (:import [java.io BufferedReader Closeable]))</pre></td></tr><tr><td class="docs"><p>reader</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype SAMReader [f header reader]
@@ -2910,9 +2909,12 @@ net.brehaut.ClojureTools = (function (SH) {
     ([this option]
        (read-blocks* this))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-header* [^BufferedReader rdr]
-  (when-let [line (.readLine rdr)]
-    (if (= (first line) \@)
-      (merge-with #(vec (concat %1 %2)) (parse-header-line line) (read-header* rdr)))))</pre></td></tr><tr><td class="docs">
+  (-&gt;&gt; (line-seq rdr)
+       (transduce
+        (comp
+         (take-while (fn [line] (= (first line) \@)))
+         (map sam-util/parse-header-line))
+        sam-util/into-header)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn reader [f]
   (let [header (with-open [r (clojure.java.io/reader f)]
                  (read-header* r))]

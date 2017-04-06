@@ -2870,10 +2870,13 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.fasta
   (:refer-clojure :exclude [read])
   (:require [cljam.fasta.core :as fa-core])
-  (:import cljam.fasta.reader.FASTAReader))</pre></td></tr><tr><td class="docs"><p>Returns FASTA file reader of f.</p>
+  (:import cljam.fasta.reader.FASTAReader))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.fasta.reader.FASTAReader of f with options.
+  The options:
+    :ignore-index - returns reader without index, default false.
+  Should be used inside with-open to ensure the Reader is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader reader
-  [f]
-  (fa-core/reader f))</pre></td></tr><tr><td class="docs">
+  [f &amp; options]
+  (fa-core/reader f options))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read
   [rdr]
   (fa-core/read rdr))</pre></td></tr><tr><td class="docs"><p>Returns headers as vector. Each element consists of name and offset.</p>

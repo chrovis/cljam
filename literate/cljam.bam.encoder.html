@@ -2872,7 +2872,7 @@ net.brehaut.ClojureTools = (function (SH) {
                    [lsb :as lsb]
                    [util :refer [string-&gt;bytes ubyte]])
             [cljam.util.sam-util :refer [reg-&gt;bin normalize-bases fastq-&gt;phred
-                                         bytes-&gt;compressed-bases make-refs ref-id
+                                         str-&gt;compressed-bases make-refs ref-id
                                          stringify-header]]
             [cljam.bam.common :refer [bam-magic fixed-block-size]])
   (:import [java.util Arrays]))</pre></td></tr><tr><td class="docs">
@@ -2917,7 +2917,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- get-cigar [aln]
   (encode-cigar (:cigar aln)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- get-seq [sam-alignment]
-  (bytes-&gt;compressed-bases (normalize-bases (string-&gt;bytes (:seq sam-alignment)))))</pre></td></tr><tr><td class="docs">
+  (str-&gt;compressed-bases (:seq sam-alignment)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- get-options-size [sam-alignment]
   (-&gt;&gt; (map
         (fn [op]
@@ -2943,7 +2943,7 @@ net.brehaut.ClojureTools = (function (SH) {
         (:options sam-alignment))
        (reduce +)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- get-block-size [aln]
-  (let [read-length (count (normalize-bases (string-&gt;bytes (:seq aln))))
+  (let [read-length (count (:seq aln))
         cigar-length (cgr/count-op (:cigar aln))]
     (+ fixed-block-size (count (:qname aln)) 1
        (* cigar-length 4)

@@ -138,6 +138,14 @@ To run heavy tests which uses remote large-size files,
 $ lein midje :filter heavy
 ```
 
+To get coverage, (but it is a half-day job)
+
+```console
+$ lein cloverage
+```
+
+And open `target/coverage/index.html`.
+
 ### Generating document
 
 cljam uses [Codox](https://github.com/weavejester/codox) for API reference and

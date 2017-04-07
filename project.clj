@@ -18,7 +18,8 @@
                                   [cavia "0.4.0"]]
                    :plugins [[lein-bin "0.3.5"]
                              [lein-codox "0.10.3"]
-                             [lein-marginalia "0.9.0"]]
+                             [lein-marginalia "0.9.0" :exclusions [org.clojure/clojure]]
+                             [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure]]]
                    :main ^:skip-aot cljam.main
                    :global-vars {*warn-on-reflection* true}}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}

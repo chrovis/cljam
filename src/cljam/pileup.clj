@@ -20,7 +20,7 @@
   ([bam-reader rname start end option]
    (let [option* (merge default-pileup-option option)]
      (binding [*n-threads* (:n-threads option*)]
-       (plp/pileup bam-reader rname start end)))))
+       (apply plp/pileup bam-reader rname start end (apply concat option*))))))
 
 (def mpileup mplp/pileup)
 

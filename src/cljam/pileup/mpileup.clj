@@ -8,8 +8,7 @@
             [cljam.io :as io]
             [cljam.fasta :as fa]
             [cljam.cigar :as cig]
-            [cljam.pileup.common :refer [window-width step center]]
-            [cljam.pileup.pileup :refer [rpositions]]))
+            [cljam.pileup.common :refer [window-width step center]]))
 
 (defn to-mpileup
   "Stringify mpileup sequence."

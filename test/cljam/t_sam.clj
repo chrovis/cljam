@@ -1,38 +1,38 @@
 (ns cljam.t-sam
-  (:use midje.sweet
-        cljam.t-common)
-  (:require [cljam.sam :as sam]
+  (:require [clojure.test :refer :all]
+            [cljam.t-common :refer :all]
+            [cljam.sam :as sam]
             [cljam.bam :as bam]
             [cljam.io :as io]))
 
 (def temp-file (str temp-dir "/test.sam"))
 
-(fact "about slurp-sam"
-  (slurp-sam-for-test test-sam-file) => test-sam)
+(deftest about-slurp-sam
+  (is (= (slurp-sam-for-test test-sam-file) test-sam)))
 
-(with-state-changes [(before :facts (prepare-cache!))
-                     (after  :facts (clean-cache!))]
-  (fact "about spit-sam"
-    (spit-sam-for-test temp-file test-sam) => anything
-    (slurp-sam-for-test temp-file) => test-sam))
+(deftest about-spit-sam
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (is (not-throw? (spit-sam-for-test temp-file test-sam)))
+    (is (= (slurp-sam-for-test temp-file) test-sam))))
 
-(with-state-changes [(before :facts (prepare-cache!))
-                     (after :facts (clean-cache!))]
-  (fact "about spit-sam (medium file)" :slow
-    (spit-sam-for-test
-      temp-file (slurp-bam-for-test medium-bam-file)) => anything))
+(deftest-slow about-spit-sam-medium-file
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (is (not-throw? (spit-sam-for-test temp-file
+                                       (slurp-bam-for-test medium-bam-file))))))
 
 ;; NB: Cannot spit large SAM (cause `java.lang.OutOfMemoryError`)
-;(with-state-changes [(before :facts (do (prepare-cavia!)
-;                                        (prepare-cache!)))
-;                     (after :facts (clean-cache!))]
-;  (fact "about spit-sam (large file)" :slow :heavy
-;    (spit-sam-for-test
-;      temp-file (slurp-bam-for-test large-bam-file)) => anything))
+;; (deftest-slow-heavy about-spit-sam-large-file
+;;   (with-before-after {:before (do (prepare-cavia!)
+;;                                   (prepare-cache!))
+;;                       :after (clean-cache!)}
+;;     (is (not-throw? (spit-sam-for-test temp-file
+;;                                        (slurp-bam-for-test large-bam-file))))))
 
-(with-state-changes [(before :facts (do (prepare-cache!)
-                                        (spit-sam-for-test temp-file test-sam)))
-                     (after  :facts (clean-cache!))]
-  (fact "about SAMReader"
+(deftest about-samreader
+  (with-before-after {:before (do (prepare-cache!)
+                                  (spit-sam-for-test temp-file test-sam))
+                      :after (clean-cache!)}
     (let [rdr (sam/reader temp-file)]
-      (io/read-refs rdr) => test-sam-refs)))
+      (is (= (io/read-refs rdr) test-sam-refs)))))

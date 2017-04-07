@@ -1,7 +1,7 @@
 (ns cljam.t-sorter
-  (:use midje.sweet
-        cljam.t-common)
-  (:require [cljam.sam :as sam]
+  (:require [clojure.test :refer :all]
+            [cljam.t-common :refer :all]
+            [cljam.sam :as sam]
             [cljam.bam :as bam]
             [cljam.sorter :as sorter]))
 
@@ -45,88 +45,111 @@
                   dst dst-wtr] (target-fn src dst))
       (with-open [src src-rdr] (target-fn src)))))
 
-(with-state-changes [(before :facts (do (prepare-cache!)
-                                        (prepare-shuffled-files!)))
-                     (after  :facts (clean-cache!))]
-  (fact "about sorting a sam by chromosomal positions"
+(deftest about-sorting-a-sam-by-chromosomal-positions
+  (with-before-after {:before (do (prepare-cache!)
+                                  (prepare-shuffled-files!))
+                      :after (clean-cache!)}
     ;; tests by test-sam-file and test-bam-file
-    (with-reader sorter/sort-by-pos test-sam-file tmp-coordinate-sorted-sam-file) => (throws Exception)
-    (with-reader sorter/sort-by-pos test-bam-file tmp-coordinate-sorted-bam-file) => nil?
-    (with-reader sorter/sort-by-qname test-sam-file tmp-queryname-sorted-sam-file) =future=> anything
-    (with-reader sorter/sort-by-qname test-bam-file tmp-queryname-sorted-bam-file) =future=> anything
-    (with-reader sorter/sorted-by? test-sam-file) => falsey
-    (with-reader sorter/sorted-by? test-bam-file) => falsey
-    (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file) => falsey
-    (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file) => truthy
-    (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file) =future=> truthy
-    (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file) =future=> truthy
-    (with-reader sorter/sort-order test-sam-file) => sorter/order-unknown
-    (with-reader sorter/sort-order test-bam-file) => sorter/order-unknown
-    (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file) => sorter/order-unknown
-    (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file) => sorter/order-coordinate
-    (with-reader sorter/sort-order tmp-queryname-sorted-sam-file) =future=> sorter/order-queryname
-    (with-reader sorter/sort-order tmp-queryname-sorted-bam-file) =future=> sorter/order-queryname
+    (is (thrown? Exception
+                 (with-reader sorter/sort-by-pos test-sam-file tmp-coordinate-sorted-sam-file)))
+    (is (nil? (with-reader sorter/sort-by-pos test-bam-file tmp-coordinate-sorted-bam-file)))
+    ;; (is (not-throw? (with-reader sorter/sort-by-qname test-sam-file tmp-queryname-sorted-sam-file))) ; TODO: future
+    ;; (is (not-throw? (with-reader sorter/sort-by-qname test-bam-file tmp-queryname-sorted-bam-file))) ; TODO: future
+    (is (not (with-reader sorter/sorted-by? test-sam-file)))
+    (is (not (with-reader sorter/sorted-by? test-bam-file)))
+    (is (not (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file)))
+    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file))
+    ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file)) ; TODO: future
+    ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file)) ; TODO: future
+    (is (= (with-reader sorter/sort-order test-sam-file) sorter/order-unknown))
+    (is (= (with-reader sorter/sort-order test-bam-file) sorter/order-unknown))
+    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file)
+           sorter/order-unknown))
+    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file)
+           sorter/order-coordinate))
+    ;; (is (= (with-reader sorter/sort-order tmp-queryname-sorted-sam-file)
+    ;;        sorter/order-queryname)) ; TODO: future
+    ;; (is (= (with-reader sorter/sort-order tmp-queryname-sorted-bam-file)
+    ;;        sorter/order-queryname)) ; TODO: future
     ;; tests by shuffled files (its may sorted by chance)
-    (with-reader sorter/sort-by-pos tmp-shuffled-sam-file tmp-coordinate-sorted-sam-file-2) => (throws Exception)
-    (with-reader sorter/sort-by-pos tmp-shuffled-bam-file tmp-coordinate-sorted-bam-file-2) => nil?
-    (with-reader sorter/sort-by-qname tmp-shuffled-sam-file tmp-coordinate-sorted-sam-file-2) =future=> anything
-    (with-reader sorter/sort-by-qname tmp-shuffled-bam-file tmp-coordinate-sorted-bam-file-2) =future=> anything
-    (with-reader sorter/sorted-by? tmp-shuffled-sam-file) => anything
-    (with-reader sorter/sorted-by? tmp-shuffled-bam-file) => anything
-    (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file-2) => falsey
-    (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file-2) => truthy
-    (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file-2) =future=> truthy
-    (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file-2) =future=> truthy
-    (with-reader sorter/sort-order tmp-shuffled-sam-file) => #(#{:queryname :coordinate :unsorted :unknown} %)
-    (with-reader sorter/sort-order tmp-shuffled-bam-file) => #(#{:queryname :coordinate :unsorted :unknown} %)
-    (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file-2) => sorter/order-unknown
-    (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file-2) => sorter/order-coordinate
-    (with-reader sorter/sort-order tmp-queryname-sorted-sam-file-2) =future=> sorter/order-queryname
-    (with-reader sorter/sort-order tmp-queryname-sorted-bam-file-2) =future=> sorter/order-queryname
+    (is (thrown? Exception
+                 (with-reader sorter/sort-by-pos tmp-shuffled-sam-file tmp-coordinate-sorted-sam-file-2)))
+    (is (nil? (with-reader sorter/sort-by-pos tmp-shuffled-bam-file tmp-coordinate-sorted-bam-file-2)))
+    ;; (is (not-throw? (with-reader sorter/sort-by-qname tmp-shuffled-sam-file tmp-coordinate-sorted-sam-file-2))) ; TODO: future
+    ;; (is (not-throw? (with-reader sorter/sort-by-qname tmp-shuffled-bam-file tmp-coordinate-sorted-bam-file-2))) ; TODO: future
+    (is (not-throw? (with-reader sorter/sorted-by? tmp-shuffled-sam-file)))
+    (is (not-throw? (with-reader sorter/sorted-by? tmp-shuffled-bam-file)))
+    (is (not (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file-2)))
+    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file-2))
+    ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file-2)) ; TODO: future
+    ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file-2)) ; TODO: future
+    (is (get #{:queryname :coordinate :unsorted :unknown}
+             (with-reader sorter/sort-order tmp-shuffled-sam-file)))
+    (is (get #{:queryname :coordinate :unsorted :unknown} 
+             (with-reader sorter/sort-order tmp-shuffled-bam-file)))
+    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file-2)
+           sorter/order-unknown))
+    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file-2)
+           sorter/order-coordinate))
+    ;; (is (= (with-reader sorter/sort-order tmp-queryname-sorted-sam-file-2)
+    ;;        sorter/order-queryname)) ; TODO: future
+    ;; (is (= (with-reader sorter/sort-order tmp-queryname-sorted-bam-file-2)
+    ;;        sorter/order-queryname)) ; TODO: future
     ;; check sorting order
-    (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-file-2) (slurp-sam-for-test tmp-coordinate-sorted-sam-file)) => anything
-    (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file-2) (slurp-bam-for-test tmp-coordinate-sorted-bam-file)) => anything
+    (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-file-2) (slurp-sam-for-test tmp-coordinate-sorted-sam-file))))
+    (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file-2) (slurp-bam-for-test tmp-coordinate-sorted-bam-file))))
     ;; compare generated files
-    (slurp-sam-for-test tmp-coordinate-sorted-sam-file-2) => (slurp-sam-for-test tmp-coordinate-sorted-sam-file)
-    (slurp-bam-for-test tmp-coordinate-sorted-bam-file-2) => (slurp-bam-for-test tmp-coordinate-sorted-bam-file)
-    (slurp-sam-for-test tmp-queryname-sorted-sam-file-2) =future=> (slurp-sam-for-test tmp-queryname-sorted-sam-file)
-    (slurp-bam-for-test tmp-queryname-sorted-bam-file-2) =future=> (slurp-bam-for-test tmp-queryname-sorted-bam-file)
+    (is (= (slurp-sam-for-test tmp-coordinate-sorted-sam-file-2)
+           (slurp-sam-for-test tmp-coordinate-sorted-sam-file)))
+    (is (= (slurp-bam-for-test tmp-coordinate-sorted-bam-file-2)
+           (slurp-bam-for-test tmp-coordinate-sorted-bam-file)))
+    ;; (is (= (slurp-sam-for-test tmp-queryname-sorted-sam-file-2)
+    ;;        (slurp-sam-for-test tmp-queryname-sorted-sam-file))) ; TODO: future
+    ;; (is (= (slurp-bam-for-test tmp-queryname-sorted-bam-file-2)
+    ;;        (slurp-bam-for-test tmp-queryname-sorted-bam-file))) ; TODO: future
     ))
 
-(with-state-changes [(before :facts (prepare-cache!))
-                     (after  :facts (clean-cache!))]
-  (fact "about sorting (medium file)" :slow
-    (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-sam-file) => (throws Exception)
-    (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-bam-file) => nil?
-    (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-sam-file) =future=> anything
-    (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-bam-file) =future=> anything
-    (with-reader sorter/sorted-by? medium-bam-file) => falsey
-    (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file) => falsey
-    (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file) => truthy
-    (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file) =future=> truthy
-    (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file) =future=> truthy
-    (with-reader sorter/sort-order medium-bam-file) => sorter/order-unknown
-    (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file) => sorter/order-unknown
-    (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file) => sorter/order-coordinate
-    (with-reader sorter/sort-order tmp-queryname-sorted-sam-file) =future=> sorter/order-queryname
-    (with-reader sorter/sort-order tmp-queryname-sorted-bam-file) =future=> sorter/order-queryname
+(deftest-slow about-sorting-medium-file
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (is (thrown? Exception
+                 (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-sam-file)))
+    (is (nil? (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-bam-file)))
+    ;; (is (not-throw? (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-sam-file))) ; TODO: future
+    ;; (is (not-throw? (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-bam-file))) ; TODO: future
+    (is (not (with-reader sorter/sorted-by? medium-bam-file)))
+    (is (not (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file)))
+    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file))
+    ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file)) ; TODO: future
+    ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file)) ; TODO: future
+    (is (= (with-reader sorter/sort-order medium-bam-file)
+           sorter/order-unknown))
+    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file)
+           sorter/order-unknown))
+    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file)
+           sorter/order-coordinate))
+    ;; (is (= (with-reader sorter/sort-order tmp-queryname-sorted-sam-file)
+    ;;        sorter/order-queryname)) ; TODO: future
+    ;; (is (= (with-reader sorter/sort-order tmp-queryname-sorted-bam-file)
+    ;;        sorter/order-queryname)) ; TODO: future
     ;; check sorting order
-    (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-file)) => anything
-    (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file)) => anything
-    ))
+    (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-file))))
+    (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file))))))
 
-(with-state-changes [(before :facts (do (prepare-cavia!)
-                                        (prepare-cache!)))
-                     (after  :facts (clean-cache!))]
-  (fact "about sorting (large file)" :slow :heavy
-    (with-reader sorter/sort-by-pos large-bam-file tmp-coordinate-sorted-bam-file) => nil?
-    (with-reader sorter/sort-by-qname large-bam-file tmp-queryname-sorted-bam-file) =future=> anything
-    ;(with-reader sorter/sorted-by? large-bam-file) => falsey
-    (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file) => truthy
-    (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file) =future=> truthy
-    ;(with-reader sorter/sort-order large-bam-file) => sorter/order-unknown
-    (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file) => sorter/order-coordinate
-    (with-reader sorter/sort-order tmp-queryname-sorted-bam-file) =future=> sorter/order-queryname
+(deftest-slow-heavy about-sorting-large-file
+  (with-before-after {:before (do (prepare-cavia!)
+                                  (prepare-cache!))
+                      :after (clean-cache!)}
+    (is (nil? (with-reader sorter/sort-by-pos large-bam-file tmp-coordinate-sorted-bam-file)))
+    ;; (is (not-throw? (with-reader sorter/sort-by-qname large-bam-file tmp-queryname-sorted-bam-file))) ; TODO: future
+    ;; (is (not (with-reader sorter/sorted-by? large-bam-file)))
+    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file))
+    ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file)) ; TODO: future
+    ;; (is (= (with-reader sorter/sort-order large-bam-file) sorter/order-unknown))
+    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file)
+           sorter/order-coordinate))
+    ;; (is (= (with-reader sorter/sort-order tmp-queryname-sorted-bam-file)
+    ;;        sorter/order-queryname)) ; TODO: future
     ;; check sorting order
-    ;(check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file)) => anything
+    ;; (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file))))
     ))

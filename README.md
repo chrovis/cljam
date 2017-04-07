@@ -129,14 +129,22 @@ $ cljam view --header path/to/file.sam
 To run all basic tests,
 
 ```console
-$ lein midje
+$ lein test
 ```
 
 To run heavy tests which uses remote large-size files,
 
 ```console
-$ lein midje :filter heavy
+$ lein test :all
 ```
+
+To get coverage
+
+```console
+$ lein cloverage
+```
+
+And open `target/coverage/index.html`.
 
 ### Generating document
 

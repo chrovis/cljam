@@ -34,7 +34,15 @@
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
           index-delay (delay (bam-index f :ignore ignore-index))]
       (BAMReader. (.getAbsolutePath (file f))
-                  header refs rdr data-rdr index-delay))))
+                  header refs rdr data-rdr index-delay (.getFilePointer rdr)))))
+
+(defn ^BAMReader clone-reader
+  "Clones bam reader sharing persistent objects."
+  [^BAMReader rdr]
+  (let [bgzf-rdr (BGZFInputStream. (file (.f rdr)))
+        data-rdr (DataInputStream. bgzf-rdr)]
+    (.seek bgzf-rdr (.start-pos rdr))
+    (BAMReader. (.f rdr) (.header rdr) (.refs rdr) bgzf-rdr data-rdr (.index-delay rdr) (.start-pos rdr))))
 
 (extend-type BAMReader
   cljam.io/ISAMReader

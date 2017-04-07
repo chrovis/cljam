@@ -1,5 +1,6 @@
 (ns cljam.bam.reader
   (:require [cljam.lsb :as lsb]
+            [cljam.io]
             [cljam.util.sam-util :refer [ref-id ref-name parse-header get-end]]
             [cljam.bam-index :refer [get-spans]]
             [cljam.bam-index.core :as bai]
@@ -16,6 +17,40 @@
   Closeable
   (close [this]
     (.close ^Closeable (.reader this))))
+
+(declare read-alignments-sequentially*
+         read-alignments*
+         read-blocks-sequentially*
+         read-blocks*)
+
+(extend-type BAMReader
+  cljam.io/ISAMReader
+  (reader-path [this]
+    (.f this))
+  (read-header [this]
+    (.header this))
+  (read-refs [this]
+    (.refs this))
+  (read-alignments
+    ([this]
+       (read-alignments-sequentially* this :deep))
+    ([this {:keys [chr start end depth]
+            :or {chr nil
+                 start -1 end -1
+                 depth :deep}}]
+       (if (nil? chr)
+         (read-alignments-sequentially* this depth)
+         (read-alignments* this chr start end depth))))
+  (read-blocks
+    ([this]
+       (read-blocks-sequentially* this :normal))
+    ([this {:keys [chr start end mode]
+            :or {chr nil
+                 start -1 end -1
+                 mode :normal}}]
+     (if (nil? chr)
+       (read-blocks-sequentially* this mode)
+       (read-blocks* this chr start end)))))
 
 ;; Reading a single block
 ;; --------------------

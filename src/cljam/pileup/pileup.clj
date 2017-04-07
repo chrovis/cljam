@@ -5,9 +5,7 @@
             [cljam.bam :as bam]
             [cljam.util.sam-util :as sam-util]
             [cljam.io :as io]
-            [cljam.pileup.common :as common]
-            cljam.bam.reader)
-  (:import cljam.bam.reader.BAMReader))
+            [cljam.pileup.common :as common]))
 
 (defn- count-for-positions
   "Piles the alignments up and counts them in the positions, returning it as a

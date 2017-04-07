@@ -1,6 +1,6 @@
 (ns cljam.t-dict
   "Tests for cljam.dict."
-  (:require [midje.sweet :refer :all]
+  (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
             [cljam.t-common :refer :all]
             [cljam.dict :as dict]))
@@ -14,11 +14,11 @@
 ;; Small-size FASTA
 ;; ---------------------------------
 
-(with-state-changes [(before :facts (do (prepare-cache!)
-                                        (fs/copy test-fa-file temp-fa-file)))
-                     (after :facts (clean-cache!))]
-  (fact "about create-dict"
+(deftest about-create-dict
+  (with-before-after {:before (do (prepare-cache!)
+                                  (fs/copy test-fa-file temp-fa-file))
+                      :after (clean-cache!)}
     ;; Create dictionary without errors
-    (dict/create-dict temp-fa-file out-dict-file) => anything
+    (is (not-throw? (dict/create-dict temp-fa-file out-dict-file)))
     ;; Check the file existence
-    (fs/exists? out-dict-file) => truthy))
+    (is (fs/exists? out-dict-file))))

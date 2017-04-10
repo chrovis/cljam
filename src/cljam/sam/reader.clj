@@ -6,12 +6,29 @@
                                          parse-alignment] :as sam-util])
   (:import [java.io BufferedReader Closeable]))
 
+(declare read-alignments* read-blocks*)
+
 ;;; reader
 
 (deftype SAMReader [f header reader]
   Closeable
   (close [this]
-    (.close ^Closeable (.reader this))))
+    (.close ^Closeable (.reader this)))
+  ISAMReader
+  (reader-path [this]
+    (.f this))
+  (read-header [this]
+    (.header this))
+  (read-refs [this]
+    (vec (make-refs (.header this))))
+  (read-alignments [this]
+    (read-alignments* this))
+  (read-alignments [this _]
+    (read-alignments* this))
+  (read-blocks [this]
+    (read-blocks* this))
+  (read-blocks [this option]
+    (read-blocks* this)))
 
 (defn- read-alignments*
   [^SAMReader sam-reader]
@@ -26,25 +43,6 @@
     (if-not (= (first line) \@)
       (cons {:line line} (lazy-seq (read-blocks* sam-reader)))
       (lazy-seq (read-blocks* sam-reader)))))
-
-(extend-type SAMReader
-  ISAMReader
-  (reader-path [this]
-    (.f this))
-  (read-header [this]
-    (.header this))
-  (read-refs [this]
-    (vec (make-refs (.header this))))
-  (read-alignments
-    ([this]
-       (read-alignments* this))
-    ([this _]
-       (read-alignments* this)))
-  (read-blocks
-    ([this]
-       (read-blocks* this))
-    ([this option]
-       (read-blocks* this))))
 
 (defn- read-header* [^BufferedReader rdr]
   (->> (line-seq rdr)

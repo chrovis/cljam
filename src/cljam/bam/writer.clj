@@ -11,6 +11,8 @@
   (:import [java.io DataOutputStream Closeable IOException EOFException]
            [bgzf4j BGZFOutputStream]))
 
+(declare write-header* write-refs* write-alignments* write-blocks*)
+
 ;;
 ;; BAMWriter
 ;;
@@ -18,11 +20,7 @@
 (deftype BAMWriter [f writer]
   Closeable
   (close [this]
-    (.close ^Closeable (.writer this))))
-
-(declare write-header* write-refs* write-alignments* write-blocks*)
-
-(extend-type BAMWriter
+    (.close ^Closeable (.writer this)))
   cljam.io/ISAMWriter
   (writer-path [this]
     (.f this))

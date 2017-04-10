@@ -10,20 +10,18 @@
            java.nio.ByteBuffer
            bgzf4j.BGZFInputStream))
 
+(declare read-alignments-sequentially*
+         read-alignments*
+         read-blocks-sequentially*
+         read-blocks*)
+
 ;; BAMReader
 ;; ---------
 
 (deftype BAMReader [f header refs reader data-reader index-delay start-pos]
   Closeable
   (close [this]
-    (.close ^Closeable (.reader this))))
-
-(declare read-alignments-sequentially*
-         read-alignments*
-         read-blocks-sequentially*
-         read-blocks*)
-
-(extend-type BAMReader
+    (.close ^Closeable (.reader this)))
   cljam.io/ISAMReader
   (reader-path [this]
     (.f this))
@@ -31,26 +29,24 @@
     (.header this))
   (read-refs [this]
     (.refs this))
-  (read-alignments
-    ([this]
-       (read-alignments-sequentially* this :deep))
-    ([this {:keys [chr start end depth]
-            :or {chr nil
-                 start -1 end -1
-                 depth :deep}}]
-       (if (nil? chr)
-         (read-alignments-sequentially* this depth)
-         (read-alignments* this chr start end depth))))
-  (read-blocks
-    ([this]
-       (read-blocks-sequentially* this :normal))
-    ([this {:keys [chr start end mode]
-            :or {chr nil
-                 start -1 end -1
-                 mode :normal}}]
-     (if (nil? chr)
-       (read-blocks-sequentially* this mode)
-       (read-blocks* this chr start end)))))
+  (read-alignments [this]
+    (read-alignments-sequentially* this :deep))
+  (read-alignments [this {:keys [chr start end depth]
+                          :or {chr nil
+                               start -1 end -1
+                               depth :deep}}]
+    (if (nil? chr)
+      (read-alignments-sequentially* this depth)
+      (read-alignments* this chr start end depth)))
+  (read-blocks [this]
+    (read-blocks-sequentially* this :normal))
+  (read-blocks [this {:keys [chr start end mode]
+                      :or {chr nil
+                           start -1 end -1
+                           mode :normal}}]
+    (if (nil? chr)
+      (read-blocks-sequentially* this mode)
+      (read-blocks* this chr start end))))
 
 ;; Reading a single block
 ;; --------------------

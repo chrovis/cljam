@@ -1,5 +1,6 @@
 (ns cljam.bam.writer
   (:require [clojure.string :refer [split]]
+            [cljam.io]
             (cljam [cigar :as cgr]
                    [lsb :as lsb]
                    [util :refer [string->bytes ubyte]])
@@ -10,6 +11,8 @@
   (:import [java.io DataOutputStream Closeable IOException EOFException]
            [bgzf4j BGZFOutputStream]))
 
+(declare write-header* write-refs* write-alignments* write-blocks*)
+
 ;;
 ;; BAMWriter
 ;;
@@ -17,7 +20,18 @@
 (deftype BAMWriter [f writer]
   Closeable
   (close [this]
-    (.close ^Closeable (.writer this))))
+    (.close ^Closeable (.writer this)))
+  cljam.io/ISAMWriter
+  (writer-path [this]
+    (.f this))
+  (write-header [this header]
+    (write-header* this header))
+  (write-refs [this header]
+    (write-refs* this header))
+  (write-alignments [this alignments header]
+    (write-alignments* this alignments header))
+  (write-blocks [this blocks]
+    (write-blocks* this blocks)))
 
 ;;
 ;; write

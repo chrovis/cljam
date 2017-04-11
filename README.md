@@ -135,8 +135,16 @@ $ lein test
 To run heavy tests which uses remote large-size files,
 
 ```console
-$ lein test :heavy
+$ lein test :all
 ```
+
+To get coverage
+
+```console
+$ lein cloverage
+```
+
+And open `target/coverage/index.html`.
 
 ### Generating document
 

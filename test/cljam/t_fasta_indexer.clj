@@ -16,7 +16,7 @@
     (is (fs/exists? (str temp-fa-file ".fai")))
     (is (same-file? (str temp-fa-file ".fai") test-fai-file))))
 
-(deftest ^:slow about-fasta-indexer-medium-file
+(deftest-slow about-fasta-indexer-medium-file
   (with-before-after {:before (do (prepare-cache!)
                                   (fs/copy medium-fa-file temp-fa-file))
                       :after (clean-cache!)}

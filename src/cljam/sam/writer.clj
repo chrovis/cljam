@@ -7,13 +7,26 @@
             [cljam.io])
   (:import java.io.BufferedWriter))
 
+(declare write-header* write-alignments* write-blocks*)
+
 ;; SAMWriter
 ;; ---------
 
 (deftype SAMWriter [^java.io.BufferedWriter writer f]
   java.io.Closeable
   (close [this]
-    (.close writer)))
+    (.close writer))
+  cljam.io/ISAMWriter
+  (writer-path [this]
+    (.f this))
+  (write-header [this header]
+    (write-header* this header))
+  (write-refs [this refs]
+    (logging/debug "SAMWriter does not support write-refs"))
+  (write-alignments [this alignments refs]
+    (write-alignments* this alignments refs))
+  (write-blocks [this blocks]
+    (write-blocks* this blocks)))
 
 ;; Writing
 ;; -------
@@ -45,16 +58,3 @@
   [f]
   (->SAMWriter (clojure.java.io/writer f)
                (.getAbsolutePath (io/file f))))
-
-(extend-type SAMWriter
-  cljam.io/ISAMWriter
-  (writer-path [this]
-    (.f this))
-  (write-header [this header]
-    (write-header* this header))
-  (write-refs [this refs]
-    (logging/debug "SAMWriter does not support write-refs"))
-  (write-alignments [this alignments refs]
-    (write-alignments* this alignments refs))
-  (write-blocks [this blocks]
-    (write-blocks* this blocks)))

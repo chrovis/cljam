@@ -1,10 +1,32 @@
 (ns cljam.t-common
-  (:use [clojure.java.io :only [file]])
   (:require [digest]
+            [clojure.java.io :refer [file]]
             [cljam.sam :as sam]
             [cljam.bam :as bam]
             [cljam.io :as io]
             [cavia.core :as cavia :refer [defprofile with-profile]]))
+
+(defn- _in-cloverage? []
+  (try
+    (eval '(var cloverage.coverage/*covered*))
+    true
+    (catch Throwable _ nil)))
+
+(def ^:private in-cloverage? (memoize _in-cloverage?))
+
+(defn- expand-deftest [sym args body]
+  (if (in-cloverage?)
+    nil
+    `(clojure.test/deftest ~sym ~args ~@body)))
+
+(defmacro deftest-slow [sym args & body]
+  (expand-deftest (with-meta sym {:slow true}) args body))
+
+(defmacro deftest-heavy [sym args & body]
+  (expand-deftest (with-meta sym {:heavy true}) args body))
+
+(defmacro deftest-slow-heavy [sym args & body]
+  (expand-deftest (with-meta sym {:slow true :heavy true}) args body))
 
 (defprofile mycavia
   {:resources [{:id "large.bam"
@@ -31,14 +53,14 @@
 
 (def not-throw? (constantly true))
 
-(defmacro with-before-after [params & bodies]
+(defmacro with-before-after [params & body]
   (assert (map? params))
   (let [before-expr (:before params)
         after-expr (:after params)]
     `(do
        ~before-expr
        (try
-         ~@bodies
+         ~@body
          (finally ~after-expr)))))
 
 (defn just-map? [checker-map target-map]

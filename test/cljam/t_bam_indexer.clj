@@ -64,7 +64,7 @@
              3806))
       (is (= (count (io/read-alignments r {:chr "*"})) 0)))))
 
-(deftest ^:slow about-bam-indexer-medium-file
+(deftest-slow about-bam-indexer-medium-file
   (with-before-after {:before (do (prepare-cache!)
                                   (fs/copy medium-bam-file temp-file-sorted))
                       :after (clean-cache!)}
@@ -79,7 +79,7 @@
                   (io/read-alignments r {:chr "*"}))))
     (is (fs/exists? (str temp-file-sorted ".bai")))))
 
-(deftest ^:slow ^:heavy about-bam-indexer-large-file
+(deftest-slow-heavy about-bam-indexer-large-file
   (with-before-after {:before (do (prepare-cavia!)
                                   (prepare-cache!)
                                   (fs/copy large-bam-file temp-file-sorted))

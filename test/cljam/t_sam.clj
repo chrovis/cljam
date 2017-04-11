@@ -16,14 +16,14 @@
     (is (not-throw? (spit-sam-for-test temp-file test-sam)))
     (is (= (slurp-sam-for-test temp-file) test-sam))))
 
-(deftest ^:slow about-spit-sam-medium-file
+(deftest-slow about-spit-sam-medium-file
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
     (is (not-throw? (spit-sam-for-test temp-file
                                        (slurp-bam-for-test medium-bam-file))))))
 
 ;; NB: Cannot spit large SAM (cause `java.lang.OutOfMemoryError`)
-;; (deftest ^:slow ^:heavy about-spit-sam-large-file
+;; (deftest-slow-heavy about-spit-sam-large-file
 ;;   (with-before-after {:before (do (prepare-cavia!)
 ;;                                   (prepare-cache!))
 ;;                       :after (clean-cache!)}

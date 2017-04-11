@@ -1,5 +1,17 @@
 # Change Log
 
+## [Unreleased]
+
+### Added
+
+* Add a function to clone bam reader. [#39](https://github.com/chrovis/cljam/pull/39)
+
+### Changed
+
+* Improves performance of pileup. [#41](https://github.com/chrovis/cljam/pull/41)
+* Migrate from midje to clojure.test. [#44](https://github.com/chrovis/cljam/pull/44)
+* Add to support `lein cloverage`. [#45](https://github.com/chrovis/cljam/pull/45)
+
 ## [0.2.1] - 2017-04-06
 
 ### Added

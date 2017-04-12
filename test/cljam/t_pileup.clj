@@ -213,3 +213,11 @@
     (is (= (map :count plps) [0 0 1 1 1 1 1 1 1 1]))
     (is (= (map :seq plps) [[] [] [\.] [\.] [\.] [\.] [\.] [\.] [\.] [\.]]))
     (is (= (map :qual plps) [[] [] [\B] [\B] [\C] [\C] [\D] [\D] [\E] [\E]]))))
+
+(deftest about-create-mpileup
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (let [out-file (str temp-dir "/test.pileup")]
+      (is (not-throw? (plp/create-mpileup test-sorted-bam-file out-file)))
+      ;; TODO: check out-file
+      )))

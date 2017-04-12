@@ -34,5 +34,23 @@
   (with-before-after {:before (do (prepare-cache!)
                                   (spit-sam-for-test temp-file test-sam))
                       :after (clean-cache!)}
-    (let [rdr (sam/reader temp-file)]
+    (with-open [rdr (sam/reader temp-file)]
       (is (= (io/read-refs rdr) test-sam-refs)))))
+
+(deftest about-samwriter
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (with-open [w (sam/writer temp-file)]
+      (is (not-throw? (io/write-header w (:header test-sam))))
+      (is (not-throw? (io/write-alignments w (:alignments test-sam) nil))))
+    (with-open [r (sam/reader temp-file)]
+      (is (= (io/read-header r) (:header test-sam)))
+      (is (= (io/read-refs r) test-sam-refs))
+      (is (= (io/read-blocks r) test-sam-blocks)))
+    (with-open [w (sam/writer temp-file)]
+      (is (not-throw? (io/write-header w (:header test-sam))))
+      (is (not-throw? (io/write-blocks w test-sam-blocks))))
+    (with-open [r (sam/reader temp-file)]
+      (is (= (io/read-header r) (:header test-sam)))
+      (is (= (io/read-refs r) test-sam-refs))
+      (is (= (io/read-alignments r) (:alignments test-sam))))))

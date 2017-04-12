@@ -3,8 +3,8 @@
             [cljam.t-common :refer :all]
             [cljam.tabix :as tbi]))
 
-(deftest about-read-index-done-without-errors
-  (is (not-throw? (tbi/read-index test-tabix-file))))
+(deftest about-read-index-with-error
+  (is (thrown? java.io.IOException (tbi/read-index small-bam-file))))
 
 (deftest about-read-index-returns-a-map
   (is (map? (tbi/read-index test-tabix-file))))

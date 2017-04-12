@@ -23,7 +23,25 @@
     (.flush bw)
     (.toString bao)))
 
+(defn- raw-str->bed [^String s]
+  (with-open [bais (ByteArrayInputStream. (.getBytes s))
+              isr (InputStreamReader. bais)
+              br (BufferedReader. isr)]
+    (doall (bed/read-raw-fields br))))
+
+(defn- bed->raw-str [xs]
+  (with-open [bao (ByteArrayOutputStream.)
+              osw (OutputStreamWriter. bao)
+              bw (BufferedWriter. osw)]
+    (bed/write-raw-fields bw xs)
+    (.flush bw)
+    (.toString bao)))
+
 (deftest bed-file-reader-1
+  (is (= (raw-str->bed "1 0 100 N 0 + 0 0 255,0,0 2 10,90 0,10")
+         [{:chr "1" :start 0 :end 100 :name "N" :score 0 :strand :plus :thick-start 0 :thick-end 0
+           :item-rgb "255,0,0" :block-count 2 :block-sizes [10 90] :block-starts [0 10]}]))
+
   (is (= (str->bed "1 0 100 N 0 + 0 0 255,0,0 2 10,90 0,10")
          [{:chr "chr1" :start 1 :end 100 :name "N" :score 0 :strand :plus :thick-start 1 :thick-end 0
            :item-rgb "255,0,0" :block-count 2 :block-sizes [10 90] :block-starts [0 10]}]))
@@ -145,6 +163,7 @@
       (is (= (read-region "1 0 10\n1 10 20") ["TAACCCTAAC" "CCTAACCCTA"])))))
 
 (deftest bed-writer
+  (is (= (bed->raw-str (raw-str->bed "1 0 10")) "1 0 10"))
   (is (= (bed->str (str->bed "1 0 1")) "chr1 0 1"))
   (is (= (bed->str (str->bed "1 0 10")) "chr1 0 10"))
   (is (= (bed->str (str->bed "1 0 1\n1 1 2")) "chr1 0 1\nchr1 1 2"))

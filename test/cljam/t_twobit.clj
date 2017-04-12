@@ -47,3 +47,11 @@
     (is (= (tb/read-sequence r {:chr "ref2" :start 1 :end 40 :mask? true})
            "agNNNttataaaacaattaNNNctacagagcaactaNNNN"))
     (is (= (tb/read-sequence r {:chr "chr1" :start 1 :end 40}) nil))))
+
+(deftest twobit-big-endian
+  (with-open [r (tb/reader "./test-resources/be-test.2bit")]
+    (is (= (tb/read-sequence r {:chr "ref"})
+           "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT")))
+  (with-open [r (tb/reader "./test-resources/be-test-n.2bit")]
+    (is (= (tb/read-sequence r {:chr "ref"})
+           "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"))))

@@ -79,6 +79,13 @@
   (.limit bb (.capacity bb))
   (.position bb l))
 
+(defn read-byte
+  [rdr]
+  (let [bb (gen-byte-buffer)]
+    (read-byte-buffer rdr bb 1)
+    (.flip bb)
+    (.get bb)))
+
 (defn read-ubyte
   [rdr]
   (let [bb (gen-byte-buffer)]
@@ -108,6 +115,13 @@
     (read-byte-buffer rdr bb 4)
     (.flip bb)
     (.getInt bb)))
+
+(defn read-uint
+  [rdr]
+  (let [bb (gen-byte-buffer)]
+    (read-byte-buffer rdr bb 4)
+    (.flip bb)
+    (bit-and 0xFFFFFFFF (.getInt bb))))
 
 (defn read-long
   [rdr]
@@ -179,6 +193,13 @@
   [^DataOutputStream w n]
   (let [bb (gen-byte-buffer)]
     (.putInt bb n)
+    (.write w (.array bb) 0 4)
+    nil))
+
+(defn write-uint
+  [^DataOutputStream w n]
+  (let [bb (gen-byte-buffer)]
+    (.putInt bb (unchecked-int n))
     (.write w (.array bb) 0 4)
     nil))
 

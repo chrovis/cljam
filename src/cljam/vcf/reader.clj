@@ -50,7 +50,7 @@
                         s
                         (str->long s)))))
 
-(defn- parse-meta-info-line
+(defn parse-meta-info-line
   [line]
   (let [[_ k* v] (re-find #"^##([\w:/\.\?\-]*)=(.*)$" line)
         k (->kebab-case-keyword k*)]
@@ -80,7 +80,7 @@
   [line]
   (not (nil? (re-find #"^#[^#]*$" line))))
 
-(defn- parse-header-line
+(defn parse-header-line
   [line]
   (cstr/split (subs line 1) #"\t"))
 

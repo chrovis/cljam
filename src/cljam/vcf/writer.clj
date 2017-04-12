@@ -33,7 +33,7 @@
 ;; Writing meta-information
 ;; ------------------------
 
-(defn- stringify-key
+(defn stringify-key
   [k]
   (if (#{:info :filter :format :alt :sample :pedigree} k)
     (cstr/upper-case (name k))
@@ -46,7 +46,8 @@
                 (str "assembly=" (:assembly m))
                 (str "md5=" (:md-5 m))]
          (:species m) (conj (str "species=\"" (:species m) "\""))
-         (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m))))
+         (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m)))
+         (:idx m) (conj (str "idx=" (:idx m))))
        (interpose ",")
        (apply str)))
 
@@ -57,23 +58,26 @@
                 (str "Type=" (nil->dot (:type m)))
                 (str "Description=\"" (:description m) "\"")]
          (:source m) (conj (str "Source=" (:source m)))
-         (:version m) (conj (str "Version=" (:version m))))
+         (:version m) (conj (str "Version=" (:version m)))
+         (:idx m) (conj (str "idx=" (:idx m))))
        (interpose ",")
        (apply str)))
 
 (defn- stringify-meta-info-filter
   [m]
-  (->> [(str "ID=" (:id m))
-        (str "Description=\"" (:description m) "\"")]
+  (->> (cond-> [(str "ID=" (:id m))
+                (str "Description=\"" (:description m) "\"")]
+         (:idx m) (conj (str "idx=" (:idx m))))
        (interpose ",")
        (apply str)))
 
 (defn- stringify-meta-info-format
   [m]
-  (->> [(str "ID=" (:id m))
-        (str "Number=" (nil->dot (:number m)))
-        (str "Type=" (nil->dot (:type m)))
-        (str "Description=\"" (:description m) "\"")]
+  (->> (cond-> [(str "ID=" (:id m))
+                (str "Number=" (nil->dot (:number m)))
+                (str "Type=" (nil->dot (:type m)))
+                (str "Description=\"" (:description m) "\"")]
+         (:idx m) (conj (str "idx=" (:idx m))))
        (interpose ",")
        (apply str)))
 
@@ -101,7 +105,7 @@
        (interpose ",")
        (apply str)))
 
-(defn- stringify-structured-line
+(defn stringify-structured-line
   [k m]
   (let [f (case k
             :contig stringify-meta-info-contig
@@ -116,7 +120,7 @@
 (defn- write-meta-info1
   [^VCFWriter wtr k v]
   (if-not (nil? v)
-    (if (vector? v)
+    (if (sequential? v)
       (doseq [x v]
         (write-line (.writer wtr) (str meta-info-prefix
                                        (stringify-key k)
@@ -136,7 +140,7 @@
 ;; Writing header
 ;; --------------
 
-(defn- ^String stringify-header
+(defn ^String stringify-header
   [header]
   (str header-prefix (apply str (interpose "\t" header))))
 

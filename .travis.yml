@@ -1,5 +1,8 @@
 language: clojure
 lein: lein
+cache:
+  directories:
+    - $HOME/.m2
 jdk:
   - oraclejdk8
   - oraclejdk7

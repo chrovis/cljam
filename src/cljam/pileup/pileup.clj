@@ -36,7 +36,8 @@
         count-fn (fn [xs]
                    (if (= n-threads 1)
                      (map (fn [[start end]]
-                            (count-for-positions (read-fn rdr start end) start end)) xs)
+                            (with-open [r (bam/clone-reader rdr)]
+                              (count-for-positions (read-fn r start end) start end))) xs)
                      (cp/pmap (dec n-threads)
                               (fn [[start end]]
                                 (with-open [r (bam/clone-reader rdr)]

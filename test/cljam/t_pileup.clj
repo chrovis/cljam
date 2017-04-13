@@ -40,6 +40,9 @@
 
 (deftest about-pileup
   (is (= (with-open [r (bam/reader test-sorted-bam-file)]
+           (plp/pileup r "ref"))
+         test-bam-pileup-ref))
+  (is (= (with-open [r (bam/reader test-sorted-bam-file)]
            (plp/pileup r "ref" nil))
          test-bam-pileup-ref))
   (is (= (with-open [r (bam/reader test-sorted-bam-file)]

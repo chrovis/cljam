@@ -15,6 +15,8 @@
   {:n-threads 0})
 
 (defn pileup
+  ([bam-reader rname]
+   (plp/pileup bam-reader rname))
   ([bam-reader rname option]
    (pileup bam-reader rname -1 -1 option))
   ([bam-reader rname start end option]

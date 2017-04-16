@@ -51,52 +51,17 @@
            (drop-while #(< (:end %) start))))
          (step (dec start) []))))
 
-(defrecord MPileupElement [^String rname ^long pos ^Character ref ^long count seq qual reads])
+(defrecord MPileupElement [^String rname ^long pos ^Character ref pile])
 
 (defn gen-mpileup
   "Compute mpileup info from piled-up reads and reference."
   [^String rname ^long locus [^Character ref-base :as refs] reads]
-  (let [seqs (map (fn gen-mpileup-seq [{:keys [^long pos ^String seq cig-index]}]
-                   (substitute-seq refs seq (nth cig-index (- locus pos)))) reads)
-        qual (map (fn gen-mpileup-qual [{:keys [^long pos ^String qual cig-index]}]
-                    (substitute-qual qual (nth cig-index (- locus pos)))) reads)]
-    (MPileupElement. rname locus ref-base (count reads) seqs qual reads)))
-
-(defn- correct-qual
-  "Correct quality of two overlapped mate reads by setting zero quality for one of the base."
-  [[s1 q1 r1 :as v1] [s2 q2 r2 :as v2]]
-  (let [iq1 (- (int q1) 33)
-        iq2 (- (int q2) 33)]
-    (if (= s1 s2)
-      [[s1 (char (min 200 (+ iq1 iq2 33))) r1] [s2 (char 33) r2]]
-      (if (<= iq2 iq1)
-        [[s1 (char (+ (* 0.8 iq1) 33)) r1] [s2 (char 33) r2]]
-        [[s1 (char 33) r1] [s2 (char (+ (* 0.8 iq2) 33)) r2]]))))
-
-(defn correct-overlapped-reads
-  "Correct quality of two overlapped mate reads in piled-up reads."
-  [{:keys [seq qual reads] :as pile}]
-  (if (<= (:count pile) 1)
-    pile
-    (->> (map vector seq qual reads)
-         (group-by (comp :qname last))
-         (mapcat
-          (fn [[qname xs]]
-            (if (<= (count xs) 1)
-              xs
-              (apply correct-qual xs))))
-         (apply map vector)
-         (zipmap [:seq :qual :reads])
-         (merge pile))))
-
-(defn basic-mpileup-pred
-  "Basic predicate function for filtering alignments for mpileup."
-  [a]
-  (and (:flag a)
-       (sam-util/primary? (:flag a)) ;; primary
-       (zero? (bit-and 0x4 (:flag a))) ;; mapped
-       (or (zero? (bit-and 0x1 (:flag a))) ;; single-end
-           (pos? (bit-and 0x2 (:flag a)))))) ;; properly-paired
+  (->> reads
+       (map (fn gen-mpileup-seq [{:keys [^long pos seq qual cig-index] :as aln}]
+              {:qual (- (int (substitute-qual qual (nth cig-index (- locus pos)))) 33)
+               :seq (substitute-seq refs seq (nth cig-index (- locus pos)))
+               :read aln}))
+       (MPileupElement. rname locus ref-base)))
 
 (defn pileup*
   "Internal mpileup function independent from I/O.
@@ -114,6 +79,53 @@
               (range start (inc end))
               (partition 100 1 (concat refseq (repeat \N))))))
 
+(defn basic-mpileup-pred
+  "Basic predicate function for filtering alignments for mpileup."
+  [a]
+  (and (:flag a)
+       (sam-util/primary? (:flag a)) ;; primary
+       (zero? (bit-and 0x4 (:flag a))) ;; mapped
+       (or (zero? (bit-and 0x1 (:flag a))) ;; single-end
+           (pos? (bit-and 0x2 (:flag a)))))) ;; properly-paired
+
+(defn- correct-qual
+  "Correct quality of two overlapped mate reads by setting zero quality for one of the base."
+  [{s1 :seq q1 :qual :as r1} {s2 :seq q2 :qual :as r2}]
+  (if (= s1 s2)
+    [(assoc r1 :qual (min 200 (+ q1 q2))) (assoc r2 :qual 0)]
+    (if (<= q2 q1)
+      [(assoc r1 :qual (int (* 0.8 q1))) (assoc r2 :qual 0)]
+      [(assoc r1 :qual 0) (assoc r2 :qual (int (* 0.8 q2)))])))
+
+(defn correct-overlapped-reads
+  "Correct quality of two overlapped mate reads in piled-up reads."
+  [pile]
+  (if (<= (count (:pile pile)) 1)
+    pile
+    (->> (:pile pile)
+         (group-by (comp :qname :read))
+         (mapcat
+          (fn [[qname xs]]
+            (if (<= (count xs) 1) xs (apply correct-qual xs))))
+         (assoc pile :pile))))
+
+(defn filter-by-base-quality
+  "Returns a predicate for filtering piled-up reads by base quality at its position."
+  [min-base-quality]
+  (fn [p] (update p :pile (fn [pp] (filter #(<= min-base-quality (:qual %)) pp)))))
+
+(defn transpose-pile
+  "Converts a pile {:pile [{:seq SEQ, :qual QUAL, :read READ}]}
+  into {:seq [], :qual [], :reads []}."
+  [p]
+  (if (zero? (count (:pile p)))
+    (assoc p :seq [] :qual [] :reads [] :count 0)
+    (->> (:pile p)
+         (map (juxt :seq #(char (+ (:qual %) 33)) :read))
+         (apply map vector)
+         (zipmap [:seq :qual :reads])
+         (merge p {:count (count (:pile p))}))))
+
 (defn pileup
   "Returns a lazy sequence of MPileupElement calculated from FASTA and BAM."
   ([bam-reader rname]
@@ -127,13 +139,19 @@
              e (if (neg? end) (:len r) end)
              refseq (if fa-reader
                       (fa/read-sequence fa-reader {:chr rname :start s :end e})
-                      (repeat \N))
-             alns (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})]
-         (map (fn [p] (-> p
-                          first
-                          correct-overlapped-reads
-                          (update :seq (fn [s] (map to-mpileup s)))))
-              (pileup* refseq rname s e (filter basic-mpileup-pred alns)))))
+                      (repeat \N))]
+         (->> (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})
+              (sequence
+               (comp
+                (filter basic-mpileup-pred)
+                (filter (fn [a] (<= 0 (:mapq a))))))
+              (pileup* refseq rname s e)
+              (sequence
+               (comp (map first)
+                     (map correct-overlapped-reads)
+                     (map (filter-by-base-quality 13))
+                     (map transpose-pile)
+                     (map (fn [p] (update p :seq (fn [s] (map to-mpileup s))))))))))
      (catch bgzf4j.BGZFException _
        (throw (RuntimeException. "Invalid file format"))))))
 

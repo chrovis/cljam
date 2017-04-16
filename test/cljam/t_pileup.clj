@@ -151,14 +151,18 @@
       (is (= (map :seq mplp-ref1) (take 40 test-bam-mpileup-seq-ref-with-ref)))
       (is (= (apply str (map :ref mplp-ref2))
              "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG")))))
+
+(def reads-for-pileup
+  [{:qname "R001" :flag 99 :rname "seq1" :pos 3 :seq "AATTGGCCAA" :qual "AABBCCDDEE" :cigar "2S8M"
+    :rnext "=" :pnext 1 :tlen 8 :mapq 60}
+   {:qname "R001" :flag 147 :rname "seq1" :pos 3 :seq "TTGGCCAATT" :qual "AABBCCDDEE" :cigar "8M2S"
+    :rnext "=" :pnext 3 :tlen -8 :mapq 20}])
+
 (deftest overlap-correction
-  (let [plps (->> [{:qname "R001" :flag 99 :rname "seq1" :pos 3 :seq "AATTGGCCAA" :qual "AABBCCDDEE" :cigar "2S8M"
-                     :rnext "=" :pnext 1 :tlen 8}
-                    {:qname "R001" :flag 147 :rname "seq1" :pos 3 :seq "TTGGCCAATT" :qual "AABBCCDDEE" :cigar "8M2S"
-                     :rnext "=" :pnext 3 :tlen -8}]
+  (let [plps (->> reads-for-pileup
                   (filter mplp/basic-mpileup-pred)
                   (mplp/pileup* "AATTGGCCAATTGGCC" "seq1" 1 10)
-                  (map (comp mplp/correct-overlapped-reads first)))]
+                  (map (comp mplp/transpose-pile mplp/correct-overlapped-reads first)))]
     (is (= (map :ref plps) [\A \A \T \T \G \G \C \C \A \A]))
     (is (= (map :count plps) [0 0 2 2 2 2 2 2 2 2]))
     (is (= (map :seq plps) [[] [] [\. \.] [\. \.] [\. \.] [\. \.] [\. \.] [\. \.] [\. \.] [\. \.]]))
@@ -166,14 +170,46 @@
 
 (deftest overlap-qual-correction
   (let [aplp (mplp/correct-overlapped-reads
-              {:count 2 :seq [\A \T] :qual [\I \A]
-               :reads [{:qname "R001" :flag 99}
-                       {:qname "R001" :flag 147}]})]
-    (is (= (:seq aplp) [\A \T]))
-    (is (= (:qual aplp) [(char (+ 32 33)) \!])))
+              {:pile
+               [{:seq \A :qual (- (int \I) 33) :read {:qname "R001" :flag 99}}
+                {:seq \T :qual (- (int \A) 33) :read {:qname "R001" :flag 147}}]})]
+    (is (= (map :seq (:pile aplp)) [\A \T]))
+    (is (= (map :qual (:pile aplp)) [32 0])))
   (let [aplp (mplp/correct-overlapped-reads
-              {:count 2 :seq [\T \A] :qual [\A \I]
-               :reads [{:qname "R001" :flag 147}
-                       {:qname "R001" :flag 99}]})]
-    (is (= (:seq aplp) [\T \A]))
-    (is (= (:qual aplp) [\! (char (+ 32 33))]))))
+              {:pile
+               [{:seq \T :qual (- (int \A) 33) :read {:qname "R001" :flag 147}}
+                {:seq \A :qual (- (int \I) 33) :read {:qname "R001" :flag 99}}]})]
+    (is (= (map :seq (:pile aplp)) [\T \A]))
+    (is (= (map :qual (:pile aplp)) [0 32]))))
+
+(deftest filter-by-base-quality
+  (let [plps (->> reads-for-pileup
+                  (filter mplp/basic-mpileup-pred)
+                  (mplp/pileup* "AATTGGCCAATTGGCC" "seq1" 1 10)
+                  (sequence
+                   (comp
+                    (map first)
+                    (map mplp/correct-overlapped-reads)
+                    (map (mplp/filter-by-base-quality 1))
+                    (map mplp/transpose-pile))))]
+    (is (= (map :ref plps) [\A \A \T \T \G \G \C \C \A \A]))
+    (is (= (map :count plps) [0 0 1 1 1 1 1 1 1 1]))
+    (is (= (map :seq plps) [[] [] [\.] [\.] [\.] [\.] [\.] [\.] [\.] [\.]]))
+    (is (= (map :qual plps) [[] [] [\b] [\b] [\d] [\d] [\f] [\f] [\h] [\h]]))))
+
+(deftest filter-by-map-quality
+  (let [plps (->> reads-for-pileup
+                  (sequence
+                   (comp
+                    (filter mplp/basic-mpileup-pred)
+                    (filter (fn [a] (<= 30 (:mapq a))))))
+                  (mplp/pileup* "AATTGGCCAATTGGCC" "seq1" 1 10)
+                  (sequence
+                   (comp
+                    (map first)
+                    (map mplp/correct-overlapped-reads)
+                    (map mplp/transpose-pile))))]
+    (is (= (map :ref plps) [\A \A \T \T \G \G \C \C \A \A]))
+    (is (= (map :count plps) [0 0 1 1 1 1 1 1 1 1]))
+    (is (= (map :seq plps) [[] [] [\.] [\.] [\.] [\.] [\.] [\.] [\.] [\.]]))
+    (is (= (map :qual plps) [[] [] [\B] [\B] [\C] [\C] [\D] [\D] [\E] [\E]]))))

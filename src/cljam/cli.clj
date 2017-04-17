@@ -354,7 +354,7 @@
       (not= (count arguments) 2) (exit 1 (level-usage summary))
       errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (with-open [r (reader in)
+      (with-open [r (reader in :ignore-index false)
                   w (writer out)]
         (level/add-level r w))))
   nil)

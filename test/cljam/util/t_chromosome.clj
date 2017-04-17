@@ -46,5 +46,11 @@
   (is (= (chr/normalize-chromosome-key "NC_007605") "NC_007605"))
   (is (= (chr/normalize-chromosome-key "hs37d5") "hs37d5"))
 
+  (is (= (chr/trim-chromosome-key "chr1") "1"))
+  (is (= (chr/trim-chromosome-key "Chr2") "2"))
+  (is (= (chr/trim-chromosome-key "CHR3") "3"))
+  (is (= (chr/trim-chromosome-key "4") "4"))
+  (is (= (chr/trim-chromosome-key "X") "X"))
+
   ;; TODO: Add more SN name
   )

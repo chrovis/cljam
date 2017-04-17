@@ -14,7 +14,7 @@
                  [camel-snake-kebab "0.4.0"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.8.0"]
                                   [cavia "0.4.0"]]
-                   :plugins [[lein-bin "0.3.5"]
+                   :plugins [[lein-binplus "0.6.2"]
                              [lein-codox "0.10.3"]
                              [lein-marginalia "0.9.0" :exclusions [org.clojure/clojure]]
                              [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure]]]

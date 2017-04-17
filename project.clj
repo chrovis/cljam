@@ -30,7 +30,8 @@
              :uberjar {:main cljam.main
                        :aot :all}}
   :aliases {"docs" ["do" "codox" ["marg" "-d" "target/literate" "-m"]]}
-  :bin {:name "cljam"}
+  :bin {:name "cljam"
+        :bootclasspath true}
   :codox {:namespaces [#"^cljam\.(?!cli)(?!lsb)(?!main)(?!util)[^\.]+$"]
           :output-path "target/docs"
           :source-uri "https://github.com/chrovis/cljam/blob/{version}/{filepath}#L{line}"}

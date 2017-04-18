@@ -85,6 +85,8 @@
   (and (:flag a)
        (sam-util/primary? (:flag a)) ;; primary
        (zero? (bit-and 0x4 (:flag a))) ;; mapped
+       (zero? (bit-and 0x200 (:flag a))) ;; QC pass
+       (zero? (bit-and 0x400 (:flag a))) ;; Not duplicated
        (or (zero? (bit-and 0x1 (:flag a))) ;; single-end
            (pos? (bit-and 0x2 (:flag a)))))) ;; properly-paired
 

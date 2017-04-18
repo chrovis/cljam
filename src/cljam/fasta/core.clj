@@ -59,7 +59,7 @@
   "Opens a reader on a FASTA file and reads all its contents, returning
   a sequence about the data."
   [f]
-  (with-open [r (reader f)]
+  (with-open [r (reader f {})]
     (doall (reader/read r))))
 
 (defn sequential-read

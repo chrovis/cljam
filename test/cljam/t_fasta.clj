@@ -4,8 +4,23 @@
             [cljam.fasta :as fasta]
             [clojure.string :as str]))
 
-;; (deftest slurp-fasta
-;;   (is (= (fasta/slurp test-fa-file) test-fa)))
+(defn- slurp= [fa1 fa2]
+  (when (= (count fa1) (count fa2))
+    (loop [fa1 fa1
+           fa2 fa2]
+      (let [ff1 (first fa1)
+            ff2 (first fa2)]
+        (if (nil? ff1)
+          true
+          (when (and (= (:rname ff1) (:rname ff2))
+                     (= (:offset ff1) (:offset ff2))
+                     (= (:seq ff1) (:seq ff2))
+                     (= (or (:blen ff1) (:line-blen ff1))
+                        (or (:blen ff2) (:line-blen ff2))))
+            (recur (rest fa1) (rest fa2))))))))
+
+(deftest slurp-fasta
+  (is (slurp= (fasta/slurp test-fa-file) test-fa)))
 
 (deftest read-fasta-file
   (let [rdr (fasta/reader test-fa-file)]

@@ -1,7 +1,7 @@
 (ns cljam.fasta
   "Alpha - subject to change.
   Reader of a FASTA format file."
-  (:refer-clojure :exclude [read])
+  (:refer-clojure :exclude [read slurp])
   (:require [cljam.fasta.core :as fa-core]
             [cljam.fasta.reader])
   (:import cljam.fasta.reader.FASTAReader))
@@ -44,6 +44,12 @@
 (defn reset
   [rdr]
   (fa-core/reset rdr))
+
+(defn slurp
+  [f]
+  "Opens a reader on a FASTA file and reads all its contents, returning
+  a sequence about the data."
+  (fa-core/slurp f))
 
 (defn sequential-read
   "Reads entire sequences sequentially on caller's thread,

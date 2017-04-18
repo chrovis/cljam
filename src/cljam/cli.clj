@@ -359,23 +359,33 @@
         (level/add-level r w))))
   nil)
 
+;; ### version command
+
+(defn version [args]
+  (let [ver (with-open [r (-> "META-INF/maven/cljam/cljam/pom.properties"
+                              (clojure.java.io/resource)
+                              (clojure.java.io/reader))]
+              (.getProperty (doto (java.util.Properties.) (.load r)) "version"))]
+    (exit 0 ver)))
+
 ;; Main command
 ;; ------------
 
 (defn run [args]
   (let [[opts cmd args help cands]
         (sub-command args
-                     "Usage: cljam {view,convert,sort,index,pileup,faidx,dict} ..."
+                     "Usage: cljam {view,convert,normalize,sort,index,pileup,faidx,dict,level,version} ..."
                      :options  [["-h" "--help" "Show help" :default false :flag true]]
                      :commands [["view"    "Extract/print all or sub alignments in SAM or BAM format."]
                                 ["convert" "Convert SAM to BAM or BAM to SAM."]
-                                ["normalize" "Normalize references of alignments"]
+                                ["normalize" "Normalize references of alignments."]
                                 ["sort"    "Sort alignments by leftmost coordinates."]
                                 ["index"   "Index sorted alignment for fast random access."]
                                 ["pileup"  "Generate pileup for the BAM file."]
                                 ["faidx"   "Index reference sequence in the FASTA format."]
                                 ["dict"    "Create a FASTA sequence dictionary file."]
-                                ["level"   "Add level of alignments."]])]
+                                ["level"   "Add level of alignments."]
+                                ["version" "Print version number."]])]
     (when (:help opts)
       (exit 0 help))
     (case cmd
@@ -388,6 +398,7 @@
       :faidx   (faidx args)
       :dict    (dict args)
       :level   (level args)
+      :version (version args)
       (do (println "Invalid command. See 'cljam --help'.")
           (when (seq cands)
             (newline)

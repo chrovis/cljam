@@ -62,6 +62,11 @@
   (with-open [r (reader f)]
     (doall (reader/read r))))
 
+(defn sequential-read-byte-array
+  [f]
+  (with-open [stream (util/compressor-input-stream f)]
+    (reader/sequential-read-byte-array stream (* 1024 1024 10) 536870912)))
+
 (defn sequential-read
   [f]
   (with-open [stream (util/compressor-input-stream f)]

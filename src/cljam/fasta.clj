@@ -45,6 +45,15 @@
   [rdr]
   (fa-core/reset rdr))
 
+(defn sequential-read-byte-array
+  "Reads entire sequences sequentially on caller's thread,
+   blocking until entire file is loaded.
+   Supporting raw (.fa) and compressed FASTA (.fa.gz, .fa.bz2, etc.).
+   Returns list of maps containing sequence as byte-array.
+   Bases ACGTN are encoded as 1~5"
+  [^String f]
+  (fa-core/sequential-read-byte-array f))
+
 (defn sequential-read
   "Reads entire sequences sequentially on caller's thread,
    blocking until entire file is loaded.

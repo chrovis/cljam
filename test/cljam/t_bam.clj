@@ -12,8 +12,7 @@
 (def temp-file-sorted (str temp-dir "/test.sorted.bam"))
 (def not-found-file (str temp-dir "/not-found.bam"))
 (def invalid-file-1 test-fa-file)
-(def invalid-file-2 test-fq-gz-file)
-(def invalid-file-3 test-tabix-file)
+(def invalid-file-2 test-tabix-file)
 
 (deftest slurp-bam
   (is (= (slurp-bam-for-test test-bam-file) test-sam)))
@@ -115,8 +114,7 @@
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
     (is (thrown? Exception (bam/reader invalid-file-1 :ignore-index true)))
-    (is (thrown? Exception (bam/reader invalid-file-2 :ignore-index true)))
-    (is (thrown? IOException (bam/reader invalid-file-3 :ignore-index true)))
+    (is (thrown? IOException (bam/reader invalid-file-2 :ignore-index true)))
     (is (thrown? IOException (bam/reader not-found-file :ignore-index true)))))
 
 (deftest bamreader-medium-file

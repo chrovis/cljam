@@ -274,17 +274,18 @@
 
 ;;; fastq and phred
 
-(defn fastq-char->phred-byte [ch]
-  [ch]
-  {:pre [(<= 33 (int ch) 126)]}
-  (byte (- (int ch) 33)))
+(defmacro fastq-char->phred-byte [ch]
+  `(byte (- (int ~ch) 33)))
+
+(defmacro phred-byte->fastq-char [b]
+  `(char (+ ~b 33)))
 
 (defn fastq->phred ^bytes [^String fastq]
   (let [b (.getBytes fastq)
         in-bb (ByteBuffer/wrap b)
         out-bb (ByteBuffer/allocate (alength b))]
     (while (.hasRemaining in-bb)
-      (.put out-bb (byte (- (int (.get in-bb)) 33))))
+      (.put out-bb (fastq-char->phred-byte (.get in-bb))))
     (.array out-bb)))
 
 (defmulti phred->fastq class)
@@ -296,7 +297,7 @@
           cb (CharBuffer/allocate (alength b))]
       (loop []
         (when (.hasRemaining bb)
-          (.put cb (char (+ 33 (.get bb))))
+          (.put cb (phred-byte->fastq-char (.get bb)))
           (recur)))
       (.flip cb)
       (.toString cb))))
@@ -306,7 +307,7 @@
 (defmethod phred->fastq Integer
   [n]
   {:pre [(<= 0 n max-phred-score)]}
-  (char (+ n 33)))
+  (phred-byte->fastq-char n))
 
 ;;; Reference functions
 

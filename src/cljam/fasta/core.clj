@@ -1,5 +1,5 @@
 (ns cljam.fasta.core
-  (:refer-clojure :exclude [read slurp])
+  (:refer-clojure :exclude [read])
   (:require [clojure.java.io :as io]
             [cljam.util :as util]
             [cljam.fasta-index.core :as fasta-index]
@@ -54,13 +54,6 @@
 (defn reset
   [rdr]
   (reader/reset rdr))
-
-(defn slurp
-  "Opens a reader on a FASTA file and reads all its contents, returning
-  a sequence about the data."
-  [f]
-  (with-open [r (reader f)]
-    (doall (reader/read r))))
 
 (defn sequential-read
   [f]

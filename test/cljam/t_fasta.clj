@@ -4,9 +4,6 @@
             [cljam.fasta :as fasta]
             [clojure.string :as str]))
 
-;; (deftest slurp-fasta
-;;   (is (= (fasta/slurp test-fa-file) test-fa)))
-
 (deftest read-fasta-file
   (is (thrown? java.io.IOException
                (let [rdr (fasta/reader test-tabix-file)]

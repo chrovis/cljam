@@ -28,4 +28,4 @@
   "Creates a mpileup file from the BAM file."
   [in-bam out-mplp]
   (with-open [r (bam/reader in-bam)]
-    (mplp/create-mpileup out-mplp r)))
+    (mplp/create-mpileup out-mplp nil r)))

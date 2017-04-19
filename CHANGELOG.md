@@ -5,12 +5,26 @@
 ### Added
 
 * Add a function to clone bam reader. [#39](https://github.com/chrovis/cljam/pull/39)
+* Add to support `lein cloverage`. [#45](https://github.com/chrovis/cljam/pull/45)
+* Integration with [Codecov](https://codecov.io/gh/chrovis/cljam). [#46](https://github.com/chrovis/cljam/pull/46)
+* Add many tests. [#60](https://github.com/chrovis/cljam/pull/60)
 
 ### Changed
 
 * Improves performance of pileup. [#41](https://github.com/chrovis/cljam/pull/41)
 * Migrate from midje to clojure.test. [#44](https://github.com/chrovis/cljam/pull/44)
-* Add to support `lein cloverage`. [#45](https://github.com/chrovis/cljam/pull/45)
+* Correct base qualities if reads are overlapped. [#47](https://github.com/chrovis/cljam/pull/47)
+* Use [lein-binplus](https://github.com/BrunoBonacci/lein-binplus) instead of [lein-bin](https://github.com/Raynes/lein-bin). [#48](https://github.com/chrovis/cljam/pull/48)
+* Add marks to private fn. [#50](https://github.com/chrovis/cljam/pull/50)
+* Refine unused code for newline. [#51](https://github.com/chrovis/cljam/pull/51)
+* Pileup without options. [#54](https://github.com/chrovis/cljam/pull/54)
+* Refine `trim-chromosome-key`. [#55](https://github.com/chrovis/cljam/pull/55)
+* Refine `fastq-char->phred-byte` / Add `phred-byte->fastq-char`. [#56](https://github.com/chrovis/cljam/pull/56)
+
+### Fixed
+
+* Fix for `create-mpileup`. [#52](https://github.com/chrovis/cljam/pull/52)
+* Fix for `cljam level` command. [#57](https://github.com/chrovis/cljam/pull/57)
 
 ## [0.2.1] - 2017-04-06
 

@@ -121,8 +121,8 @@
          (.clear ~buffer)
          ba#)))
 
-(def ^:private gt-byte (byte \>))
-(def ^:private newline-byte (byte \newline))
+(def ^:private ^:const gt-byte (byte \>))
+(def ^:private ^:const newline-byte (byte \newline))
 
 (defn- sequqntial-read*
   "Core function to read FASTA sequentially.

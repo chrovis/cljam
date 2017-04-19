@@ -37,4 +37,21 @@
     (is (= (map (comp count :sequence) fa) '(100000))))
   (let [fa (fasta/sequential-read medium-fa-gz-file)]
     (is (= (map :name fa) '("chr1")))
-    (is (= (map (comp count :sequence) fa) '(100000)))))
+    (is (= (map (comp count :sequence) fa) '(100000))))
+  (let [fsrba= (fn [ba-data fa-data]
+                 (when (= (count ba-data) (count fa-data))
+                   (loop [ba-data ba-data
+                          fa-data fa-data]
+                     (let [ba-line (first ba-data)
+                           fa-line (first fa-data)]
+                       (if-not ba-line
+                         true
+                         (when (and (= (keys ba-line) (keys fa-line))
+                                    (= (String. (:name ba-line))
+                                       (:name fa-line))
+                                    (= (map {1 \A, 2 \C, 3 \G, 4 \T, 5 \N}
+                                            (:sequence ba-line))
+                                       (seq (str/upper-case (:sequence fa-line)))))
+                           (recur (rest ba-data) (rest fa-data))))))))]
+    (is (fsrba= (fasta/sequential-read-byte-array test-fa-file)
+                test-fa-sequences))))

@@ -11,9 +11,7 @@
 
 (defn trim-chromosome-key
   [s]
-  (-> s
-      (cstr/replace #"Chr" "")
-      (cstr/replace #"chr" "")))
+  (cstr/replace s #"(?i)^chr" ""))
 
 (defn- normalize-chromosome-prefix
   [s]

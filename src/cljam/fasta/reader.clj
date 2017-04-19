@@ -71,16 +71,6 @@
                      (map? s) (cons s (lazy-seq (read-fn* rdr name))))))]
     (read-fn rdr nil)))
 
-(def ^:private newline-character (char 10))
-(def ^:private return-character (char 13))
-
-(defn- newline*?
-  [c]
-  (or (= c newline-character)
-      (= c return-character)))
-
-(def newline? (memoize newline*?))
-
 (defn- read-sequence-with-offset
   [^FASTAReader rdr offset-start offset-end]
   (let [len (- offset-end offset-start)
@@ -131,6 +121,9 @@
          (.clear ~buffer)
          ba#)))
 
+(def ^:private ^:const gt-byte (byte \>))
+(def ^:private ^:const newline-byte (byte \newline))
+
 (defn- sequqntial-read*
   "Core function to read FASTA sequentially.
    Function f is called every time a single sequence finishes reading.
@@ -146,10 +139,10 @@
            (loop [i 0 name-line? false rname rname*]
              (if (< i bytes)
                (let [b (aget buf i)]
-                 (if (= b 62) ; \>
+                 (if (= b gt-byte)
                    (do (when-let [s (create-ba s-buf)] (f {:name rname :sequence s}))
                        (recur (inc i) true rname))
-                   (if (= b 10) ; \newline
+                   (if (= b newline-byte)
                      (if name-line?
                        (recur (inc i) false (create-ba n-buf))
                        (recur (inc i) name-line? rname))

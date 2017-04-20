@@ -46,29 +46,12 @@
 ;;                                        (slurp-bam-for-test large-bam-file))))))
 
 (defn- shallow= [alns1 alns2]
-  (when (= (count alns1) (count alns2))
-    (loop [alns1 alns1
-           alns2 alns2]
-      (let [aln1 (first alns1)
-            aln2 (first alns2)]
-        (if (nil? aln1)
-          true
-          (when (and (= (:rname aln1) (:rname aln2))
-                     (= (:pos aln1) (:pos aln2)))
-            (recur (rest alns1) (rest alns2))))))))
+  (= (map #(select-keys % [:rname :pos]) alns1)
+     (map #(select-keys % [:rname :pos]) alns2)))
 
 (defn- pointer= [alns1 alns2]
-  (when (= (count alns1) (count alns2))
-    (loop [alns1 alns1
-           alns2 alns2]
-      (let [aln1 (first alns1)
-            aln2 (first alns2)]
-        (if (nil? aln1)
-          true
-          (when (and (= (:rname aln1) (:rname aln2))
-                     (= (:pos aln1) (:pos aln2))
-                     (= (:flag aln1) (:flag aln2)))
-            (recur (rest alns1) (rest alns2))))))))
+  (= (map #(select-keys % [:rname :pos :flag]) alns1)
+     (map #(select-keys % [:rname :pos :flag]) alns2)))
 
 (deftest bamreader
   (with-before-after {:before (do (prepare-cache!)

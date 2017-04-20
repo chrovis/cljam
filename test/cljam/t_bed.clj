@@ -23,7 +23,25 @@
     (.flush bw)
     (.toString bao)))
 
+(defn- raw-str->bed [^String s]
+  (with-open [bais (ByteArrayInputStream. (.getBytes s))
+              isr (InputStreamReader. bais)
+              br (BufferedReader. isr)]
+    (doall (bed/read-raw-fields br))))
+
+(defn- bed->raw-str [xs]
+  (with-open [bao (ByteArrayOutputStream.)
+              osw (OutputStreamWriter. bao)
+              bw (BufferedWriter. osw)]
+    (bed/write-raw-fields bw xs)
+    (.flush bw)
+    (.toString bao)))
+
 (deftest bed-file-reader-1
+  (is (= (raw-str->bed "1 0 100 N 0 + 0 0 255,0,0 2 10,90 0,10")
+         [{:chr "1" :start 0 :end 100 :name "N" :score 0 :strand :plus :thick-start 0 :thick-end 0
+           :item-rgb "255,0,0" :block-count 2 :block-sizes [10 90] :block-starts [0 10]}]))
+
   (is (= (str->bed "1 0 100 N 0 + 0 0 255,0,0 2 10,90 0,10")
          [{:chr "chr1" :start 1 :end 100 :name "N" :score 0 :strand :plus :thick-start 1 :thick-end 0
            :item-rgb "255,0,0" :block-count 2 :block-sizes [10 90] :block-starts [0 10]}]))
@@ -124,27 +142,34 @@
   (with-open [bam (bam/reader "test-resources/test.sorted.bam")]
     (letfn [(ref-pos-end [m] {:rname (:rname m) :pos (:pos m) :end (sam-util/get-end m)})
             (read-region [s] (->> (str->bed s) (mapcat #(cio/read-alignments bam %)) (map ref-pos-end)))]
-      (is (= (read-region "ref 0 6") []))
-      (is (= (read-region "ref 6 7") [{:rname "ref" :pos 7 :end 22}]))
-      (is (= (read-region "ref 7 8") [{:rname "ref" :pos 7 :end 22}]))
-      (is (= (read-region "ref 8 9")
-             [{:rname "ref" :pos 7 :end 22} {:rname "ref" :pos 9 :end 18} {:rname "ref" :pos 9 :end 14}]))
-      (is (= (read-region "ref 21 22")
-             [{:rname "ref" :pos 7 :end 22} {:rname "ref" :pos 16 :end 40}]))
-      (is (= (read-region "ref 22 23") [{:rname "ref" :pos 16 :end 40}]))
-      (is (= (read-region "ref 0 45")
-             [{:rname "ref" :pos 7  :end 22} {:rname "ref" :pos 9  :end 18} {:rname "ref" :pos 9  :end 14}
-              {:rname "ref" :pos 16 :end 40} {:rname "ref" :pos 29 :end 33} {:rname "ref" :pos 37 :end 45}])))))
+      (are [?region-str ?result] (= (read-region ?region-str) ?result)
+        "ref 0 6" []
+        "ref 6 7" [{:rname "ref" :pos 7 :end 22}]
+        "ref 7 8" [{:rname "ref" :pos 7 :end 22}]
+        "ref 8 9" [{:rname "ref" :pos 7 :end 22}
+                   {:rname "ref" :pos 9 :end 18}
+                   {:rname "ref" :pos 9 :end 14}]
+        "ref 21 22" [{:rname "ref" :pos 7 :end 22}
+                     {:rname "ref" :pos 16 :end 40}]
+        "ref 22 23" [{:rname "ref" :pos 16 :end 40}]
+        "ref 0 45" [{:rname "ref" :pos 7  :end 22}
+                    {:rname "ref" :pos 9  :end 18}
+                    {:rname "ref" :pos 9  :end 14}
+                    {:rname "ref" :pos 16 :end 40}
+                    {:rname "ref" :pos 29 :end 33}
+                    {:rname "ref" :pos 37 :end 45}]))))
 
 (deftest bed-reader-and-fasta-reader
   (with-open [fa (fa/reader "test-resources/medium.fa")]
     (comment "chr1" "TAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCC...")
     (letfn [(read-region [s] (->> (str->bed s) (map #(fa/read-sequence fa %))))]
-      (is (= (read-region "1 0 1") ["T"]))
-      (is (= (read-region "1 0 10") ["TAACCCTAAC"]))
-      (is (= (read-region "1 0 10\n1 10 20") ["TAACCCTAAC" "CCTAACCCTA"])))))
+      (are [?region-str ?result] (= (read-region ?region-str) ?result)
+        "1 0 1" ["T"]
+        "1 0 10" ["TAACCCTAAC"]
+        "1 0 10\n1 10 20" ["TAACCCTAAC" "CCTAACCCTA"]))))
 
 (deftest bed-writer
+  (is (= (bed->raw-str (raw-str->bed "1 0 10")) "1 0 10"))
   (is (= (bed->str (str->bed "1 0 1")) "chr1 0 1"))
   (is (= (bed->str (str->bed "1 0 10")) "chr1 0 10"))
   (is (= (bed->str (str->bed "1 0 1\n1 1 2")) "chr1 0 1\nchr1 1 2"))

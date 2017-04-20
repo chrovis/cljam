@@ -1,5 +1,5 @@
 (ns cljam.fasta.reader
-  (:refer-clojure :exclude [read slurp])
+  (:refer-clojure :exclude [read])
   (:require [clojure.string :as cstr]
             [cljam.util :refer [graph?]]
             [cljam.util.fasta :refer [header-line? parse-header-line]]

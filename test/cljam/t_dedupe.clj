@@ -1,10 +1,21 @@
 (ns cljam.t-dedupe
   (:require [clojure.test :refer :all]
+            [cljam.t-common :refer :all]
             [cljam.io :as cio]
             [cljam.bam :as bam]
             [cljam.dedupe :as dedupe]))
 
 (deftest simple-pe-dedupe
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    ;; TODO: need bam-file include PCR duplications
+    (let [in-file test-sorted-bam-file
+          out-file (str temp-dir "/deduped.bam")]
+      (is (not-throw? (dedupe/dedupe in-file out-file)))
+      ;; TODO: check alignments of out-file
+      )))
+
+(deftest simple-pe-dedupe-xform
   (is (= (into #{}
                (dedupe/dedupe-xform)
                [{:qname "r1" :flag 99 :rname "ref" :pos 1 :mapq 60 :rnext "=" :pnext 10 :tlen 5 :qual "IIIII"}

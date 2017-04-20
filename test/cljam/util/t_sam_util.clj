@@ -25,16 +25,15 @@
                 (unchecked-byte (bit-or (bit-shift-left uu 4) (bit-and 0xff ll))))))))
 
 (deftest str->compressed-bases-1
-  (are [?str ?expected] (and
-                          (= (map #(bit-and 0xff %)
-                                  (sam-util/str->compressed-bases ?str))
-                             ?expected)
-                          (= (map #(bit-and 0xff %)
-                                  (sam-util/str->compressed-bases ?str))
-                             (map #(bit-and 0xff %) (encode ?str)))
-                          (= (map #(bit-and 0xff %)
-                                  (sam-util/str->compressed-bases (cstr/lower-case ?str)))
-                             ?expected))
+  (are [?str ?expected] (and (= (map #(bit-and 0xff %)
+                                     (sam-util/str->compressed-bases ?str))
+                                ?expected)
+                             (= (map #(bit-and 0xff %)
+                                     (sam-util/str->compressed-bases ?str))
+                                (map #(bit-and 0xff %) (encode ?str)))
+                             (= (map #(bit-and 0xff %)
+                                     (sam-util/str->compressed-bases (cstr/lower-case ?str)))
+                                ?expected))
     "="    [0]
     "=A"   [1]
     "=C"   [2]
@@ -98,11 +97,10 @@
     "notfound" nil))
 
 (deftest flags
-  (are [?flag ?primary ?set] (and
-                               (= (sam-util/decode-flags ?flag) ?set)
-                               (= (sam-util/encode-flags ?set) ?flag)
-                               (= (sam-util/primary? ?flag) ?primary)
-                               (= (sam-util/primary? ?set) ?primary))
+  (are [?flag ?primary ?set] (and (= (sam-util/decode-flags ?flag) ?set)
+                                  (= (sam-util/encode-flags ?set) ?flag)
+                                  (= (sam-util/primary? ?flag) ?primary)
+                                  (= (sam-util/primary? ?set) ?primary))
     0     true  #{}
     1     true  #{:multiple}
     2     true  #{:properly-aligned}
@@ -123,3 +121,24 @@
     2049  false #{:multiple :supplementary}
     2304  false #{:secondary :supplementary}
     0x900 false #{:secondary :supplementary}))
+
+(deftest normalize-bases
+  (are [?src ?result] (= (vec (sam-util/normalize-bases (byte-array (map byte ?src))))
+                         (map byte ?result))
+    [\a \b \c \. \d \e \n \N] [\A \B \C \N \D \E \N \N]))
+
+(deftest into-rf
+  (let [rf-vec (#'sam-util/into-rf [])
+        rf-seq (#'sam-util/into-rf nil)]
+    (is (= (-> (rf-vec)
+               (rf-vec \a)
+               (rf-vec \b)
+               (rf-vec \c)
+               (rf-vec))
+           [\a \b \c]))
+    (is (= (-> (rf-seq)
+               (rf-seq \a)
+               (rf-seq \b)
+               (rf-seq \c)
+               (rf-seq))
+           '(\c \b \a)))))

@@ -52,7 +52,7 @@
     ;; tests by test-sam-file and test-bam-file
     (is (thrown? Exception
                  (with-reader sorter/sort-by-pos test-sam-file tmp-coordinate-sorted-sam-file)))
-    (is (nil? (with-reader sorter/sort-by-pos test-bam-file tmp-coordinate-sorted-bam-file)))
+    (is (not-throw? (with-reader sorter/sort-by-pos test-bam-file tmp-coordinate-sorted-bam-file)))
     ;; (is (not-throw? (with-reader sorter/sort-by-qname test-sam-file tmp-queryname-sorted-sam-file))) ; TODO: future
     ;; (is (not-throw? (with-reader sorter/sort-by-qname test-bam-file tmp-queryname-sorted-bam-file))) ; TODO: future
     (is (not (with-reader sorter/sorted-by? test-sam-file)))
@@ -107,6 +107,9 @@
     ;;        (slurp-sam-for-test tmp-queryname-sorted-sam-file))) ; TODO: future
     ;; (is (= (slurp-bam-for-test tmp-queryname-sorted-bam-file-2)
     ;;        (slurp-bam-for-test tmp-queryname-sorted-bam-file))) ; TODO: future
+    ;; TODO: Add test sorter/sort-by-pos with bam file includes many blocks
+    ;;       (Currently, testing bam files have only one block)
+    ;; (is (not-throw? (with-reader sorter/sort-by-pos many-blocks-bam-file (str temp-dir "/many.bam"))))
     ))
 
 (deftest-slow about-sorting-medium-file

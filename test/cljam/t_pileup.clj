@@ -34,42 +34,35 @@
     [\~] [\~] [\~] [\~] [\~]))
 
 (deftest pileup-returns-LazySeq
-  (are [?pileup] (= (type ?pileup) clojure.lang.LazySeq)
-    (plp/pileup (bam/reader test-sorted-bam-file) "ref" nil)
-    (plp/pileup (bam/reader test-sorted-bam-file) "ref2" nil)))
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (instance? clojure.lang.LazySeq (plp/pileup r "ref" nil)))
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (instance? clojure.lang.LazySeq (plp/pileup r "ref2" nil))))
 
 (deftest about-pileup
   (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (plp/pileup r "ref"))
+           (doall (plp/pileup r "ref" nil)))
          test-bam-pileup-ref))
+  (doseq [n-threads [1 4]]
+    (are [?param] (= (with-open [r (bam/reader test-sorted-bam-file)]
+                       (doall (plp/pileup r "ref" ?param)))
+                     test-bam-pileup-ref)
+      {:n-threads n-threads}
+      {:step 2 :n-threads n-threads}
+      {:step 3 :n-threads n-threads}
+      {:step 5 :n-threads n-threads}
+      {:step 7 :n-threads n-threads}
+      {:step 11 :n-threads n-threads}
+      {:step 13 :n-threads n-threads}))
   (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (plp/pileup r "ref" nil))
-         test-bam-pileup-ref))
-  (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (plp/pileup r "ref" {:step 2 :n-threads 4}))
-         test-bam-pileup-ref))
-  (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (plp/pileup r "ref" {:step 3 :n-threads 4}))
-         test-bam-pileup-ref))
-  (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (plp/pileup r "ref" {:step 5 :n-threads 4}))
-         test-bam-pileup-ref))
-  (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (plp/pileup r "ref" {:step 7 :n-threads 4}))
-         test-bam-pileup-ref))
-  (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (plp/pileup r "ref" {:step 11 :n-threads 4}))
-         test-bam-pileup-ref))
-  (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (plp/pileup r "ref" {:step 13 :n-threads 4}))
-         test-bam-pileup-ref))
-  (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (plp/pileup r "ref" {:n-threads 4}) test-bam-pileup-ref)))
-  (is (= (plp/pileup (bam/reader test-sorted-bam-file) "ref2" nil) test-bam-pileup-ref2)))
+           (doall (plp/pileup r "ref2" nil)))
+         test-bam-pileup-ref2)))
 
 (deftest about-first-pos
-  (is (= (plp/first-pos (bam/reader test-sorted-bam-file) "ref" 0 64) 7))
-  (is (= (plp/first-pos (bam/reader test-sorted-bam-file) "ref2" 0 64) 1)))
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (is (= (plp/first-pos r "ref" 0 64) 7)))
+  (with-open [r (bam/reader test-sorted-bam-file)]
+    (is (= (plp/first-pos r "ref2" 0 64) 1))))
 
 (deftest about-pileup-seq
 

@@ -24,6 +24,12 @@
            (filter #(= "ref" (:rname %))
                    (:alignments test-sam-sorted-by-pos))))))
 
+(deftest about-bam-indexer-invalid-files
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (is (thrown? Exception (bai/create-index "not-exists-file"
+                                             "not-exists-file.bai")))))
+
 (deftest about-bam-indexer-for-incomplete-alignments
   (let [f (str temp-dir "/test.incomplete.bam")
         sorted-f (str temp-dir "/test.incomplete.sorted.bam")]
@@ -46,23 +52,24 @@
       )))
 
 (deftest about-bam-indexer-small-file
-  (with-before-after {:before (do (prepare-cache!)
-                                  (fs/copy small-bam-file temp-file-sorted))
-                      :after (clean-cache!)}
-    (is (not-throw? (bai/create-index temp-file-sorted
-                                      (str temp-file-sorted ".bai"))))
-    (is (fs/exists? (str temp-file-sorted ".bai")))
-    (with-open [r (bam/reader temp-file-sorted)]
-      ;; Random read with different number of spans.
-      (is (= (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 25000000 :depth :deep}))
-             14858))
-      (is (= (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 24500000 :depth :deep}))
-             11424))
-      (is (= (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 24000000 :depth :deep}))
-             10010))
-      (is (= (count (io/read-alignments r {:chr "chr1" :start 23000000 :end 23500000 :depth :deep}))
-             3806))
-      (is (= (count (io/read-alignments r {:chr "*"})) 0)))))
+  (doseq [n-threads [1 4]]
+    (with-before-after {:before (do (prepare-cache!)
+                                    (fs/copy small-bam-file temp-file-sorted))
+                        :after (clean-cache!)}
+      (is (not-throw? (bai/create-index temp-file-sorted
+                                        (str temp-file-sorted ".bai")
+                                        :n-threads n-threads)))
+      (is (fs/exists? (str temp-file-sorted ".bai")))
+      (with-open [r (bam/reader temp-file-sorted)]
+        ;; Random read with different number of spans.
+        (are [?param ?counts] (= (count (io/read-alignments r ?param)) ?counts)
+          {:chr "chr1" :start 23000000 :end 25000000 :depth :shallow} 14858
+          {:chr "chr1" :start 23000000 :end 25000000 :depth :pointer} 14858
+          {:chr "chr1" :start 23000000 :end 25000000 :depth :deep} 14858
+          {:chr "chr1" :start 23000000 :end 24500000 :depth :deep} 11424
+          {:chr "chr1" :start 23000000 :end 24000000 :depth :deep} 10010
+          {:chr "chr1" :start 23000000 :end 23500000 :depth :deep} 3806
+          {:chr "*"} 0)))))
 
 (deftest-slow about-bam-indexer-medium-file
   (with-before-after {:before (do (prepare-cache!)

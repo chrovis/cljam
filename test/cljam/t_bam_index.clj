@@ -7,7 +7,8 @@
 ;;; bin-index
 
 (deftest bin-index-is-done-without-errors
-  (is (not-throw? (bai/bin-index test-bai-file 0))))
+  (is (not-throw? (bai/bin-index test-bai-file 0)))
+  (is (not-throw? (bai/bin-index test-bai-file 1))))
 (deftest bin-index-throws-BoundsException-for-the-invalid-given-index
   (is (thrown? Exception (bai/bin-index test-bai-file 2))))
 (deftest bin-index-returns-vector
@@ -36,10 +37,9 @@
 (deftest get-spans-returns-a-sequence-including-regions
   (let [bai* (bai/bam-index test-bai-file)]
     (is (seq? (bai/get-spans bai* 0 0 100)))
-    (is (every? #(and
-                   (= 2 (count %))
-                   (number? (first %))
-                   (number? (second %)))
+    (is (every? #(and (= 2 (count %))
+                      (number? (first %))
+                      (number? (second %)))
                 (bai/get-spans bai* 0 0 100)))))
 (deftest get-spans-returns-correct-regions
   (let [bai* (bai/bam-index test-bai-file)]

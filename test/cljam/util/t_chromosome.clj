@@ -3,54 +3,61 @@
             [cljam.util.chromosome :as chr]))
 
 (deftest normalize-chromosome-key
-  (is (= (chr/normalize-chromosome-key "chr1") "chr1"))
-  (is (= (chr/normalize-chromosome-key "chr01") "chr1"))
-  (is (= (chr/normalize-chromosome-key "chr22") "chr22"))
-  (is (= (chr/normalize-chromosome-key "chrX") "chrX"))
-  (is (= (chr/normalize-chromosome-key "chrY") "chrY"))
-  (is (= (chr/normalize-chromosome-key "chrM") "chrM"))
-  (is (= (chr/normalize-chromosome-key "chrMT") "chrMT"))
+  (are [?key ?normalized-key] (= (chr/normalize-chromosome-key ?key)
+                                 ?normalized-key)
+    "chr1" "chr1"
+    "chr1" "chr1"
+    "chr01" "chr1"
+    "chr22" "chr22"
+    "chrX" "chrX"
+    "chrY" "chrY"
+    "chrM" "chrM"
+    "chrMT" "chrMT"
 
-  (is (= (chr/normalize-chromosome-key "Chr1") "chr1"))
-  (is (= (chr/normalize-chromosome-key "Chr01") "chr1"))
-  (is (= (chr/normalize-chromosome-key "Chr22") "chr22"))
-  (is (= (chr/normalize-chromosome-key "ChrX") "chrX"))
-  (is (= (chr/normalize-chromosome-key "ChrY") "chrY"))
-  (is (= (chr/normalize-chromosome-key "ChrM") "chrM"))
-  (is (= (chr/normalize-chromosome-key "ChrMT") "chrMT"))
+    "Chr1" "chr1"
+    "Chr01" "chr1"
+    "Chr22" "chr22"
+    "ChrX" "chrX"
+    "ChrY" "chrY"
+    "ChrM" "chrM"
+    "ChrMT" "chrMT"
 
-  (is (= (chr/normalize-chromosome-key "CHR1") "chr1"))
-  (is (= (chr/normalize-chromosome-key "CHR01") "chr1"))
-  (is (= (chr/normalize-chromosome-key "CHR22") "chr22"))
-  (is (= (chr/normalize-chromosome-key "CHRX") "chrX"))
-  (is (= (chr/normalize-chromosome-key "CHRY") "chrY"))
-  (is (= (chr/normalize-chromosome-key "CHRM") "chrM"))
-  (is (= (chr/normalize-chromosome-key "CHRMT") "chrMT"))
+    "CHR1" "chr1"
+    "CHR01" "chr1"
+    "CHR22" "chr22"
+    "CHRX" "chrX"
+    "CHRY" "chrY"
+    "CHRM" "chrM"
+    "CHRMT" "chrMT"
 
-  (is (= (chr/normalize-chromosome-key "1") "chr1"))
-  (is (= (chr/normalize-chromosome-key "01") "chr1"))
-  (is (= (chr/normalize-chromosome-key "22") "chr22"))
-  (is (= (chr/normalize-chromosome-key "X") "chrX"))
-  (is (= (chr/normalize-chromosome-key "Y") "chrY"))
-  (is (= (chr/normalize-chromosome-key "M") "chrM"))
-  (is (= (chr/normalize-chromosome-key "MT") "chrMT"))
+    "1" "chr1"
+    "01" "chr1"
+    "22" "chr22"
+    "X" "chrX"
+    "Y" "chrY"
+    "M" "chrM"
+    "MT" "chrMT"
 
-  (is (= (chr/normalize-chromosome-key "x") "chrX"))
-  (is (= (chr/normalize-chromosome-key "y") "chrY"))
-  (is (= (chr/normalize-chromosome-key "m") "chrM"))
-  (is (= (chr/normalize-chromosome-key "mt") "chrMT"))
+    "x" "chrX"
+    "y" "chrY"
+    "m" "chrM"
+    "mt" "chrMT"
 
-  (is (= (chr/normalize-chromosome-key "_1") "_1"))
-  (is (= (chr/normalize-chromosome-key "GL000226_1") "GL000226_1"))
-  (is (= (chr/normalize-chromosome-key "GL000207.1") "GL000207_1"))
-  (is (= (chr/normalize-chromosome-key "NC_007605") "NC_007605"))
-  (is (= (chr/normalize-chromosome-key "hs37d5") "hs37d5"))
+    "_1" "_1"
+    "GL000226_1" "GL000226_1"
+    "GL000207.1" "GL000207_1"
+    "NC_007605" "NC_007605"
+    "hs37d5" "hs37d5"
 
-  (is (= (chr/trim-chromosome-key "chr1") "1"))
-  (is (= (chr/trim-chromosome-key "Chr2") "2"))
-  (is (= (chr/trim-chromosome-key "CHR3") "3"))
-  (is (= (chr/trim-chromosome-key "4") "4"))
-  (is (= (chr/trim-chromosome-key "X") "X"))
+    ;; TODO: Add more SN name
+    )
 
-  ;; TODO: Add more SN name
-  )
+  (are [?key ?trimmed-key] (= (chr/trim-chromosome-key ?key) ?trimmed-key)
+    "chr1" "1"
+    "Chr2" "2"
+    "CHR3" "3"
+    "4" "4"
+    "X" "X"
+
+    ;; TODO: Add more SN name
+    ))

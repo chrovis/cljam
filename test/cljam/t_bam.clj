@@ -57,39 +57,39 @@
   (with-before-after {:before (do (prepare-cache!)
                                   (spit-bam-for-test temp-file test-sam))
                       :after (clean-cache!)}
-    (let [rdr (bam/reader temp-file :ignore-index false)]
+    (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
       (is (= (io/read-alignments rdr) (:alignments test-sam))))
-    (let [rdr (bam/reader temp-file :ignore-index false)]
+    (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
       (is (thrown? Exception (io/read-alignments rdr {:chr "ref2"}))))
-    (let [rdr (bam/reader temp-file :ignore-index false)]
+    (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
       (is (= (io/read-alignments rdr {:depth :deep}) (:alignments test-sam))))
-    (let [rdr (bam/reader temp-file :ignore-index false)]
+    (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
       (is (shallow= (io/read-alignments rdr {:depth :shallow})
                     (:alignments test-sam))))
-    (let [rdr (bam/reader temp-file :ignore-index false)]
+    (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
       (is (pointer= (io/read-alignments rdr {:depth :pointer})
                     (:alignments test-sam))))
-    (let [rdr (bam/reader temp-file :ignore-index false)]
+    (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
       (is (= (data->clj (io/read-blocks rdr)) test-sam-data)))
-    (let [rdr (bam/reader temp-file :ignore-index false)]
+    (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
       (is (thrown? Exception (data->clj (io/read-blocks rdr {:chr "ref2"})))))))
 
 (deftest bamreader-with-index
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (let [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
       ;; TODO: Does not works?
       (is (= (io/read-alignments rdr {:chr "ref2"}) [])))
-    (let [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
       (is (= (data->clj (io/read-blocks rdr)) test-sorted-bam-data)))
-    (let [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
       ;; TODO: Does not works?
       (is (= (data->clj (io/read-blocks rdr {:chr "ref2"})) [])))))
 
@@ -118,6 +118,6 @@
   (with-before-after {:before (do (prepare-cache!)
                                   (prepare-cavia!))
                       :after (clean-cache!)}
-    (let [rdr (bam/reader large-bam-file :ignore-index true)]
+    (with-open [rdr (bam/reader large-bam-file :ignore-index true)]
       (is (= (io/read-refs rdr) large-sam-refs))
       (is (not-throw? (io/read-alignments rdr))))))

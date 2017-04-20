@@ -7,12 +7,12 @@
 
 (defmacro with-out-file
   [f & body]
-  `(let [os# (clojure.java.io/output-stream ~f)
+  `(let [os# (io/output-stream ~f)
          old-ps# System/out
          ps# (PrintStream. os#)]
      (try
        (System/setOut ps#)
-       (binding [*out* (clojure.java.io/writer os#)]
+       (binding [*out* (io/writer os#)]
          ~@body)
        (finally
          (.flush ps#)

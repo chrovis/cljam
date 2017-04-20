@@ -32,7 +32,7 @@
   [rdr rname rlength start end step]
   (let [n-threads (get-exec-n-threads)
         read-fn (fn [r start end]
-                  (io/read-alignments r {:chr rname :start start :end end :deep :shallow}))
+                  (io/read-alignments r {:chr rname :start start :end end :depth :shallow}))
         count-fn (fn [xs]
                    (if (= n-threads 1)
                      (map (fn [[start end]]

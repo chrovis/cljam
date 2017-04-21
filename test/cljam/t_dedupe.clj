@@ -8,12 +8,11 @@
 (deftest simple-pe-dedupe
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    ;; TODO: need bam-file include PCR duplications
-    (let [in-file test-sorted-bam-file
-          out-file (str temp-dir "/deduped.bam")]
+    (let [in-file small-bam-file
+          out-file (str temp-dir "/deduped.bam")
+          controlled-result-file small-deduped-bam-file]
       (is (not-throw? (dedupe/dedupe in-file out-file)))
-      ;; TODO: check alignments of out-file
-      )))
+      (is (same-bam-file? out-file controlled-result-file)))))
 
 (deftest simple-pe-dedupe-xform
   (is (= (into #{}

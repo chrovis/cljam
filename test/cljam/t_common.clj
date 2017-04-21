@@ -116,6 +116,7 @@
 
 (def test-fa-file  "test-resources/test.fa")
 (def test-fa-bz2-file  "test-resources/test.fa.bz2")
+(def test-fa-dict-file "test-resources/test-fa.dict")
 (def medium-fa-file "test-resources/medium.fa")
 (def medium-fa-gz-file "test-resources/medium.fa.gz")
 

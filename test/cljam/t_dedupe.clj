@@ -8,11 +8,9 @@
 (deftest simple-pe-dedupe
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (let [in-file small-bam-file
-          out-file (str temp-dir "/deduped.bam")
-          controlled-result-file small-deduped-bam-file]
-      (is (not-throw? (dedupe/dedupe in-file out-file)))
-      (is (same-bam-file? out-file controlled-result-file)))))
+    (let [out-file (str temp-dir "/deduped.bam")]
+      (is (not-throw? (dedupe/dedupe dedupe-before-bam-file out-file)))
+      (is (same-bam-file? out-file dedupe-after-bam-file)))))
 
 (deftest simple-pe-dedupe-xform
   (is (= (into #{}

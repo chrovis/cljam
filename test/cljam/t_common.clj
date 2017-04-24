@@ -104,9 +104,11 @@
 (def test-bam-file "test-resources/test.bam")
 (def test-sorted-bam-file "test-resources/test.sorted.bam")
 (def small-bam-file "test-resources/small.bam")
-(def small-deduped-bam-file "test-resources/small.deduped.bam")
 (def medium-bam-file "test-resources/medium.bam")
 (def large-bam-file (cavia/resource mycavia "large.bam"))
+
+(def dedupe-before-bam-file "test-resources/dedupe_before.bam")
+(def dedupe-after-bam-file "test-resources/dedupe_after.bam")
 
 ;; ### BAM index files
 

@@ -215,5 +215,4 @@
                       :after (clean-cache!)}
     (let [out-file (str temp-dir "/test.pileup")]
       (is (not-throw? (plp/create-mpileup test-sorted-bam-file out-file)))
-      ;; TODO: check out-file
-      )))
+      (is (same-file? out-file test-pileup-file)))))

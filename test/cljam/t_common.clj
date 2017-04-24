@@ -140,6 +140,11 @@
 (def test-vcf-v4_0-file "test-resources/vcf/test-v4_0.vcf")
 (def test-vcf-v4_3-file "test-resources/vcf/test-v4_3.vcf")
 
+;; ### pileup files
+
+(def test-pileup-file "test-resources/pileup/test.pileup")
+(def test-pileup-dir "test-resources/pileup/")
+
 (def test-sam
   {:header {:SQ [{:SN "ref", :LN 45} {:SN "ref2", :LN 40}]}
    :alignments

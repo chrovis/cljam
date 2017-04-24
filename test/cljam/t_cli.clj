@@ -92,30 +92,24 @@
                       :after (clean-cache!)}
     ;; NB: "pileup" output format may change in future (maybe)
     (is (not-throw? (with-out-file temp-out (cli/pileup [test-sorted-bam-file]))))
-    ;; (is (= (slurp temp-out) (slurp "test-resources/t_cli.pileup")))
-    (are [?args] (not-throw? (with-out-file temp-out (cli/pileup ?args)))
-      ["-t" "1" "-s" test-sorted-bam-file]
-      ["-t" "1" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "1" "-s" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "1" "-r" "ref2:10-200" test-sorted-bam-file]
-      ["-t" "1" "-r" "ref2:10-200" "-s" test-sorted-bam-file]
-      ["-t" "1" "-r" "ref2:10-200" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "1" "-r" "ref2:10-200" "-s" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "1" "-r" "ref2" test-sorted-bam-file]
-      ["-t" "1" "-r" "ref2" "-s" test-sorted-bam-file]
-      ["-t" "1" "-r" "ref2" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "1" "-r" "ref2" "-s" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "4" "-s" test-sorted-bam-file]
-      ["-t" "4" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "4" "-s" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "4" "-r" "ref2:10-200" test-sorted-bam-file]
-      ["-t" "4" "-r" "ref2:10-200" "-s" test-sorted-bam-file]
-      ["-t" "4" "-r" "ref2:10-200" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "4" "-r" "ref2:10-200" "-s" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "4" "-r" "ref2" test-sorted-bam-file]
-      ["-t" "4" "-r" "ref2" "-s" test-sorted-bam-file]
-      ["-t" "4" "-r" "ref2" "-f" test-fa-file test-sorted-bam-file]
-      ["-t" "4" "-r" "ref2" "-s" "-f" test-fa-file test-sorted-bam-file])))
+    (is (= (slurp temp-out) (slurp test-pileup-file)))
+    (let [bam-file test-sorted-bam-file]
+      (doseq [t ["1" "4"]]
+        (are [?args ?file] (= (do
+                                (with-out-file temp-out (cli/pileup ?args))
+                                (slurp temp-out))
+                              (slurp (str test-pileup-dir ?file)))
+          ["-t" t "-s" bam-file] "s.pileup"
+          ["-t" t "-f" test-fa-file bam-file] "f.pileup"
+          ["-t" t "-s" "-f" test-fa-file bam-file] "sf.pileup"
+          ["-t" t "-r" "ref2" bam-file] "r1.pileup"
+          ["-t" t "-r" "ref2" "-s" bam-file] "r1s.pileup"
+          ["-t" t "-r" "ref2" "-f" test-fa-file bam-file] "r1f.pileup"
+          ["-t" t "-r" "ref2" "-s" "-f" test-fa-file bam-file] "r1sf.pileup"
+          ["-t" t "-r" "ref2:10-200" bam-file] "r2.pileup"
+          ["-t" t "-r" "ref2:10-200" "-s" bam-file] "r2s.pileup"
+          ["-t" t "-r" "ref2:10-200" "-f" test-fa-file bam-file] "r2f.pileup"
+          ["-t" t "-r" "ref2:10-200" "-s" "-f" test-fa-file bam-file] "r2sf.pileup")))))
 
 (deftest about-faidx
   (with-before-after {:before (do (prepare-cache!)

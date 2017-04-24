@@ -1,6 +1,7 @@
 (ns cljam.t-dict
   "Tests for cljam.dict."
   (:require [clojure.test :refer :all]
+            [clojure.string :as string]
             [me.raynes.fs :as fs]
             [clojure.java.io :as io]
             [cljam.t-common :refer :all]
@@ -11,16 +12,15 @@
               r2 (io/reader f2)]
     (let [dict1 (line-seq r1)
           dict2 (line-seq r2)
-          ;; NB: `UR` is calculated by file path, ignore it
-          omit-ur (fn [line]
-                    (if-let [[_ r] (re-find #"^(.*)\tUR:" line)]
-                      r
-                      line))]
+          ;; NB: `UR` is calculated by local file path, ignore it,
+          ;;     and ignore `VN` too.
+          omit-some (fn [line]
+                      (string/join "\t"
+                                   (remove #(re-find #"^(UR|VN):" %)
+                                           (string/split line #"\t"))))]
       (when (= (count dict1) (count dict2))
-        (->> (map #(= (omit-ur %1) (omit-ur %2)) dict1 dict2)
-             (filter identity)
-             first
-             boolean)))))
+        (->> (map #(= (omit-some %1) (omit-some %2)) dict1 dict2)
+             (every? true?))))))
 
 ;; Resources
 ;; ---------

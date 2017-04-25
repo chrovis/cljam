@@ -110,6 +110,9 @@
 (def dedupe-before-bam-file "test-resources/dedupe_before.bam")
 (def dedupe-after-bam-file "test-resources/dedupe_after.bam")
 
+(def normalize-before-bam-file "test-resources/normalize_before.bam")
+(def normalize-after-bam-file "test-resources/normalize_after.bam")
+
 ;; ### BAM index files
 
 (def test-bai-file "test-resources/test.sorted.bam.bai")

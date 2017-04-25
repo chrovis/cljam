@@ -107,6 +107,9 @@
 (def medium-bam-file "test-resources/medium.bam")
 (def large-bam-file (cavia/resource mycavia "large.bam"))
 
+(def dedupe-before-bam-file "test-resources/dedupe_before.bam")
+(def dedupe-after-bam-file "test-resources/dedupe_after.bam")
+
 ;; ### BAM index files
 
 (def test-bai-file "test-resources/test.sorted.bam.bai")
@@ -376,6 +379,15 @@
   "Returns true if the two files' MD5 hash are same, false if not."
   [f1 f2]
   (= (digest/sha1 (file f1)) (digest/sha1 (file f2))))
+
+(defn same-bam-file?
+  [f1 f2]
+  (with-open [r1 (bam/reader f1)
+              r2 (bam/reader f2)]
+    (and (= (io/read-header r1)
+            (io/read-header r2))
+         (= (io/read-alignments r1 {})
+            (io/read-alignments r2 {})))))
 
 ;;;; FASTA
 

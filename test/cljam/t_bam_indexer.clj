@@ -9,6 +9,7 @@
             [cljam.bam-indexer :as bai]))
 
 (def temp-file-sorted (str temp-dir "/test.sorted.bam"))
+(def temp-file-sorted-2 (str temp-dir "/test.sorted2.bam"))
 
 (deftest about-bam-indexer
   (with-before-after {:before (do (prepare-cache!)
@@ -52,23 +53,30 @@
       )))
 
 (deftest about-bam-indexer-small-file
-  (doseq [n-threads [1 4]]
-    (with-before-after {:before (do (prepare-cache!)
-                                    (fs/copy small-bam-file temp-file-sorted))
-                        :after (clean-cache!)}
+  (with-before-after {:before (do (prepare-cache!)
+                                  (fs/copy small-bam-file temp-file-sorted)
+                                  (fs/copy small-bam-file temp-file-sorted-2))
+                      :after (clean-cache!)}
+    (let [temp-file-sorted-bai (str temp-file-sorted ".bai")
+          temp-file-sorted-bai-2 (str temp-file-sorted-2 ".bai")]
       (is (not-throw? (bai/create-index temp-file-sorted
-                                        (str temp-file-sorted ".bai")
-                                        :n-threads n-threads)))
-      (is (fs/exists? (str temp-file-sorted ".bai")))
+                                        temp-file-sorted-bai
+                                        :n-threads 1)))
+      (is (fs/exists? temp-file-sorted-bai))
+      (is (not-throw? (bai/create-index temp-file-sorted-2
+                                        temp-file-sorted-bai-2
+                                        :n-threads 4)))
+      (is (fs/exists? temp-file-sorted-bai-2))
+      (is (same-file? temp-file-sorted-bai temp-file-sorted-bai-2))
       (with-open [r (bam/reader temp-file-sorted)]
         ;; Random read with different number of spans.
         (are [?param ?counts] (= (count (io/read-alignments r ?param)) ?counts)
-          {:chr "chr1" :start 23000000 :end 25000000 :depth :shallow} 14858
-          {:chr "chr1" :start 23000000 :end 25000000 :depth :pointer} 14858
-          {:chr "chr1" :start 23000000 :end 25000000 :depth :deep} 14858
-          {:chr "chr1" :start 23000000 :end 24500000 :depth :deep} 11424
+          {:chr "chr1" :start 23000000 :end 23010000 :depth :shallow} 175
+          {:chr "chr1" :start 23000000 :end 23010000 :depth :pointer} 175
+          {:chr "chr1" :start 23000000 :end 23010000 :depth :deep} 175
+          {:chr "chr1" :start 23000000 :end 23020000 :depth :deep} 292
+          {:chr "chr1" :start 23000000 :end 23050000 :depth :deep} 621
           {:chr "chr1" :start 23000000 :end 24000000 :depth :deep} 10010
-          {:chr "chr1" :start 23000000 :end 23500000 :depth :deep} 3806
           {:chr "*"} 0)))))
 
 (deftest-slow about-bam-indexer-medium-file

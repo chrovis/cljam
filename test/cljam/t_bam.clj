@@ -100,7 +100,7 @@
     (is (thrown? IOException (bam/reader invalid-file-2 :ignore-index true)))
     (is (thrown? IOException (bam/reader not-found-file :ignore-index true)))))
 
-(deftest bamreader-medium-file
+(deftest-slow bamreader-medium-file
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
     (with-open [rdr (bam/reader medium-bam-file :ignore-index true)]

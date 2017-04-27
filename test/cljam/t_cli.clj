@@ -2,7 +2,9 @@
   (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
             [clojure.java.io :as io]
-            [cljam.cli :as cli])
+            [cljam.cli :as cli]
+            [cljam.io :as cio]
+            [cljam.bam :as bam])
   (:import [java.io PrintStream]))
 
 (defmacro with-out-file
@@ -132,8 +134,10 @@
                  (with-out-file temp-out (cli/level [test-bam-file temp-bam]))))
     (is (not-throw? (with-out-file temp-out (cli/level [test-sorted-bam-file
                                                         temp-bam]))))
-    ;; TODO: examine contents of temp-bam
-    ))
+    (with-open [rdr (bam/reader temp-bam :ignore-index true)]
+      (is (= (map #(first (keep :LV (:options %)))
+                  (cio/read-alignments rdr))
+             test-sorted-bam-levels)))))
 
 (deftest about-run
   (with-before-after {:before (prepare-cache!)

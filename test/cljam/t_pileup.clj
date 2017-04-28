@@ -84,8 +84,8 @@
               (mplp/pileup-seq 101 120 (map #(hash-map :pos (inc %) :cigar "10M") (range))))
          [10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10]))
   (is (= (map :pos
-              (last (mplp/pileup-seq 1 1000000 (map #(hash-map :pos (inc %) :cigar "10M") (range)))))
-         [999991 999992 999993 999994 999995 999996 999997 999998 999999 1000000]))
+              (last (mplp/pileup-seq 1 100000 (map #(hash-map :pos (inc %) :cigar "10M") (range)))))
+         [99991 99992 99993 99994 99995 99996 99997 99998 99999 100000]))
 
   ;;     -----
   ;;    ----

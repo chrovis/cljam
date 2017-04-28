@@ -150,31 +150,32 @@
 
 (defn- bcf-map->parsed-variant
   "Converts a BCF-style variant map to parsed variant using meta-info."
-  [contigs filters formats info [fmt-kw & indiv-kws] v]
-  (let [gts (:genotype v)
+  [contigs filters formats info [fmt-kw & indiv-kws] variant]
+  (let [gts (:genotype variant)
         indiv (map
                (fn [i] (into
                         {}
                         (keep
-                         (fn [[gt-tag gt-vals]]
-                           (let [tag (formats gt-tag)
-                                 gt-val (nth gt-vals i)]
-                             (when-not (or (nil? gt-val) (= [nil] gt-val))
-                               (if (= (:id tag) "GT")
-                                 [(:id tag) (vcf-util/ints->genotype gt-val)]
-                                 [(:id tag) (if (and (= (:number tag) 1) (sequential? gt-val))
-                                              (first gt-val)
-                                              gt-val)]))))) gts))
-               (range (:n-sample v)))]
-    (-> (dissoc v :genotype)
-        (dissoc v :ref-length)
-        (dissoc v :n-sample)
+                         (fn [[k vs]]
+                           (let [tag (formats k)
+                                 v (nth vs i)]
+                             (when-not (or (nil? v) (= [nil] v))
+                               [(:kw tag)
+                                (cond
+                                  (= (:kw tag) :GT) (vcf-util/ints->genotype v)
+                                  (and (= (:number tag) 1) (sequential? v)) (first v)
+                                  :else v)])))) gts))
+               (range (:n-sample variant)))]
+    (-> (dissoc variant :genotype)
+        (dissoc :ref-length)
+        (dissoc :n-sample)
         (update :chrom (comp :id contigs))
-        (update :filter #(map (comp :id filters) %))
-        (update :info #(into {} (map (fn [[k v]] [(:id (info k)) (if (and (= (:number (info k)) 1) (sequential? v))
-                                                                   (first v)
-                                                                   v)])) %))
-        (assoc fmt-kw (map (comp :id formats first) gts))
+        (update :filter #(map (comp :kw filters) %))
+        (update :info #(into {} (map (fn [[k v]] [(:kw (info k))
+                                                  (if (and (= (:number (info k)) 1) (sequential? v))
+                                                    (first v)
+                                                    v)])) %))
+        (assoc fmt-kw (map (comp :kw formats first) gts))
         (merge (zipmap indiv-kws indiv)))))
 
 (defn- read-data-lines
@@ -190,7 +191,7 @@
 (defn- meta->map
   "Creates a map for searching meta-info with indices."
   [meta]
-  (into {} (map (fn [m] [(Integer/parseInt (:idx m)) m])) meta))
+  (into {} (map (fn [m] [(Integer/parseInt (:idx m)) (assoc m :kw (keyword (:id m)))])) meta))
 
 (defn read-variants
   "Returns data lines of the BCF from rdr as a lazy sequence of maps.
@@ -205,7 +206,7 @@
   [^BCFReader rdr & {:keys [depth] :or {depth :vcf}}]
   (.seek ^BGZFInputStream (.reader rdr) ^long (.start-pos rdr))
   (let [contigs (meta->map (:contig (.meta-info rdr)))
-        filters (assoc (meta->map (:filter (.meta-info rdr))) 0 {:id "PASS"})
+        filters (assoc (meta->map (:filter (.meta-info rdr))) 0 {:id "PASS" :kw :PASS})
         formats (meta->map (:format (.meta-info rdr)))
         info (meta->map (:info (.meta-info rdr)))
         kws (mapv keyword (drop 8 (.header rdr)))

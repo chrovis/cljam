@@ -39,7 +39,7 @@
               {}
               (map (fn [ss]
                      (let [[k vs] (cstr/split ss #"\=")]
-                       [k ((parser-map k) vs)])))))))))
+                       [(keyword k) ((parser-map k) vs)])))))))))
 
 (defn info-stringifier
   "Returns a stringifier function of INFO field.
@@ -53,35 +53,35 @@
         (->> id-ordered
              (keep
               (fn [k]
-                (when-let [v (info k)]
+                (when-let [v (info (keyword k))]
                   (if (or (= v :exists) (= (info-type k) "Flag"))
                     k
                     (str k "=" (if (sequential? v) (cstr/join "," v) v))))))
              (cstr/join ";"))))))
 
 (defn parse-filter
-  "Parses FILTER field and returns a sequence of string."
+  "Parses FILTER field and returns a sequence of keywords."
   [^String s]
   (when-not (dot-or-nil? s)
-    (cstr/split s #";")))
+    (map keyword (cstr/split s #";"))))
 
 (defn stringify-filter
-  "Stringifies FILTER field. Takes a sequence of strings."
+  "Stringifies FILTER field. Takes a sequence of keywords or strings."
   [fltr]
-  (when (or (some? fltr) (empty? fltr))
-    (cstr/join ";" fltr)))
+  (when (and (some? fltr) (some some? fltr))
+    (cstr/join ";" (map name fltr))))
 
 (defn parse-format
-  "Parses FORMAT field and returns as a vector of strings."
+  "Parses FORMAT field and returns as a sequence of keywords."
   [^String s]
   (when-not (dot-or-nil? s)
-    (cstr/split s #":")))
+    (map keyword (cstr/split s #":"))))
 
 (defn stringify-format
-  "Stringifies FORMAT field. Takes a sequence of strings."
+  "Stringifies FORMAT field. Takes a sequence of keywords or strings."
   [formats]
   (when-not (or (nil? formats) (empty? formats))
-    (cstr/join ":" formats)))
+    (cstr/join ":" (map name formats))))
 
 (defn parse-genotype
   "Parses genotype (GT) format and returns a vector of pairs: [allele, phased].
@@ -130,7 +130,7 @@
           (into
            {}
            (map (fn [[k ^String v]]
-                  [k (when-not (dot-or-nil? v) ((parser-map k) v))]))
+                  [(keyword k) (when-not (dot-or-nil? v) ((parser-map k) v))]))
            (map vector ks vs)))))))
 
 (defn stringify-sample
@@ -141,11 +141,9 @@
        reverse
        (drop-while (fn [[k v]] (or (nil? v) (= [nil] v))))
        (map (fn [[k v]]
-              (if (= (:id k) "GT")
-                (ints->genotype v)
-                (if (sequential? v)
-                  (cstr/join "," (map (fn [i] (if (nil? i) "." i)) v))
-                  v))))
+              (if (sequential? v)
+                (cstr/join "," (map (fn [i] (if (nil? i) "." i)) v))
+                v)))
        reverse
        (cstr/join ":")))
 

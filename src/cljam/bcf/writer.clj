@@ -198,18 +198,19 @@
     (lsb/write-bytes w shared-ba)
     (lsb/write-bytes w indv-ba)))
 
+(defn- update-if-contained
+  "Like update, but only affects if k is contained in m."
+  [m k f & args]
+  (if (contains? m k)
+    (apply update m k f args)
+    m))
+
 (defn- parsed-variant->bcf-map
   "Converts a parsed variant map to BCF-style map."
   [[fmt-kw & indiv-kws :as kws] contigs filters formats info variant]
   (let [fmt (variant fmt-kw)
-        indivs (map variant indiv-kws)
-        genotype (into {} (map (fn [k] [(:idx (formats k))
-                                        (map (fn [indiv]
-                                               (let [r (get indiv k)]
-                                                 (if (= k "GT")
-                                                   (vcf-util/genotype->ints r)
-                                                   r)))
-                                             indivs)])) fmt)]
+        indivs (map (fn [kw] (update-if-contained (variant kw) :GT vcf-util/genotype->ints)) indiv-kws)
+        genotype (into {} (map (fn [k] [(:idx (formats k)) (map (fn [indiv] (get indiv k)) indivs)])) fmt)]
     (-> (apply dissoc variant kws)
         (assoc :n-sample (count indivs))
         (assoc :ref-length (count (:ref variant)))
@@ -220,9 +221,9 @@
         (assoc :genotype genotype))))
 
 (defn- meta->map
-  "Creates a map for searching meta-info with id."
-  [meta]
-  (into {} (map (fn [m] [(:id m) (update m :idx #(Integer/parseInt %))])) meta))
+  "Creates a map for searching meta-info with (f id)."
+  [meta f]
+  (into {} (map (fn [m] [(f (:id m)) (update m :idx #(Integer/parseInt %))])) meta))
 
 (defn write-variants
   "Writes data lines on writer, returning nil. variants must be a sequence of maps. e.g.
@@ -232,10 +233,10 @@
                       :FORMAT \"GT:HQ\"}])"
   [^BCFWriter w variants]
   (let [kws (mapv keyword (drop 8 (.header w)))
-        contigs (meta->map (:contig (.meta-info w)))
-        filters (assoc (meta->map (:filter (.meta-info w))) "PASS" {:idx 0})
-        formats (meta->map (:format (.meta-info w)))
-        info (meta->map (:info (.meta-info w)))
+        contigs (meta->map (:contig (.meta-info w)) identity)
+        filters (assoc (meta->map (:filter (.meta-info w)) keyword) :PASS {:idx 0})
+        formats (meta->map (:format (.meta-info w)) keyword)
+        info (meta->map (:info (.meta-info w)) keyword)
         parse-variant (vcf-util/variant-parser (.meta-info w) (.header w))]
     (doseq [v variants]
       (->> (parse-variant v)

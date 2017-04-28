@@ -17,29 +17,29 @@
     (are [?info-str ?expected]
         (= (parse-info ?info-str) ?expected)
       "." nil
-      "NS=3" {"NS" 3}
-      "DP=0" {"DP" 0}
-      "AF=0" {"AF" [0.0]}
-      "CIPOS=1,10" {"CIPOS" [1 10]}
-      "HOMLEN=1" {"HOMLEN" [1]}
-      "HOMLEN=1,2,3,4,5" {"HOMLEN" [1 2 3 4 5]}
-      "CC=A" {"CC" \A}
-      "DB"   {"DB" :exists}
-      "DB;H2" {"DB" :exists "H2" :exists}
-      "NS=3;DP=13;AA=T" {"NS" 3, "DP" 13, "AA" "T"}
-      "NS=3;DP=9;AA=G" {"NS" 3, "DP" 9, "AA" "G"}
-      "NS=3;DP=14;AF=0.5;DB;H2" {"NS" 3, "DP" 14, "AF" [0.5], "DB" :exists "H2" :exists}
-      "NS=3;DP=11;AF=0.017" {"NS" 3, "DP" 11, "AF" [(Float/parseFloat "0.017")]}
-      "NS=2;DP=10;AF=0.333,0.667;AA=T;DB" {"NS" 2, "DP" 10, "AF" [(Float/parseFloat "0.333") (Float/parseFloat "0.667")] "AA" "T", "DB" :exists})))
+      "NS=3" {:NS 3}
+      "DP=0" {:DP 0}
+      "AF=0" {:AF [0.0]}
+      "CIPOS=1,10" {:CIPOS [1 10]}
+      "HOMLEN=1" {:HOMLEN [1]}
+      "HOMLEN=1,2,3,4,5" {:HOMLEN [1 2 3 4 5]}
+      "CC=A" {:CC \A}
+      "DB"   {:DB :exists}
+      "DB;H2" {:DB :exists :H2 :exists}
+      "NS=3;DP=13;AA=T" {:NS 3, :DP 13, :AA "T"}
+      "NS=3;DP=9;AA=G" {:NS 3, :DP 9, :AA "G"}
+      "NS=3;DP=14;AF=0.5;DB;H2" {:NS 3, :DP 14, :AF [0.5], :DB :exists :H2 :exists}
+      "NS=3;DP=11;AF=0.017" {:NS 3, :DP 11, :AF [(Float/parseFloat "0.017")]}
+      "NS=2;DP=10;AF=0.333,0.667;AA=T;DB" {:NS 2, :DP 10, :AF [(Float/parseFloat "0.333") (Float/parseFloat "0.667")] :AA "T", :DB :exists})))
 
 (deftest about-parse-filter
   (are [?filter-str ?expected]
       (= (vcf-util/parse-filter ?filter-str) ?expected)
     "." nil
-    "PASS" ["PASS"]
-    "q10" ["q10"]
-    "s50" ["s50"]
-    "q10;s50" ["q10" "s50"]))
+    "PASS" [:PASS]
+    "q10" [:q10]
+    "s50" [:s50]
+    "q10;s50" [:q10 :s50]))
 
 (deftest about-parse-sample
   (let [parse-sample (vcf-util/sample-parser [{:id "GT", :number 1, :type "String"}
@@ -51,17 +51,17 @@
     (are [?format-str ?sample-str ?expected]
         (= (parse-sample ?format-str ?sample-str) ?expected)
       "." "." nil
-      "GT" "0/0" {"GT" "0/0"}
-      "GQ" "48" {"GQ" 48}
-      "DP" "1" {"DP" 1}
-      "HQ" "1,20" {"HQ" [1 20]}
-      "CC" "A" {"CC" \A}
-      "AF" "0.5" {"AF" 0.5}
-      "AF" "." {"AF" nil}
-      "HQ" ".,." {"HQ" [nil nil]}
-      "HQ" "." {"HQ" nil}
-      "GT:GQ:DP:HQ" "2|1:2:0:18,2" {"GT" "2|1", "GQ" 2, "DP" 0, "HQ" [18 2]}
-      "GT:GQ:DP:HQ" "2/2:35:4" {"GT" "2/2", "GQ" 35, "DP" 4})))
+      "GT" "0/0" {:GT "0/0"}
+      "GQ" "48" {:GQ 48}
+      "DP" "1" {:DP 1}
+      "HQ" "1,20" {:HQ [1 20]}
+      "CC" "A" {:CC \A}
+      "AF" "0.5" {:AF 0.5}
+      "AF" "." {:AF nil}
+      "HQ" ".,." {:HQ [nil nil]}
+      "HQ" "." {:HQ nil}
+      "GT:GQ:DP:HQ" "2|1:2:0:18,2" {:GT "2|1", :GQ 2, :DP 0, :HQ [18 2]}
+      "GT:GQ:DP:HQ" "2/2:35:4" {:GT "2/2", :GQ 35, :DP 4})))
 
 (deftest about-parse-genotype
   (are [?gt-str ?expected]

@@ -71,10 +71,11 @@
       (with-open [r (bam/reader temp-file-sorted)]
         ;; Random read with different number of spans.
         (are [?param ?counts] (= (count (io/read-alignments r ?param)) ?counts)
-          {:chr "chr1" :start 23000000 :end 25000000 :depth :deep} 14858
-          {:chr "chr1" :start 23000000 :end 24500000 :depth :deep} 11424
-          {:chr "chr1" :start 23000000 :end 24000000 :depth :deep} 10010
-          {:chr "chr1" :start 23000000 :end 23500000 :depth :deep} 3806
+          {:chr "chr1" :start 23000000 :end 23001000 :depth :deep} 46 ;; 1 span
+          {:chr "chr1" :start 24900000 :end 24902000 :depth :deep} 3  ;; 2 spans
+          {:chr "chr1" :start 24000000 :end 24001000 :depth :deep} 6  ;; 3 spans
+          {:chr "chr1" :start 23260000 :end 23268650 :depth :deep} 58 ;; 4 spans
+          {:chr "chr1" :start 23430000 :end 23470000 :depth :deep} 55 ;; 5 spans
           {:chr "*"} 0)))))
 
 (deftest-slow about-bam-indexer-medium-file

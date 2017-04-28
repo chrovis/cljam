@@ -196,14 +196,14 @@
 (defn read-variants
   "Returns data lines of the BCF from rdr as a lazy sequence of maps.
    rdr must implement cljam.bcf.BCFReader.
-   Can take a option :depth to specify parsing level.
+   Can take a option :depth to specify parsing level. Default is :deep.
 
      :deep    Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
      :vcf     VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.
      :bcf     BCF-style map. CHROM, FILTER, INFO and :genotype contains indices to meta-info.
      :shallow Only CHROM, POS and ref-length are parsed.
      :raw     Raw map of ByteBufers."
-  [^BCFReader rdr & {:keys [depth] :or {depth :vcf}}]
+  [^BCFReader rdr & {:keys [depth] :or {depth :deep}}]
   (.seek ^BGZFInputStream (.reader rdr) ^long (.start-pos rdr))
   (let [contigs (meta->map (:contig (.meta-info rdr)))
         filters (assoc (meta->map (:filter (.meta-info rdr))) 0 {:id "PASS" :kw :PASS})

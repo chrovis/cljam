@@ -95,7 +95,7 @@
     [[0 false] [1 false] [2 false]] "0/1/2"
     [[0 false] [1 false] [2 true]] "0/1|2"))
 
-(deftest about-parse-variant
+(deftest about-parse-variant-v4_3
   (let [parse-variant (vcf-util/variant-parser test-vcf-v4_3-meta-info test-vcf-v4_3-header)]
     (are [?variant ?expected]
         (= (parse-variant ?variant) ?expected)
@@ -105,7 +105,24 @@
       (nth test-vcf-v4_3-variants 3) (nth test-vcf-v4_3-variants-deep 3)
       (nth test-vcf-v4_3-variants 4) (nth test-vcf-v4_3-variants-deep 4))))
 
-(deftest about-stringify-variant-vals
+(deftest about-parse-variant-v4_0
+  (let [parse-variant (vcf-util/variant-parser test-vcf-v4_0-meta-info test-vcf-v4_0-header)]
+    (are [?variant ?expected]
+        (= (parse-variant ?variant) ?expected)
+      (nth test-vcf-v4_0-variants 0) (nth test-vcf-v4_0-variants-deep 0)
+      (nth test-vcf-v4_0-variants 1) (nth test-vcf-v4_0-variants-deep 1)
+      (nth test-vcf-v4_0-variants 2) (nth test-vcf-v4_0-variants-deep 2)
+      (nth test-vcf-v4_0-variants 3) (nth test-vcf-v4_0-variants-deep 3)
+      (nth test-vcf-v4_0-variants 4) (nth test-vcf-v4_0-variants-deep 4)
+      (nth test-vcf-v4_0-variants 5) (nth test-vcf-v4_0-variants-deep 5)
+      (nth test-vcf-v4_0-variants 6) (nth test-vcf-v4_0-variants-deep 6)
+      (nth test-vcf-v4_0-variants 7) (nth test-vcf-v4_0-variants-deep 7)
+      (nth test-vcf-v4_0-variants 8) (nth test-vcf-v4_0-variants-deep 8)
+      (nth test-vcf-v4_0-variants 9) (nth test-vcf-v4_0-variants-deep 9)
+      (nth test-vcf-v4_0-variants 10) (nth test-vcf-v4_0-variants-deep 10)
+      (nth test-vcf-v4_0-variants 11) (nth test-vcf-v4_0-variants-deep 11))))
+
+(deftest about-stringify-variant-vals-v4_3
   (let [stringify-variant-vals (vcf-util/variant-vals-stringifier test-vcf-v4_3-meta-info test-vcf-v4_3-header)]
     (are [?expected ?variant]
         (= (stringify-variant-vals ?variant) ?expected)
@@ -114,3 +131,23 @@
       (nth test-vcf-v4_3-variants 2) (nth test-vcf-v4_3-variants-deep 2)
       (nth test-vcf-v4_3-variants 3) (nth test-vcf-v4_3-variants-deep 3)
       (nth test-vcf-v4_3-variants 4) (nth test-vcf-v4_3-variants-deep 4))))
+
+(deftest about-stringify-variant-vals-v4_0
+  (let [stringify-variant-vals (vcf-util/variant-vals-stringifier test-vcf-v4_0-meta-info test-vcf-v4_0-header)]
+    (are [?expected ?variant]
+        (= (stringify-variant-vals ?variant) ?expected)
+      (nth test-vcf-v4_0-variants 0) (nth test-vcf-v4_0-variants-deep 0)
+      (nth test-vcf-v4_0-variants 1) (nth test-vcf-v4_0-variants-deep 1)
+      (nth test-vcf-v4_0-variants 2) (nth test-vcf-v4_0-variants-deep 2)
+      (nth test-vcf-v4_0-variants 3) (nth test-vcf-v4_0-variants-deep 3)
+      (nth test-vcf-v4_0-variants 4) (nth test-vcf-v4_0-variants-deep 4)
+      (nth test-vcf-v4_0-variants 5) (nth test-vcf-v4_0-variants-deep 5)
+      (nth test-vcf-v4_0-variants 6) (nth test-vcf-v4_0-variants-deep 6)
+      (nth test-vcf-v4_0-variants 7) (nth test-vcf-v4_0-variants-deep 7)
+      (nth test-vcf-v4_0-variants 8) (nth test-vcf-v4_0-variants-deep 8)
+      (nth test-vcf-v4_0-variants 9) (nth test-vcf-v4_0-variants-deep 9)
+      ;; "./.:.:." => "./."
+      ;; "0|2:3:." => "0|2:3"
+      ;; trailing fields can be dropped. Result differs but it's OK.
+      ;; (nth test-vcf-v4_0-variants 10) (nth test-vcf-v4_0-variants-deep 10)
+      (nth test-vcf-v4_0-variants 11) (nth test-vcf-v4_0-variants-deep 11))))

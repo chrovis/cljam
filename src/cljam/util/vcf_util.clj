@@ -141,9 +141,10 @@
        reverse
        (drop-while (fn [[k v]] (or (nil? v) (= [nil] v))))
        (map (fn [[k v]]
-              (if (sequential? v)
-                (cstr/join "," (map (fn [i] (if (nil? i) "." i)) v))
-                v)))
+              (cond
+                (sequential? v) (cstr/join "," (map (fn [i] (if (nil? i) "." i)) v))
+                (nil? v) "."
+                :else v)))
        reverse
        (cstr/join ":")))
 

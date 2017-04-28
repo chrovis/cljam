@@ -34,9 +34,13 @@
 
 (defn read-variants
   "Returns data lines of the VCF from rdr as a lazy sequence of maps. rdr must
-  implement cljam.vcf.reader.VCFReader."
-  [rdr]
-  (vcf-reader/read-variants rdr))
+  implement cljam.vcf.reader.VCFReader.
+  Returned format can be specified with option :depth. Default is :deep.
+
+    :deep Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
+    :vcf  VCF-style map. FORMAT, FILTER, INFO and samples columns are strings."
+  [rdr & {:keys [depth] :or {depth :deep}}]
+  (vcf-reader/read-variants rdr :depth depth))
 
 ;; Writing
 ;; -------
@@ -53,13 +57,14 @@
   [f meta-info header]
   (doto (VCFWriter. (.getAbsolutePath (io/file f))
                     (io/writer (util/compressor-output-stream f))
+                    meta-info
                     header)
     (vcf-writer/write-meta-info meta-info)
     (vcf-writer/write-header header)))
 
 (defn write-variants
   "Writes data lines on wtr, returning nil. variants must be a sequence of
-  maps. e.g.
+  parsed or VCF-style maps. e.g.
 
     (write-variants [{:chrom \"19\", :pos 111, :id nil, :ref \"A\",
                       :alt [\"C\"], :qual 9.6, :filter nil, :info nil,

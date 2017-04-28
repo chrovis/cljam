@@ -226,11 +226,11 @@
   (into {} (map (fn [m] [(f (:id m)) (update m :idx #(Integer/parseInt %))])) meta))
 
 (defn write-variants
-  "Writes data lines on writer, returning nil. variants must be a sequence of maps. e.g.
+  "Writes data lines on writer, returning nil. variants must be a sequence of parsed or VCF-style maps. e.g.
 
     (write-variants [{:chrom \"19\", :pos 111, :id nil, :ref \"A\",
-                      :alt [\"C\"], :qual 9.6, :filter nil, :info nil,
-                      :FORMAT \"GT:HQ\"}])"
+                      :alt [\"C\"], :qual 9.6, :filter [:PASS], :info {:DP 4},
+                      :FORMAT [:GT :HQ] ...} ...])"
   [^BCFWriter w variants]
   (let [kws (mapv keyword (drop 8 (.header w)))
         contigs (meta->map (:contig (.meta-info w)) identity)
@@ -239,6 +239,6 @@
         info (meta->map (:info (.meta-info w)) keyword)
         parse-variant (vcf-util/variant-parser (.meta-info w) (.header w))]
     (doseq [v variants]
-      (->> (parse-variant v)
+      (->> (if (some string? ((apply juxt :filter :info kws) v)) (parse-variant v) v)
            (parsed-variant->bcf-map kws contigs filters formats info)
            (write-variant (.writer w))))))

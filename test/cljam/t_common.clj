@@ -493,6 +493,32 @@
     {:chrom "X", :pos 12, :id nil, :ref "T", :alt ["A"], :qual 13.0, :filter nil, :info nil,
      :FORMAT "GT", :NA00001 "0", :NA00002 "1/0", :NA00003 "1/1"}))
 
+(def test-vcf-v4_0-variants-deep
+  `({:chrom "19", :pos 111, :id nil, :ref "A", :alt ["C"], :qual 9.6, :filter nil, :info nil,
+     :FORMAT (:GT :HQ), :NA00001 {:GT "0|0", :HQ (10 10)}, :NA00002 {:GT "0|0", :HQ (10 10)}, :NA00003 {:GT "0/1", :HQ (3 3)}}
+    {:chrom "19", :pos 112, :id nil, :ref "A", :alt ["G"], :qual 10.0, :filter nil, :info nil,
+     :FORMAT (:GT :HQ), :NA00001 {:GT "0|0", :HQ (10 10)}, :NA00002 {:GT "0|0", :HQ (10 10)}, :NA00003 {:GT "0/1", :HQ (3 3)}}
+    {:chrom "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter (:PASS), :info nil,
+     :FORMAT (:GT :GQ :DP :HQ), :NA00001 {:GT "0|0", :GQ 48, :HQ (51 51), :DP 1}, :NA00002 {:GT "1|0", :GQ 48, :HQ (51 51), :DP 8}, :NA00003 {:GT "1/1", :GQ 43, :HQ (nil nil), :DP 5}}
+    {:chrom "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter (:q10), :info nil,
+     :FORMAT (:GT :GQ :DP :HQ), :NA00001 {:GT "0|0", :GQ 49, :HQ (58 50), :DP 3}, :NA00002 {:GT "0|1", :GQ 3, :HQ (65 3), :DP 5}, :NA00003 {:GT "0/0", :GQ 41, :HQ (nil nil), :DP 3}}
+    {:chrom "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter (:PASS), :info nil,
+     :FORMAT (:GT :GQ :DP :HQ), :NA00001 {:GT "1|2", :GQ 21, :HQ (23 27), :DP 6}, :NA00002 {:GT "2|1", :GQ 2, :HQ (18 2), :DP 0}, :NA00003 {:GT "2/2", :GQ 35, :HQ (nil nil), :DP 4}}
+    {:chrom "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter (:PASS), :info nil,
+     :FORMAT (:GT :GQ :DP :HQ), :NA00001 {:GT "0|0", :GQ 54, :HQ (56 60), :DP nil}, :NA00002 {:GT "0|0", :GQ 48, :HQ (51 51), :DP 4}, :NA00003 {:GT "0/0", :GQ 61, :HQ (nil nil), :DP 2}}
+    {:chrom "20", :pos 1234567, :id "microsat1", :ref "G", :alt ["GA" "GAC"], :qual 50.0, :filter (:PASS), :info nil,
+     :FORMAT (:GT :GQ :DP), :NA00001 {:GT "0/1", :GQ nil, :DP 4}, :NA00002 {:GT "0/2", :GQ 17, :DP 2}, :NA00003 {:GT "1/1", :GQ 40, :DP 3}}
+    {:chrom "20", :pos 1235237, :id nil, :ref "T", :alt nil, :qual nil, :filter nil, :info nil,
+     :FORMAT (:GT), :NA00001 {:GT "0/0"}, :NA00002 {:GT "0|0"}, :NA00003 {:GT "./."}}
+    {:chrom "X", :pos 9, :id nil, :ref "A", :alt ["T"], :qual 12.1, :filter nil, :info nil,
+     :FORMAT (:GT), :NA00001 {:GT "0"}, :NA00002 {:GT "0/1"}, :NA00003 {:GT "1/0"}}
+    {:chrom "X", :pos 10, :id "rsTest", :ref "AC", :alt ["A" "ATG"], :qual 10.0, :filter (:PASS), :info nil,
+     :FORMAT (:GT), :NA00001 {:GT "0"}, :NA00002 {:GT "0/1"}, :NA00003 {:GT "0|2"}}
+    {:chrom "X", :pos 11, :id "rsTest2", :ref "T", :alt ["A" "<DEL:ME:ALU>"], :qual 10.0, :filter (:q10 :s50), :info nil,
+     :FORMAT (:GT :DP :GQ), :NA00001 {:GT nil, :GQ 10, :DP 3}, :NA00002 {:GT "./.", :GQ nil, :DP nil}, :NA00003 {:GT "0|2", :GQ nil, :DP 3}}
+    {:chrom "X", :pos 12, :id nil, :ref "T", :alt ["A"], :qual 13.0, :filter nil, :info nil,
+     :FORMAT (:GT), :NA00001 {:GT "0"}, :NA00002 {:GT "1/0"}, :NA00003 {:GT "1/1"}}))
+
 (def test-vcf-v4_3-meta-info
   {:fileformat "VCFv4.3"
    :file-date "20090805"

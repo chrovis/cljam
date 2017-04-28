@@ -30,10 +30,16 @@
         (bcf/meta-info r))
       test-vcf-v4_3-meta-info)))
 
+(deftest about-reading-bcf-variants
+  (with-open [r ^Closeable (bcf/reader test-bcf-v4_3-file)]
+    (doseq [[v1 v2] (map vector (bcf/read-variants r) test-vcf-v4_3-variants-deep)]
+      (is
+       (= v1 v2)))))
+
 (deftest about-reading-bcf-variants-vcf
   (is
    (= (with-open [r ^Closeable (bcf/reader test-bcf-v4_3-file)]
-        (doall (bcf/read-variants r)))
+        (doall (bcf/read-variants r :depth :vcf)))
       test-vcf-v4_3-variants)))
 
 (deftest about-reading-bcf-variants-deep

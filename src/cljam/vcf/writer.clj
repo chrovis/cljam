@@ -2,12 +2,13 @@
   "A type of VCF writer and internal functions to write VCF contents. See
   https://samtools.github.io/hts-specs/ for the detail VCF specifications."
   (:require [clojure.string :as cstr]
-            [camel-snake-kebab.core :refer [->camelCaseString]]))
+            [camel-snake-kebab.core :refer [->camelCaseString]]
+            [cljam.util.vcf-util :as vcf-util]))
 
 ;; VCFWriter
 ;; ---------
 
-(deftype VCFWriter [f writer header]
+(deftype VCFWriter [f writer meta-info header]
   java.io.Closeable
   (close [this]
     (.close ^java.io.Closeable (.writer this))))
@@ -176,5 +177,11 @@
 
 (defn write-variants
   [^VCFWriter wtr variants]
-  (doseq [v variants]
-    (write-line (.writer wtr) (stringify-data-line v (.header wtr)))))
+  (let [stringify-vals (vcf-util/variant-vals-stringifier (.meta-info wtr) (.header wtr))
+        header-kws (drop 8 (map keyword (.header wtr)))]
+    (doseq [v variants]
+      (write-line (.writer wtr)
+                  (stringify-data-line
+                   (if (some string? ((apply juxt :filter :info header-kws) v))
+                     v
+                     (stringify-vals v)) (.header wtr))))))

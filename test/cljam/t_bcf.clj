@@ -51,15 +51,15 @@
 (deftest about-reading-bcf-variants-shallow
   (with-open [r ^Closeable (bcf/reader test-bcf-v4_3-file)]
     (doseq [[v1 v2] (map vector
-                         (map (juxt :chrom :pos :rlen) (bcf/read-variants r :depth :shallow))
-                         (map (fn [v] [(:chrom v) (:pos v) (count (:ref v))]) test-vcf-v4_3-variants))]
+                         (map (juxt :chr :pos :rlen) (bcf/read-variants r :depth :shallow))
+                         (map (fn [v] [(:chr v) (:pos v) (count (:ref v))]) test-vcf-v4_3-variants))]
       (is
        (= v1 v2)))))
 
 (deftest about-reading-bcf-variants-bcf
   (with-open [r ^Closeable (bcf/reader test-bcf-v4_3-file)]
     (doseq [[v1 v2] (map vector
-                         (map (juxt :chrom :pos :id :ref :alt) (bcf/read-variants r :depth :bcf))
+                         (map (juxt :chr :pos :id :ref :alt) (bcf/read-variants r :depth :bcf))
                          (map (fn [v] [0 (:pos v) (:id v) (:ref v) (:alt v)]) test-vcf-v4_3-variants-deep))]
       (is
        (= v1 v2)))))

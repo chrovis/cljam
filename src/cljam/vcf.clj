@@ -66,7 +66,7 @@
   "Writes data lines on wtr, returning nil. variants must be a sequence of
   parsed or VCF-style maps. e.g.
 
-    (write-variants [{:chrom \"19\", :pos 111, :id nil, :ref \"A\",
+    (write-variants [{:chr \"19\", :pos 111, :id nil, :ref \"A\",
                       :alt [\"C\"], :qual 9.6, :filter nil, :info nil,
                       :FORMAT \"GT:HQ\"}])"
   [wtr variants]

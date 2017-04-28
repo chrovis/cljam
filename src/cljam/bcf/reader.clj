@@ -116,7 +116,7 @@
         pos (inc (lsb/read-int shared))
         rlen (lsb/read-int shared)]
     (.position shared 0)
-    (assoc m :chrom (:id (contigs chrom-id)) :pos pos :rlen rlen)))
+    (assoc m :chr (:id (contigs chrom-id)) :pos pos :rlen rlen)))
 
 (defn- parse-data-line-deep [{:keys [^ByteBuffer shared ^ByteBuffer individual]}]
   "Parses full data of a variant. Returns a map containing indices for meta-info."
@@ -136,7 +136,7 @@
         flter (read-typed-value shared)
         info (doall (repeatedly n-info #(read-typed-kv shared)))
         genotype (doall (repeatedly n-fmt #(read-typed-kv individual n-sample)))]
-    {:chrom chrom-id
+    {:chr chrom-id
      :pos pos
      :ref-length rlen
      :qual qual
@@ -169,7 +169,7 @@
     (-> (dissoc variant :genotype)
         (dissoc :ref-length)
         (dissoc :n-sample)
-        (update :chrom (comp :id contigs))
+        (update :chr (comp :id contigs))
         (update :filter #(map (comp :kw filters) %))
         (update :info #(into {} (map (fn [[k v]] [(:kw (info k))
                                                   (if (and (= (:number (info k)) 1) (sequential? v))

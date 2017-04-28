@@ -106,7 +106,7 @@
                                 (split-at 8))]
     (->> gt-fields
          (interleave kws)
-         (concat [:chrom (first fields)
+         (concat [:chr (first fields)
                   :pos (str->long (nth fields 1))
                   :id (nth fields 2)
                   :ref (nth fields 3)

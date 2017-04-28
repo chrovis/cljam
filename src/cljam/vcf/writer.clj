@@ -168,7 +168,7 @@
   (let [m* (-> m
                (update :alt stringify-data-line-alt)
                (update :qual stringify-data-line-qual))]
-    (->> (concat [:chrom :pos :id :ref :alt :qual :filter :info]
+    (->> (concat [:chr :pos :id :ref :alt :qual :filter :info]
                  (map keyword (drop 8 header)))
          (map #(get m* %))
          (map nil->dot)

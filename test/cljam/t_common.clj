@@ -468,55 +468,55 @@
    "NA00002" "NA00003"])
 
 (def test-vcf-v4_0-variants
-  '({:chrom "19", :pos 111, :id nil, :ref "A", :alt ["C"], :qual 9.6, :filter nil, :info nil,
+  '({:chr "19", :pos 111, :id nil, :ref "A", :alt ["C"], :qual 9.6, :filter nil, :info nil,
      :FORMAT "GT:HQ", :NA00001 "0|0:10,10", :NA00002 "0|0:10,10", :NA00003 "0/1:3,3"}
-    {:chrom "19", :pos 112, :id nil, :ref "A", :alt ["G"], :qual 10.0, :filter nil, :info nil,
+    {:chr "19", :pos 112, :id nil, :ref "A", :alt ["G"], :qual 10.0, :filter nil, :info nil,
      :FORMAT "GT:HQ", :NA00001 "0|0:10,10", :NA00002 "0|0:10,10", :NA00003 "0/1:3,3"}
-    {:chrom "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter "PASS", :info nil,
+    {:chr "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter "PASS", :info nil,
      :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:48:1:51,51", :NA00002 "1|0:48:8:51,51", :NA00003 "1/1:43:5:.,."}
-    {:chrom "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter "q10", :info nil,
+    {:chr "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter "q10", :info nil,
      :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:49:3:58,50", :NA00002 "0|1:3:5:65,3", :NA00003 "0/0:41:3:.,."}
-    {:chrom "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter "PASS", :info nil,
+    {:chr "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter "PASS", :info nil,
      :FORMAT "GT:GQ:DP:HQ",:NA00001 "1|2:21:6:23,27", :NA00002 "2|1:2:0:18,2", :NA00003 "2/2:35:4:.,."}
-    {:chrom "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter "PASS", :info nil,
+    {:chr "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter "PASS", :info nil,
      :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:54:.:56,60", :NA00002 "0|0:48:4:51,51", :NA00003 "0/0:61:2:.,."}
-    {:chrom "20", :pos 1234567, :id "microsat1", :ref "G", :alt ["GA" "GAC"], :qual 50.0, :filter "PASS", :info nil,
+    {:chr "20", :pos 1234567, :id "microsat1", :ref "G", :alt ["GA" "GAC"], :qual 50.0, :filter "PASS", :info nil,
      :FORMAT "GT:GQ:DP", :NA00001 "0/1:.:4", :NA00002 "0/2:17:2", :NA00003 "1/1:40:3"}
-    {:chrom "20", :pos 1235237, :id nil, :ref "T", :alt nil, :qual nil, :filter nil, :info nil,
+    {:chr "20", :pos 1235237, :id nil, :ref "T", :alt nil, :qual nil, :filter nil, :info nil,
      :FORMAT "GT", :NA00001 "0/0", :NA00002 "0|0", :NA00003 "./."}
-    {:chrom "X", :pos 9, :id nil, :ref "A", :alt ["T"], :qual 12.1, :filter nil, :info nil,
+    {:chr "X", :pos 9, :id nil, :ref "A", :alt ["T"], :qual 12.1, :filter nil, :info nil,
      :FORMAT "GT", :NA00001 "0", :NA00002 "0/1", :NA00003 "1/0"}
-    {:chrom "X", :pos 10, :id "rsTest", :ref "AC", :alt ["A" "ATG"], :qual 10.0, :filter "PASS", :info nil,
+    {:chr "X", :pos 10, :id "rsTest", :ref "AC", :alt ["A" "ATG"], :qual 10.0, :filter "PASS", :info nil,
      :FORMAT "GT", :NA00001 "0", :NA00002 "0/1", :NA00003 "0|2"}
-    {:chrom "X", :pos 11, :id "rsTest2", :ref "T", :alt ["A" "<DEL:ME:ALU>"], :qual 10.0, :filter "q10;s50", :info nil,
+    {:chr "X", :pos 11, :id "rsTest2", :ref "T", :alt ["A" "<DEL:ME:ALU>"], :qual 10.0, :filter "q10;s50", :info nil,
      :FORMAT "GT:DP:GQ", :NA00001 ".:3:10", :NA00002 "./.:.:.", :NA00003 "0|2:3:."}
-    {:chrom "X", :pos 12, :id nil, :ref "T", :alt ["A"], :qual 13.0, :filter nil, :info nil,
+    {:chr "X", :pos 12, :id nil, :ref "T", :alt ["A"], :qual 13.0, :filter nil, :info nil,
      :FORMAT "GT", :NA00001 "0", :NA00002 "1/0", :NA00003 "1/1"}))
 
 (def test-vcf-v4_0-variants-deep
-  `({:chrom "19", :pos 111, :id nil, :ref "A", :alt ["C"], :qual 9.6, :filter nil, :info nil,
+  `({:chr "19", :pos 111, :id nil, :ref "A", :alt ["C"], :qual 9.6, :filter nil, :info nil,
      :FORMAT (:GT :HQ), :NA00001 {:GT "0|0", :HQ (10 10)}, :NA00002 {:GT "0|0", :HQ (10 10)}, :NA00003 {:GT "0/1", :HQ (3 3)}}
-    {:chrom "19", :pos 112, :id nil, :ref "A", :alt ["G"], :qual 10.0, :filter nil, :info nil,
+    {:chr "19", :pos 112, :id nil, :ref "A", :alt ["G"], :qual 10.0, :filter nil, :info nil,
      :FORMAT (:GT :HQ), :NA00001 {:GT "0|0", :HQ (10 10)}, :NA00002 {:GT "0|0", :HQ (10 10)}, :NA00003 {:GT "0/1", :HQ (3 3)}}
-    {:chrom "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter (:PASS), :info nil,
+    {:chr "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter (:PASS), :info nil,
      :FORMAT (:GT :GQ :DP :HQ), :NA00001 {:GT "0|0", :GQ 48, :HQ (51 51), :DP 1}, :NA00002 {:GT "1|0", :GQ 48, :HQ (51 51), :DP 8}, :NA00003 {:GT "1/1", :GQ 43, :HQ (nil nil), :DP 5}}
-    {:chrom "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter (:q10), :info nil,
+    {:chr "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter (:q10), :info nil,
      :FORMAT (:GT :GQ :DP :HQ), :NA00001 {:GT "0|0", :GQ 49, :HQ (58 50), :DP 3}, :NA00002 {:GT "0|1", :GQ 3, :HQ (65 3), :DP 5}, :NA00003 {:GT "0/0", :GQ 41, :HQ (nil nil), :DP 3}}
-    {:chrom "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter (:PASS), :info nil,
+    {:chr "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter (:PASS), :info nil,
      :FORMAT (:GT :GQ :DP :HQ), :NA00001 {:GT "1|2", :GQ 21, :HQ (23 27), :DP 6}, :NA00002 {:GT "2|1", :GQ 2, :HQ (18 2), :DP 0}, :NA00003 {:GT "2/2", :GQ 35, :HQ (nil nil), :DP 4}}
-    {:chrom "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter (:PASS), :info nil,
+    {:chr "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter (:PASS), :info nil,
      :FORMAT (:GT :GQ :DP :HQ), :NA00001 {:GT "0|0", :GQ 54, :HQ (56 60), :DP nil}, :NA00002 {:GT "0|0", :GQ 48, :HQ (51 51), :DP 4}, :NA00003 {:GT "0/0", :GQ 61, :HQ (nil nil), :DP 2}}
-    {:chrom "20", :pos 1234567, :id "microsat1", :ref "G", :alt ["GA" "GAC"], :qual 50.0, :filter (:PASS), :info nil,
+    {:chr "20", :pos 1234567, :id "microsat1", :ref "G", :alt ["GA" "GAC"], :qual 50.0, :filter (:PASS), :info nil,
      :FORMAT (:GT :GQ :DP), :NA00001 {:GT "0/1", :GQ nil, :DP 4}, :NA00002 {:GT "0/2", :GQ 17, :DP 2}, :NA00003 {:GT "1/1", :GQ 40, :DP 3}}
-    {:chrom "20", :pos 1235237, :id nil, :ref "T", :alt nil, :qual nil, :filter nil, :info nil,
+    {:chr "20", :pos 1235237, :id nil, :ref "T", :alt nil, :qual nil, :filter nil, :info nil,
      :FORMAT (:GT), :NA00001 {:GT "0/0"}, :NA00002 {:GT "0|0"}, :NA00003 {:GT "./."}}
-    {:chrom "X", :pos 9, :id nil, :ref "A", :alt ["T"], :qual 12.1, :filter nil, :info nil,
+    {:chr "X", :pos 9, :id nil, :ref "A", :alt ["T"], :qual 12.1, :filter nil, :info nil,
      :FORMAT (:GT), :NA00001 {:GT "0"}, :NA00002 {:GT "0/1"}, :NA00003 {:GT "1/0"}}
-    {:chrom "X", :pos 10, :id "rsTest", :ref "AC", :alt ["A" "ATG"], :qual 10.0, :filter (:PASS), :info nil,
+    {:chr "X", :pos 10, :id "rsTest", :ref "AC", :alt ["A" "ATG"], :qual 10.0, :filter (:PASS), :info nil,
      :FORMAT (:GT), :NA00001 {:GT "0"}, :NA00002 {:GT "0/1"}, :NA00003 {:GT "0|2"}}
-    {:chrom "X", :pos 11, :id "rsTest2", :ref "T", :alt ["A" "<DEL:ME:ALU>"], :qual 10.0, :filter (:q10 :s50), :info nil,
+    {:chr "X", :pos 11, :id "rsTest2", :ref "T", :alt ["A" "<DEL:ME:ALU>"], :qual 10.0, :filter (:q10 :s50), :info nil,
      :FORMAT (:GT :DP :GQ), :NA00001 {:GT nil, :GQ 10, :DP 3}, :NA00002 {:GT "./.", :GQ nil, :DP nil}, :NA00003 {:GT "0|2", :GQ nil, :DP 3}}
-    {:chrom "X", :pos 12, :id nil, :ref "T", :alt ["A"], :qual 13.0, :filter nil, :info nil,
+    {:chr "X", :pos 12, :id nil, :ref "T", :alt ["A"], :qual 13.0, :filter nil, :info nil,
      :FORMAT (:GT), :NA00001 {:GT "0"}, :NA00002 {:GT "1/0"}, :NA00003 {:GT "1/1"}}))
 
 (def test-vcf-v4_3-meta-info
@@ -545,25 +545,25 @@
    "NA00002" "NA00003"])
 
 (def test-vcf-v4_3-variants
-  '({:chrom "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter "PASS", :info "NS=3;DP=14;AF=0.5;DB;H2",
+  '({:chr "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter "PASS", :info "NS=3;DP=14;AF=0.5;DB;H2",
      :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:48:1:51,51", :NA00002 "1|0:48:8:51,51", :NA00003 "1/1:43:5:.,."}
-    {:chrom "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter "q10", :info "NS=3;DP=11;AF=0.017",
+    {:chr "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter "q10", :info "NS=3;DP=11;AF=0.017",
      :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:49:3:58,50", :NA00002 "0|1:3:5:65,3", :NA00003 "0/0:41:3"}
-    {:chrom "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter "PASS", :info "NS=2;DP=10;AF=0.333,0.667;AA=T;DB",
+    {:chr "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter "PASS", :info "NS=2;DP=10;AF=0.333,0.667;AA=T;DB",
      :FORMAT "GT:GQ:DP:HQ", :NA00001 "1|2:21:6:23,27", :NA00002 "2|1:2:0:18,2", :NA00003 "2/2:35:4"}
-    {:chrom "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter "PASS", :info "NS=3;DP=13;AA=T",
+    {:chr "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter "PASS", :info "NS=3;DP=13;AA=T",
      :FORMAT "GT:GQ:DP:HQ", :NA00001 "0|0:54:7:56,60", :NA00002 "0|0:48:4:51,51", :NA00003 "0/0:61:2"}
-    {:chrom "20", :pos 1234567, :id "microsat1", :ref "GTC", :alt ["G" "GTCT"], :qual 50.0, :filter "PASS", :info "NS=3;DP=9;AA=G",
+    {:chr "20", :pos 1234567, :id "microsat1", :ref "GTC", :alt ["G" "GTCT"], :qual 50.0, :filter "PASS", :info "NS=3;DP=9;AA=G",
      :FORMAT "GT:GQ:DP", :NA00001 "0/1:35:4", :NA00002 "0/2:17:2", :NA00003 "1/1:40:3"}))
 
 (def test-vcf-v4_3-variants-deep
-  `({:chrom "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter [:PASS], :info {:NS 3, :DP 14, :AF [0.5], :DB :exists, :H2 :exists},
+  `({:chr "20", :pos 14370, :id "rs6054257", :ref "G", :alt ["A"], :qual 29.0, :filter [:PASS], :info {:NS 3, :DP 14, :AF [0.5], :DB :exists, :H2 :exists},
      :FORMAT [:GT :GQ :DP :HQ], :NA00001 {:GT "0|0", :GQ 48, :DP 1, :HQ [51 51]}, :NA00002 {:GT "1|0", :GQ 48, :DP 8, :HQ [51 51]}, :NA00003 {:GT "1/1", :GQ 43, :DP 5, :HQ [nil nil]}}
-    {:chrom "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter [:q10], :info {:NS 3, :DP 11, :AF [~(Float/parseFloat "0.017")]},
+    {:chr "20", :pos 17330, :id nil, :ref "T", :alt ["A"], :qual 3.0, :filter [:q10], :info {:NS 3, :DP 11, :AF [~(Float/parseFloat "0.017")]},
      :FORMAT [:GT :GQ :DP :HQ], :NA00001 {:GT "0|0", :GQ 49, :DP 3, :HQ [58 50]}, :NA00002 {:GT "0|1", :GQ 3, :DP 5, :HQ [65 3]}, :NA00003 {:GT "0/0", :GQ 41, :DP 3}}
-    {:chrom "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter [:PASS], :info {:NS 2, :DP 10, :AF [~(Float/parseFloat "0.333") ~(Float/parseFloat "0.667")], :AA "T", :DB :exists},
+    {:chr "20", :pos 1110696, :id "rs6040355", :ref "A", :alt ["G" "T"], :qual 67.0, :filter [:PASS], :info {:NS 2, :DP 10, :AF [~(Float/parseFloat "0.333") ~(Float/parseFloat "0.667")], :AA "T", :DB :exists},
      :FORMAT [:GT :GQ :DP :HQ], :NA00001 {:GT "1|2", :GQ 21, :DP 6, :HQ [23 27]}, :NA00002 {:GT "2|1", :GQ 2, :DP 0, :HQ [18 2]}, :NA00003 {:GT "2/2", :GQ 35, :DP 4}}
-    {:chrom "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter [:PASS], :info {:NS 3, :DP 13, :AA "T"},
+    {:chr "20", :pos 1230237, :id nil, :ref "T", :alt nil, :qual 47.0, :filter [:PASS], :info {:NS 3, :DP 13, :AA "T"},
      :FORMAT [:GT :GQ :DP :HQ], :NA00001 {:GT "0|0", :GQ 54, :DP 7, :HQ [56 60]}, :NA00002 {:GT "0|0", :GQ 48, :DP 4, :HQ [51 51]}, :NA00003 {:GT "0/0", :GQ 61, :DP 2}}
-    {:chrom "20", :pos 1234567, :id "microsat1", :ref "GTC", :alt ["G" "GTCT"], :qual 50.0, :filter [:PASS], :info {:NS 3, :DP 9, :AA "G"},
+    {:chr "20", :pos 1234567, :id "microsat1", :ref "GTC", :alt ["G" "GTCT"], :qual 50.0, :filter [:PASS], :info {:NS 3, :DP 9, :AA "G"},
      :FORMAT [:GT :GQ :DP], :NA00001 {:GT "0/1", :GQ 35, :DP 4}, :NA00002 {:GT "0/2", :GQ 17, :DP 2}, :NA00003 {:GT "1/1", :GQ 40, :DP 3}}))

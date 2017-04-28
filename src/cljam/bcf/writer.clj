@@ -134,7 +134,7 @@
 (defn- encode-variant-shared
   "Encodes shared part of a variant and returns as a byte buffer."
   [v]
-  (let [chrom-id (:chrom v)
+  (let [chrom-id (:chr v)
         pos (dec (:pos v))
         rlen (:ref-length v)
         qual (if-let [qual-val (:qual v)] qual-val (byte-array [(float32-special-map nil)]))
@@ -214,7 +214,7 @@
     (-> (apply dissoc variant kws)
         (assoc :n-sample (count indivs))
         (assoc :ref-length (count (:ref variant)))
-        (update :chrom (comp :idx contigs))
+        (update :chr (comp :idx contigs))
         (update :filter (fn [f] (map (comp :idx filters) f)))
         (update :info (fn [i] (into {} (map (fn [[k v]] [(:idx (info k)) v])) i)))
         (assoc :format (map (comp :idx formats) fmt))
@@ -228,7 +228,7 @@
 (defn write-variants
   "Writes data lines on writer, returning nil. variants must be a sequence of parsed or VCF-style maps. e.g.
 
-    (write-variants [{:chrom \"19\", :pos 111, :id nil, :ref \"A\",
+    (write-variants [{:chr \"19\", :pos 111, :id nil, :ref \"A\",
                       :alt [\"C\"], :qual 9.6, :filter [:PASS], :info {:DP 4},
                       :FORMAT [:GT :HQ] ...} ...])"
   [^BCFWriter w variants]

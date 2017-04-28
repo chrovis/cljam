@@ -5,7 +5,7 @@
 
 (deftest about-encode-variant-shared
   (let [bb (#'bcf-writer/encode-variant-shared
-            {:chrom 0, :pos 1, :ref "A", :ref-length 1, :qual 1.0, :alt ["C"], :info {0 1 10 300},
+            {:chr 0, :pos 1, :ref "A", :ref-length 1, :qual 1.0, :alt ["C"], :info {0 1 10 300},
              :format [0 1], :id "TEST", :filter [0], :genotype {0 [0 1] 1 [16 32]}, :n-sample 2})]
     (is
      (= (seq (.array ^ByteBuffer bb))

@@ -3,6 +3,28 @@
             [cljam.bcf.writer :as bcf-writer])
   (:import [java.nio ByteBuffer]))
 
+(deftest about-encode-typed-value
+  (let [ba (#'bcf-writer/encode-typed-value (vec (repeat 14 1)))]
+    (is
+     (= (seq ba)
+        [(unchecked-byte 0xE1) 1 1 1 1 1 1 1 1 1 1 1 1 1 1])))
+  (let [ba (#'bcf-writer/encode-typed-value (vec (repeat 15 1)))]
+    (is
+     (= (seq ba)
+        [(unchecked-byte 0xF1) 0x11 0x0F 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1])))
+  (let [ba (#'bcf-writer/encode-typed-value (vec (repeat 127 1)))]
+    (is
+     (= (seq ba)
+        (concat (map unchecked-byte [0xF1 0x11 0x7F]) (repeat 127 1)))))
+  (let [ba (#'bcf-writer/encode-typed-value (vec (repeat 255 1)))]
+    (is
+     (= (seq ba)
+        (concat (map unchecked-byte [0xF1 0x12 0xFF 0x00]) (repeat 255 1)))))
+  (let [ba (#'bcf-writer/encode-typed-value (vec (repeat 32768 1)))]
+    (is
+     (= (seq ba)
+        (concat (map unchecked-byte [0xF1 0x13 0x00 0x80 0x00 0x00]) (repeat 32768 1))))))
+
 (deftest about-encode-variant-shared
   (let [bb (#'bcf-writer/encode-variant-shared
             {:chr 0, :pos 1, :ref "A", :ref-length 1, :qual 1.0, :alt ["C"], :info {0 1 10 300},

@@ -103,7 +103,7 @@
          type-id (long (cond (string? v) 7 (sequential? v) (apply max 1 (map value-type v)) :else (value-type v)))
          type-byte (unchecked-byte (bit-or (bit-shift-left (min 15 total-len) 4) type-id))
          bb (ByteBuffer/allocate (+ (* n-sample total-len (case type-id 1 1 2 2 3 4 5 4 7 1))
-                                    (if (<= 15 total-len) (+ 2 (value-type total-len)) 1)))]
+                                    (if (<= 15 total-len) (case (value-type total-len) 1 3 2 4 3 6) 1)))]
      (.order bb ByteOrder/LITTLE_ENDIAN)
      (.put bb type-byte)
      (when (<= 15 total-len)

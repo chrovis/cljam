@@ -307,6 +307,20 @@
    {:data [1 0 0 0 11 0 0 0 3 30 73 18 1 0 0 0 24 0 0 0 -1 -1 -1 -1 -1 -1 -1 -1 0 0 0 0 120 53 0 -128 1 0 0 17 -127 24 -127 20 -126 -127 33 65 66 17 40 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30], :size 75}
    {:data [1 0 0 0 13 0 0 0 3 30 73 18 1 0 0 0 23 0 0 0 -1 -1 -1 -1 -1 -1 -1 -1 0 0 0 0 120 54 0 112 1 0 0 -127 24 -127 20 -126 -127 33 65 66 17 40 16 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30], :size 74}])
 
+(def test-sorted-bam-levels
+  [{:type "i", :value 0}
+   {:type "i", :value 1}
+   {:type "i", :value 2}
+   {:type "i", :value 2}
+   {:type "i", :value 0}
+   {:type "i", :value 0}
+   {:type "i", :value 0}
+   {:type "i", :value 1}
+   {:type "i", :value 2}
+   {:type "i", :value 3}
+   {:type "i", :value 4}
+   {:type "i", :value 5}])
+
 (def test-fa
   [{:rname "ref",  :offset 5,  :seq "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT", :blen 45}
    {:rname "ref2", :offset 57, :seq "aggttttataaaacaattaagtctacagagcaactacgcg",      :blen 40}])

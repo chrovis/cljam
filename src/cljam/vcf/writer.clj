@@ -2,12 +2,13 @@
   "A type of VCF writer and internal functions to write VCF contents. See
   https://samtools.github.io/hts-specs/ for the detail VCF specifications."
   (:require [clojure.string :as cstr]
-            [camel-snake-kebab.core :refer [->camelCaseString]]))
+            [camel-snake-kebab.core :refer [->camelCaseString]]
+            [cljam.util.vcf-util :as vcf-util]))
 
 ;; VCFWriter
 ;; ---------
 
-(deftype VCFWriter [f writer header]
+(deftype VCFWriter [f writer meta-info header]
   java.io.Closeable
   (close [this]
     (.close ^java.io.Closeable (.writer this))))
@@ -33,7 +34,7 @@
 ;; Writing meta-information
 ;; ------------------------
 
-(defn- stringify-key
+(defn stringify-key
   [k]
   (if (#{:info :filter :format :alt :sample :pedigree} k)
     (cstr/upper-case (name k))
@@ -46,7 +47,8 @@
                 (str "assembly=" (:assembly m))
                 (str "md5=" (:md-5 m))]
          (:species m) (conj (str "species=\"" (:species m) "\""))
-         (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m))))
+         (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m)))
+         (:idx m) (conj (str "idx=" (:idx m))))
        (interpose ",")
        (apply str)))
 
@@ -57,23 +59,26 @@
                 (str "Type=" (nil->dot (:type m)))
                 (str "Description=\"" (:description m) "\"")]
          (:source m) (conj (str "Source=" (:source m)))
-         (:version m) (conj (str "Version=" (:version m))))
+         (:version m) (conj (str "Version=" (:version m)))
+         (:idx m) (conj (str "idx=" (:idx m))))
        (interpose ",")
        (apply str)))
 
 (defn- stringify-meta-info-filter
   [m]
-  (->> [(str "ID=" (:id m))
-        (str "Description=\"" (:description m) "\"")]
+  (->> (cond-> [(str "ID=" (:id m))
+                (str "Description=\"" (:description m) "\"")]
+         (:idx m) (conj (str "idx=" (:idx m))))
        (interpose ",")
        (apply str)))
 
 (defn- stringify-meta-info-format
   [m]
-  (->> [(str "ID=" (:id m))
-        (str "Number=" (nil->dot (:number m)))
-        (str "Type=" (nil->dot (:type m)))
-        (str "Description=\"" (:description m) "\"")]
+  (->> (cond-> [(str "ID=" (:id m))
+                (str "Number=" (nil->dot (:number m)))
+                (str "Type=" (nil->dot (:type m)))
+                (str "Description=\"" (:description m) "\"")]
+         (:idx m) (conj (str "idx=" (:idx m))))
        (interpose ",")
        (apply str)))
 
@@ -101,7 +106,7 @@
        (interpose ",")
        (apply str)))
 
-(defn- stringify-structured-line
+(defn stringify-structured-line
   [k m]
   (let [f (case k
             :contig stringify-meta-info-contig
@@ -116,7 +121,7 @@
 (defn- write-meta-info1
   [^VCFWriter wtr k v]
   (if-not (nil? v)
-    (if (vector? v)
+    (if (sequential? v)
       (doseq [x v]
         (write-line (.writer wtr) (str meta-info-prefix
                                        (stringify-key k)
@@ -136,7 +141,7 @@
 ;; Writing header
 ;; --------------
 
-(defn- ^String stringify-header
+(defn ^String stringify-header
   [header]
   (str header-prefix (apply str (interpose "\t" header))))
 
@@ -163,7 +168,7 @@
   (let [m* (-> m
                (update :alt stringify-data-line-alt)
                (update :qual stringify-data-line-qual))]
-    (->> (concat [:chrom :pos :id :ref :alt :qual :filter :info]
+    (->> (concat [:chr :pos :id :ref :alt :qual :filter :info]
                  (map keyword (drop 8 header)))
          (map #(get m* %))
          (map nil->dot)
@@ -172,5 +177,11 @@
 
 (defn write-variants
   [^VCFWriter wtr variants]
-  (doseq [v variants]
-    (write-line (.writer wtr) (stringify-data-line v (.header wtr)))))
+  (let [stringify-vals (vcf-util/variant-vals-stringifier (.meta-info wtr) (.header wtr))
+        header-kws (drop 8 (map keyword (.header wtr)))]
+    (doseq [v variants]
+      (write-line (.writer wtr)
+                  (stringify-data-line
+                   (if (some string? ((apply juxt :filter :info header-kws) v))
+                     v
+                     (stringify-vals v)) (.header wtr))))))

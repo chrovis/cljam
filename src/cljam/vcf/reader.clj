@@ -3,7 +3,8 @@
   https://samtools.github.io/hts-specs/ for the detail VCF specifications."
   (:require [clojure.string :as cstr]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            [cljam.util :refer [str->long]])
+            [cljam.util :refer [str->long]]
+            [cljam.util.vcf-util :as vcf-util])
   (:import [clojure.lang LazilyPersistentVector]))
 
 ;; VCFReader
@@ -50,7 +51,7 @@
                         s
                         (str->long s)))))
 
-(defn- parse-meta-info-line
+(defn parse-meta-info-line
   [line]
   (let [[_ k* v] (re-find #"^##([\w:/\.\?\-]*)=(.*)$" line)
         k (->kebab-case-keyword k*)]
@@ -80,7 +81,7 @@
   [line]
   (not (nil? (re-find #"^#[^#]*$" line))))
 
-(defn- parse-header-line
+(defn parse-header-line
   [line]
   (cstr/split (subs line 1) #"\t"))
 
@@ -105,7 +106,7 @@
                                 (split-at 8))]
     (->> gt-fields
          (interleave kws)
-         (concat [:chrom (first fields)
+         (concat [:chr (first fields)
                   :pos (str->long (nth fields 1))
                   :id (nth fields 2)
                   :ref (nth fields 3)
@@ -124,6 +125,9 @@
       (read-data-lines rdr header kws))))
 
 (defn read-variants
-  [^VCFReader rdr]
-  (let [kws (mapv keyword (drop 8 (.header rdr)))]
-    (read-data-lines (.reader rdr) (.header rdr) kws)))
+  [^VCFReader rdr & {:keys [depth] :or {depth :deep}}]
+  (let [kws (mapv keyword (drop 8 (.header rdr)))
+        parse-fn (case depth
+                   :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
+                   :vcf identity)]
+    (map parse-fn (read-data-lines (.reader rdr) (.header rdr) kws))))

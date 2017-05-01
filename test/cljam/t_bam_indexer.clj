@@ -93,7 +93,7 @@
                   (io/read-alignments r {:chr "*"}))))
     (is (fs/exists? (str temp-file-sorted ".bai")))))
 
-(deftest-slow-heavy about-bam-indexer-large-file
+(deftest-heavy about-bam-indexer-large-file
   (with-before-after {:before (do (prepare-cavia!)
                                   (prepare-cache!)
                                   (fs/copy large-bam-file temp-file-sorted))

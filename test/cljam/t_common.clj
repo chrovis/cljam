@@ -25,9 +25,6 @@
 (defmacro deftest-heavy [sym args & body]
   (expand-deftest (with-meta sym {:heavy true}) args body))
 
-(defmacro deftest-slow-heavy [sym args & body]
-  (expand-deftest (with-meta sym {:slow true :heavy true}) args body))
-
 (defprofile mycavia
   {:resources [{:id "large.bam"
                 :url "https://test.chrov.is/data/GSM721144_H3K36me3.nodup.bam"

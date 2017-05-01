@@ -114,7 +114,7 @@
           (is (not-throw? (io/write-alignments w alns header)))
           (same-file? medium-bam-file temp-file))))))
 
-(deftest-slow-heavy bamreader-large-file
+(deftest-heavy bamreader-large-file
   (with-before-after {:before (do (prepare-cache!)
                                   (prepare-cavia!))
                       :after (clean-cache!)}

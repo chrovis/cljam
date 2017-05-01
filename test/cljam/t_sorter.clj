@@ -85,7 +85,7 @@
     ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file-2)) ; TODO: future
     (is (get #{:queryname :coordinate :unsorted :unknown}
              (with-reader sorter/sort-order tmp-shuffled-sam-file)))
-    (is (get #{:queryname :coordinate :unsorted :unknown} 
+    (is (get #{:queryname :coordinate :unsorted :unknown}
              (with-reader sorter/sort-order tmp-shuffled-bam-file)))
     (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file-2)
            sorter/order-unknown))
@@ -139,7 +139,7 @@
     (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-file))))
     (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file))))))
 
-(deftest-slow-heavy about-sorting-large-file
+(deftest-heavy about-sorting-large-file
   (with-before-after {:before (do (prepare-cavia!)
                                   (prepare-cache!))
                       :after (clean-cache!)}

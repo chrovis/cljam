@@ -1,9 +1,10 @@
 (ns cljam.t-twobit
   (:require [clojure.test :refer :all]
+            [cljam.t-common :refer :all]
             [cljam.twobit :as tb]))
 
 (deftest twobit-reference
-  (with-open [r (tb/reader "./test-resources/test.2bit")]
+  (with-open [r (tb/reader test-twobit-file)]
     (are [?arg ?result] (= (tb/read-sequence r ?arg) ?result)
       {:chr "ref"} "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"
       {:chr "ref2"} "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"
@@ -21,7 +22,7 @@
              (subs "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT" (dec i) j))))))
 
 (deftest twobit-reference-with-n
-  (with-open [r (tb/reader "./test-resources/test-n.2bit")]
+  (with-open [r (tb/reader test-twobit-n-file)]
     (are [?arg ?result] (= (tb/read-sequence r ?arg) ?result)
       {:chr "ref"} "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"
       {:chr "ref2"} "AGNNNTTATAAAACAATTANNNCTACAGAGCAACTANNNN"
@@ -39,9 +40,9 @@
              (subs "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT" (dec i) j))))))
 
 (deftest twobit-big-endian
-  (with-open [r (tb/reader "./test-resources/be-test.2bit")]
+  (with-open [r (tb/reader test-twobit-be-file)]
     (is (= (tb/read-sequence r {:chr "ref"})
            "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT")))
-  (with-open [r (tb/reader "./test-resources/be-test-n.2bit")]
+  (with-open [r (tb/reader test-twobit-be-n-file)]
     (is (= (tb/read-sequence r {:chr "ref"})
            "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"))))

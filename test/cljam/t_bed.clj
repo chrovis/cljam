@@ -1,5 +1,6 @@
 (ns cljam.t-bed
   (:require [clojure.test :refer :all]
+            [cljam.t-common :refer :all]
             [clojure.java.io :as io]
             [cljam.bed :as bed]
             [cljam.fasta :as fa]
@@ -46,14 +47,14 @@
          [{:chr "chr1" :start 1 :end 100 :name "N" :score 0 :strand :plus :thick-start 1 :thick-end 0
            :item-rgb "255,0,0" :block-count 2 :block-sizes [10 90] :block-starts [0 10]}]))
 
- (with-open [r (io/reader "test-resources/test1.bed")]
+  (with-open [r (io/reader test-bed-file1)]
    (is (= (bed/read-fields r)
           [{:chr "chr22" :start 1001 :end 5000 :name "cloneA" :score 960 :strand :plus :thick-start 1001
             :thick-end 5000 :item-rgb "0" :block-count 2 :block-sizes [567 488] :block-starts [0 3512]}
            {:chr "chr22" :start 2001 :end 6000 :name "cloneB" :score 900 :strand :minus :thick-start 2001
             :thick-end 6000 :item-rgb "0" :block-count 2 :block-sizes [433 399] :block-starts [0 3601]}])))
 
- (with-open [r (io/reader "test-resources/test2.bed")]
+  (with-open [r (io/reader test-bed-file2)]
    (is (= (bed/read-fields r)
           [{:chr "chr7" :start 127471197 :end 127472363 :name "Pos1" :score 0 :strand :plus :thick-start 127471197
             :thick-end 127472363 :item-rgb "255,0,0"}
@@ -74,7 +75,7 @@
            {:chr "chr7" :start 127480533 :end 127481699 :name "Neg4" :score 0 :strand :minus :thick-start 127480533
             :thick-end 127481699 :item-rgb "0,0,255"}])))
 
-  (with-open [r (io/reader "test-resources/test3.bed")]
+  (with-open [r (io/reader test-bed-file3)]
     (is (= (bed/read-fields r)
            [{:chr "chr7" :start 127471197 :end 127472363 :name "Pos1" :score 0 :strand :plus}
             {:chr "chr7" :start 127472364 :end 127473530 :name "Pos2" :score 0 :strand :plus}
@@ -139,7 +140,7 @@
          [{:chr "chr1" :start 1 :end 13 :name "chr1:1-10+chr1:4-13"}])))
 
 (deftest bed-reader-and-bam-reader
-  (with-open [bam (bam/reader "test-resources/test.sorted.bam")]
+  (with-open [bam (bam/reader test-sorted-bam-file)]
     (letfn [(ref-pos-end [m] {:rname (:rname m) :pos (:pos m) :end (sam-util/get-end m)})
             (read-region [s] (->> (str->bed s) (mapcat #(cio/read-alignments bam %)) (map ref-pos-end)))]
       (are [?region-str ?result] (= (read-region ?region-str) ?result)
@@ -160,7 +161,7 @@
                     {:rname "ref" :pos 37 :end 45}]))))
 
 (deftest bed-reader-and-fasta-reader
-  (with-open [fa (fa/reader "test-resources/medium.fa")]
+  (with-open [fa (fa/reader medium-fa-file)]
     (comment "chr1" "TAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCC...")
     (letfn [(read-region [s] (->> (str->bed s) (map #(fa/read-sequence fa %))))]
       (are [?region-str ?result] (= (read-region ?region-str) ?result)
@@ -173,9 +174,9 @@
   (is (= (bed->str (str->bed "1 0 1")) "chr1 0 1"))
   (is (= (bed->str (str->bed "1 0 10")) "chr1 0 10"))
   (is (= (bed->str (str->bed "1 0 1\n1 1 2")) "chr1 0 1\nchr1 1 2"))
-  (is (= (with-open [r (io/reader "test-resources/test1.bed")] (str->bed (bed->str (bed/read-fields r))))
-         (with-open [r (io/reader "test-resources/test1.bed")] (doall (bed/read-fields r)))))
-  (is (= (with-open [r (io/reader "test-resources/test2.bed")] (str->bed (bed->str (bed/read-fields r))))
-         (with-open [r (io/reader "test-resources/test2.bed")] (doall (bed/read-fields r)))))
-  (is (= (with-open [r (io/reader "test-resources/test3.bed")] (str->bed (bed->str (bed/read-fields r))))
-         (with-open [r (io/reader "test-resources/test3.bed")] (doall (bed/read-fields r))))))
+  (is (= (with-open [r (io/reader test-bed-file1)] (str->bed (bed->str (bed/read-fields r))))
+         (with-open [r (io/reader test-bed-file1)] (doall (bed/read-fields r)))))
+  (is (= (with-open [r (io/reader test-bed-file2)] (str->bed (bed->str (bed/read-fields r))))
+         (with-open [r (io/reader test-bed-file2)] (doall (bed/read-fields r)))))
+  (is (= (with-open [r (io/reader test-bed-file3)] (str->bed (bed->str (bed/read-fields r))))
+         (with-open [r (io/reader test-bed-file3)] (doall (bed/read-fields r))))))

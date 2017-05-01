@@ -97,49 +97,62 @@
 
 ;; ### SAM files
 
-(def test-sam-file "test-resources/test.sam")
+(def test-sam-file "test-resources/sam/test.sam")
 
 ;; ### BAM files
 
-(def test-bam-file "test-resources/test.bam")
-(def test-sorted-bam-file "test-resources/test.sorted.bam")
-(def small-bam-file "test-resources/small.bam")
-(def medium-bam-file "test-resources/medium.bam")
+(def test-bam-file "test-resources/bam/test.bam")
+(def test-sorted-bam-file "test-resources/bam/test.sorted.bam")
+(def small-bam-file "test-resources/bam/small.bam")
+(def medium-bam-file "test-resources/bam/medium.bam")
 (def large-bam-file (cavia/resource mycavia "large.bam"))
 
-(def dedupe-before-bam-file "test-resources/dedupe_before.bam")
-(def dedupe-after-bam-file "test-resources/dedupe_after.bam")
+(def dedupe-before-bam-file "test-resources/bam/dedupe_before.bam")
+(def dedupe-after-bam-file "test-resources/bam/dedupe_after.bam")
 
-(def normalize-before-bam-file "test-resources/normalize_before.bam")
-(def normalize-after-bam-file "test-resources/normalize_after.bam")
+(def normalize-before-bam-file "test-resources/bam/normalize_before.bam")
+(def normalize-after-bam-file "test-resources/bam/normalize_after.bam")
 
 ;; ### BAM index files
 
-(def test-bai-file "test-resources/test.sorted.bam.bai")
+(def test-bai-file "test-resources/bam/test.sorted.bam.bai")
 (def test-large-bai-file (cavia/resource mycavia "large.bai"))
 
 ;; ### FASTA files
 
-(def test-fa-file  "test-resources/test.fa")
-(def test-fa-bz2-file  "test-resources/test.fa.bz2")
-(def test-fa-dict-file "test-resources/test-fa.dict")
-(def medium-fa-file "test-resources/medium.fa")
-(def medium-fa-gz-file "test-resources/medium.fa.gz")
+(def test-fa-file  "test-resources/fasta/test.fa")
+(def test-fa-bz2-file  "test-resources/fasta/test.fa.bz2")
+(def test-fa-dict-file "test-resources/fasta/test-fa.dict")
+(def medium-fa-file "test-resources/fasta/medium.fa")
+(def medium-fa-gz-file "test-resources/fasta/medium.fa.gz")
 
 ;; ### FASTA index files
 
-(def test-fai-file "test-resources/test.fa.fai")
-(def medium-fai-file "test-resources/medium.fa.fai")
+(def test-fai-file "test-resources/fasta/test.fa.fai")
+(def medium-fai-file "test-resources/fasta/medium.fa.fai")
+
+;; ### 2bit files
+
+(def test-twobit-file "test-resources/twobit/test.2bit")
+(def test-twobit-n-file "test-resources/twobit/test-n.2bit")
+(def test-twobit-be-file "test-resources/twobit/be-test.2bit")
+(def test-twobit-be-n-file "test-resources/twobit/be-test-n.2bit")
 
 ;; ### FASTQ files
 
-(def test-fq-file "test-resources/test.fq")
-(def test-fq-gz-file "test-resources/test.fq.gz")
-(def test-fq-bz2-file "test-resources/test.fq.bz2")
+(def test-fq-file "test-resources/fastq/test.fq")
+(def test-fq-gz-file "test-resources/fastq/test.fq.gz")
+(def test-fq-bz2-file "test-resources/fastq/test.fq.bz2")
+
+;; ### BED files
+
+(def test-bed-file1 "test-resources/bed/test1.bed")
+(def test-bed-file2 "test-resources/bed/test2.bed")
+(def test-bed-file3 "test-resources/bed/test3.bed")
 
 ;; ### TABIX files
 
-(def test-tabix-file "test-resources/test.gtf.gz.tbi")
+(def test-tabix-file "test-resources/tabix/test.gtf.gz.tbi")
 (def test-large-tabix-file (cavia/resource mycavia "large.tbi"))
 
 ;; ### VCF files

@@ -5,9 +5,18 @@
 ### Added
 
 * Add a function to clone bam reader. [#39](https://github.com/chrovis/cljam/pull/39)
-* Add to support `lein cloverage`. [#45](https://github.com/chrovis/cljam/pull/45)
-* Integration with [Codecov](https://codecov.io/gh/chrovis/cljam). [#46](https://github.com/chrovis/cljam/pull/46)
+* Support coverage analysis with [cloverage](https://github.com/cloverage/cloverage). [#45](https://github.com/chrovis/cljam/pull/45)
+	* Integration with [Codecov](https://codecov.io/gh/chrovis/cljam). [#46](https://github.com/chrovis/cljam/pull/46)
+	* Reduce worktime of coverage. [#69](https://github.com/chrovis/cljam/pull/69)
 * Add many tests. [#60](https://github.com/chrovis/cljam/pull/60)
+* Add tests to check generated data correctness. [#61](https://github.com/chrovis/cljam/issues/61)
+	* Examine result file of `dedupe` in test. [#63](https://github.com/chrovis/cljam/pull/63)
+	* Examine result file of `create-dict` in test. [#64](https://github.com/chrovis/cljam/pull/64)
+	* Examine result files of `cljam pileup` in test. [#65](https://github.com/chrovis/cljam/pull/65)
+	* Examine result file of `cljam normalize` in test. [#66](https://github.com/chrovis/cljam/pull/66)
+	* Examine result file of `create-mpileup`. [#67](https://github.com/chrovis/cljam/pull/67)
+	* Examine result file of `cljam level` test. [#70](https://github.com/chrovis/cljam/pull/70)
+* Add BCF reader/writer and utility functions for VCF. [#68](https://github.com/chrovis/cljam/pull/68)
 
 ### Changed
 

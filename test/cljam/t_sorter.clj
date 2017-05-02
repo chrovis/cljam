@@ -139,7 +139,7 @@
     (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-file))))
     (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file))))))
 
-(deftest-heavy about-sorting-large-file
+(deftest-remote about-sorting-large-file
   (with-before-after {:before (do (prepare-cavia!)
                                   (prepare-cache!))
                       :after (clean-cache!)}

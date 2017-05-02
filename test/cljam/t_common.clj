@@ -22,8 +22,8 @@
 (defmacro deftest-slow [sym args & body]
   (expand-deftest (with-meta sym {:slow true}) args body))
 
-(defmacro deftest-heavy [sym args & body]
-  (expand-deftest (with-meta sym {:heavy true}) args body))
+(defmacro deftest-remote [sym args & body]
+  (expand-deftest (with-meta sym {:remote true}) args body))
 
 (defprofile mycavia
   {:resources [{:id "large.bam"

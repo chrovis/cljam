@@ -128,17 +128,11 @@ $ cljam view --header path/to/file.sam
 
 ### Test
 
-To run all basic tests,
+To run tests,
 
-```console
-$ lein test
-```
-
-To run heavy tests which uses remote large-size files,
-
-```console
-$ lein test :all
-```
+- `lein test` for basic tests,
+- `lein test :slow` for slow tests with local resources,
+- `lein test :remote` for tests with remote resources.
 
 To get coverage
 

@@ -18,9 +18,9 @@
                              [lein-codox "0.10.3"]
                              [lein-marginalia "0.9.0" :exclusions [org.clojure/clojure]]
                              [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure]]]
-                   :test-selectors {:default #(not-any? % [:slow :heavy])
+                   :test-selectors {:default #(not-any? % [:slow :remote])
                                     :slow :slow   ; Slow tests with local resources
-                                    :heavy :heavy ; Tests with remote resources
+                                    :remote :remote ; Tests with remote resources
                                     :all (constantly true)}
                    :main ^:skip-aot cljam.main
                    :global-vars {*warn-on-reflection* true}}

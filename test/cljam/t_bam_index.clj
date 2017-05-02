@@ -48,9 +48,9 @@
 
 ;;; Tests for a large-size file.
 
-(deftest-slow-heavy bin-index-is-done-without-errors-with-a-large-file
+(deftest-remote bin-index-is-done-without-errors-with-a-large-file
   (with-before-after {:before (prepare-cavia!)}
     (is (not-throw? (bai/bin-index test-large-bai-file 0)))))
-(deftest-slow-heavy linear-index-is-done-without-errors-with-a-large-file
+(deftest-remote linear-index-is-done-without-errors-with-a-large-file
   (with-before-after {:before (prepare-cavia!)}
     (is (not-throw? (bai/linear-index test-large-bai-file 0)))))

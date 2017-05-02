@@ -1,8 +1,27 @@
 (ns cljam.bed
-  (:require [clojure.string :as cstr]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as cstr]
             [cljam.util :as util]
             [cljam.util.chromosome :as chr-util])
-  (:import [java.io BufferedReader BufferedWriter]))
+  (:import [java.io BufferedReader BufferedWriter Closeable]))
+
+(defrecord BEDReader [^BufferedReader reader ^String f]
+  Closeable
+  (close [this]
+    (.close ^Closeable (.reader this))))
+
+(defrecord BEDWriter [^BufferedWriter writer ^String f]
+  Closeable
+  (close [this]
+    (.close ^Closeable (.writer this))))
+
+(defn ^BEDReader reader [f]
+  (let [abs (.getAbsolutePath (io/file f))]
+    (BEDReader. (io/reader (util/compressor-input-stream abs)) abs)))
+
+(defn ^BEDWriter writer [f]
+  (let [abs (.getAbsolutePath (io/file f))]
+  (BEDWriter. (io/writer (util/compressor-output-stream abs)) abs)))
 
 (def ^:const bed-columns
   [:chr :start :end :name :score :strand :thick-start :thick-end :item-rgb :block-count :block-sizes :block-starts])
@@ -67,6 +86,25 @@
 (defn- serialize-bed
   "Serialize bed fields into string."
   [m]
+  {:pre [(and (:chr m) (:start m) (:end m))
+         ;; First 3 fields are required.
+         (< (:start m) (:end m))
+         ;; The chromEnd base is not included in the display of the feature.
+         (every? true? (drop-while false? (map nil? ((apply juxt bed-columns) m))))
+         ;; Lower-numbered fields must be populated if higher-numbered fields are used.
+         (if-let [s (:score m)] (<= 0 s 1000) true)
+         ;; A score between 0 and 1000.
+         (if-let [xs (:block-sizes m)] (= (count xs) (:block-count m)) true)
+         ;; The number of items in this list should correspond to blockCount.
+         (if-let [xs (:block-starts m)] (= (count xs) (:block-count m)) true)
+         ;; The number of items in this list should correspond to blockCount.
+         (if-let [[f] (:block-starts m)] (= 0 f) true)
+         ;; The first blockStart value must be 0.
+         (if-let [xs (:block-starts m)] (= (+ (last xs) (last (:block-sizes m))) (- (:end m) (:start m))) true)
+         ;; The final blockStart position plus the final blockSize value must equal chromEnd.
+         (if-let [xs (:block-starts m)] (apply <= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes m))) true)
+         ;; Blocks may not overlap.
+         ]}
   (->> (-> m
            (update-some :strand #(case % :plus "+" :minus "-" :no-strand "."))
            (update-some :block-sizes long-list->str)
@@ -104,20 +142,20 @@
 
 (defn read-raw-fields
   "Returns a lazy sequence of unnormalized BED fields."
-  [^BufferedReader rdr]
+  [^BEDReader rdr]
   (sequence
    (comp (remove header-or-comment?)
          (map deserialize-bed))
-   (line-seq rdr)))
+   (line-seq (.reader rdr))))
 
 (defn read-fields
   "Returns a lazy sequence of normalized BED fields."
-  [^BufferedReader rdr]
+  [^BEDReader rdr]
   (sequence
    (comp (remove header-or-comment?)
          (map deserialize-bed)
          (map normalize))
-   (line-seq rdr)))
+   (line-seq (.reader rdr))))
 
 (defn sort-fields
   "Sort BED fields based on :chr, :start and :end.
@@ -148,18 +186,20 @@
 
 (defn write-raw-fields
   "Write sequence of BED fields to writer without converting :start and :thick-start values."
-  [^BufferedWriter wtr xs]
-  (->> xs
-       (map serialize-bed)
-       (interpose "\n")
-       ^String (apply str)
-       (.write wtr)))
+  [^BEDWriter wtr xs]
+  (let [w ^BufferedWriter (.writer wtr)]
+    (->> xs
+         (map serialize-bed)
+         (interpose "\n")
+         ^String (apply str)
+         (.write w))))
 
 (defn write-fields
   "Write sequence of BED fields to writer."
-  [^BufferedWriter wtr xs]
-  (->> xs
-       (map (comp serialize-bed denormalize))
-       (interpose "\n")
-       ^String (apply str)
-       (.write wtr)))
+  [^BEDWriter wtr xs]
+  (let [w ^BufferedWriter (.writer wtr)]
+    (->> xs
+         (map (comp serialize-bed denormalize))
+         (interpose "\n")
+         ^String (apply str)
+         (.write w))))

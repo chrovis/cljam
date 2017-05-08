@@ -1,6 +1,31 @@
 # Change Log
 
-## [Unreleased]
+## [0.3.0] - 2017-05-08
+
+### BREAKING
+
+From this release, `cljam.vcf/read-variants` parses FORMAT, FILTER, INFO and samples columns of VCF.
+
+```clojure
+(require '[cljam.vcf :as vcf])
+
+(with-open [rdr (vcf/reader "test-resources/vcf/test-v4_3.vcf")]
+  (first (vcf/read-variants rdr)))
+;;=> {:FORMAT (:GT :GQ :DP :HQ),
+;;    :NA00001 {:DP 1, :GQ 48, :GT "0|0", :HQ (51 51)},
+;;    :NA00002 {:DP 8, :GQ 48, :GT "1|0", :HQ (51 51)},
+;;    :NA00003 {:DP 5, :GQ 43, :GT "1/1", :HQ (nil nil)},
+;;    :alt ["A"],
+;;    :chr "20",
+;;    :filter (:PASS),
+;;    :id "rs6054257",
+;;    :info {:AF (0.5), :DB :exists, :DP 14, :H2 :exists, :NS 3},
+;;    :pos 14370,
+;;    :qual 29.0,
+;;    :ref "G"}
+```
+
+Add `{:depth :vcf}` option to the second argument if string is preferred.
 
 ### Added
 
@@ -29,6 +54,8 @@
 * Pileup without options. [#54](https://github.com/chrovis/cljam/pull/54)
 * Refine `trim-chromosome-key`. [#55](https://github.com/chrovis/cljam/pull/55)
 * Refine `fastq-char->phred-byte` / Add `phred-byte->fastq-char`. [#56](https://github.com/chrovis/cljam/pull/56)
+* Separate test resources based on file types. [#71](https://github.com/chrovis/cljam/pull/71)
+* Separate :slow and :heavy test-selectors. [#72](https://github.com/chrovis/cljam/pull/72)
 
 ### Fixed
 
@@ -136,7 +163,8 @@ represents the first three bases of chromosome 1.
 
 First release
 
-[Unreleased]: https://github.com/chrovis/cljam/compare/0.2.1...HEAD
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/chrovis/cljam/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/chrovis/cljam/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/chrovis/cljam/compare/0.1.6...0.2.0
 [0.1.6]: https://github.com/chrovis/cljam/compare/0.1.5...0.1.6

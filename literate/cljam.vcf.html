@@ -2890,10 +2890,15 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn header
   [^VCFReader rdr]
   (.header rdr))</pre></td></tr><tr><td class="docs"><p>Returns data lines of the VCF from rdr as a lazy sequence of maps. rdr must
-  implement cljam.vcf.reader.VCFReader.</p>
+  implement cljam.vcf.reader.VCFReader.
+  Returned format can be specified with option :depth. Default is :deep.</p>
+
+<pre><code>:deep Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
+:vcf  VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.
+</code></pre>
 </td><td class="codes"><pre class="brush: clojure">(defn read-variants
-  [rdr]
-  (vcf-reader/read-variants rdr))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
+  [rdr &amp; {:keys [depth] :or {depth :deep}}]
+  (vcf-reader/read-variants rdr :depth depth))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.vcf.writer.VCFWriter of f. Meta-information lines and
   a header line will be written in this function. Should be used inside
   with-open to ensure the Writer is properly closed. e.g.</p>
@@ -2907,12 +2912,13 @@ net.brehaut.ClojureTools = (function (SH) {
   [f meta-info header]
   (doto (VCFWriter. (.getAbsolutePath (io/file f))
                     (io/writer (util/compressor-output-stream f))
+                    meta-info
                     header)
     (vcf-writer/write-meta-info meta-info)
     (vcf-writer/write-header header)))</pre></td></tr><tr><td class="docs"><p>Writes data lines on wtr, returning nil. variants must be a sequence of
-  maps. e.g.</p>
+  parsed or VCF-style maps. e.g.</p>
 
-<pre><code>(write-variants [{:chrom "19", :pos 111, :id nil, :ref "A",
+<pre><code>(write-variants [{:chr "19", :pos 111, :id nil, :ref "A",
                   :alt ["C"], :qual 9.6, :filter nil, :info nil,
                   :FORMAT "GT:HQ"}])
 </code></pre>

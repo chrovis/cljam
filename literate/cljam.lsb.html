@@ -2932,6 +2932,12 @@ net.brehaut.ClojureTools = (function (SH) {
   (read-bytes rdr (.array bb) 0 l)
   (.limit bb (.capacity bb))
   (.position bb l))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn read-byte
+  [rdr]
+  (let [bb (gen-byte-buffer)]
+    (read-byte-buffer rdr bb 1)
+    (.flip bb)
+    (.get bb)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-ubyte
   [rdr]
   (let [bb (gen-byte-buffer)]
@@ -2958,6 +2964,12 @@ net.brehaut.ClojureTools = (function (SH) {
     (read-byte-buffer rdr bb 4)
     (.flip bb)
     (.getInt bb)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn read-uint
+  [rdr]
+  (let [bb (gen-byte-buffer)]
+    (read-byte-buffer rdr bb 4)
+    (.flip bb)
+    (bit-and 0xFFFFFFFF (.getInt bb))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-long
   [rdr]
   (let [bb (gen-byte-buffer)]
@@ -3017,6 +3029,12 @@ net.brehaut.ClojureTools = (function (SH) {
   [^DataOutputStream w n]
   (let [bb (gen-byte-buffer)]
     (.putInt bb n)
+    (.write w (.array bb) 0 4)
+    nil))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn write-uint
+  [^DataOutputStream w n]
+  (let [bb (gen-byte-buffer)]
+    (.putInt bb (unchecked-int n))
     (.write w (.array bb) 0 4)
     nil))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-long

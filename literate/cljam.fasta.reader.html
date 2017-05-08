@@ -2867,7 +2867,7 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.fasta.reader" name="cljam.fasta.reader"><h1 class="project-name">cljam.fasta.reader</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.fasta.reader
-  (:refer-clojure :exclude [read slurp])
+  (:refer-clojure :exclude [read])
   (:require [clojure.string :as cstr]
             [cljam.util :refer [graph?]]
             [cljam.util.fasta :refer [header-line? parse-header-line]]
@@ -2928,13 +2928,6 @@ net.brehaut.ClojureTools = (function (SH) {
                      (string? s) (read-fn* rdr s)
                      (map? s) (cons s (lazy-seq (read-fn* rdr name))))))]
     (read-fn rdr nil)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private newline-character (char 10))
-(def ^:private return-character (char 13))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- newline*?
-  [c]
-  (or (= c newline-character)
-      (= c return-character)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def newline? (memoize newline*?))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-sequence-with-offset
   [^FASTAReader rdr offset-start offset-end]
   (let [len (- offset-end offset-start)
@@ -2977,7 +2970,9 @@ net.brehaut.ClojureTools = (function (SH) {
          (.clear ~buffer)
          (.get ~buffer ba#)
          (.clear ~buffer)
-         ba#)))</pre></td></tr><tr><td class="docs"><p>Core function to read FASTA sequentially.
+         ba#)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const gt-byte (byte \&gt;))
+(def ^:private ^:const newline-byte (byte \newline))</pre></td></tr><tr><td class="docs"><p>Core function to read FASTA sequentially.
    Function f is called every time a single sequence finishes reading.
    When finished reading entire file, f is called with nil.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- sequqntial-read*
@@ -2992,10 +2987,10 @@ net.brehaut.ClojureTools = (function (SH) {
            (loop [i 0 name-line? false rname rname*]
              (if (&lt; i bytes)
                (let [b (aget buf i)]
-                 (if (= b 62) ; \&gt;
+                 (if (= b gt-byte)
                    (do (when-let [s (create-ba s-buf)] (f {:name rname :sequence s}))
                        (recur (inc i) true rname))
-                   (if (= b 10) ; \newline
+                   (if (= b newline-byte)
                      (if name-line?
                        (recur (inc i) false (create-ba n-buf))
                        (recur (inc i) name-line? rname))

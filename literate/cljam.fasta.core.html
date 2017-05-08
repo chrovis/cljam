@@ -2867,7 +2867,7 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.fasta.core" name="cljam.fasta.core"><h1 class="project-name">cljam.fasta.core</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.fasta.core
-  (:refer-clojure :exclude [read slurp])
+  (:refer-clojure :exclude [read])
   (:require [clojure.java.io :as io]
             [cljam.util :as util]
             [cljam.fasta-index.core :as fasta-index]
@@ -2911,12 +2911,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (reader/read rdr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn reset
   [rdr]
-  (reader/reset rdr))</pre></td></tr><tr><td class="docs"><p>Opens a reader on a FASTA file and reads all its contents, returning
-  a sequence about the data.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn slurp
-  [f]
-  (with-open [r (reader f)]
-    (doall (reader/read r))))</pre></td></tr><tr><td class="docs">
+  (reader/reset rdr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn sequential-read
   [f]
   (with-open [stream (util/compressor-input-stream f)]

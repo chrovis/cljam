@@ -3095,16 +3095,16 @@ net.brehaut.ClojureTools = (function (SH) {
         (&lt;= (byte \a) b (byte \z)) (aset-byte bases i (- b 32))))) ;; Upper-case ASCII offset
   bases)</pre></td></tr><tr><td class="docs"><p>fastq and phred</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn fastq-char-&gt;phred-byte [ch]
-  [ch]
-  {:pre [(&lt;= 33 (int ch) 126)]}
-  (byte (- (int ch) 33)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro fastq-char-&gt;phred-byte [ch]
+  `(byte (- (int ~ch) 33)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro phred-byte-&gt;fastq-char [b]
+  `(char (+ ~b 33)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn fastq-&gt;phred ^bytes [^String fastq]
   (let [b (.getBytes fastq)
         in-bb (ByteBuffer/wrap b)
         out-bb (ByteBuffer/allocate (alength b))]
     (while (.hasRemaining in-bb)
-      (.put out-bb (byte (- (int (.get in-bb)) 33))))
+      (.put out-bb (fastq-char-&gt;phred-byte (.get in-bb))))
     (.array out-bb)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmulti phred-&gt;fastq class)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmethod phred-&gt;fastq (class (byte-array nil))
@@ -3114,7 +3114,7 @@ net.brehaut.ClojureTools = (function (SH) {
           cb (CharBuffer/allocate (alength b))]
       (loop []
         (when (.hasRemaining bb)
-          (.put cb (char (+ 33 (.get bb))))
+          (.put cb (phred-byte-&gt;fastq-char (.get bb)))
           (recur)))
       (.flip cb)
       (.toString cb))))</pre></td></tr><tr><td class="docs">
@@ -3122,7 +3122,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defmethod phred-&gt;fastq Integer
   [n]
   {:pre [(&lt;= 0 n max-phred-score)]}
-  (char (+ n 33)))</pre></td></tr><tr><td class="docs"><p>Reference functions</p>
+  (phred-byte-&gt;fastq-char n))</pre></td></tr><tr><td class="docs"><p>Reference functions</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Return a reference sequence from the sam header.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn make-refs
   [hdr]

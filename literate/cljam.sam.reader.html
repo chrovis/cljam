@@ -2872,12 +2872,28 @@ net.brehaut.ClojureTools = (function (SH) {
             [clojure.tools.logging :as logging]
             [cljam.util.sam-util :refer [make-refs
                                          parse-alignment] :as sam-util])
-  (:import [java.io BufferedReader Closeable]))</pre></td></tr><tr><td class="docs"><p>reader</p>
+  (:import [java.io BufferedReader Closeable]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(declare read-alignments* read-blocks*)</pre></td></tr><tr><td class="docs"><p>reader</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype SAMReader [f header reader]
   Closeable
   (close [this]
-    (.close ^Closeable (.reader this))))</pre></td></tr><tr><td class="docs">
+    (.close ^Closeable (.reader this)))
+  ISAMReader
+  (reader-path [this]
+    (.f this))
+  (read-header [this]
+    (.header this))
+  (read-refs [this]
+    (vec (make-refs (.header this))))
+  (read-alignments [this]
+    (read-alignments* this))
+  (read-alignments [this _]
+    (read-alignments* this))
+  (read-blocks [this]
+    (read-blocks* this))
+  (read-blocks [this option]
+    (read-blocks* this)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-alignments*
   [^SAMReader sam-reader]
   (when-let [line (.readLine ^BufferedReader (.reader sam-reader))]
@@ -2890,24 +2906,6 @@ net.brehaut.ClojureTools = (function (SH) {
     (if-not (= (first line) \@)
       (cons {:line line} (lazy-seq (read-blocks* sam-reader)))
       (lazy-seq (read-blocks* sam-reader)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(extend-type SAMReader
-  ISAMReader
-  (reader-path [this]
-    (.f this))
-  (read-header [this]
-    (.header this))
-  (read-refs [this]
-    (vec (make-refs (.header this))))
-  (read-alignments
-    ([this]
-       (read-alignments* this))
-    ([this _]
-       (read-alignments* this)))
-  (read-blocks
-    ([this]
-       (read-blocks* this))
-    ([this option]
-       (read-blocks* this))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-header* [^BufferedReader rdr]
   (-&gt;&gt; (line-seq rdr)
        (transduce

@@ -3155,25 +3155,33 @@ net.brehaut.ClojureTools = (function (SH) {
       (not= (count arguments) 2) (exit 1 (level-usage summary))
       errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (with-open [r (reader in)
+      (with-open [r (reader in :ignore-index false)
                   w (writer out)]
         (level/add-level r w))))
-  nil)</pre></td></tr><tr><td class="docs"><h2>Main command</h2>
+  nil)</pre></td></tr><tr><td class="docs"><h3>version command</h3>
+</td><td class="codes"></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn version [args]
+  (let [ver (with-open [r (-&gt; &quot;META-INF/maven/cljam/cljam/pom.properties&quot;
+                              (clojure.java.io/resource)
+                              (clojure.java.io/reader))]
+              (.getProperty (doto (java.util.Properties.) (.load r)) &quot;version&quot;))]
+    (exit 0 ver)))</pre></td></tr><tr><td class="docs"><h2>Main command</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn run [args]
   (let [[opts cmd args help cands]
         (sub-command args
-                     &quot;Usage: cljam {view,convert,sort,index,pileup,faidx,dict} ...&quot;
+                     &quot;Usage: cljam {view,convert,normalize,sort,index,pileup,faidx,dict,level,version} ...&quot;
                      :options  [[&quot;-h&quot; &quot;--help&quot; &quot;Show help&quot; :default false :flag true]]
                      :commands [[&quot;view&quot;    &quot;Extract/print all or sub alignments in SAM or BAM format.&quot;]
                                 [&quot;convert&quot; &quot;Convert SAM to BAM or BAM to SAM.&quot;]
-                                [&quot;normalize&quot; &quot;Normalize references of alignments&quot;]
+                                [&quot;normalize&quot; &quot;Normalize references of alignments.&quot;]
                                 [&quot;sort&quot;    &quot;Sort alignments by leftmost coordinates.&quot;]
                                 [&quot;index&quot;   &quot;Index sorted alignment for fast random access.&quot;]
                                 [&quot;pileup&quot;  &quot;Generate pileup for the BAM file.&quot;]
                                 [&quot;faidx&quot;   &quot;Index reference sequence in the FASTA format.&quot;]
                                 [&quot;dict&quot;    &quot;Create a FASTA sequence dictionary file.&quot;]
-                                [&quot;level&quot;   &quot;Add level of alignments.&quot;]])]
+                                [&quot;level&quot;   &quot;Add level of alignments.&quot;]
+                                [&quot;version&quot; &quot;Print version number.&quot;]])]
     (when (:help opts)
       (exit 0 help))
     (case cmd
@@ -3186,6 +3194,7 @@ net.brehaut.ClojureTools = (function (SH) {
       :faidx   (faidx args)
       :dict    (dict args)
       :level   (level args)
+      :version (version args)
       (do (println &quot;Invalid command. See 'cljam --help'.&quot;)
           (when (seq cands)
             (newline)

@@ -2876,8 +2876,7 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io :as io]
             [cljam.fasta :as fa]
             [cljam.cigar :as cig]
-            [cljam.pileup.common :refer [window-width step center]]
-            [cljam.pileup.pileup :refer [rpositions]]))</pre></td></tr><tr><td class="docs"><p>Stringify mpileup sequence.</p>
+            [cljam.pileup.common :refer [window-width step center]]))</pre></td></tr><tr><td class="docs"><p>Stringify mpileup sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn to-mpileup
   [x]
   (if (vector? x)
@@ -2911,14 +2910,15 @@ net.brehaut.ClojureTools = (function (SH) {
            (map #(assoc % :end (sam-util/get-end %)))
            (drop-while #(&lt; (:end %) start))))
          (step (dec start) []))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord MPileupElement [^String rname ^long pos ^Character ref ^long count seq qual reads])</pre></td></tr><tr><td class="docs"><p>Compute mpileup info from piled-up reads and reference.</p>
+</td><td class="codes"><pre class="brush: clojure">(defrecord MPileupElement [^String rname ^long pos ^Character ref pile])</pre></td></tr><tr><td class="docs"><p>Compute mpileup info from piled-up reads and reference.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn gen-mpileup
   [^String rname ^long locus [^Character ref-base :as refs] reads]
-  (let [seqs (map (fn gen-mpileup-seq [{:keys [^long pos ^String seq cig-index]}]
-                   (substitute-seq refs seq (nth cig-index (- locus pos)))) reads)
-        qual (map (fn gen-mpileup-qual [{:keys [^long pos ^String qual cig-index]}]
-                    (substitute-qual qual (nth cig-index (- locus pos)))) reads)]
-    (MPileupElement. rname locus ref-base (count reads) seqs qual reads)))</pre></td></tr><tr><td class="docs"><p>Internal mpileup function independent from I/O.
+  (-&gt;&gt; reads
+       (map (fn gen-mpileup-seq [{:keys [^long pos seq qual cig-index] :as aln}]
+              {:qual (- (int (substitute-qual qual (nth cig-index (- locus pos)))) 33)
+               :seq (substitute-seq refs seq (nth cig-index (- locus pos)))
+               :read aln}))
+       (MPileupElement. rname locus ref-base)))</pre></td></tr><tr><td class="docs"><p>Internal mpileup function independent from I/O.
    Can take multiple alignments seqs.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn pileup*
   [refseq rname start end &amp; aln-seqs]
@@ -2926,13 +2926,53 @@ net.brehaut.ClojureTools = (function (SH) {
        (map
         (fn [alns]
           (-&gt;&gt; alns
-               (sequence (map (fn [a] (assoc a :cig-index (cig/to-index (:cigar a))))))
+               (map (fn [a] (assoc a :cig-index (cig/to-index (:cigar a)))))
                (pileup-seq start end))))
        (apply map
               (fn [index refs &amp; plps]
                 (map (fn [plp] (gen-mpileup rname index refs plp)) plps))
               (range start (inc end))
-              (partition 10 1 (concat refseq (repeat \N))))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of MPileupElement calculated from FASTA and BAM.</p>
+              (partition 100 1 (concat refseq (repeat \N))))))</pre></td></tr><tr><td class="docs"><p>Basic predicate function for filtering alignments for mpileup.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn basic-mpileup-pred
+  [a]
+  (and (:flag a)
+       (sam-util/primary? (:flag a)) ;; primary
+       (zero? (bit-and 0x4 (:flag a))) ;; mapped
+       (zero? (bit-and 0x200 (:flag a))) ;; QC pass
+       (zero? (bit-and 0x400 (:flag a))) ;; Not duplicated
+       (or (zero? (bit-and 0x1 (:flag a))) ;; single-end
+           (pos? (bit-and 0x2 (:flag a)))))) ;; properly-paired</pre></td></tr><tr><td class="docs"><p>properly-paired</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Correct quality of two overlapped mate reads by setting zero quality for one of the base.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- correct-qual
+  [{s1 :seq q1 :qual :as r1} {s2 :seq q2 :qual :as r2}]
+  (if (= s1 s2)
+    [(assoc r1 :qual (min 200 (+ q1 q2))) (assoc r2 :qual 0)]
+    (if (&lt;= q2 q1)
+      [(assoc r1 :qual (int (* 0.8 q1))) (assoc r2 :qual 0)]
+      [(assoc r1 :qual 0) (assoc r2 :qual (int (* 0.8 q2)))])))</pre></td></tr><tr><td class="docs"><p>Correct quality of two overlapped mate reads in piled-up reads.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn correct-overlapped-reads
+  [pile]
+  (if (&lt;= (count (:pile pile)) 1)
+    pile
+    (-&gt;&gt; (:pile pile)
+         (group-by (comp :qname :read))
+         (mapcat
+          (fn [[qname xs]]
+            (if (&lt;= (count xs) 1) xs (apply correct-qual xs))))
+         (assoc pile :pile))))</pre></td></tr><tr><td class="docs"><p>Returns a predicate for filtering piled-up reads by base quality at its position.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn filter-by-base-quality
+  [min-base-quality]
+  (fn [p] (update p :pile (fn [pp] (filter #(&lt;= min-base-quality (:qual %)) pp)))))</pre></td></tr><tr><td class="docs"><p>Converts a pile {:pile [{:seq SEQ, :qual QUAL, :read READ}]}
+  into {:seq [], :qual [], :reads []}.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn transpose-pile
+  [p]
+  (if (zero? (count (:pile p)))
+    (assoc p :seq [] :qual [] :reads [] :count 0)
+    (-&gt;&gt; (:pile p)
+         (map (juxt :seq #(char (+ (:qual %) 33)) :read))
+         (apply map vector)
+         (zipmap [:seq :qual :reads])
+         (merge p {:count (count (:pile p))}))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of MPileupElement calculated from FASTA and BAM.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn pileup
   ([bam-reader rname]
    (pileup nil bam-reader rname -1 -1))
@@ -2945,9 +2985,19 @@ net.brehaut.ClojureTools = (function (SH) {
              e (if (neg? end) (:len r) end)
              refseq (if fa-reader
                       (fa/read-sequence fa-reader {:chr rname :start s :end e})
-                      (repeat \N))
-             alns (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})]
-         (map (fn [p] (update (first p) :seq (fn [s] (map to-mpileup s)))) (pileup* refseq rname s e alns))))
+                      (repeat \N))]
+         (-&gt;&gt; (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})
+              (sequence
+               (comp
+                (filter basic-mpileup-pred)
+                (filter (fn [a] (&lt;= 0 (:mapq a))))))
+              (pileup* refseq rname s e)
+              (sequence
+               (comp (map first)
+                     (map correct-overlapped-reads)
+                     (map (filter-by-base-quality 13))
+                     (map transpose-pile)
+                     (map (fn [p] (update p :seq (fn [s] (map to-mpileup s))))))))))
      (catch bgzf4j.BGZFException _
        (throw (RuntimeException. &quot;Invalid file format&quot;))))))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">

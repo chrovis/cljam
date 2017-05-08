@@ -2868,6 +2868,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.bam.writer" name="cljam.bam.writer"><h1 class="project-name">cljam.bam.writer</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.bam.writer
   (:require [clojure.string :refer [split]]
+            [cljam.io]
             (cljam [cigar :as cgr]
                    [lsb :as lsb]
                    [util :refer [string-&gt;bytes ubyte]])
@@ -2876,12 +2877,24 @@ net.brehaut.ClojureTools = (function (SH) {
                                          stringify-header]]
             [cljam.bam.common :refer [bam-magic fixed-block-size]])
   (:import [java.io DataOutputStream Closeable IOException EOFException]
-           [bgzf4j BGZFOutputStream]))</pre></td></tr><tr><td class="docs"><p>BAMWriter</p>
+           [bgzf4j BGZFOutputStream]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(declare write-header* write-refs* write-alignments* write-blocks*)</pre></td></tr><tr><td class="docs"><p>BAMWriter</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype BAMWriter [f writer]
   Closeable
   (close [this]
-    (.close ^Closeable (.writer this))))</pre></td></tr><tr><td class="docs"><p>write</p>
+    (.close ^Closeable (.writer this)))
+  cljam.io/ISAMWriter
+  (writer-path [this]
+    (.f this))
+  (write-header [this header]
+    (write-header* this header))
+  (write-refs [this header]
+    (write-refs* this header))
+  (write-alignments [this alignments header]
+    (write-alignments* this alignments header))
+  (write-blocks [this blocks]
+    (write-blocks* this blocks)))</pre></td></tr><tr><td class="docs"><p>write</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private fixed-tag-size 3)
 (def ^:private fixed-binary-array-tag-size 5)</pre></td></tr><tr><td class="docs">

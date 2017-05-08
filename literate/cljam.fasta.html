@@ -2869,7 +2869,8 @@ net.brehaut.ClojureTools = (function (SH) {
   Reader of a FASTA format file.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.fasta
   (:refer-clojure :exclude [read])
-  (:require [cljam.fasta.core :as fa-core])
+  (:require [cljam.fasta.core :as fa-core]
+            [cljam.fasta.reader])
   (:import cljam.fasta.reader.FASTAReader))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.fasta.reader.FASTAReader of f with options.
   The options:
     :ignore-index - returns reader without index, default false.

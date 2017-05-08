@@ -2869,9 +2869,10 @@ net.brehaut.ClojureTools = (function (SH) {
   https://samtools.github.io/hts-specs/ for the detail VCF specifications.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.vcf.writer
   (:require [clojure.string :as cstr]
-            [camel-snake-kebab.core :refer [-&gt;camelCaseString]]))</pre></td></tr><tr><td class="docs"><h2>VCFWriter</h2>
+            [camel-snake-kebab.core :refer [-&gt;camelCaseString]]
+            [cljam.util.vcf-util :as vcf-util]))</pre></td></tr><tr><td class="docs"><h2>VCFWriter</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype VCFWriter [f writer header]
+</td><td class="codes"><pre class="brush: clojure">(deftype VCFWriter [f writer meta-info header]
   java.io.Closeable
   (close [this]
     (.close ^java.io.Closeable (.writer this))))</pre></td></tr><tr><td class="docs"><h2>Vars and utilities</h2>
@@ -2888,7 +2889,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (.write s)
     (.newLine)))</pre></td></tr><tr><td class="docs"><h2>Writing meta-information</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- stringify-key
+</td><td class="codes"><pre class="brush: clojure">(defn stringify-key
   [k]
   (if (#{:info :filter :format :alt :sample :pedigree} k)
     (cstr/upper-case (name k))
@@ -2900,7 +2901,8 @@ net.brehaut.ClojureTools = (function (SH) {
                 (str &quot;assembly=&quot; (:assembly m))
                 (str &quot;md5=&quot; (:md-5 m))]
          (:species m) (conj (str &quot;species=\ (:species m) &quot;\))
-         (:taxonomy m) (conj (str &quot;taxonomy=&quot; (:taxonomy m))))
+         (:taxonomy m) (conj (str &quot;taxonomy=&quot; (:taxonomy m)))
+         (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
        (interpose &quot;,&quot;)
        (apply str)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-info
@@ -2910,21 +2912,24 @@ net.brehaut.ClojureTools = (function (SH) {
                 (str &quot;Type=&quot; (nil-&gt;dot (:type m)))
                 (str &quot;Description=\ (:description m) &quot;\)]
          (:source m) (conj (str &quot;Source=&quot; (:source m)))
-         (:version m) (conj (str &quot;Version=&quot; (:version m))))
+         (:version m) (conj (str &quot;Version=&quot; (:version m)))
+         (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
        (interpose &quot;,&quot;)
        (apply str)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-filter
   [m]
-  (-&gt;&gt; [(str &quot;ID=&quot; (:id m))
-        (str &quot;Description=\ (:description m) &quot;\)]
+  (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
+                (str &quot;Description=\ (:description m) &quot;\)]
+         (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
        (interpose &quot;,&quot;)
        (apply str)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-format
   [m]
-  (-&gt;&gt; [(str &quot;ID=&quot; (:id m))
-        (str &quot;Number=&quot; (nil-&gt;dot (:number m)))
-        (str &quot;Type=&quot; (nil-&gt;dot (:type m)))
-        (str &quot;Description=\ (:description m) &quot;\)]
+  (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
+                (str &quot;Number=&quot; (nil-&gt;dot (:number m)))
+                (str &quot;Type=&quot; (nil-&gt;dot (:type m)))
+                (str &quot;Description=\ (:description m) &quot;\)]
+         (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
        (interpose &quot;,&quot;)
        (apply str)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-alt
@@ -2948,7 +2953,7 @@ net.brehaut.ClojureTools = (function (SH) {
               (str &quot;Name_&quot; i &quot;=&quot; (get m (keyword (str &quot;name-&quot; i))))))
        (interpose &quot;,&quot;)
        (apply str)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- stringify-structured-line
+</td><td class="codes"><pre class="brush: clojure">(defn stringify-structured-line
   [k m]
   (let [f (case k
             :contig stringify-meta-info-contig
@@ -2962,7 +2967,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- write-meta-info1
   [^VCFWriter wtr k v]
   (if-not (nil? v)
-    (if (vector? v)
+    (if (sequential? v)
       (doseq [x v]
         (write-line (.writer wtr) (str meta-info-prefix
                                        (stringify-key k)
@@ -2978,7 +2983,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (doseq [k [:info :filter :format :alt :sample :pedigree]]
     (write-meta-info1 wtr k (get meta-info k))))</pre></td></tr><tr><td class="docs"><h2>Writing header</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^String stringify-header
+</td><td class="codes"><pre class="brush: clojure">(defn ^String stringify-header
   [header]
   (str header-prefix (apply str (interpose &quot;\t&quot; header))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-header
@@ -2999,7 +3004,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [m* (-&gt; m
                (update :alt stringify-data-line-alt)
                (update :qual stringify-data-line-qual))]
-    (-&gt;&gt; (concat [:chrom :pos :id :ref :alt :qual :filter :info]
+    (-&gt;&gt; (concat [:chr :pos :id :ref :alt :qual :filter :info]
                  (map keyword (drop 8 header)))
          (map #(get m* %))
          (map nil-&gt;dot)
@@ -3007,8 +3012,14 @@ net.brehaut.ClojureTools = (function (SH) {
          (apply str))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-variants
   [^VCFWriter wtr variants]
-  (doseq [v variants]
-    (write-line (.writer wtr) (stringify-data-line v (.header wtr)))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (let [stringify-vals (vcf-util/variant-vals-stringifier (.meta-info wtr) (.header wtr))
+        header-kws (drop 8 (map keyword (.header wtr)))]
+    (doseq [v variants]
+      (write-line (.writer wtr)
+                  (stringify-data-line
+                   (if (some string? ((apply juxt :filter :info header-kws) v))
+                     v
+                     (stringify-vals v)) (.header wtr))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

@@ -2868,6 +2868,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.bam.reader" name="cljam.bam.reader"><h1 class="project-name">cljam.bam.reader</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.bam.reader
   (:require [cljam.lsb :as lsb]
+            [cljam.io]
             [cljam.util.sam-util :refer [ref-id ref-name parse-header get-end]]
             [cljam.bam-index :refer [get-spans]]
             [cljam.bam-index.core :as bai]
@@ -2875,12 +2876,41 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.bam.decoder :as decoder])
   (:import [java.io Closeable EOFException]
            java.nio.ByteBuffer
-           bgzf4j.BGZFInputStream))</pre></td></tr><tr><td class="docs"><h2>BAMReader</h2>
+           bgzf4j.BGZFInputStream))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(declare read-alignments-sequentially*
+         read-alignments*
+         read-blocks-sequentially*
+         read-blocks*)</pre></td></tr><tr><td class="docs"><h2>BAMReader</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype BAMReader [f header refs reader data-reader index-delay]
+</td><td class="codes"><pre class="brush: clojure">(deftype BAMReader [f header refs reader data-reader index-delay start-pos]
   Closeable
   (close [this]
-    (.close ^Closeable (.reader this))))</pre></td></tr><tr><td class="docs"><h2>Reading a single block</h2>
+    (.close ^Closeable (.reader this)))
+  cljam.io/ISAMReader
+  (reader-path [this]
+    (.f this))
+  (read-header [this]
+    (.header this))
+  (read-refs [this]
+    (.refs this))
+  (read-alignments [this]
+    (read-alignments-sequentially* this :deep))
+  (read-alignments [this {:keys [chr start end depth]
+                          :or {chr nil
+                               start -1 end -1
+                               depth :deep}}]
+    (if (nil? chr)
+      (read-alignments-sequentially* this depth)
+      (read-alignments* this chr start end depth)))
+  (read-blocks [this]
+    (read-blocks-sequentially* this :normal))
+  (read-blocks [this {:keys [chr start end mode]
+                      :or {chr nil
+                           start -1 end -1
+                           mode :normal}}]
+    (if (nil? chr)
+      (read-blocks-sequentially* this mode)
+      (read-blocks* this chr start end))))</pre></td></tr><tr><td class="docs"><h2>Reading a single block</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Reads an alignment block, returning a map including the block size and the
   data as byte array.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-alignment-block
@@ -2966,7 +2996,7 @@ net.brehaut.ClojureTools = (function (SH) {
                 [one]
                 (recur (rest left)))))
           (recur (rest left-spans)))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn read-alignments*
+</td><td class="codes"><pre class="brush: clojure">(defn- read-alignments*
   [^BAMReader rdr
    ^String chr ^Long start ^Long end
    deep-or-shallow]
@@ -2995,7 +3025,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (if (= deep-or-shallow :first-only)
       (read-alignments-first-only rdr spans window read-fn)
       (filter window candidates))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn read-alignments-sequentially*
+</td><td class="codes"><pre class="brush: clojure">(defn- read-alignments-sequentially*
   [^BAMReader rdr deep-or-shallow]
   (let [read-aln-fn (case deep-or-shallow
                       :shallow light-read-alignment
@@ -3007,7 +3037,7 @@ net.brehaut.ClojureTools = (function (SH) {
                                   (catch EOFException e nil))]
                     (cons a (lazy-seq (read-fn* r refs)))))]
     (read-fn rdr (.refs rdr))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn read-blocks-sequentially*
+</td><td class="codes"><pre class="brush: clojure">(defn- read-blocks-sequentially*
   [^BAMReader rdr mode]
   (let [read-block-fn (case mode
                         :normal read-alignment-block
@@ -3018,7 +3048,7 @@ net.brehaut.ClojureTools = (function (SH) {
                                   (catch EOFException e nil))]
                     (cons b (lazy-seq (read-fn* r refs)))))]
     (read-fn rdr (.refs rdr))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn read-blocks*
+</td><td class="codes"><pre class="brush: clojure">(defn- read-blocks*
   [^BAMReader rdr
    ^String chr ^Long start ^Long end]
   (when (nil? @(.index-delay rdr))

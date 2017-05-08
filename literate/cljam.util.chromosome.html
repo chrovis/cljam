@@ -2877,9 +2877,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (cstr/replace #&quot;\'&quot;  )))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn trim-chromosome-key
   [s]
-  (-&gt; s
-      (cstr/replace #&quot;Chr&quot; )
-      (cstr/replace #&quot;chr&quot; )))</pre></td></tr><tr><td class="docs">
+  (cstr/replace s #&quot;(?i)^chr&quot; ))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- normalize-chromosome-prefix
   [s]
   (let [m (re-matches #&quot;(?i)^chr([0-9]{1,2}|X|Y|M|MT)(.*)$&quot; s)]

@@ -85,13 +85,32 @@
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      ;; TODO: Does not works?
-      (is (= (io/read-alignments rdr {:chr "ref2"}) [])))
+      (is (= (io/read-alignments rdr {:chr "ref2"})
+             (drop 6 (:alignments test-sam-sorted-by-pos)))))
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      (is (= (data->clj (io/read-blocks rdr)) test-sorted-bam-data)))
+      (is (= (io/read-alignments rdr {:chr "ref2" :start 21})
+             (drop 7 (:alignments test-sam-sorted-by-pos)))))
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      ;; TODO: Does not works?
-      (is (= (data->clj (io/read-blocks rdr {:chr "ref2"})) [])))))
+      (is (= (io/read-alignments rdr {:chr "ref2" :end 9})
+             (take 3 (drop 6 (:alignments test-sam-sorted-by-pos))))))
+    (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
+      (is (= (io/read-alignments rdr {:chr "ref2" :start 10 :end 12})
+             (take 5 (drop 6 (:alignments test-sam-sorted-by-pos))))))
+    (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
+      (is (= (data->clj (io/read-blocks rdr))
+             test-sorted-bam-data)))
+    (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
+      (is (= (map #(dissoc % :pos :qname :rname) (data->clj (io/read-blocks rdr {:chr "ref2"})))
+             (drop 6 test-sorted-bam-data))))
+    (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
+      (is (= (map #(dissoc % :pos :qname :rname) (data->clj (io/read-blocks rdr {:chr "ref2" :start 2})))
+             (drop 7 test-sorted-bam-data))))
+    (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
+      (is (= (map #(dissoc % :pos :qname :rname) (data->clj (io/read-blocks rdr {:chr "ref2" :end 2})))
+             (take 2 (drop 6 test-sorted-bam-data)))))
+    (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
+      (is (= (map #(dissoc % :pos :qname :rname) (data->clj (io/read-blocks rdr {:chr "ref2" :start 4 :end 12})))
+             (take 3 (drop 8 test-sorted-bam-data)))))))
 
 (deftest bamreader-invalid-files
   (with-before-after {:before (prepare-cache!)

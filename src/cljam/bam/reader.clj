@@ -33,7 +33,8 @@
     (read-alignments-sequentially* this :deep))
   (read-alignments [this {:keys [chr start end depth]
                           :or {chr nil
-                               start -1 end -1
+                               start 1
+                               end Long/MAX_VALUE
                                depth :deep}}]
     (if (nil? chr)
       (read-alignments-sequentially* this depth)
@@ -42,7 +43,8 @@
     (read-blocks-sequentially* this :normal))
   (read-blocks [this {:keys [chr start end mode]
                       :or {chr nil
-                           start -1 end -1
+                           start 1
+                           end Long/MAX_VALUE
                            mode :normal}}]
     (if (nil? chr)
       (read-blocks-sequentially* this mode)
@@ -218,8 +220,7 @@
         window (fn [^clojure.lang.PersistentHashMap a]
                  (let [^Long left (:pos a)]
                    (and (= chr (:rname a))
-                        (<= start left)
-                        (>= end left))))
+                        (<= start left end))))
         candidates (flatten (map (fn [[^Long begin ^Long finish]]
                                    (read-to-finish rdr begin finish read-coordinate-alignment-block)) spans))]
     (filter window candidates)))

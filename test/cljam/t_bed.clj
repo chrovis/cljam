@@ -212,4 +212,26 @@
   (is (= (with-open [r (bed/reader test-bed-file2-bz2)] (str->bed (bed->str (bed/read-fields r))))
          (with-open [r (bed/reader test-bed-file2-bz2)] (doall (bed/read-fields r)))))
   (is (= (with-open [r (bed/reader test-bed-file3)] (str->bed (bed->str (bed/read-fields r))))
-         (with-open [r (bed/reader test-bed-file3)] (doall (bed/read-fields r))))))
+         (with-open [r (bed/reader test-bed-file3)] (doall (bed/read-fields r)))))
+
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (let [temp-file (str temp-dir "/test1.bed")
+          temp-file-gz (str temp-dir "/test1.bed.gz")
+          temp-file-bz2 (str temp-dir "/test1.bed.bz2")
+          xs (with-open [r (bed/reader test-bed-file1)] (doall (bed/read-fields r)))]
+      (with-open [wtr1 (bed/writer temp-file)
+                  wtr2 (bed/writer temp-file-gz)
+                  wtr3 (bed/writer temp-file-bz2)]
+        (bed/write-fields wtr1 xs)
+        (bed/write-fields wtr2 xs)
+        (bed/write-fields wtr3 xs))
+      (with-open [rdr1 (bed/reader temp-file)
+                  rdr2 (bed/reader temp-file-gz)
+                  rdr3 (bed/reader temp-file-bz2)]
+        (is (= xs
+               (bed/read-fields rdr1)))
+        (is (= xs
+               (bed/read-fields rdr2)))
+        (is (= xs
+               (bed/read-fields rdr3)))))))

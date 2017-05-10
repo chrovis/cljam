@@ -8,33 +8,34 @@
             [cljam.bam :as bam]
             [cljam.util.sam-util :as sam-util])
   (:import [java.io BufferedReader InputStreamReader ByteArrayInputStream
-            ByteArrayOutputStream OutputStreamWriter BufferedWriter]))
+            ByteArrayOutputStream OutputStreamWriter BufferedWriter]
+           [cljam.bed BEDReader BEDWriter]))
 
 (defn- str->bed [^String s]
   (with-open [bais (ByteArrayInputStream. (.getBytes s))
               isr (InputStreamReader. bais)
-              br (BufferedReader. isr)]
+              br (bed/BEDReader. (BufferedReader. isr) nil)]
     (doall (bed/read-fields br))))
 
 (defn- bed->str [xs]
   (with-open [bao (ByteArrayOutputStream.)
               osw (OutputStreamWriter. bao)
-              bw (BufferedWriter. osw)]
+              bw (bed/BEDWriter. (BufferedWriter. osw) nil)]
     (bed/write-fields bw xs)
-    (.flush bw)
+    (.flush ^BufferedWriter (.writer bw))
     (.toString bao)))
 
 (defn- raw-str->bed [^String s]
   (with-open [bais (ByteArrayInputStream. (.getBytes s))
               isr (InputStreamReader. bais)
               br (BufferedReader. isr)]
-    (doall (bed/read-raw-fields br))))
+    (doall (bed/read-raw-fields (bed/BEDReader. br nil)))))
 
 (defn- bed->raw-str [xs]
   (with-open [bao (ByteArrayOutputStream.)
               osw (OutputStreamWriter. bao)
               bw (BufferedWriter. osw)]
-    (bed/write-raw-fields bw xs)
+    (bed/write-raw-fields (bed/BEDWriter. bw nil) xs)
     (.flush bw)
     (.toString bao)))
 
@@ -47,14 +48,21 @@
          [{:chr "chr1" :start 1 :end 100 :name "N" :score 0 :strand :plus :thick-start 1 :thick-end 0
            :item-rgb "255,0,0" :block-count 2 :block-sizes [10 90] :block-starts [0 10]}]))
 
-  (with-open [r (io/reader test-bed-file1)]
+ (with-open [r (bed/reader test-bed-file1)]
    (is (= (bed/read-fields r)
           [{:chr "chr22" :start 1001 :end 5000 :name "cloneA" :score 960 :strand :plus :thick-start 1001
             :thick-end 5000 :item-rgb "0" :block-count 2 :block-sizes [567 488] :block-starts [0 3512]}
            {:chr "chr22" :start 2001 :end 6000 :name "cloneB" :score 900 :strand :minus :thick-start 2001
             :thick-end 6000 :item-rgb "0" :block-count 2 :block-sizes [433 399] :block-starts [0 3601]}])))
 
-  (with-open [r (io/reader test-bed-file2)]
+ (with-open [r (bed/reader test-bed-file1-gz)]
+   (is (= (bed/read-fields r)
+          [{:chr "chr22" :start 1001 :end 5000 :name "cloneA" :score 960 :strand :plus :thick-start 1001
+            :thick-end 5000 :item-rgb "0" :block-count 2 :block-sizes [567 488] :block-starts [0 3512]}
+           {:chr "chr22" :start 2001 :end 6000 :name "cloneB" :score 900 :strand :minus :thick-start 2001
+            :thick-end 6000 :item-rgb "0" :block-count 2 :block-sizes [433 399] :block-starts [0 3601]}])))
+
+ (with-open [r (bed/reader test-bed-file2)]
    (is (= (bed/read-fields r)
           [{:chr "chr7" :start 127471197 :end 127472363 :name "Pos1" :score 0 :strand :plus :thick-start 127471197
             :thick-end 127472363 :item-rgb "255,0,0"}
@@ -75,7 +83,28 @@
            {:chr "chr7" :start 127480533 :end 127481699 :name "Neg4" :score 0 :strand :minus :thick-start 127480533
             :thick-end 127481699 :item-rgb "0,0,255"}])))
 
-  (with-open [r (io/reader test-bed-file3)]
+ (with-open [r (bed/reader test-bed-file2-bz2)]
+   (is (= (bed/read-fields r)
+          [{:chr "chr7" :start 127471197 :end 127472363 :name "Pos1" :score 0 :strand :plus :thick-start 127471197
+            :thick-end 127472363 :item-rgb "255,0,0"}
+           {:chr "chr7" :start 127472364 :end 127473530 :name "Pos2" :score 0 :strand :plus :thick-start 127472364
+            :thick-end 127473530 :item-rgb "255,0,0"}
+           {:chr "chr7" :start 127473531 :end 127474697 :name "Pos3" :score 0 :strand :plus :thick-start 127473531
+            :thick-end 127474697 :item-rgb "255,0,0"}
+           {:chr "chr7" :start 127474698 :end 127475864 :name "Pos4" :score 0 :strand :plus :thick-start 127474698
+            :thick-end 127475864 :item-rgb "255,0,0"}
+           {:chr "chr7" :start 127475865 :end 127477031 :name "Neg1" :score 0 :strand :minus :thick-start 127475865
+            :thick-end 127477031 :item-rgb "0,0,255"}
+           {:chr "chr7" :start 127477032 :end 127478198 :name "Neg2" :score 0 :strand :minus :thick-start 127477032
+            :thick-end 127478198 :item-rgb "0,0,255"}
+           {:chr "chr7" :start 127478199 :end 127479365 :name "Neg3" :score 0 :strand :minus :thick-start 127478199
+            :thick-end 127479365 :item-rgb "0,0,255"}
+           {:chr "chr7" :start 127479366 :end 127480532 :name "Pos5" :score 0 :strand :plus :thick-start 127479366
+            :thick-end 127480532 :item-rgb "255,0,0"}
+           {:chr "chr7" :start 127480533 :end 127481699 :name "Neg4" :score 0 :strand :minus :thick-start 127480533
+            :thick-end 127481699 :item-rgb "0,0,255"}])))
+
+  (with-open [r (bed/reader test-bed-file3)]
     (is (= (bed/read-fields r)
            [{:chr "chr7" :start 127471197 :end 127472363 :name "Pos1" :score 0 :strand :plus}
             {:chr "chr7" :start 127472364 :end 127473530 :name "Pos2" :score 0 :strand :plus}
@@ -174,9 +203,35 @@
   (is (= (bed->str (str->bed "1 0 1")) "chr1 0 1"))
   (is (= (bed->str (str->bed "1 0 10")) "chr1 0 10"))
   (is (= (bed->str (str->bed "1 0 1\n1 1 2")) "chr1 0 1\nchr1 1 2"))
-  (is (= (with-open [r (io/reader test-bed-file1)] (str->bed (bed->str (bed/read-fields r))))
-         (with-open [r (io/reader test-bed-file1)] (doall (bed/read-fields r)))))
-  (is (= (with-open [r (io/reader test-bed-file2)] (str->bed (bed->str (bed/read-fields r))))
-         (with-open [r (io/reader test-bed-file2)] (doall (bed/read-fields r)))))
-  (is (= (with-open [r (io/reader test-bed-file3)] (str->bed (bed->str (bed/read-fields r))))
-         (with-open [r (io/reader test-bed-file3)] (doall (bed/read-fields r))))))
+  (is (= (with-open [r (bed/reader test-bed-file1)] (str->bed (bed->str (bed/read-fields r))))
+         (with-open [r (bed/reader test-bed-file1)] (doall (bed/read-fields r)))))
+  (is (= (with-open [r (bed/reader test-bed-file1-gz)] (str->bed (bed->str (bed/read-fields r))))
+         (with-open [r (bed/reader test-bed-file1-gz)] (doall (bed/read-fields r)))))
+  (is (= (with-open [r (bed/reader test-bed-file2)] (str->bed (bed->str (bed/read-fields r))))
+         (with-open [r (bed/reader test-bed-file2)] (doall (bed/read-fields r)))))
+  (is (= (with-open [r (bed/reader test-bed-file2-bz2)] (str->bed (bed->str (bed/read-fields r))))
+         (with-open [r (bed/reader test-bed-file2-bz2)] (doall (bed/read-fields r)))))
+  (is (= (with-open [r (bed/reader test-bed-file3)] (str->bed (bed->str (bed/read-fields r))))
+         (with-open [r (bed/reader test-bed-file3)] (doall (bed/read-fields r)))))
+
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (let [temp-file (str temp-dir "/test1.bed")
+          temp-file-gz (str temp-dir "/test1.bed.gz")
+          temp-file-bz2 (str temp-dir "/test1.bed.bz2")
+          xs (with-open [r (bed/reader test-bed-file1)] (doall (bed/read-fields r)))]
+      (with-open [wtr1 (bed/writer temp-file)
+                  wtr2 (bed/writer temp-file-gz)
+                  wtr3 (bed/writer temp-file-bz2)]
+        (bed/write-fields wtr1 xs)
+        (bed/write-fields wtr2 xs)
+        (bed/write-fields wtr3 xs))
+      (with-open [rdr1 (bed/reader temp-file)
+                  rdr2 (bed/reader temp-file-gz)
+                  rdr3 (bed/reader temp-file-bz2)]
+        (is (= xs
+               (bed/read-fields rdr1)))
+        (is (= xs
+               (bed/read-fields rdr2)))
+        (is (= xs
+               (bed/read-fields rdr3)))))))

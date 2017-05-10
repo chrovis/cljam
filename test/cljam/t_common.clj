@@ -146,6 +146,8 @@
 (def test-bed-file1 "test-resources/bed/test1.bed")
 (def test-bed-file2 "test-resources/bed/test2.bed")
 (def test-bed-file3 "test-resources/bed/test3.bed")
+(def test-bed-file1-gz "test-resources/bed/test1.bed.gz")
+(def test-bed-file2-bz2 "test-resources/bed/test2.bed.bz2")
 
 ;; ### TABIX files
 

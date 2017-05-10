@@ -15,11 +15,15 @@
   (close [this]
     (.close ^Closeable (.writer this))))
 
-(defn ^BEDReader reader [f]
+(defn ^BEDReader reader
+  "Returns BED file reader of f."
+  [f]
   (let [abs (.getAbsolutePath (io/file f))]
     (BEDReader. (io/reader (util/compressor-input-stream abs)) abs)))
 
-(defn ^BEDWriter writer [f]
+(defn ^BEDWriter writer
+  "Returns BED file writer of f."
+  [f]
   (let [abs (.getAbsolutePath (io/file f))]
   (BEDWriter. (io/writer (util/compressor-output-stream abs)) abs)))
 
@@ -51,25 +55,24 @@
   "Parse BED fields string and returns a map.
   Based on information at https://genome.ucsc.edu/FAQ/FAQformat#format1."
   [^String s]
-  {:post [(and (:chr %) (:start %) (:end %))
-          ;; First 3 fields are required.
-          (< (:start %) (:end %))
+  {:post [;; First 3 fields are required.
+          (:chr %) (:start %) (:end %)
           ;; The chromEnd base is not included in the display of the feature.
-          (every? true? (drop-while false? (map nil? ((apply juxt bed-columns) %))))
+          (< (:start %) (:end %))
           ;; Lower-numbered fields must be populated if higher-numbered fields are used.
-          (if-let [s (:score %)] (<= 0 s 1000) true)
+          (every? true? (drop-while false? (map nil? ((apply juxt bed-columns) %))))
           ;; A score between 0 and 1000.
+          (if-let [s (:score %)] (<= 0 s 1000) true)
+          ;; The number of items in this list should correspond to blockCount.
           (if-let [xs (:block-sizes %)] (= (count xs) (:block-count %)) true)
           ;; The number of items in this list should correspond to blockCount.
           (if-let [xs (:block-starts %)] (= (count xs) (:block-count %)) true)
-          ;; The number of items in this list should correspond to blockCount.
-          (if-let [[f] (:block-starts %)] (= 0 f) true)
           ;; The first blockStart value must be 0.
-          (if-let [xs (:block-starts %)] (= (+ (last xs) (last (:block-sizes %))) (- (:end %) (:start %))) true)
+          (if-let [[f] (:block-starts %)] (= 0 f) true)
           ;; The final blockStart position plus the final blockSize value must equal chromEnd.
-          (if-let [xs (:block-starts %)] (apply <= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes %))) true)
+          (if-let [xs (:block-starts %)] (= (+ (last xs) (last (:block-sizes %))) (- (:end %) (:start %))) true)
           ;; Blocks may not overlap.
-          ]}
+          (if-let [xs (:block-starts %)] (apply <= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes %))) true)]}
   (reduce
    (fn deserialize-bed-reduce-fn [m [k f]] (update-some m k f))
    (zipmap bed-columns (cstr/split s #"\s+"))
@@ -86,25 +89,24 @@
 (defn- serialize-bed
   "Serialize bed fields into string."
   [m]
-  {:pre [(and (:chr m) (:start m) (:end m))
-         ;; First 3 fields are required.
-         (< (:start m) (:end m))
+  {:pre [;; First 3 fields are required.
+         (:chr m) (:start m) (:end m)
          ;; The chromEnd base is not included in the display of the feature.
-         (every? true? (drop-while false? (map nil? ((apply juxt bed-columns) m))))
+         (< (:start m) (:end m))
          ;; Lower-numbered fields must be populated if higher-numbered fields are used.
-         (if-let [s (:score m)] (<= 0 s 1000) true)
+         (every? true? (drop-while false? (map nil? ((apply juxt bed-columns) m))))
          ;; A score between 0 and 1000.
+         (if-let [s (:score m)] (<= 0 s 1000) true)
+         ;; The number of items in this list should correspond to blockCount.
          (if-let [xs (:block-sizes m)] (= (count xs) (:block-count m)) true)
          ;; The number of items in this list should correspond to blockCount.
          (if-let [xs (:block-starts m)] (= (count xs) (:block-count m)) true)
-         ;; The number of items in this list should correspond to blockCount.
-         (if-let [[f] (:block-starts m)] (= 0 f) true)
          ;; The first blockStart value must be 0.
-         (if-let [xs (:block-starts m)] (= (+ (last xs) (last (:block-sizes m))) (- (:end m) (:start m))) true)
+         (if-let [[f] (:block-starts m)] (= 0 f) true)
          ;; The final blockStart position plus the final blockSize value must equal chromEnd.
-         (if-let [xs (:block-starts m)] (apply <= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes m))) true)
+         (if-let [xs (:block-starts m)] (= (+ (last xs) (last (:block-sizes m))) (- (:end m) (:start m))) true)
          ;; Blocks may not overlap.
-         ]}
+         (if-let [xs (:block-starts m)] (apply <= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes m))) true)]}
   (->> (-> m
            (update-some :strand #(case % :plus "+" :minus "-" :no-strand "."))
            (update-some :block-sizes long-list->str)

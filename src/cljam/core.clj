@@ -1,44 +1,142 @@
 (ns cljam.core
   "Core features of cljam."
-  (:require [cljam.sam :as sam]
+  (:require [cljam.io :as io]
+            [cljam.sam :as sam]
             [cljam.bam :as bam]
-            [cljam.fasta :as fasta]))
+            [cljam.fasta :as fasta]
+            [cljam.twobit :as twobit]
+            [cljam.fastq :as fastq]
+            [cljam.vcf :as vcf]
+            [cljam.bcf :as bcf]
+            [cljam.bed :as bed])
+  (:import [java.io Closeable]))
 
-(defn reader
-  "Selects suitable reader from f's extension, returning the reader. This
-  function supports SAM and BAM format."
-  [f & {:keys [ignore-index] :or {ignore-index true}}]
-  (condp re-find f
-    #"\.sam$" (sam/reader f)
-    #"\.bam$" (bam/reader f :ignore-index ignore-index)
-    #"\.fa" (fasta/reader f)
-    (throw (IllegalArgumentException. "Invalid file type"))))
+(defn alignment-reader?
+  "Checks if given object implements ISAMReader"
+  [rdr]
+  (satisfies? io/ISAMReader rdr))
 
-(defn writer
-  "Selects suitable writer from f's extension, returning the writer. This
-  function supports SAM and BAM format."
-  [f]
-  (condp re-find f
-    #"\.sam$" (sam/writer f)
-    #"\.bam$" (bam/writer f)
-    (throw (IllegalArgumentException. "Invalid file type"))))
+(defn alignment-writer?
+  "Checks if given object implements ISAMWriter"
+  [wtr]
+  (satisfies? io/ISAMWriter wtr))
 
 (defn sam-reader?
+  "Checks if given object is an instance of SAMReader."
   [rdr]
-  (= (str (type rdr)) "class cljam.sam.reader.SAMReader"))
+  (instance? cljam.sam.reader.SAMReader rdr))
 
 (defn sam-writer?
+  "Checks if given object is an instance of SAMWriter."
   [wtr]
-  (= (str (type wtr)) "class cljam.sam.writer.SAMWriter"))
+  (instance? cljam.sam.writer.SAMWriter wtr))
 
 (defn bam-reader?
+  "Checks if given object is an instance of BAMReader."
   [rdr]
-  (= (str (type rdr)) "class cljam.bam.reader.BAMReader"))
+  (instance? cljam.bam.reader.BAMReader rdr))
 
 (defn bam-writer?
+  "Checks if given object is an instance of BAMWriter."
   [wtr]
-  (= (str (type wtr)) "class cljam.bam.writer.BAMWriter"))
+  (instance? cljam.bam.writer.BAMWriter wtr))
+
+(defn vcf-reader?
+  "Checks if given object is an instance of VCFReader."
+  [rdr]
+  (instance? cljam.vcf.reader.VCFReader rdr))
+
+(defn vcf-writer?
+  "Checks if given object is an instance of VCFWriter."
+  [wtr]
+  (instance? cljam.vcf.writer.VCFWriter wtr))
+
+(defn bcf-reader?
+  "Checks if given object is an instance of BCFReader."
+  [rdr]
+  (instance? cljam.bcf.reader.BCFReader rdr))
+
+(defn bcf-writer?
+  "Checks if given object is an instance of BCFWriter."
+  [wtr]
+  (instance? cljam.bcf.writer.BCFWriter wtr))
 
 (defn fasta-reader?
+  "Checks if given object is an instance of FASTAReader."
   [rdr]
-  (= (str (type rdr)) "class cljam.fasta.reader.FASTAReader"))
+  (instance? cljam.fasta.reader.FASTAReader rdr))
+
+(defn twobit-reader?
+  "Checks if given object is an instance of TwoBitReader."
+  [rdr]
+  (instance? cljam.twobit.TwoBitReader rdr))
+
+(defn fastq-reader?
+  "Checks if given object is an instance of FASTQReader."
+  [rdr]
+  (instance? cljam.fastq.FASTQReader rdr))
+
+(defn fastq-writer?
+  "Checks if given object is an instance of FASTQWriter"
+  [wtr]
+  (instance? cljam.fastq.FASTQWriter wtr))
+
+(defn bed-reader?
+  "Checks if given object is an instance of BEDReader"
+  [rdr]
+  (instance? cljam.bed.BEDReader rdr))
+
+(defn bed-writer?
+  "Checks if given object is an instance of BEDWriter"
+  [wtr]
+  (instance? cljam.bed.BEDWriter wtr))
+
+(defn file-type
+  "Detects file format from input path string."
+  [f]
+  (condp re-find f
+    #"(?i)\.sam$" :sam
+    #"(?i)\.bai$" :bai
+    #"(?i)\.bam$" :bam
+    #"(?i)\.f(ast)?q" :fastq
+    #"(?i)\.fai$" :fai
+    #"(?i)\.fa(sta)?" :fasta
+    #"(?i)\.2bit$" :2bit
+    #"(?i)\.vcf" :vcf
+    #"(?i)\.bcf$" :bcf
+    #"(?i)\.bed" :bed
+    (throw (IllegalArgumentException. "Invalid file type"))))
+
+(defn ^Closeable reader
+  "Selects suitable reader from f's extension, returning the reader.
+  Opens a new reader if given a path, clones the reader if given a reader.
+  This function supports SAM,BAM,FASTA,2BIT,FASTQ,VCF,BCF and BED format."
+  [f & {:keys [ignore-index] :or {ignore-index false}}]
+  (if (string? f)
+    (case (file-type f)
+      :sam (sam/reader f)
+      :bam (bam/reader f :ignore-index ignore-index)
+      :fasta (fasta/reader f :ignore-index ignore-index)
+      :2bit (twobit/reader f)
+      :fastq (fastq/reader f)
+      :vcf (vcf/reader f)
+      :bcf (bcf/reader f)
+      :bed (bed/reader f)
+      :else (throw (IllegalArgumentException. "Invalid file type")))
+    (cond
+      (bam-reader? f) (bam/clone-reader f)
+      :else (throw (IllegalArgumentException. "Invalid reader type")))))
+
+(defn ^Closeable writer
+  "Selects suitable writer from f's extension, returning the writer.
+  This function supports SAM,BAM,FASTQ,VCF,BCF and BED format."
+  [f & args]
+  (case (file-type f)
+    :sam (sam/writer f)
+    :bam (bam/writer f)
+    :fastq (fastq/writer f)
+    :vcf (apply vcf/writer f args)
+    :bcf (apply bcf/writer f args)
+    :bed (bed/writer f)
+    :else (throw (IllegalArgumentException. "Invalid file type"))))
+

@@ -29,6 +29,9 @@
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0-alpha14"]]}
              :uberjar {:main cljam.main
                        :aot :all}}
+  :deploy-repositories [["snapshots" {:url "https://clojars.org/repo/"
+                                      :username [:env/clojars_username :gpg]
+                                      :password [:env/clojars_password :gpg]}]]
   :aliases {"docs" ["do" "codox" ["marg" "-d" "target/literate" "-m"]]}
   :bin {:name "cljam"
         :bootclasspath true}

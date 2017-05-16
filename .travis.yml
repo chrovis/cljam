@@ -16,3 +16,14 @@ script: lein with-profile dev,$VERSION test
 after_success:
   - CLOVERAGE_VERSION=1.0.9 lein cloverage -e '^cljam.main' --codecov
   - bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
+jobs:
+  include:
+    - stage: deploy
+      jdk: oraclejdk8
+      script: skip
+      after_success: echo skip
+      deploy:
+        provider: script
+        script: ./deploy-snapshot.sh
+        on:
+          branch: master

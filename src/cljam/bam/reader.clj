@@ -165,9 +165,9 @@
         spans (if (= chr "*")
                 (bai/get-unplaced-spans bai)
                 (get-spans bai (ref-id (.refs rdr) chr) start end))
-        window (fn [^clojure.lang.PersistentHashMap a]
-                 (let [^Long left (:pos a)
-                       ^Long right (get-end a)]
+        window (fn [a]
+                 (let [left ^long (:pos a)
+                       right ^long (or (:end a) (get-end a))]
                    (and (= chr (:rname a))
                         (if (= chr "*")
                           true
@@ -179,7 +179,7 @@
                   :shallow light-read-alignment
                   :deep read-alignment
                   :pointer pointer-read-alignment)
-        candidates (flatten (keep (fn [[^Long begin ^Long finish]]
+        candidates (flatten (keep (fn [[^long begin ^long finish]]
                                    (read-to-finish rdr begin finish read-fn)) spans))]
     (if (= deep-or-shallow :first-only)
       (read-alignments-first-only rdr spans window read-fn)

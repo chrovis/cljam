@@ -278,7 +278,7 @@
   `(byte (- (int ~ch) 33)))
 
 (defmacro phred-byte->fastq-char [b]
-  `(char (+ ~b 33)))
+  `(unchecked-char (unchecked-add ~b 33)))
 
 (defn fastq->phred ^bytes [^String fastq]
   (let [b (.getBytes fastq)
@@ -290,7 +290,7 @@
 
 (defmulti phred->fastq class)
 
-(defmethod phred->fastq (class (byte-array nil))
+(defn phred-bytes->fastq
   [^bytes b]
   (when-not (nil? b)
     (let [bb (ByteBuffer/wrap b)
@@ -301,6 +301,10 @@
           (recur)))
       (.flip cb)
       (.toString cb))))
+
+(defmethod phred->fastq (class (byte-array nil))
+  [^bytes b]
+  (phred-bytes->fastq b))
 
 (def ^:const max-phred-score 93)
 
@@ -330,8 +334,8 @@
 (defn ref-name
   "Returns a reference name from the reference ID. Returns nil if id is not
   mapped."
-  [refs id]
-  (if (<= 0 id (dec (count refs)))
+  [refs ^long id]
+  (when (<= 0 id (dec (count refs)))
     (:name (nth refs id))))
 
 (defn ref-by-name

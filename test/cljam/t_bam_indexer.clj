@@ -21,7 +21,7 @@
     (is (fs/exists? (str temp-file-sorted ".bai")))
     (is (same-file? (str temp-file-sorted ".bai") test-bai-file))
     (is (= (with-open [r (bam/reader temp-file-sorted)]
-             (doall (io/read-alignments r {:chr "ref" :start 0 :end 1000})))
+             (doall (map #(into {} %) (io/read-alignments r {:chr "ref" :start 0 :end 1000}))))
            (filter #(= "ref" (:rname %))
                    (:alignments test-sam-sorted-by-pos))))))
 
@@ -45,7 +45,7 @@
       (is (not-throw? (bai/create-index sorted-f (str sorted-f ".bai"))))
       (is (fs/exists? (str sorted-f ".bai")))
       (is (= (with-open [r (bam/reader sorted-f)]
-               (doall (io/read-alignments r {:chr "ref" :start 0 :end 1000})))
+               (doall (map #(into {} %) (io/read-alignments r {:chr "ref" :start 0 :end 1000}))))
              (filter #(= "ref" (:rname %))
                      (:alignments test-sam-incomplete-alignments-sorted-by-pos))))
       ;; TODO: need more strictly check to .bai files

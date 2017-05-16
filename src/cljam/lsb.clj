@@ -143,15 +143,11 @@
 
 (defn read-null-terminated-string
   [^ByteBuffer bb]
-  (.mark bb)
   (let [start (.position bb)
         end (do (while (not (zero? (.get bb))))
                 (.position bb))
-        ba (byte-array (- end start 1))]
-    (.reset bb)
-    (.get bb ba)
-    (.get bb)
-    (bytes->string ba)))
+        offset (.arrayOffset bb)]
+    (String. (.array bb) (+ offset start) (dec (- end start)))))
 
 ;; Writing
 ;; -------

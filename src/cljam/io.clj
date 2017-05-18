@@ -1,6 +1,9 @@
 (ns cljam.io
   "Protocols of SAM/BAM reader.")
 
+(defrecord SAMAlignment
+  [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])
+
 (defprotocol ISAMReader
   (reader-path [this] "Returns the file's absolute path.")
   (read-header [this] "Returns header of the SAM/BAM file.")

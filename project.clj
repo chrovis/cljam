@@ -28,6 +28,7 @@
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0-alpha14"]]}
              :uberjar {:main cljam.main
+                       :jvm-opts ["-Dclojure.compiler.direct-linking=true"]
                        :aot :all}}
   :deploy-repositories [["snapshots" {:url "https://clojars.org/repo/"
                                       :username [:env/clojars_username :gpg]

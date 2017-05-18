@@ -1,10 +1,12 @@
 (ns cljam.util.sam-util
   "Utilities related to SAM/BAM format."
   (:require [clojure.string :as cstr]
+            [cljam.io :as io]
             [cljam.cigar :refer [count-ref]]
             [cljam.util :refer [ubyte str->int str->float]])
   (:import [java.nio CharBuffer ByteBuffer]
-           [java.nio.charset StandardCharsets]))
+           [java.nio.charset StandardCharsets]
+           [cljam.io SAMAlignment]))
 
 ;;; parse
 
@@ -104,19 +106,13 @@
 (defn parse-alignment
   "Parse an alignment line, returning a map of the alignment."
   [line]
-  (let [fields (cstr/split line #"\t")]
-    {:qname   (first fields)
-     :flag    (Integer/parseInt (nth fields 1))
-     :rname   (nth fields 2)
-     :pos     (Integer/parseInt (nth fields 3))
-     :mapq    (Integer/parseInt (nth fields 4))
-     :cigar   (nth fields 5)
-     :rnext   (nth fields 6)
-     :pnext   (Integer/parseInt (nth fields 7))
-     :tlen    (Integer/parseInt (nth fields 8))
-     :seq     (parse-seq-text (nth fields 9))
-     :qual    (nth fields 10)
-     :options (vec (parse-optional-fields (drop 11 fields)))}))
+  (let [[qname flag rname pos-str mapq cigar rnext pnext tlen seq qual & options] (cstr/split line #"\t")
+        pos (Integer/parseInt pos-str)
+        ref-length (count-ref cigar)
+        end (if (zero? ref-length) 0 (int (dec (+ pos ref-length))))]
+    (SAMAlignment. qname (Integer/parseInt flag) rname pos end (Integer/parseInt mapq)
+                   cigar rnext (Integer/parseInt pnext) (Integer/parseInt tlen) (parse-seq-text seq)
+                   qual (vec (parse-optional-fields options)))))
 
 ;;; stringify
 
@@ -278,7 +274,7 @@
   `(byte (- (int ~ch) 33)))
 
 (defmacro phred-byte->fastq-char [b]
-  `(char (+ ~b 33)))
+  `(unchecked-char (unchecked-add ~b 33)))
 
 (defn fastq->phred ^bytes [^String fastq]
   (let [b (.getBytes fastq)
@@ -290,7 +286,7 @@
 
 (defmulti phred->fastq class)
 
-(defmethod phred->fastq (class (byte-array nil))
+(defn phred-bytes->fastq
   [^bytes b]
   (when-not (nil? b)
     (let [bb (ByteBuffer/wrap b)
@@ -301,6 +297,10 @@
           (recur)))
       (.flip cb)
       (.toString cb))))
+
+(defmethod phred->fastq (class (byte-array nil))
+  [^bytes b]
+  (phred-bytes->fastq b))
 
 (def ^:const max-phred-score 93)
 
@@ -330,8 +330,8 @@
 (defn ref-name
   "Returns a reference name from the reference ID. Returns nil if id is not
   mapped."
-  [refs id]
-  (if (<= 0 id (dec (count refs)))
+  [refs ^long id]
+  (when (<= 0 id (dec (count refs)))
     (:name (nth refs id))))
 
 (defn ref-by-name

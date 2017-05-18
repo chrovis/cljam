@@ -63,7 +63,7 @@
     ;; (is (not-throw? (check-sort-order (slurp-sam-for-test temp-sam)
     ;;                                   test-sam-sorted-by-pos))) ; TODO: future
     (is (not-throw? (with-out-file temp-out (cli/sort ["-o" "coordinate" test-bam-file temp-bam]))))
-    (is (= (slurp-bam-for-test temp-bam) (update test-sam-sorted-by-pos :alignments #(map (fn [a] (dissoc a :end)) %))))
+    (is (= (slurp-bam-for-test temp-bam) test-sam-sorted-by-pos))
     (is (not-throw? (check-sort-order (slurp-bam-for-test temp-bam)
                                       test-sam-sorted-by-pos)))
     (is (thrown? IllegalArgumentException (with-out-file temp-out (cli/sort ["-o" "coordinate" test-fa-file temp-bam]))))

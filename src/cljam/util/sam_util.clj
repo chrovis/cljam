@@ -1,10 +1,12 @@
 (ns cljam.util.sam-util
   "Utilities related to SAM/BAM format."
   (:require [clojure.string :as cstr]
+            [cljam.io :as io]
             [cljam.cigar :refer [count-ref]]
             [cljam.util :refer [ubyte str->int str->float]])
   (:import [java.nio CharBuffer ByteBuffer]
-           [java.nio.charset StandardCharsets]))
+           [java.nio.charset StandardCharsets]
+           [cljam.io SAMAlignment]))
 
 ;;; parse
 
@@ -104,19 +106,13 @@
 (defn parse-alignment
   "Parse an alignment line, returning a map of the alignment."
   [line]
-  (let [fields (cstr/split line #"\t")]
-    {:qname   (first fields)
-     :flag    (Integer/parseInt (nth fields 1))
-     :rname   (nth fields 2)
-     :pos     (Integer/parseInt (nth fields 3))
-     :mapq    (Integer/parseInt (nth fields 4))
-     :cigar   (nth fields 5)
-     :rnext   (nth fields 6)
-     :pnext   (Integer/parseInt (nth fields 7))
-     :tlen    (Integer/parseInt (nth fields 8))
-     :seq     (parse-seq-text (nth fields 9))
-     :qual    (nth fields 10)
-     :options (vec (parse-optional-fields (drop 11 fields)))}))
+  (let [[qname flag rname pos-str mapq cigar rnext pnext tlen seq qual & options] (cstr/split line #"\t")
+        pos (Integer/parseInt pos-str)
+        ref-length (count-ref cigar)
+        end (if (zero? ref-length) 0 (int (dec (+ pos ref-length))))]
+    (SAMAlignment. qname (Integer/parseInt flag) rname pos end (Integer/parseInt mapq)
+                   cigar rnext (Integer/parseInt pnext) (Integer/parseInt tlen) (parse-seq-text seq)
+                   qual (vec (parse-optional-fields options)))))
 
 ;;; stringify
 

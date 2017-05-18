@@ -1,12 +1,14 @@
 (ns cljam.bam.decoder
   "Decoder of BAM alignment blocks."
   (:require [clojure.string :refer [join]]
+            [cljam.io :as io]
             [cljam.util :refer [ubyte hex-string->bytes]]
-            [cljam.util.sam-util :refer [phred-bytes->fastq compressed-bases->str ref-name]]
+            [cljam.util.sam-util :as sam-util]
             [cljam.lsb :as lsb]
             [cljam.bam.common :refer [fixed-block-size]])
   (:import java.util.Arrays
-           [java.nio ByteBuffer ByteOrder CharBuffer]))
+           [java.nio ByteBuffer ByteOrder CharBuffer]
+           [cljam.io SAMAlignment]))
 
 (definline validate-tag-type
   [t]
@@ -81,16 +83,16 @@
 (defn decode-qual [^bytes b]
   (if (Arrays/equals b (byte-array (alength b) (ubyte 0xff)))
     "*"
-    (phred-bytes->fastq b)))
+    (sam-util/phred-bytes->fastq b)))
 
 (defn decode-seq [seq-bytes length]
-  (compressed-bases->str length seq-bytes 0))
+  (sam-util/compressed-bases->str length seq-bytes 0))
 
 (defn decode-next-ref-id [refs n rname]
   (cond
     (= n -1) "*"
-    (= (ref-name refs n) rname) "="
-    :else (ref-name refs n)))
+    (= (sam-util/ref-name refs n) rname) "="
+    :else (sam-util/ref-name refs n)))
 
 (defn decode-cigar-and-ref-length
   [cigar-bytes]
@@ -108,10 +110,7 @@
           (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
         [(.toString sb) ref-length]))))
 
-(defrecord SAMAlignment [^String qname ^int flag ^String rname ^int pos ^int end ^int mapq ^String cigar
-                         ^String rnext ^int pnext ^int tlen ^String seq ^String qual options])
-
-(definline read-bytes [buf len]
+(definline read-bytes [^ByteBuffer buf len]
   `(let [ba# (byte-array ~len)]
      (.get ~buf ba#)
      ba#))
@@ -121,7 +120,7 @@
   (let [buffer (ByteBuffer/wrap (:data block))]
     (.order buffer ByteOrder/LITTLE_ENDIAN)
     (let [ref-id      (.getInt buffer)
-          rname       (or (ref-name refs ref-id) "*")
+          rname       (or (sam-util/ref-name refs ref-id) "*")
           pos         (inc (.getInt buffer))
           l-read-name (int (bit-and (.get buffer) 0xFF))
           mapq        (bit-and (.get buffer) 0xFF)
@@ -130,7 +129,7 @@
           flag        (bit-and (.getShort buffer) 0xFFFF)
           l-seq       (.getInt buffer)
           next-ref-id (.getInt buffer)
-          rnext       (if (= ref-id next-ref-id) "=" (or (ref-name refs next-ref-id) "*"))
+          rnext       (if (= ref-id next-ref-id) "=" (or (sam-util/ref-name refs next-ref-id) "*"))
           pnext       (inc (.getInt buffer))
           tlen        (.getInt buffer)
           qname       (String. (read-bytes buffer l-read-name) 0 (dec l-read-name))
@@ -146,7 +145,7 @@
   [block refs]
   (let [buffer (ByteBuffer/wrap (:data block))]
     (let [ref-id      (lsb/read-int buffer)
-          rname       (or (ref-name refs ref-id) "*")
+          rname       (or (sam-util/ref-name refs ref-id) "*")
           pos         (inc (lsb/read-int buffer))
           l-read-name (int (lsb/read-ubyte buffer))
           _           (lsb/skip buffer 3)
@@ -158,7 +157,7 @@
 (defn pointer-decode-alignment-block
   [block refs]
   (let [buffer (ByteBuffer/wrap (:data block))]
-    (let [rname       (or (ref-name refs (lsb/read-int buffer)) "*")
+    (let [rname       (or (sam-util/ref-name refs (lsb/read-int buffer)) "*")
           pos         (inc (lsb/read-int buffer))
           l-read-name (int (lsb/read-ubyte buffer))
           _           (lsb/skip buffer 3)

@@ -59,13 +59,13 @@
                       :after (clean-cache!)}
     (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
-      (is (= (map #(dissoc % :end) (io/read-alignments rdr)) (:alignments test-sam))))
+      (is (= (io/read-alignments rdr) (:alignments test-sam))))
     (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
       (is (thrown? Exception (io/read-alignments rdr {:chr "ref2"}))))
     (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
-      (is (= (map #(dissoc % :end) (io/read-alignments rdr {:depth :deep})) (:alignments test-sam))))
+      (is (= (io/read-alignments rdr {:depth :deep}) (:alignments test-sam))))
     (with-open [rdr (bam/reader temp-file :ignore-index false)]
       (is (= (io/read-refs rdr) test-sam-refs))
       (is (shallow= (io/read-alignments rdr {:depth :shallow})
@@ -85,16 +85,16 @@
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      (is (= (map #(into {} %) (io/read-alignments rdr {:chr "ref2"}))
+      (is (= (io/read-alignments rdr {:chr "ref2"})
              (drop 6 (:alignments test-sam-sorted-by-pos)))))
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      (is (= (map #(into {} %) (io/read-alignments rdr {:chr "ref2" :start 21}))
+      (is (= (io/read-alignments rdr {:chr "ref2" :start 21})
              (drop 7 (:alignments test-sam-sorted-by-pos)))))
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      (is (= (map #(into {} %) (io/read-alignments rdr {:chr "ref2" :end 9}))
+      (is (= (io/read-alignments rdr {:chr "ref2" :end 9})
              (take 3 (drop 6 (:alignments test-sam-sorted-by-pos))))))
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      (is (= (map #(into {} %) (io/read-alignments rdr {:chr "ref2" :start 10 :end 12}))
+      (is (= (io/read-alignments rdr {:chr "ref2" :start 10 :end 12})
              (take 5 (drop 6 (:alignments test-sam-sorted-by-pos))))))
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
       (is (= (data->clj (io/read-blocks rdr))

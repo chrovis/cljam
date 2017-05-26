@@ -1,6 +1,6 @@
 (ns cljam.bam-index.core
   "The core of BAM index features."
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [me.raynes.fs :as fs]
             (cljam.bam-index [common :refer :all]
@@ -77,9 +77,9 @@
 
 (defn ^BAIWriter writer
   [f refs]
-  (BAIWriter. (DataOutputStream. (FileOutputStream. (io/file f)))
+  (BAIWriter. (DataOutputStream. (FileOutputStream. (cio/file f)))
               refs
-              (.getAbsolutePath (io/file f))))
+              (.getAbsolutePath (cio/file f))))
 
 (defn create-index
   "Creates a BAM index file from the alignments and references data."

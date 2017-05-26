@@ -18,11 +18,7 @@
 (defn meta-info
   "Returns meta-information of the BCF from rdr as a map."
   [^BCFReader rdr]
-  (-> (.meta-info rdr)
-      (update :contig (fn [xs] (map (fn [m] (dissoc m :idx)) xs)))
-      (update :filter (fn [xs] (keep (fn [m] (when-not (= (:id m) "PASS") (dissoc m :idx))) xs)))
-      (update :info (fn [xs] (map (fn [m] (dissoc m :idx)) xs)))
-      (update :format (fn [xs] (map (fn [m] (dissoc m :idx)) xs)))))
+  (bcf-reader/meta-info rdr))
 
 (defn header
   "Returns header of the BCF from rdr as a vector including header field strings."
@@ -39,8 +35,10 @@
      :bcf     BCF-style map. CHROM, FILTER, INFO and :genotype contains indices to meta-info.
      :shallow Only CHROM, POS and ref-length are parsed.
      :raw     Raw map of ByteBufers."
-  [rdr & {:keys [depth] :or {depth :deep}}]
-  (bcf-reader/read-variants rdr :depth depth))
+  ([rdr]
+   (read-variants rdr {}))
+  ([rdr {:keys [depth] :or {depth :deep}}]
+   (bcf-reader/read-variants rdr {:depth depth})))
 
 ;; Writing
 ;; -------

@@ -1,8 +1,6 @@
 (ns cljam.sam
   "Read/Write a SAM format file."
-  (:refer-clojure :exclude [slurp spit])
-  (:require [cljam.io :as io]
-            (cljam.sam [reader :as sam-reader]
+  (:require (cljam.sam [reader :as sam-reader]
                        [writer :as sam-writer]))
   (:import cljam.sam.reader.SAMReader
            cljam.sam.writer.SAMWriter))

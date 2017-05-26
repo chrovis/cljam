@@ -1,30 +1,40 @@
 (ns cljam.fastq
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io :as cio]
             [clojure.string :as string]
-            [cljam.util :as util]))
+            [cljam.io :as io]
+            [cljam.util :as util])
+  (:import [java.io Closeable]))
+
+(declare read-sequences write-sequences)
 
 (deftype FASTQReader [reader f]
-  java.io.Closeable
+  Closeable
   (close [this]
-    (.close ^java.io.Closeable (.reader this))))
+    (.close ^Closeable (.reader this)))
+  io/IReader
+  (reader-path [this] (.f this))
+  (read [this] (read-sequences this))
+  (read [this opts] (read-sequences this opts)))
 
 (deftype FASTQWriter [writer f]
-  java.io.Closeable
+  Closeable
   (close [this]
-    (.close ^java.io.Closeable (.writer this))))
+    (.close ^Closeable (.writer this)))
+  io/IWriter
+  (writer-path [this] (.f this)))
 
 (defn ^FASTQReader reader [^String f]
-  (let [file (io/file f)
+  (let [file (cio/file f)
         path (.getAbsolutePath file)]
     (-> (util/compressor-input-stream path)
-        io/reader
+        cio/reader
         (FASTQReader. path))))
 
 (defn ^FASTQWriter writer [^String f]
-  (let [file (io/file f)
+  (let [file (cio/file f)
         path (.getAbsolutePath file)]
     (-> (util/compressor-output-stream path)
-        io/writer
+        cio/writer
         (FASTQWriter. path))))
 
 (defrecord FASTQRead [^String name ^String sequence quality])
@@ -32,7 +42,7 @@
 (defn- ^FASTQRead deserialize-fastq
   "Deserialize a read from 4 lines of fastq file."
   [[^String name-line ^String seq-line ^String plus-line ^String qual-line]
-   & {:keys [decode-quality] :or {decode-quality :phred33}}]
+   {:keys [decode-quality] :or {decode-quality :phred33}}]
   {:pre [(not-empty name-line)
          (not-empty seq-line)
          (not-empty plus-line)
@@ -56,19 +66,21 @@
      :phred64 (map #(- (int %) 64) qual-line)
      qual-line)))
 
-(defn read-sequence
+(defn read-sequences
   "Returns a lazy sequence of FASTQReads deserialized from given reader."
-  [^FASTQReader rdr & opts]
-  (sequence
-   (comp (map string/trim)
-         (partition-all 4)
-         (map #(apply deserialize-fastq % opts)))
-   (line-seq (.reader rdr))))
+  ([rdr]
+   (read-sequences rdr {}))
+  ([^FASTQReader rdr opts]
+   (sequence
+    (comp (map string/trim)
+          (partition-all 4)
+          (map #(deserialize-fastq % opts)))
+    (line-seq (.reader rdr)))))
 
 (defn- ^String serialize-fastq
   "Serialize a FASTQRead to FASTQ format string."
   [^FASTQRead {:keys [name sequence quality]}
-   & {:keys [encode-quality] :or {encode-quality :phred33}}]
+   {:keys [encode-quality] :or {encode-quality :phred33}}]
   {:pre [(not-empty name)
          (not-empty sequence)
          (not-empty quality)
@@ -88,12 +100,14 @@
       (interleave (repeat \newline))
       (as-> x (apply str x))))
 
-(defn write-sequence
+(defn write-sequences
   "Write given sequence of reads to a FASTQ file."
-  [^FASTQWriter wtr sequence & opts]
-  (let [w ^java.io.Writer (.writer wtr)]
-    (doseq [s sequence]
-      (.write w ^String (apply serialize-fastq s opts)))))
+  ([wtr sequences]
+   (write-sequences wtr sequences {}))
+  ([^FASTQWriter wtr sequences opts]
+   (let [w ^java.io.Writer (.writer wtr)]
+     (doseq [s sequences]
+       (.write w ^String (serialize-fastq s opts))))))
 
 (def casava-pattern #"^@?([^\s^:]+):(\d+):(\d+):(\d+):(\d+)#(\d+)/(\d)+$")
 (defn deserialize-casava-name

@@ -1,8 +1,7 @@
 (ns cljam.bam.core
   "The core of BAM features."
-  (:require [clojure.java.io :refer [file]]
+  (:require [clojure.java.io :as cio]
             [me.raynes.fs :as fs]
-            [cljam.io]
             [cljam.lsb :as lsb]
             (cljam.bam [common :refer [bam-magic]]
                        [reader :as reader]
@@ -27,19 +26,19 @@
 
 (defn ^BAMReader reader [f {:keys [ignore-index]
                             :or {ignore-index false}}]
-  (let [rdr (BGZFInputStream. (file f))
+  (let [rdr (BGZFInputStream. (cio/file f))
         data-rdr (DataInputStream. rdr)]
     (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes ^String bam-magic))
       (throw (IOException. "Invalid BAM file")))
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
           index-delay (delay (bam-index f :ignore ignore-index))]
-      (BAMReader. (.getAbsolutePath (file f))
+      (BAMReader. (.getAbsolutePath (cio/file f))
                   header refs rdr data-rdr index-delay (.getFilePointer rdr)))))
 
 (defn ^BAMReader clone-reader
   "Clones bam reader sharing persistent objects."
   [^BAMReader rdr]
-  (let [bgzf-rdr (BGZFInputStream. (file (.f rdr)))
+  (let [bgzf-rdr (BGZFInputStream. (cio/file (.f rdr)))
         data-rdr (DataInputStream. bgzf-rdr)]
     (.seek bgzf-rdr (.start-pos rdr))
     (BAMReader. (.f rdr) (.header rdr) (.refs rdr) bgzf-rdr data-rdr (.index-delay rdr) (.start-pos rdr))))
@@ -48,5 +47,5 @@
 ;; -------
 
 (defn ^BAMWriter writer [f]
-  (BAMWriter. (.getAbsolutePath (file f))
-              (DataOutputStream. (BGZFOutputStream. (file f)))))
+  (BAMWriter. (.getAbsolutePath (cio/file f))
+              (DataOutputStream. (BGZFOutputStream. (cio/file f)))))

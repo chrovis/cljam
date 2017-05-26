@@ -20,7 +20,7 @@
       s
       (let [[_ base leftover] m
             base  (if (re-find #"^\d+$" base)
-                    (str (Integer. base))
+                    (str (Integer. ^String base))
                     base)]
         (str "chr" (cstr/upper-case (str base leftover)))))))
 

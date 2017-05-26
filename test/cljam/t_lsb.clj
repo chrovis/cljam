@@ -1,6 +1,6 @@
 (ns cljam.t-lsb
   (:require [clojure.test :refer :all]
-            [clojure.java.io :as io]
+            [clojure.java.io :as cio]
             [cljam.t-common :as common]
             [cljam.lsb :as lsb])
   (:import [java.nio ByteBuffer ByteOrder]
@@ -248,7 +248,7 @@
   (common/with-before-after {:before (common/prepare-cache!)
                              :after (common/clean-cache!)}
     (let [filename (str common/temp-dir "raf.bin.gz")]
-      (with-open [bgzfos (BGZFOutputStream. (io/file filename))]
+      (with-open [bgzfos (BGZFOutputStream. (cio/file filename))]
         (let [bb (lsb/gen-byte-buffer 24)]
           (.putLong bb 0x789ABCDEF0123456)
           (doseq [c "ABCDEFGH"]
@@ -256,7 +256,7 @@
           (doseq [c [\I \J \K \L 0 \M \N \O]]
             (.put bb (byte c)))
           (.write bgzfos (.array bb))))
-      (with-open [bgzfis (BGZFInputStream. (io/file filename))]
+      (with-open [bgzfis (BGZFInputStream. (cio/file filename))]
         (.seek bgzfis 0)
         (is (= (lsb/read-byte bgzfis) 0x56))
         (is (= (lsb/read-byte bgzfis) 0x34))

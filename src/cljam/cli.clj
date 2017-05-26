@@ -18,7 +18,7 @@
                    [convert :as convert]
                    [level :as level])
             [cljam.util.sam-util :refer [stringify-header stringify-alignment]])
-  (:import [java.io BufferedWriter OutputStreamWriter]))
+  (:import [java.io Closeable BufferedWriter OutputStreamWriter]))
 
 ;; CLI functions
 ;; -------------
@@ -62,10 +62,10 @@
      (not= (count arguments) 1) (exit 1 (view-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (with-open [r (condp = (:format options)
-                      "auto" (reader     f)
-                      "sam"  (sam/reader f)
-                      "bam"  (bam/reader f :ignore-index true))]
+      (with-open [^Closeable r (condp = (:format options)
+                                 "auto" (reader f)
+                                 "sam"  (sam/reader f)
+                                 "bam"  (bam/reader f :ignore-index true))]
         (when (:header options)
           (println (stringify-header (io/read-header r))))
         (doseq [aln (io/read-alignments r {})]
@@ -211,7 +211,7 @@
   ([rdr n-threads rname start end]
    (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
              *flush-on-newline* false]
-     (doseq [line (plp/pileup rdr rname start end {:n-threads n-threads})]
+     (doseq [line (plp/pileup rdr {:chr rname :start start :end end} {:n-threads n-threads})]
        (println line))
      (flush))))
 
@@ -219,7 +219,7 @@
   ([rdr ref-fa]
    (with-open [fa-rdr (fa/reader ref-fa)]
      (doseq [rname (map :name (io/read-refs rdr))
-             line  (plp/mpileup fa-rdr rdr rname -1 -1)]
+             line  (plp/mpileup fa-rdr rdr {:chr rname})]
        (if-not (zero? (:count line))
          (println (cstr/join \tab (map #(case %
                                           :qual (cstr/join (% line))
@@ -227,7 +227,7 @@
                                           (% line)) [:rname :pos :ref :count :seq :qual])))))))
   ([rdr ref-fa rname start end]
    (with-open [fa-rdr (fa/reader ref-fa)]
-     (doseq [line  (plp/mpileup fa-rdr rdr rname start end)]
+     (doseq [line  (plp/mpileup fa-rdr rdr {:chr rname :start start :end end})]
        (if-not (zero? (:count line))
          (println (cstr/join \tab (map #(case %
                                           :qual (cstr/join (% line))
@@ -237,14 +237,14 @@
 (defn- pileup-without-ref
   ([rdr]
    (doseq [rname (map :name (io/read-refs rdr))
-           line  (plp/mpileup rdr rname)]
+           line  (plp/mpileup rdr {:chr rname})]
      (if-not (zero? (:count line))
        (println (cstr/join \tab (map #(case %
                                         :qual (cstr/join (% line))
                                         :seq (cstr/join (% line))
                                         (% line)) [:rname :pos :ref :count :seq :qual]))))))
   ([rdr rname start end]
-   (doseq [line  (plp/mpileup nil rdr rname start end)]
+   (doseq [line  (plp/mpileup nil rdr {:chr rname :start start :end end})]
      (if-not (zero? (:count line))
        (println (cstr/join \tab (map #(case %
                                         :qual (cstr/join (% line))

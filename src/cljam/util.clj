@@ -1,6 +1,6 @@
 (ns cljam.util
   "General utilities."
-  (:require [clojure.java.io :refer [file] :as io]
+  (:require [clojure.java.io :refer [file] :as cio]
             [clojure.string :as cstr])
   (:import [org.apache.commons.compress.compressors
             CompressorStreamFactory CompressorException]))
@@ -130,7 +130,7 @@
   compressor type is not known. Should be used inside with-open to ensure the
   InputStream is properly closed."
   [f]
-  (let [is (io/input-stream f)]
+  (let [is (cio/input-stream f)]
     (try
       (-> (CompressorStreamFactory. true)
           (.createCompressorInputStream is))
@@ -149,8 +149,30 @@
                                  #"(?i)\.(bz2|bzip2)$" :bzip2
                                  nil)))
   ([f k]
-   (let [os (io/output-stream f)]
+   (let [os (cio/output-stream f)]
      (if-let [s (get compressor-map k)]
        (-> (CompressorStreamFactory.)
            (.createCompressorOutputStream s os))
        os))))
+
+;; region utils
+;; ---------
+
+(defn divide-region
+  "Divides a region [start end] into several chunks with maximum length 'step'.
+  Returns a lazy sequence of vector."
+  [start end step]
+  (->> [(inc end)]
+       (concat (range start (inc end) step))
+       (partition 2 1)
+       (map (fn [[s e]] [s (dec e)]))))
+
+(defn divide-refs
+  "Divides refs into several chunks with maximum length 'step'.
+  Returns a lazy sequence of map containing {:chr :start :end}."
+  [refs step]
+  (mapcat
+   (fn [{:keys [name len]}]
+     (map (fn [[s e]] {:chr name :start s :end e})
+          (divide-region 1 len step)))
+   refs))

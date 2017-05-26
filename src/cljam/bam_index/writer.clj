@@ -1,6 +1,5 @@
 (ns cljam.bam-index.writer
-  (:require [clojure.java.io :as io]
-            [com.climate.claypoole :as cp]
+  (:require [com.climate.claypoole :as cp]
             [cljam.common :refer [get-exec-n-threads]]
             [cljam.lsb :as lsb]
             [cljam.util.sam-util :as sam-util]

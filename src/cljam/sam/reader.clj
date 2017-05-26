@@ -1,12 +1,11 @@
 (ns cljam.sam.reader
-  (:use [cljam.io])
-  (:require [clojure.java.io :refer [file]]
+  (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
-            [cljam.util.sam-util :refer [make-refs
-                                         parse-alignment] :as sam-util])
+            [cljam.util.sam-util :as sam-util]
+            [cljam.io :as io])
   (:import [java.io BufferedReader Closeable]))
 
-(declare read-alignments* read-blocks*)
+(declare read-alignments* read-blocks* read-alignments-in-region*)
 
 ;;; reader
 
@@ -14,19 +13,33 @@
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
-  ISAMReader
+  io/IReader
   (reader-path [this]
     (.f this))
+  (read [this]
+    (io/read this {}))
+  (read [this option]
+    (read-alignments* this))
+  io/IRegionReader
+  (read-in-region [this region]
+    (io/read-in-region this region {}))
+  (read-in-region [this region option]
+    (read-alignments-in-region* this region option))
+  io/IAlignmentReader
   (read-header [this]
     (.header this))
   (read-refs [this]
-    (vec (make-refs (.header this))))
+    (vec (sam-util/make-refs (.header this))))
   (read-alignments [this]
-    (read-alignments* this))
-  (read-alignments [this _]
-    (read-alignments* this))
+    (io/read-alignments this {} {}))
+  (read-alignments [this region]
+    (io/read-alignments this {} {}))
+  (read-alignments [this {:keys [chr start end] :as region} option]
+    (if (or chr start end)
+      (read-alignments-in-region* this region option)
+      (read-alignments* this)))
   (read-blocks [this]
-    (read-blocks* this))
+    (io/read-blocks this {}))
   (read-blocks [this option]
     (read-blocks* this)))
 
@@ -34,8 +47,17 @@
   [^SAMReader sam-reader]
   (when-let [line (.readLine ^BufferedReader (.reader sam-reader))]
     (if-not (= (first line) \@)
-      (cons (parse-alignment line) (lazy-seq (read-alignments* sam-reader)))
+      (cons (sam-util/parse-alignment line) (lazy-seq (read-alignments* sam-reader)))
       (lazy-seq (read-alignments* sam-reader)))))
+
+(defn- read-alignments-in-region*
+  [^SAMReader sam-reader {:keys [chr start end]} option]
+  (logging/warn "May cause degradation of performance.")
+  (filter
+   (fn [a] (and (if chr (= (:rname a) chr) true)
+                (if start (<= start (sam-util/get-end a)) true)
+                (if end (<= (:pos a) end) true)))
+   (read-alignments* sam-reader)))
 
 (defn- read-blocks*
   [^SAMReader sam-reader]
@@ -53,7 +75,7 @@
         sam-util/into-header)))
 
 (defn reader [f]
-  (let [header (with-open [r (clojure.java.io/reader f)]
+  (let [header (with-open [r (cio/reader f)]
                  (read-header* r))]
-    (->SAMReader (.getAbsolutePath (file f))
-                 header (clojure.java.io/reader f))))
+    (->SAMReader (.getAbsolutePath (cio/file f))
+                 header (cio/reader f))))

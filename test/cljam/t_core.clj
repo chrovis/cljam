@@ -1,6 +1,7 @@
 (ns cljam.t-core
   (:require [clojure.test :refer :all]
-            [clojure.java.io :as io]
+            [clojure.java.io :as cio]
+            [cljam.core :as core]
             [cljam.core :as core]
             [cljam.util :as util]
             [cljam.util.sam-util :as sam-util]
@@ -66,8 +67,10 @@
       core/alignment-reader? true
       core/sam-reader? true
       core/bam-reader? false
+      core/variant-reader? false
       core/vcf-reader? false
       core/bcf-reader? false
+      core/sequence-reader? false
       core/fasta-reader? false
       core/twobit-reader? false
       core/fastq-reader? false
@@ -79,8 +82,10 @@
       core/alignment-reader? true
       core/sam-reader? false
       core/bam-reader? true
+      core/variant-reader? false
       core/vcf-reader? false
       core/bcf-reader? false
+      core/sequence-reader? false
       core/fasta-reader? false
       core/twobit-reader? false
       core/fastq-reader? false
@@ -92,8 +97,10 @@
       core/alignment-reader? false
       core/sam-reader? false
       core/bam-reader? false
+      core/variant-reader? true
       core/vcf-reader? true
       core/bcf-reader? false
+      core/sequence-reader? false
       core/fasta-reader? false
       core/twobit-reader? false
       core/fastq-reader? false
@@ -105,8 +112,10 @@
       core/alignment-reader? false
       core/sam-reader? false
       core/bam-reader? false
+      core/variant-reader? true
       core/vcf-reader? false
       core/bcf-reader? true
+      core/sequence-reader? false
       core/fasta-reader? false
       core/twobit-reader? false
       core/fastq-reader? false
@@ -118,8 +127,10 @@
       core/alignment-reader? false
       core/sam-reader? false
       core/bam-reader? false
+      core/variant-reader? false
       core/vcf-reader? false
       core/bcf-reader? false
+      core/sequence-reader? true
       core/fasta-reader? true
       core/twobit-reader? false
       core/fastq-reader? false
@@ -131,8 +142,10 @@
       core/alignment-reader? false
       core/sam-reader? false
       core/bam-reader? false
+      core/variant-reader? false
       core/vcf-reader? false
       core/bcf-reader? false
+      core/sequence-reader? true
       core/fasta-reader? false
       core/twobit-reader? true
       core/fastq-reader? false
@@ -144,9 +157,11 @@
       core/alignment-reader? false
       core/sam-reader? false
       core/bam-reader? false
+      core/variant-reader? false
       core/vcf-reader? false
       core/bcf-reader? false
       core/fasta-reader? false
+      core/sequence-reader? false
       core/twobit-reader? false
       core/fastq-reader? true
       core/bed-reader? false))
@@ -157,8 +172,10 @@
       core/alignment-reader? false
       core/sam-reader? false
       core/bam-reader? false
+      core/variant-reader? false
       core/vcf-reader? false
       core/bcf-reader? false
+      core/sequence-reader? false
       core/fasta-reader? false
       core/twobit-reader? false
       core/fastq-reader? false
@@ -176,71 +193,77 @@
   (is (thrown? Exception (core/reader "./test-resources/bam/foo.baam"))))
 
 (deftest about-writers
-  (with-open [r (core/writer (.getAbsolutePath (io/file util/temp-dir "temp.sam")))]
+  (with-open [r (core/writer (.getAbsolutePath (cio/file util/temp-dir "temp.sam")))]
     (are [?pred ?expected]
         (= (?pred r) ?expected)
       core/alignment-writer? true
       core/sam-writer? true
       core/bam-writer? false
+      core/variant-writer? false
       core/vcf-writer? false
       core/bcf-writer? false
       core/fastq-writer? false
       core/bed-writer? false))
 
-  (with-open [r (core/writer (.getAbsolutePath (io/file util/temp-dir "temp.bam")))]
+  (with-open [r (core/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bam")))]
     (are [?pred ?expected]
         (= (?pred r) ?expected)
       core/alignment-writer? true
       core/sam-writer? false
       core/bam-writer? true
+      core/variant-writer? false
       core/vcf-writer? false
       core/bcf-writer? false
       core/fastq-writer? false
       core/bed-writer? false))
 
-  (with-open [r (core/writer (.getAbsolutePath (io/file util/temp-dir "temp.vcf")) {} [])]
+  (with-open [r (core/writer (.getAbsolutePath (cio/file util/temp-dir "temp.vcf")) {} [])]
     (are [?pred ?expected]
         (= (?pred r) ?expected)
       core/alignment-writer? false
       core/sam-writer? false
       core/bam-writer? false
+      core/variant-writer?  true
       core/vcf-writer? true
       core/bcf-writer? false
       core/fastq-writer? false
       core/bed-writer? false))
 
-  (with-open [r (core/writer (.getAbsolutePath (io/file util/temp-dir "temp.bcf")) {} [])]
+  (with-open [r (core/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bcf")) {} [])]
     (are [?pred ?expected]
         (= (?pred r) ?expected)
       core/alignment-writer? false
       core/sam-writer? false
       core/bam-writer? false
+      core/variant-writer?  true
       core/vcf-writer? false
       core/bcf-writer? true
       core/fastq-writer? false
       core/bed-writer? false))
 
-  (with-open [r (core/writer (.getAbsolutePath (io/file util/temp-dir "temp.fq")))]
+  (with-open [r (core/writer (.getAbsolutePath (cio/file util/temp-dir "temp.fq")))]
     (are [?pred ?expected]
         (= (?pred r) ?expected)
       core/alignment-writer? false
       core/sam-writer? false
       core/bam-writer? false
+      core/variant-writer?  false
       core/vcf-writer? false
       core/bcf-writer? false
       core/fastq-writer? true
       core/bed-writer? false))
 
-  (with-open [r (core/writer (.getAbsolutePath (io/file util/temp-dir "temp.bed")))]
+  (with-open [r (core/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bed")))]
     (are [?pred ?expected]
         (= (?pred r) ?expected)
       core/alignment-writer? false
       core/sam-writer? false
       core/bam-writer? false
+      core/variant-writer?  false
       core/vcf-writer? false
       core/bcf-writer? false
       core/fastq-writer? false
       core/bed-writer? true))
 
-  (is (thrown? Exception (core/writer (.getAbsolutePath (io/file util/temp-dir "temp.baam")))))
-  (is (thrown? Exception (core/writer (.getAbsolutePath (io/file util/temp-dir "temp.bai"))))))
+  (is (thrown? Exception (core/writer (.getAbsolutePath (cio/file util/temp-dir "temp.baam")))))
+  (is (thrown? Exception (core/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bai"))))))

@@ -1,31 +1,50 @@
 (ns cljam.bed
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
+            [cljam.io :as io]
             [cljam.util :as util]
-            [cljam.util.chromosome :as chr-util])
+            [cljam.util.chromosome :as chr-util]
+            [clojure.tools.logging :as logging])
   (:import [java.io BufferedReader BufferedWriter Closeable]))
+
+(declare read-fields write-fields)
 
 (defrecord BEDReader [^BufferedReader reader ^String f]
   Closeable
   (close [this]
-    (.close ^Closeable (.reader this))))
+    (.close ^Closeable (.reader this)))
+  io/IReader
+  (reader-path [this] (.f this))
+  (read [this] (io/read this {}))
+  (read [this option] (read-fields this))
+  io/IRegionReader
+  (read-in-region [this region]
+    (io/read-in-region this region {}))
+  (read-in-region [this {:keys [chr start end]} option]
+    (logging/warn "May cause degradation of performance.")
+    (filter (fn [m] (and (or (not chr) (= (:chr m) chr))
+                         (or (not start) (<= start (:start m)))
+                         (or (not end) (<= (:end m) end))))
+            (read-fields this))))
 
 (defrecord BEDWriter [^BufferedWriter writer ^String f]
   Closeable
   (close [this]
-    (.close ^Closeable (.writer this))))
+    (.close ^Closeable (.writer this)))
+  io/IWriter
+  (writer-path [this] (.getAbsolutePath (cio/file (.f this)))))
 
 (defn ^BEDReader reader
   "Returns BED file reader of f."
   [f]
-  (let [abs (.getAbsolutePath (io/file f))]
-    (BEDReader. (io/reader (util/compressor-input-stream abs)) abs)))
+  (let [abs (.getAbsolutePath (cio/file f))]
+    (BEDReader. (cio/reader (util/compressor-input-stream abs)) abs)))
 
 (defn ^BEDWriter writer
   "Returns BED file writer of f."
   [f]
-  (let [abs (.getAbsolutePath (io/file f))]
-  (BEDWriter. (io/writer (util/compressor-output-stream abs)) abs)))
+  (let [abs (.getAbsolutePath (cio/file f))]
+  (BEDWriter. (cio/writer (util/compressor-output-stream abs)) abs)))
 
 (def ^:const bed-columns
   [:chr :start :end :name :score :strand :thick-start :thick-end :item-rgb :block-count :block-sizes :block-starts])

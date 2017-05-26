@@ -1,77 +1,76 @@
 (ns cljam.t-fastq
   (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
-            [clojure.java.io :as io]
+            [clojure.java.io :as cio]
             [cljam.fastq :as fq]))
 
 (deftest fastq-file-input
   (is (= (with-open [r (fq/reader test-fq-file)]
-           (doall (map (partial into {}) (fq/read-sequence r))))
+           (doall (map (partial into {}) (fq/read-sequences r))))
          test-fq-sequences))
   (is (= (with-open [r (fq/reader test-fq-file)]
            (doall (map (partial into {})
-                       (fq/read-sequence r :decode-quality :phred33))))
+                       (fq/read-sequences r {:decode-quality :phred33}))))
          test-fq-sequences))
   (is (= (with-open [r (fq/reader test-fq-file)]
            (doall (map (partial into {})
-                       (fq/read-sequence r :decode-quality nil))))
+                       (fq/read-sequences r {:decode-quality nil}))))
          test-fq-sequences-raw))
   (is (thrown? AssertionError
                (with-open [r (fq/reader test-fq-file)]
                  (doall (map (partial into {})
-                             (fq/read-sequence r :decode-quality :phred64))))))
+                             (fq/read-sequences r {:decode-quality :phred64}))))))
   (is (= (with-open [r (fq/reader test-fq-gz-file)]
-           (doall (map (partial into {}) (fq/read-sequence r))))
+           (doall (map (partial into {}) (fq/read-sequences r))))
          test-fq-sequences))
   (is (= (with-open [r (fq/reader test-fq-bz2-file)]
-           (doall (map (partial into {}) (fq/read-sequence r))))
+           (doall (map (partial into {}) (fq/read-sequences r))))
          test-fq-sequences)))
 
 (deftest fastq-file-output
   (with-before-after {:before (do (clean-cache!)
                                   (prepare-cache!))
                       :after (clean-cache!)}
-    (is (= (let [path (.getAbsolutePath (io/file temp-dir "test.fq"))]
+    (is (= (let [path (.getAbsolutePath (cio/file temp-dir "test.fq"))]
              (with-open [w (fq/writer path)]
-               (fq/write-sequence w test-fq-sequences))
+               (fq/write-sequences w test-fq-sequences))
              (with-open [r (fq/reader path)]
-               (doall (map (partial into {}) (fq/read-sequence r)))))
+               (doall (map (partial into {}) (fq/read-sequences r)))))
            test-fq-sequences))
 
-    (is (= (let [path (.getAbsolutePath (io/file temp-dir "test-33.fq"))]
+    (is (= (let [path (.getAbsolutePath (cio/file temp-dir "test-33.fq"))]
              (with-open [w (fq/writer path)]
-               (fq/write-sequence w test-fq-sequences :encode-quality :phred33))
+               (fq/write-sequences w test-fq-sequences {:encode-quality :phred33}))
              (with-open [r (fq/reader path)]
-               (doall (map (partial into {}) (fq/read-sequence r)))))
+               (doall (map (partial into {}) (fq/read-sequences r)))))
            test-fq-sequences))
 
-    (is (= (let [path (.getAbsolutePath (io/file temp-dir "test-raw.fq"))]
+    (is (= (let [path (.getAbsolutePath (cio/file temp-dir "test-raw.fq"))]
              (with-open [w (fq/writer path)]
-               (fq/write-sequence w test-fq-sequences-raw :encode-quality nil))
+               (fq/write-sequences w test-fq-sequences-raw {:encode-quality nil}))
              (with-open [r (fq/reader path)]
-               (doall (map (partial into {}) (fq/read-sequence r)))))
+               (doall (map (partial into {}) (fq/read-sequences r)))))
            test-fq-sequences))
 
     (is (thrown? AssertionError
-                 (let [path (.getAbsolutePath (io/file temp-dir "test-64.fq"))]
+                 (let [path (.getAbsolutePath (cio/file temp-dir "test-64.fq"))]
                    (with-open [w (fq/writer path)]
-                     (fq/write-sequence w test-fq-sequences
-                                        :encode-quality :phred64))
+                     (fq/write-sequences w test-fq-sequences {:encode-quality :phred64}))
                    (with-open [r (fq/reader path)]
-                     (doall (map (partial into {}) (fq/read-sequence r)))))))
+                     (doall (map (partial into {}) (fq/read-sequences r)))))))
 
-    (is (= (let [path (.getAbsolutePath (io/file temp-dir "test.fq.gz"))]
+    (is (= (let [path (.getAbsolutePath (cio/file temp-dir "test.fq.gz"))]
              (with-open [w (fq/writer path)]
-               (fq/write-sequence w test-fq-sequences))
+               (fq/write-sequences w test-fq-sequences))
              (with-open [r (fq/reader path)]
-               (doall (map (partial into {}) (fq/read-sequence r)))))
+               (doall (map (partial into {}) (fq/read-sequences r)))))
            test-fq-sequences))
 
-    (is (= (let [path (.getAbsolutePath (io/file temp-dir "test.fq.bz2"))]
+    (is (= (let [path (.getAbsolutePath (cio/file temp-dir "test.fq.bz2"))]
              (with-open [w (fq/writer path)]
-               (fq/write-sequence w test-fq-sequences))
+               (fq/write-sequences w test-fq-sequences))
              (with-open [r (fq/reader path)]
-               (doall (map (partial into {}) (fq/read-sequence r)))))
+               (doall (map (partial into {}) (fq/read-sequences r)))))
            test-fq-sequences))))
 
 (def sample-1_8 {:instrument "EAS139"

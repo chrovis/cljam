@@ -2,18 +2,46 @@
   "A type of VCF reader and internal functions to read VCF contents. See
   https://samtools.github.io/hts-specs/ for the detail VCF specifications."
   (:require [clojure.string :as cstr]
+            [clojure.tools.logging :as logging]
+            [cljam.io :as io]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [cljam.util :refer [str->long]]
             [cljam.util.vcf-util :as vcf-util])
-  (:import [clojure.lang LazilyPersistentVector]))
+  (:import [java.io Closeable]
+           [clojure.lang LazilyPersistentVector]))
 
 ;; VCFReader
 ;; ---------
 
+(declare read-variants)
+
 (deftype VCFReader [f meta-info header reader]
-  java.io.Closeable
+  Closeable
   (close [this]
-    (.close ^java.io.Closeable (.reader this))))
+    (.close ^Closeable (.reader this)))
+  io/IReader
+  (reader-path [this] (.f this))
+  (read [this] (read-variants this))
+  (read [this option] (read-variants this option))
+  io/IRegionReader
+  (read-in-region [this region]
+    (io/read-in-region this region {}))
+  (read-in-region [this {:keys [chr start end]} {:keys [depth] :as option}]
+    (logging/warn "May cause degradation of performance.")
+    (filter
+     (fn [v] (and (if chr (= (:chr v) chr) true)
+                  (if start (<= start (:pos v)) true)
+                  (if end (<= (+ (:pos v) (count (:ref v))) end) true)))
+     (read-variants this option))))
+
+;; need dynamic extension for namespace issue.
+(extend-type VCFReader
+  io/IVariantReader
+  (meta-info [this] (.meta-info this))
+  (header [this] (.header this))
+  (read-variants
+    ([this] (io/read-variants this {}))
+    ([this option] (read-variants this option))))
 
 ;; Utilities
 ;; ---------
@@ -125,9 +153,11 @@
       (read-data-lines rdr header kws))))
 
 (defn read-variants
-  [^VCFReader rdr & {:keys [depth] :or {depth :deep}}]
-  (let [kws (mapv keyword (drop 8 (.header rdr)))
-        parse-fn (case depth
-                   :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
-                   :vcf identity)]
-    (map parse-fn (read-data-lines (.reader rdr) (.header rdr) kws))))
+  ([rdr]
+   (read-variants rdr {}))
+  ([^VCFReader rdr {:keys [depth] :or {depth :deep}}]
+   (let [kws (mapv keyword (drop 8 (.header rdr)))
+         parse-fn (case depth
+                    :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
+                    :vcf identity)]
+     (map parse-fn (read-data-lines (.reader rdr) (.header rdr) kws)))))

@@ -10,7 +10,7 @@
   (with-open [rdr (vcf/reader f)]
     {:meta-info (vcf/meta-info rdr)
      :header (vcf/header rdr)
-     :variants (doall (vcf/read-variants rdr :depth (or depth :deep)))}))
+     :variants (doall (vcf/read-variants rdr {:depth (or depth :deep)}))}))
 
 (defn- spit-vcf-for-test
   [f meta-info header variants]

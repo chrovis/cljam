@@ -1,25 +1,56 @@
 (ns cljam.io
-  "Protocols of SAM/BAM reader.")
+  "Protocols of reader/writer for various file formats."
+  (:refer-clojure :exclude [read]))
 
 (defrecord SAMAlignment
   [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])
 
-(defprotocol ISAMReader
-  (reader-path [this] "Returns the file's absolute path.")
-  (read-header [this] "Returns header of the SAM/BAM file.")
-  (read-refs [this] "Returns references of the SAM/BAM file.")
-  (read-alignments [this] [this option]
-    "Reads alignments of the SAM/BAM file, returning the alignments as a lazy
-    sequence.")
-  (read-blocks [this] [this option]
-    "Reads alignment blocks of the SAM/BAM file, returning the blocks as a lazy
-    sequence."))
+(defprotocol IReader
+  (reader-path [this]
+    "Returns the file's absolute path.")
+  (read [this] [this option]
+    "Sequentially reads contents of the file."))
 
-(defprotocol ISAMWriter
-  (writer-path [this] "Returns the file's absolute path.")
-  (write-header [this header] "Writes header to the SAM/BAM file.")
-  (write-refs [this header] "Writes references to the SAM/BAM file.")
+(defprotocol IWriter
+  (writer-path [this]
+    "Returns the file's absolute path."))
+
+(defprotocol IRegionReader
+  (read-in-region [this region] [this region option]
+    "Reads contents of the file in given region."))
+
+(defprotocol IAlignmentReader
+  (read-header [this]
+    "Returns header of the SAM/BAM file.")
+  (read-refs [this]
+    "Returns references of the SAM/BAM file.")
+  (read-alignments [this] [this region] [this region option]
+    "Reads alignments of the SAM/BAM file, returning the alignments as a lazy sequence.")
+  (read-blocks [this] [this region] [this region option]
+    "Reads alignment blocks of the SAM/BAM file, returning the blocks as a lazy sequence."))
+
+(defprotocol IAlignmentWriter
+  (write-header [this header]
+    "Writes header to the SAM/BAM file.")
+  (write-refs [this header]
+    "Writes references to the SAM/BAM file.")
   (write-alignments [this alignments header]
     "Writes alignments to the SAM/BAM file.")
   (write-blocks [this blocks]
     "Writes alignment blocks of the SAM/BAM file."))
+
+(defprotocol IVariantReader
+  (meta-info [this]
+    "Returns meta-info section of VCF/BCF file as a map.")
+  (header [this]
+    "Returns header of VCF/BCF file as a sequence of strings.")
+  (read-variants [this] [this option]
+    "Reads variants of the VCF/BCF file, returning them as a lazy sequence."))
+
+(defprotocol IVariantWriter
+  (write-variants [this variants]
+    "Writes variants to thee VCF/BCF file."))
+
+(defprotocol ISequenceReader
+  (read-sequence [this region] [this region option]
+    "Reads all sequences of FASTA/2BIT file."))

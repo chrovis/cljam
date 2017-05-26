@@ -4,7 +4,8 @@
             [cljam.io :as io]
             [cljam.bam.encoder :as encoder]
             [cljam.util.sam-util :as sam-util]
-            [com.climate.claypoole :as cp]))
+            [com.climate.claypoole :as cp])
+  (:import [cljam.bam.writer BAMWriter]))
 
 (def ^:private default-num-block 100000)
 (def ^:private default-num-write-block 10000)
@@ -15,7 +16,7 @@
 
 (defn- bam-write-alignments [rdr wtr hdr num-block num-write-block]
   (let [refs (sam-util/make-refs hdr)
-        w (.writer wtr)]
+        w (.writer ^BAMWriter wtr)]
     (cp/with-shutdown! [pool (cp/threadpool (cp/ncpus))]
       (doseq [alns (partition-all num-block (io/read-alignments rdr {}))]
         (let [blocks (doall (cp/pmap pool

@@ -1,5 +1,18 @@
 # Change Log
 
+## [Unreleased]
+
+### Added
+
+* Add BED reader/writer. [#73](https://github.com/chrovis/cljam/pull/73)
+
+### Changed
+
+* Change default start/end of bam reader. [#74](https://github.com/chrovis/cljam/pull/74)
+* Extend cljam.core reader/writer functions. [#75](https://github.com/chrovis/cljam/pull/75)
+* Setup automatic snapshots deployment. [#76](https://github.com/chrovis/cljam/pull/76)
+* Improve performance of deep decoding of BAM files. [#77](https://github.com/chrovis/cljam/pull/77)
+
 ## [0.3.0] - 2017-05-08
 
 ### BREAKING

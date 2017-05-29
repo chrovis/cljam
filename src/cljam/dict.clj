@@ -1,7 +1,7 @@
 (ns cljam.dict
   "Alpha - subject to change.
   Generator of a FASTA sequence dictionary file."
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io :as cio]
             [cljam.fasta :as fasta]
             [cljam.dict.core :as dict-core]))
 
@@ -13,4 +13,4 @@
     (dict-core/create-dict out-dict
                            (fasta/read-headers r)
                            (fasta/read-sequences r)
-                           (str (.. (io/file fasta) getCanonicalFile toURI)))))
+                           (str (.. (cio/file fasta) getCanonicalFile toURI)))))

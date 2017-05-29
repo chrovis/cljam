@@ -1,10 +1,9 @@
 (ns cljam.t-bed
   (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
-            [clojure.java.io :as io]
             [cljam.bed :as bed]
             [cljam.fasta :as fa]
-            [cljam.io :as cio]
+            [cljam.io :as io]
             [cljam.bam :as bam]
             [cljam.util.sam-util :as sam-util])
   (:import [java.io BufferedReader InputStreamReader ByteArrayInputStream
@@ -171,7 +170,7 @@
 (deftest bed-reader-and-bam-reader
   (with-open [bam (bam/reader test-sorted-bam-file)]
     (letfn [(ref-pos-end [m] {:rname (:rname m) :pos (:pos m) :end (sam-util/get-end m)})
-            (read-region [s] (->> (str->bed s) (mapcat #(cio/read-alignments bam %)) (map ref-pos-end)))]
+            (read-region [s] (->> (str->bed s) (mapcat #(io/read-alignments bam %)) (map ref-pos-end)))]
       (are [?region-str ?result] (= (read-region ?region-str) ?result)
         "ref 0 6" []
         "ref 6 7" [{:rname "ref" :pos 7 :end 22}]

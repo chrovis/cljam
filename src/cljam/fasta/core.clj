@@ -1,11 +1,12 @@
 (ns cljam.fasta.core
   (:refer-clojure :exclude [read])
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io :as cio]
+            [cljam.io :as io]
             [cljam.util :as util]
             [cljam.fasta-index.core :as fasta-index]
             [cljam.fasta.reader :as reader])
-  (:import java.io.RandomAccessFile
-           cljam.fasta.reader.FASTAReader))
+  (:import [java.io RandomAccessFile]
+           [cljam.fasta.reader FASTAReader]))
 
 ;; Reading
 ;; -------
@@ -13,10 +14,10 @@
 (defn ^FASTAReader reader
   [^String f {:keys [ignore-index]
               :or {ignore-index false}}]
-  (let [f (.getAbsolutePath (io/file f))
+  (let [f (.getAbsolutePath (cio/file f))
         index-f (str f ".fai")
         index (if-not ignore-index
-                (if (.exists (io/file index-f))
+                (if (.exists (cio/file index-f))
                   (fasta-index/reader index-f)
                   (throw (java.io.FileNotFoundException.
                           (str index-f " (No such FASTA index)")))))]
@@ -59,3 +60,22 @@
   [f]
   (with-open [stream (util/compressor-input-stream f)]
     (reader/sequential-read-string stream (* 1024 1024 10) 536870912)))
+
+(extend-type FASTAReader
+  io/IReader
+  (reader-path [this] (.f this))
+  (read
+    ([this] (sequential-read (.f this)))
+    ([this option] (sequential-read (.f this))))
+  io/IRegionReader
+  (read-in-region
+    ([this region]
+     (io/read-in-region this region {}))
+    ([this region option]
+     (io/read-sequence this region option)))
+  io/ISequenceReader
+  (read-sequence
+    ([this region]
+     (io/read-sequence this region {}))
+    ([this {:keys [chr start end]} option]
+     (reader/read-sequence this chr start end))))

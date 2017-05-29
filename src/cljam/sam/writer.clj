@@ -1,24 +1,25 @@
 (ns cljam.sam.writer
   "Provides writing features."
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [cljam.util.sam-util :refer [stringify-header
                                          stringify-alignment]]
-            [cljam.io])
-  (:import java.io.BufferedWriter))
+            [cljam.io :as io])
+  (:import [java.io BufferedWriter Closeable]))
 
 (declare write-header* write-alignments* write-blocks*)
 
 ;; SAMWriter
 ;; ---------
 
-(deftype SAMWriter [^java.io.BufferedWriter writer f]
-  java.io.Closeable
+(deftype SAMWriter [^BufferedWriter writer f]
+  Closeable
   (close [this]
     (.close writer))
-  cljam.io/ISAMWriter
+  io/IWriter
   (writer-path [this]
     (.f this))
+  io/IAlignmentWriter
   (write-header [this header]
     (write-header* this header))
   (write-refs [this refs]
@@ -56,5 +57,5 @@
 
 (defn ^SAMWriter writer
   [f]
-  (->SAMWriter (clojure.java.io/writer f)
-               (.getAbsolutePath (io/file f))))
+  (->SAMWriter (cio/writer f)
+               (.getAbsolutePath (cio/file f))))

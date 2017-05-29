@@ -3,6 +3,7 @@
   (:require [com.climate.claypoole :as cp]
             [cljam.common :refer [get-exec-n-threads]]
             [cljam.bam :as bam]
+            [cljam.util :as util]
             [cljam.util.sam-util :as sam-util]
             [cljam.io :as io]
             [cljam.pileup.common :as common]))
@@ -20,13 +21,6 @@
           (aset-long pile (+ i left-index) (inc (aget pile (+ i left-index)))))))
     (seq pile)))
 
-(defn- regions
-  [start end step]
-  (->> [(inc end)]
-       (concat (range start (inc end) step))
-       (partition 2 1)
-       (map (fn [[s e]] [s (dec e)]))))
-
 (defn- pileup*
   "Internal pileup function."
   [rdr rname rlength start end step]
@@ -41,34 +35,30 @@
                               (fn [[start end]]
                                 (with-open [r (bam/clone-reader rdr)]
                                   (count-for-positions (read-fn r start end) start end))) xs)))]
-    (->> (regions start end step)
+    (->> (util/divide-region start end step)
          count-fn
          (apply concat))))
 
 (defn first-pos
   "Return a position of first alignment in left-right, or nil."
-  [bam-reader rname left right]
-  (-> (io/read-alignments bam-reader {:chr rname
-                                      :start left
-                                      :end right
-                                      :depth :first-only})
+  [bam-reader {:keys [chr start end] :as region}]
+  (-> bam-reader
+      (io/read-alignments (assoc region :depth :first-only))
       first
       :pos))
 
 (defn pileup
   "Piles alignments up, returning the pileup as a lazy seq. Requires a
-  `cljam.bam.reader.BAMReader` instance and rname. If start and end are not
+  `cljam.bam.reader.BAMReader` instance and region. If start and end are not
   supplied, piles whole range up."
-  ([bam-reader rname]
-     (pileup bam-reader rname -1 -1))
-  ([bam-reader rname start end & {:keys [step] :or {step common/step}}]
-     (try
-       (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
-         (pileup*
-          bam-reader
-          rname (:len r)
-          (if (neg? start) 1 start)
-          (if (neg? end) (:len r) end)
-          step))
-       (catch bgzf4j.BGZFException _
-         (throw (RuntimeException. "Invalid file format"))))))
+  [bam-reader {:keys [chr start end] :or {start -1 end -1}} & {:keys [step] :or {step common/step}}]
+  (try
+    (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) chr)]
+      (pileup*
+       bam-reader
+       chr (:len r)
+       (if (neg? start) 1 start)
+       (if (neg? end) (:len r) end)
+       step))
+    (catch bgzf4j.BGZFException _
+      (throw (RuntimeException. "Invalid file format")))))

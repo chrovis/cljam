@@ -44,7 +44,7 @@
 
 (defn- sort-alignments-by-pos [rdr]
   (let [ref-map (make-ref-map (io/read-header rdr))]
-    (sort (partial compare-key-pos ref-map) (io/read-blocks rdr {:mode :coordinate}))))
+    (sort (partial compare-key-pos ref-map) (io/read-blocks rdr {} {:mode :coordinate}))))
 
 ;; Queryname sorter
 ;; ----------------
@@ -108,7 +108,7 @@
         ref-map (make-ref-map header)]
     (io/write-header wtr header)
     (io/write-refs wtr header)
-    (loop [blocks-list (map #(io/read-blocks % {:mode :coordinate}) rdrs)]
+    (loop [blocks-list (map #(io/read-blocks % {} {:mode :coordinate}) rdrs)]
       (let [candidates (map first blocks-list)]
         (when-not (every? nil? candidates)
           (let [[i b] (head candidates ref-map)]

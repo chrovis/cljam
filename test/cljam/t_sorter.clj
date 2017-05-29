@@ -3,7 +3,8 @@
             [cljam.t-common :refer :all]
             [cljam.sam :as sam]
             [cljam.bam :as bam]
-            [cljam.sorter :as sorter]))
+            [cljam.sorter :as sorter])
+  (:import [java.io Closeable]))
 
 (def tmp-coordinate-sorted-sam-file (str temp-dir "/" "tmp.coordinate.sorted.sam"))
 (def tmp-coordinate-sorted-bam-file (str temp-dir "/" "tmp.coordinate.sorted.bam"))
@@ -41,9 +42,9 @@
                                  (str "invalid file suffix " dst-file))))
                   nil)]
     (if-not (nil? dst-wtr)
-      (with-open [src src-rdr
-                  dst dst-wtr] (target-fn src dst))
-      (with-open [src src-rdr] (target-fn src)))))
+      (with-open [src ^Closeable src-rdr
+                  dst ^Closeable dst-wtr] (target-fn src dst))
+      (with-open [src ^Closeable src-rdr] (target-fn src)))))
 
 (deftest about-sorting-a-sam-by-chromosomal-positions
   (with-before-after {:before (do (prepare-cache!)

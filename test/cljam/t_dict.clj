@@ -3,13 +3,13 @@
   (:require [clojure.test :refer :all]
             [clojure.string :as string]
             [me.raynes.fs :as fs]
-            [clojure.java.io :as io]
+            [clojure.java.io :as cio]
             [cljam.t-common :refer :all]
             [cljam.dict :as dict]))
 
 (defn same-dict-file? [f1 f2]
-  (with-open [r1 (io/reader f1)
-              r2 (io/reader f2)]
+  (with-open [r1 (cio/reader f1)
+              r2 (cio/reader f2)]
     (let [dict1 (line-seq r1)
           dict2 (line-seq r2)
           ;; NB: `UR` is calculated by local file path, ignore it,

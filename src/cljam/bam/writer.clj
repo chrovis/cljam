@@ -1,6 +1,6 @@
 (ns cljam.bam.writer
   (:require [clojure.string :refer [split]]
-            [cljam.io]
+            [cljam.io :as io]
             (cljam [cigar :as cgr]
                    [lsb :as lsb]
                    [util :refer [string->bytes ubyte]])
@@ -21,9 +21,10 @@
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
-  cljam.io/ISAMWriter
+  io/IWriter
   (writer-path [this]
     (.f this))
+  io/IAlignmentWriter
   (write-header [this header]
     (write-header* this header))
   (write-refs [this header]

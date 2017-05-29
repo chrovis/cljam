@@ -1,7 +1,6 @@
 (ns cljam.t-fasta-indexer
   "Tests for cljam.fasta-indexer."
   (:require [clojure.test :refer :all]
-            [clojure.java.io :as io]
             [me.raynes.fs :as fs]
             [cljam.t-common :refer :all]
             [cljam.fasta-indexer :as fai]))

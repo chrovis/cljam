@@ -1,20 +1,20 @@
 (ns cljam.t-cli
   (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
-            [clojure.java.io :as io]
+            [clojure.java.io :as cio]
             [cljam.cli :as cli]
-            [cljam.io :as cio]
+            [cljam.io :as io]
             [cljam.bam :as bam])
   (:import [java.io PrintStream]))
 
 (defmacro with-out-file
   [f & body]
-  `(let [os# (io/output-stream ~f)
+  `(let [os# (cio/output-stream ~f)
          old-ps# System/out
          ps# (PrintStream. os#)]
      (try
        (System/setOut ps#)
-       (binding [*out* (io/writer os#)]
+       (binding [*out* (cio/writer os#)]
          ~@body)
        (finally
          (.flush ps#)
@@ -80,11 +80,11 @@
 
 (deftest about-index
   (with-before-after {:before (do (prepare-cache!)
-                                  (io/copy (io/file test-sorted-bam-file)
-                                           (io/file temp-bam)))
+                                  (cio/copy (cio/file test-sorted-bam-file)
+                                            (cio/file temp-bam)))
                       :after (clean-cache!)}
     (is (not-throw? (with-out-file temp-out (cli/index [temp-bam]))))
-    (is (.exists (io/file (str temp-bam ".bai"))))
+    (is (.exists (cio/file (str temp-bam ".bai"))))
     (is (not-throw? (with-out-file temp-out (cli/index ["-t" "1" temp-bam]))))
     (is (not-throw? (with-out-file temp-out (cli/index ["-t" "4" temp-bam]))))))
 
@@ -114,18 +114,18 @@
 
 (deftest about-faidx
   (with-before-after {:before (do (prepare-cache!)
-                                  (io/copy (io/file test-fa-file)
-                                           (io/file temp-out)))
+                                  (cio/copy (cio/file test-fa-file)
+                                            (cio/file temp-out)))
                       :after (clean-cache!)}
     (is (not-throw? (with-out-file temp-out (cli/faidx [temp-out]))))
-    (is (.exists (io/file (str temp-out ".fai"))))))
+    (is (.exists (cio/file (str temp-out ".fai"))))))
 
 (deftest about-dict
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
     (let [temp-dict (str temp-dir "/out.dict")]
       (is (not-throw? (with-out-file temp-out (cli/dict [test-fa-file temp-dict]))))
-      (is (.exists (io/file temp-dict))))))
+      (is (.exists (cio/file temp-dict))))))
 
 (deftest about-level
   (with-before-after {:before (prepare-cache!)
@@ -136,7 +136,7 @@
                                                         temp-bam]))))
     (with-open [rdr (bam/reader temp-bam :ignore-index true)]
       (is (= (map #(first (keep :LV (:options %)))
-                  (cio/read-alignments rdr))
+                  (io/read-alignments rdr))
              test-sorted-bam-levels)))))
 
 (deftest about-run

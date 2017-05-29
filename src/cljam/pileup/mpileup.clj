@@ -66,7 +66,7 @@
 (defn pileup*
   "Internal mpileup function independent from I/O.
    Can take multiple alignments seqs."
-  [refseq rname start end & aln-seqs]
+  [refseq {:keys [chr start end]} & aln-seqs]
   (->> aln-seqs
        (map
         (fn [alns]
@@ -75,7 +75,7 @@
                (pileup-seq start end))))
        (apply map
               (fn [index refs & plps]
-                (map (fn [plp] (gen-mpileup rname index refs plp)) plps))
+                (map (fn [plp] (gen-mpileup chr index refs plp)) plps))
               (range start (inc end))
               (partition 100 1 (concat refseq (repeat \N))))))
 
@@ -130,24 +130,22 @@
 
 (defn pileup
   "Returns a lazy sequence of MPileupElement calculated from FASTA and BAM."
-  ([bam-reader rname]
-   (pileup nil bam-reader rname -1 -1))
-  ([fa-reader bam-reader rname]
-   (pileup fa-reader bam-reader rname -1 -1))
-  ([fa-reader bam-reader rname start end]
+  ([bam-reader {:keys [chr start end] :or {start -1 end -1} :as region}]
+   (pileup nil bam-reader region))
+  ([ref-reader bam-reader {:keys [chr start end] :or {start -1 end -1}}]
    (try
-     (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) rname)]
+     (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) chr)]
        (let [s (if (neg? start) 1 start)
              e (if (neg? end) (:len r) end)
-             refseq (if fa-reader
-                      (fa/read-sequence fa-reader {:chr rname :start s :end e})
+             refseq (if ref-reader
+                      (io/read-sequence ref-reader {:chr chr :start s :end e})
                       (repeat \N))]
-         (->> (io/read-alignments bam-reader {:chr rname :start s :end e :depth :deep})
+         (->> (io/read-alignments bam-reader {:chr chr :start s :end e :depth :deep})
               (sequence
                (comp
                 (filter basic-mpileup-pred)
                 (filter (fn [a] (<= 0 (:mapq a))))))
-              (pileup* refseq rname s e)
+              (pileup* refseq {:chr chr :start s :end e})
               (sequence
                (comp (map first)
                      (map correct-overlapped-reads)
@@ -176,7 +174,7 @@
   (try
     (with-open [w (writer f)]
       (doseq [rname (map :name (io/read-refs bam-reader))]
-        (doseq [line (pileup fa-rdr bam-reader rname)]
+        (doseq [line (pileup fa-rdr bam-reader {:chr rname})]
           (when-not (zero? (:count line))
             (write-line! w line)))))
     (catch Exception e (do

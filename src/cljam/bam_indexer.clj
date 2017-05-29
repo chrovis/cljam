@@ -11,5 +11,5 @@
   (with-open [r (bam/reader in-bam :ignore-index true)]
     (binding [*n-threads* n-threads]
       (bai-core/create-index out-bai
-                             (io/read-blocks r {:mode :pointer})
+                             (io/read-blocks r {} {:mode :pointer})
                              (io/read-refs r)))))

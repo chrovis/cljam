@@ -1,6 +1,6 @@
 (ns cljam.bam.reader
   (:require [cljam.lsb :as lsb]
-            [cljam.io]
+            [cljam.io :as io]
             [cljam.util.sam-util :refer [ref-id ref-name parse-header get-end]]
             [cljam.bam-index :refer [get-spans]]
             [cljam.bam-index.core :as bai]
@@ -22,33 +22,51 @@
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
-  cljam.io/ISAMReader
+  io/IReader
   (reader-path [this]
     (.f this))
+  (read [this]
+    (io/read this {}))
+  (read [this option]
+    (io/read-alignments this {} option))
+  io/IAlignmentReader
   (read-header [this]
     (.header this))
   (read-refs [this]
     (.refs this))
   (read-alignments [this]
-    (read-alignments-sequentially* this :deep))
-  (read-alignments [this {:keys [chr start end depth]
-                          :or {chr nil
-                               start 1
-                               end Long/MAX_VALUE
-                               depth :deep}}]
+    (io/read-alignments this {} {}))
+  (read-alignments [this region]
+    (io/read-alignments this region {}))
+  (read-alignments [this
+                    {:keys [chr start end]
+                     :or {chr nil
+                          start 1
+                          end Long/MAX_VALUE}}
+                    {:keys [depth]
+                     :or {depth :deep}}]
     (if (nil? chr)
       (read-alignments-sequentially* this depth)
       (read-alignments* this chr start end depth)))
   (read-blocks [this]
-    (read-blocks-sequentially* this :normal))
-  (read-blocks [this {:keys [chr start end mode]
-                      :or {chr nil
-                           start 1
-                           end Long/MAX_VALUE
-                           mode :normal}}]
+    (io/read-blocks this {} {}))
+  (read-blocks [this region]
+    (io/read-blocks this region {}))
+  (read-blocks [this
+                {:keys [chr start end]
+                 :or {chr nil
+                      start 1
+                      end Long/MAX_VALUE}}
+                {:keys [mode]
+                 :or {mode :normal}}]
     (if (nil? chr)
       (read-blocks-sequentially* this mode)
-      (read-blocks* this chr start end))))
+      (read-blocks* this chr start end)))
+  io/IRegionReader
+  (read-in-region [this region]
+    (io/read-in-region this region {}))
+  (read-in-region [this region option]
+    (io/read-alignments this region option)))
 
 ;; Reading a single block
 ;; --------------------

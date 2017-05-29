@@ -1,5 +1,5 @@
 (ns cljam.bam-index.reader
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io :as cio]
             [cljam.lsb :as lsb]
             [cljam.bam-index.common :refer [bai-magic]])
   (:import java.util.Arrays
@@ -113,7 +113,7 @@
      :lidx lidx}))
 
 (defn reader [f]
-  (let [r (DataInputStream. (FileInputStream. (io/file f)))]
+  (let [r (DataInputStream. (FileInputStream. (cio/file f)))]
     (when-not (Arrays/equals ^bytes (lsb/read-bytes r 4) (.getBytes ^String bai-magic))
       (throw (IOException. "Invalid BAI file")))
     (->BAIReader f r)))

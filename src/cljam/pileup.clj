@@ -1,8 +1,6 @@
 (ns cljam.pileup
-  (:require [clojure.java.io :refer [writer]]
-            [cljam.common :refer [*n-threads*]]
+  (:require [cljam.common :refer [*n-threads*]]
             [cljam.bam :as bam]
-            [cljam.io :as io]
             [cljam.pileup.common :as plpc]
             [cljam.pileup.pileup :as plp]
             [cljam.pileup.mpileup :as mplp]))
@@ -15,14 +13,12 @@
   {:n-threads 0})
 
 (defn pileup
-  ([bam-reader rname]
-   (pileup bam-reader rname {}))
-  ([bam-reader rname option]
-   (pileup bam-reader rname -1 -1 option))
-  ([bam-reader rname start end option]
+  ([reader region]
+   (pileup reader region {}))
+  ([bam-reader {:keys [chr start end] :or {start -1 end -1} :as region} option]
    (let [option* (merge default-pileup-option option)]
      (binding [*n-threads* (:n-threads option*)]
-       (apply plp/pileup bam-reader rname start end (apply concat option*))))))
+       (apply plp/pileup bam-reader region (apply concat option*))))))
 
 (def mpileup mplp/pileup)
 

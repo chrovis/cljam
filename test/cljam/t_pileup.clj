@@ -35,17 +35,17 @@
 
 (deftest pileup-returns-LazySeq
   (with-open [r (bam/reader test-sorted-bam-file)]
-    (instance? clojure.lang.LazySeq (plp/pileup r "ref" nil)))
+    (instance? clojure.lang.LazySeq (plp/pileup r {:chr "ref"})))
   (with-open [r (bam/reader test-sorted-bam-file)]
-    (instance? clojure.lang.LazySeq (plp/pileup r "ref2" nil))))
+    (instance? clojure.lang.LazySeq (plp/pileup r {:chr "ref2"}))))
 
 (deftest about-pileup
   (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (doall (plp/pileup r "ref" nil)))
+           (doall (plp/pileup r {:chr "ref"})))
          test-bam-pileup-ref))
   (doseq [n-threads [1 4]]
     (are [?param] (= (with-open [r (bam/reader test-sorted-bam-file)]
-                       (doall (plp/pileup r "ref" ?param)))
+                       (doall (plp/pileup r {:chr "ref"} ?param)))
                      test-bam-pileup-ref)
       {:n-threads n-threads}
       {:step 2 :n-threads n-threads}
@@ -55,14 +55,14 @@
       {:step 11 :n-threads n-threads}
       {:step 13 :n-threads n-threads}))
   (is (= (with-open [r (bam/reader test-sorted-bam-file)]
-           (doall (plp/pileup r "ref2" nil)))
+           (doall (plp/pileup r {:chr "ref2"})))
          test-bam-pileup-ref2)))
 
 (deftest about-first-pos
   (with-open [r (bam/reader test-sorted-bam-file)]
-    (is (= (plp/first-pos r "ref" 0 64) 7)))
+    (is (= (plp/first-pos r {:chr "ref" :start 0 :end 64}) 7)))
   (with-open [r (bam/reader test-sorted-bam-file)]
-    (is (= (plp/first-pos r "ref2" 0 64) 1))))
+    (is (= (plp/first-pos r {:chr "ref2" :start 0 :end 64}) 1))))
 
 (deftest about-pileup-seq
 
@@ -112,8 +112,8 @@
 (deftest about-mpileup
   (with-open [br (bam/reader test-sorted-bam-file)
               fr (fa/reader test-fa-file)]
-    (let [mplp-ref (doall (plp/mpileup br "ref"))
-          mplp-ref2 (doall (plp/mpileup br "ref2"))]
+    (let [mplp-ref (doall (plp/mpileup br {:chr "ref"}))
+          mplp-ref2 (doall (plp/mpileup br {:chr "ref2"}))]
       (is (= (map :rname mplp-ref) (repeat 45 "ref")))
       (is (= (map :ref mplp-ref) (repeat 45 \N)))
       (is (= (map :count mplp-ref) test-bam-pileup-ref))
@@ -123,7 +123,7 @@
       (is (= (map :count mplp-ref2) test-bam-pileup-ref2))
       (is (= (map :seq mplp-ref2) test-bam-mpileup-seq-ref2)))
 
-    (let [mplp-ref (doall (plp/mpileup fr br "ref"))]
+    (let [mplp-ref (doall (plp/mpileup fr br {:chr "ref"}))]
       (is (= (map :rname mplp-ref) (repeat 45 "ref")))
       ;;                                  123456789012345678901234567890123456789012345
       (is (= (apply str (map :ref mplp-ref))
@@ -138,8 +138,8 @@
               fr (fa/reader test-fa-file)]
     ;; 1234567890123456789012345678901234567890
     ;; aggttttataaaacaattaagtctacagagcaactacgcg
-    (let [mplp-ref1 (doall (plp/mpileup fr br "ref" 1 40))
-          mplp-ref2 (doall (plp/mpileup fr br "ref2" 1 40))]
+    (let [mplp-ref1 (doall (plp/mpileup fr br {:chr "ref" :start 1 :end 40}))
+          mplp-ref2 (doall (plp/mpileup fr br {:chr "ref2" :start 1 :end 40}))]
       (is (= (apply str (map :ref mplp-ref1))
              "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGC"))
       (is (= (map :count mplp-ref1) (take 40 test-bam-pileup-ref)))
@@ -157,7 +157,7 @@
 (deftest overlap-correction
   (let [plps (->> reads-for-pileup
                   (filter mplp/basic-mpileup-pred)
-                  (mplp/pileup* "AATTGGCCAATTGGCC" "seq1" 1 10)
+                  (mplp/pileup* "AATTGGCCAATTGGCC" {:chr "seq1" :start 1 :end 10})
                   (map (comp mplp/transpose-pile mplp/correct-overlapped-reads first)))]
     (is (= (map :ref plps) [\A \A \T \T \G \G \C \C \A \A]))
     (is (= (map :count plps) [0 0 2 2 2 2 2 2 2 2]))
@@ -181,7 +181,7 @@
 (deftest filter-by-base-quality
   (let [plps (->> reads-for-pileup
                   (filter mplp/basic-mpileup-pred)
-                  (mplp/pileup* "AATTGGCCAATTGGCC" "seq1" 1 10)
+                  (mplp/pileup* "AATTGGCCAATTGGCC" {:chr "seq1" :start 1 :end 10})
                   (sequence
                    (comp
                     (map first)
@@ -199,7 +199,7 @@
                    (comp
                     (filter mplp/basic-mpileup-pred)
                     (filter (fn [a] (<= 30 (:mapq a))))))
-                  (mplp/pileup* "AATTGGCCAATTGGCC" "seq1" 1 10)
+                  (mplp/pileup* "AATTGGCCAATTGGCC" {:chr "seq1" :start 1 :end 10})
                   (sequence
                    (comp
                     (map first)

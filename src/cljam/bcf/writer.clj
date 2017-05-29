@@ -1,6 +1,7 @@
 (ns cljam.bcf.writer
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
+            [cljam.io :as io]
             [cljam.lsb :as lsb]
             [cljam.vcf.writer :as vw]
             [cljam.util.vcf-util :as vcf-util])
@@ -8,10 +9,17 @@
            [java.nio ByteBuffer ByteOrder]
            [bgzf4j BGZFOutputStream]))
 
+(declare write-variants)
+
 (deftype BCFWriter [^String f meta-info header ^DataOutputStream writer]
   Closeable
   (close [this]
-    (.close ^Closeable (.writer this))))
+    (.close ^Closeable (.writer this)))
+  io/IWriter
+  (writer-path [this] (.f this))
+  io/IVariantWriter
+  (write-variants [this variants]
+    (write-variants this variants)))
 
 (def ^:private ^:const bcf-meta-keys
   [:fileformat :file-date :source :reference :contig :phasing :info :filter :format :alt :sample :pedigree])
@@ -66,7 +74,7 @@
                                                      (map-indexed (fn [i m] (assoc m :idx (str (inc i)))) others)))))
                          (update :info (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
                          (update :format (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs))))
-        w (BCFWriter. (.getAbsolutePath (io/file f)) indexed-meta header dos)]
+        w (BCFWriter. (.getAbsolutePath (cio/file f)) indexed-meta header dos)]
     (write-file-header w)
     w))
 

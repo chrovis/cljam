@@ -8,18 +8,19 @@
             [cljam.fastq :as fastq]
             [cljam.vcf :as vcf]
             [cljam.bcf :as bcf]
-            [cljam.bed :as bed])
+            [cljam.bed :as bed]
+            [cljam.pileup.mpileup :as mplp])
   (:import [java.io Closeable]))
 
 (defn alignment-reader?
-  "Checks if given object implements ISAMReader"
+  "Checks if given object implements protocol IAlignmentReader."
   [rdr]
-  (satisfies? io/ISAMReader rdr))
+  (satisfies? cljam.io/IAlignmentReader rdr))
 
 (defn alignment-writer?
-  "Checks if given object implements ISAMWriter"
+  "Checks if given object implements protocol IAlignmentWriter."
   [wtr]
-  (satisfies? io/ISAMWriter wtr))
+  (satisfies? cljam.io/IAlignmentWriter wtr))
 
 (defn sam-reader?
   "Checks if given object is an instance of SAMReader."
@@ -41,6 +42,16 @@
   [wtr]
   (instance? cljam.bam.writer.BAMWriter wtr))
 
+(defn variant-reader?
+  "Checks if given object implements protocol IVariantReader."
+  [rdr]
+  (satisfies? cljam.io/IVariantReader rdr))
+
+(defn variant-writer?
+  "Checks if given object implements protocol IVariantWriter."
+  [wtr]
+  (satisfies? cljam.io/IVariantWriter wtr))
+
 (defn vcf-reader?
   "Checks if given object is an instance of VCFReader."
   [rdr]
@@ -60,6 +71,11 @@
   "Checks if given object is an instance of BCFWriter."
   [wtr]
   (instance? cljam.bcf.writer.BCFWriter wtr))
+
+(defn sequence-reader?
+  "Checks if given object implements protocol ISequenceReader."
+  [rdr]
+  (satisfies? cljam.io/ISequenceReader rdr))
 
 (defn fasta-reader?
   "Checks if given object is an instance of FASTAReader."
@@ -139,4 +155,3 @@
     :bcf (apply bcf/writer f args)
     :bed (bed/writer f)
     :else (throw (IllegalArgumentException. "Invalid file type"))))
-

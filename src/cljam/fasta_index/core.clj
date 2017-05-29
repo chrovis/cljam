@@ -1,6 +1,6 @@
 (ns cljam.fasta-index.core
   "The core of FASTA index features."
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [me.raynes.fs :as fs]
             [cljam.fasta-index.writer :as writer]
@@ -12,13 +12,13 @@
 (defn writer
   [f]
   (cljam.fasta_index.writer.FAIWriter.
-   (io/writer f)
-   (.getAbsolutePath (io/file f))))
+   (cio/writer f)
+   (.getAbsolutePath (cio/file f))))
 
 (defn create-index
   "Creates a FASTA index file from the sequences."
   [in-fa out-fai]
-  (with-open [r (io/reader (util/compressor-input-stream in-fa))
+  (with-open [r (cio/reader (util/compressor-input-stream in-fa))
               w ^cljam.fasta_index.writer.FAIWriter (writer out-fai)]
     (try
       (writer/write-index! r w)
@@ -32,9 +32,9 @@
 (defn reader
   [f]
   (cljam.fasta_index.reader.FAIReader.
-   (with-open [rdr (io/reader f)]
+   (with-open [rdr (cio/reader f)]
      (reader/parse-fai rdr))
-   (.getAbsolutePath (io/file f))))
+   (.getAbsolutePath (cio/file f))))
 
 (defn get-header
   [^cljam.fasta_index.reader.FAIReader fai name]

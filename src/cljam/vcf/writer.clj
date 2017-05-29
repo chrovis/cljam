@@ -3,15 +3,24 @@
   https://samtools.github.io/hts-specs/ for the detail VCF specifications."
   (:require [clojure.string :as cstr]
             [camel-snake-kebab.core :refer [->camelCaseString]]
-            [cljam.util.vcf-util :as vcf-util]))
+            [cljam.io :as io]
+            [cljam.util.vcf-util :as vcf-util])
+  (:import [java.io Closeable BufferedWriter]))
+
+(declare write-variants)
 
 ;; VCFWriter
 ;; ---------
 
 (deftype VCFWriter [f writer meta-info header]
-  java.io.Closeable
+  Closeable
   (close [this]
-    (.close ^java.io.Closeable (.writer this))))
+    (.close ^Closeable (.writer this)))
+  io/IWriter
+  (writer-path [this] (.f this))
+  io/IVariantWriter
+  (write-variants [this variants]
+    (write-variants this variants)))
 
 ;; Vars and utilities
 ;; ------------------
@@ -26,7 +35,7 @@
   (if (nil? s) "." s))
 
 (defn- write-line
-  [^java.io.BufferedWriter bwtr ^String s]
+  [^BufferedWriter bwtr ^String s]
   (doto bwtr
     (.write s)
     (.newLine)))

@@ -1,7 +1,6 @@
 (ns cljam.t-dedupe
   (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
-            [cljam.io :as cio]
             [cljam.bam :as bam]
             [cljam.dedupe :as dedupe]))
 

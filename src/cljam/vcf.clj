@@ -1,6 +1,6 @@
 (ns cljam.vcf
   "Functions to read and write the Variant Call Format (VCF)."
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io :as cio]
             [cljam.util :as util]
             [cljam.vcf.reader :as vcf-reader]
             [cljam.vcf.writer :as vcf-writer])
@@ -14,12 +14,12 @@
   "Returns an open cljam.vcf.reader.VCFReader of f. Should be used inside
   with-open to ensure the Reader is properly closed."
   [f]
-  (let [meta-info (with-open [r (io/reader (util/compressor-input-stream f))]
+  (let [meta-info (with-open [r (cio/reader (util/compressor-input-stream f))]
                     (vcf-reader/load-meta-info r))
-        header (with-open [r (io/reader (util/compressor-input-stream f))]
+        header (with-open [r (cio/reader (util/compressor-input-stream f))]
                  (vcf-reader/load-header r))]
-    (VCFReader. (.getAbsolutePath (io/file f)) meta-info header
-                (io/reader (util/compressor-input-stream f)))))
+    (VCFReader. (.getAbsolutePath (cio/file f)) meta-info header
+                (cio/reader (util/compressor-input-stream f)))))
 
 (defn meta-info
   "Returns meta-information of the VCF from rdr as a map."
@@ -39,8 +39,10 @@
 
     :deep Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
     :vcf  VCF-style map. FORMAT, FILTER, INFO and samples columns are strings."
-  [rdr & {:keys [depth] :or {depth :deep}}]
-  (vcf-reader/read-variants rdr :depth depth))
+  ([rdr]
+   (read-variants rdr {}))
+  ([rdr {:keys [depth] :or {depth :deep}}]
+   (vcf-reader/read-variants rdr {:depth depth})))
 
 ;; Writing
 ;; -------
@@ -55,8 +57,8 @@
                             [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
       (WRITING-VCF))"
   [f meta-info header]
-  (doto (VCFWriter. (.getAbsolutePath (io/file f))
-                    (io/writer (util/compressor-output-stream f))
+  (doto (VCFWriter. (.getAbsolutePath (cio/file f))
+                    (cio/writer (util/compressor-output-stream f))
                     meta-info
                     header)
     (vcf-writer/write-meta-info meta-info)

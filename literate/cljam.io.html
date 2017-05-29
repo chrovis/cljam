@@ -2867,6 +2867,8 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io" name="cljam.io"><h1 class="project-name">cljam.io</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Protocols of SAM/BAM reader.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord SAMAlignment
+  [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defprotocol ISAMReader
   (reader-path [this] &quot;Returns the file's absolute path.&quot;)
   (read-header [this] &quot;Returns header of the SAM/BAM file.&quot;)

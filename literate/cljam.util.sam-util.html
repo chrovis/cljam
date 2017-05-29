@@ -2868,10 +2868,12 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.util.sam-util" name="cljam.util.sam-util"><h1 class="project-name">cljam.util.sam-util</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utilities related to SAM/BAM format.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.util.sam-util
   (:require [clojure.string :as cstr]
+            [cljam.io :as io]
             [cljam.cigar :refer [count-ref]]
             [cljam.util :refer [ubyte str-&gt;int str-&gt;float]])
   (:import [java.nio CharBuffer ByteBuffer]
-           [java.nio.charset StandardCharsets]))</pre></td></tr><tr><td class="docs"><p>parse</p>
+           [java.nio.charset StandardCharsets]
+           [cljam.io SAMAlignment]))</pre></td></tr><tr><td class="docs"><p>parse</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>e.g. "LN:45 SN:ref" -> {:LN 45, :SN "ref"}</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-header-keyvalues
   [keyvalues]
@@ -2952,19 +2954,13 @@ net.brehaut.ClojureTools = (function (SH) {
   (cstr/upper-case s))</pre></td></tr><tr><td class="docs"><p>Parse an alignment line, returning a map of the alignment.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn parse-alignment
   [line]
-  (let [fields (cstr/split line #&quot;\t&quot;)]
-    {:qname   (first fields)
-     :flag    (Integer/parseInt (nth fields 1))
-     :rname   (nth fields 2)
-     :pos     (Integer/parseInt (nth fields 3))
-     :mapq    (Integer/parseInt (nth fields 4))
-     :cigar   (nth fields 5)
-     :rnext   (nth fields 6)
-     :pnext   (Integer/parseInt (nth fields 7))
-     :tlen    (Integer/parseInt (nth fields 8))
-     :seq     (parse-seq-text (nth fields 9))
-     :qual    (nth fields 10)
-     :options (vec (parse-optional-fields (drop 11 fields)))}))</pre></td></tr><tr><td class="docs"><p>stringify</p>
+  (let [[qname flag rname pos-str mapq cigar rnext pnext tlen seq qual &amp; options] (cstr/split line #&quot;\t&quot;)
+        pos (Integer/parseInt pos-str)
+        ref-length (count-ref cigar)
+        end (if (zero? ref-length) 0 (int (dec (+ pos ref-length))))]
+    (SAMAlignment. qname (Integer/parseInt flag) rname pos end (Integer/parseInt mapq)
+                   cigar rnext (Integer/parseInt pnext) (Integer/parseInt tlen) (parse-seq-text seq)
+                   qual (vec (parse-optional-fields options)))))</pre></td></tr><tr><td class="docs"><p>stringify</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-header-keyvalues [kv-map]
   (cstr/join \tab
@@ -3098,7 +3094,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defmacro fastq-char-&gt;phred-byte [ch]
   `(byte (- (int ~ch) 33)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmacro phred-byte-&gt;fastq-char [b]
-  `(char (+ ~b 33)))</pre></td></tr><tr><td class="docs">
+  `(unchecked-char (unchecked-add ~b 33)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn fastq-&gt;phred ^bytes [^String fastq]
   (let [b (.getBytes fastq)
         in-bb (ByteBuffer/wrap b)
@@ -3107,7 +3103,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (.put out-bb (fastq-char-&gt;phred-byte (.get in-bb))))
     (.array out-bb)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmulti phred-&gt;fastq class)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmethod phred-&gt;fastq (class (byte-array nil))
+</td><td class="codes"><pre class="brush: clojure">(defn phred-bytes-&gt;fastq
   [^bytes b]
   (when-not (nil? b)
     (let [bb (ByteBuffer/wrap b)
@@ -3118,6 +3114,9 @@ net.brehaut.ClojureTools = (function (SH) {
           (recur)))
       (.flip cb)
       (.toString cb))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod phred-&gt;fastq (class (byte-array nil))
+  [^bytes b]
+  (phred-bytes-&gt;fastq b))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:const max-phred-score 93)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmethod phred-&gt;fastq Integer
   [n]
@@ -3137,8 +3136,8 @@ net.brehaut.ClojureTools = (function (SH) {
   (memoize ref-id*))</pre></td></tr><tr><td class="docs"><p>Returns a reference name from the reference ID. Returns nil if id is not
   mapped.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ref-name
-  [refs id]
-  (if (&lt;= 0 id (dec (count refs)))
+  [refs ^long id]
+  (when (&lt;= 0 id (dec (count refs)))
     (:name (nth refs id))))</pre></td></tr><tr><td class="docs"><p>Returns the first reference which has the specified name.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ref-by-name
   [refs name]

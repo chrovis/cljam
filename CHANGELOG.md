@@ -1,6 +1,6 @@
 # Change Log
 
-## [Unreleased]
+## [0.3.1] - 2017-05-29
 
 ### Added
 
@@ -176,7 +176,8 @@ represents the first three bases of chromosome 1.
 
 First release
 
-[Unreleased]: https://github.com/chrovis/cljam/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.3.1...HEAD
+[0.3.1]: https://github.com/chrovis/cljam/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/chrovis/cljam/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/chrovis/cljam/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/chrovis/cljam/compare/0.1.6...0.2.0

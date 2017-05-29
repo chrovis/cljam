@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
             [cljam.fasta :as fasta]
-            [clojure.string :as str]))
+            [clojure.string :as cstr]))
 
 (deftest read-fasta-file
   (is (thrown? java.io.IOException
@@ -41,12 +41,86 @@
 (deftest sequential-reading-of-fasta-file
   (is (thrown? Exception (fasta/sequential-read test-tabix-file)))
   (is (= (fasta/sequential-read test-fa-file)
-         (map #(update % :sequence str/upper-case) test-fa-sequences)))
+         (map #(update % :sequence cstr/upper-case) test-fa-sequences)))
   (is (= (fasta/sequential-read test-fa-bz2-file)
-         (map #(update % :sequence str/upper-case) test-fa-sequences)))
+         (map #(update % :sequence cstr/upper-case) test-fa-sequences)))
   (let [fa (fasta/sequential-read medium-fa-file)]
     (is (= (map :name fa) '("chr1")))
     (is (= (map (comp count :sequence) fa) '(100000))))
   (let [fa (fasta/sequential-read medium-fa-gz-file)]
     (is (= (map :name fa) '("chr1")))
     (is (= (map (comp count :sequence) fa) '(100000)))))
+
+(deftest write-fasta-file
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (let [f (str temp-dir "/test.fa")]
+      (with-open [r (fasta/reader test-fa-file)
+                  w (fasta/writer f)]
+        (fasta/write-sequences w (fasta/read r)))
+      (is (= (fasta/sequential-read f)
+             (fasta/sequential-read test-fa-file)))
+
+      (is (same-file? f test-fa-file))
+      (is (same-file? (str f ".fai") test-fai-file))
+
+      (with-open [r1 (fasta/reader f :ignore-index false)
+                  r2 (fasta/reader test-fa-file :ignore-index false)]
+        (is (= (map (juxt :rname :seq) (fasta/read r1))
+               (map (juxt :rname :seq) (fasta/read r2))))))
+
+    (let [f (str temp-dir "/test2.fa")]
+      (with-open [r (fasta/reader test-fa-file)
+                  w (fasta/writer f)]
+        (fasta/write-sequences w (map (fn [s] (update s :seq (fn [x] (map cstr/upper-case x)))) (fasta/read r))))
+      (with-open [r1 (fasta/reader f :ignore-index false)
+                  r2 (fasta/reader test-fa-file :ignore-index false)]
+        (is (= (map (juxt :rname (comp cstr/upper-case :seq)) (fasta/read r1))
+               (map (juxt :rname (comp cstr/upper-case :seq)) (fasta/read r2))))))
+
+    (let [f (str temp-dir "/medium.fa")]
+      (with-open [r (fasta/reader medium-fa-file)
+                  w (fasta/writer f {:cols 60})]
+        (fasta/write-sequences w (fasta/read r)))
+      (is (= (fasta/sequential-read f)
+             (fasta/sequential-read medium-fa-file)))
+
+      (is (same-file? f medium-fa-file))
+      (is (same-file? (str f ".fai") medium-fai-file))
+
+      (with-open [r1 (fasta/reader f :ignore-index false)
+                  r2 (fasta/reader medium-fa-file :ignore-index false)]
+        (is (= (map (juxt :rname :seq) (fasta/read r1))
+               (map (juxt :rname :seq) (fasta/read r2))))))
+
+    (let [f (str temp-dir "/test.fa.gz")]
+      (with-open [r (fasta/reader test-fa-file)
+                  w (fasta/writer f)]
+        (fasta/write-sequences w (fasta/read r)))
+      (is (= (fasta/sequential-read f)
+             (fasta/sequential-read test-fa-file))))
+
+    (let [f (str temp-dir "/test.fa.bz2")]
+      (with-open [r (fasta/reader test-fa-file)
+                  w (fasta/writer f)]
+        (fasta/write-sequences w (fasta/read r)))
+      (is (= (fasta/sequential-read f)
+             (fasta/sequential-read test-fa-file))))
+
+    (let [f (str temp-dir "/test3.fa")]
+      (with-open [w (fasta/writer f)]
+        (fasta/write-sequences w (fasta/sequential-read test-fa-file)))
+      (is (= (fasta/sequential-read f)
+             (fasta/sequential-read test-fa-file)))
+      (with-open [r1 (fasta/reader f :ignore-index false)
+                  r2 (fasta/reader test-fa-file :ignore-index false)]
+        (is (= (map (juxt :rname (comp cstr/upper-case :seq)) (fasta/read r1))
+               (map (juxt :rname (comp cstr/upper-case :seq)) (fasta/read r2))))))
+
+    (let [f (str temp-dir "/test4.fa")]
+      (with-open [r (fasta/reader test-fa-file)
+                  w (fasta/writer f {:create-index? false})]
+        (fasta/write-sequences w (fasta/read r)))
+
+      (is (thrown? java.io.FileNotFoundException
+                   (with-open [r (fasta/reader f :ignore-index false)]))))))

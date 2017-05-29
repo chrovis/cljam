@@ -65,8 +65,8 @@
   io/IReader
   (reader-path [this] (.f this))
   (read
-    ([this] (sequential-read (.f this)))
-    ([this option] (sequential-read (.f this))))
+    ([this] (io/read this {}))
+    ([this option] (io/read-all-sequences this option)))
   io/IRegionReader
   (read-in-region
     ([this region]
@@ -74,6 +74,10 @@
     ([this region option]
      (io/read-sequence this region option)))
   io/ISequenceReader
+  (read-all-sequences
+    ([this] (io/read-all-sequences this {}))
+    ([this option]
+     (sequential-read (.f this))))
   (read-sequence
     ([this region]
      (io/read-sequence this region {}))

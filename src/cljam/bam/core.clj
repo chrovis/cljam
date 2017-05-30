@@ -1,7 +1,6 @@
 (ns cljam.bam.core
   "The core of BAM features."
   (:require [clojure.java.io :as cio]
-            [me.raynes.fs :as fs]
             [cljam.lsb :as lsb]
             (cljam.bam [common :refer [bam-magic]]
                        [reader :as reader]
@@ -20,7 +19,7 @@
                        :or {ignore false}}]
   (if-not ignore
     (let [bai-f (str f ".bai")]
-      (if (fs/exists? bai-f)
+      (if (.isFile (cio/file bai-f))
         (bai/bam-index bai-f)
         (throw (IOException. "Could not find BAM Index file"))))))
 

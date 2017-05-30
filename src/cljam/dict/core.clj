@@ -2,7 +2,6 @@
   "The core of dictionary features."
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
-            [me.raynes.fs :as fs]
             [cljam.dict.writer :as writer])
   (:import cljam.dict.writer.DICTWriter))
 
@@ -29,6 +28,6 @@
     (try
       (writer/write-dict! w headers sequences ur)
       (catch Exception e (do
-                           (fs/delete (.f w))
+                           (cio/delete-file (.f w))
                            (logging/error "Failed to create dictionary")
                            (throw e))))))

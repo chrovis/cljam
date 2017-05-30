@@ -2,7 +2,6 @@
   "The core of FASTA index features."
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
-            [me.raynes.fs :as fs]
             [cljam.fasta-index.writer :as writer]
             [cljam.fasta-index.reader :as reader]
             [cljam.util :as util]))
@@ -23,7 +22,7 @@
     (try
       (writer/write-index! r w)
       (catch Exception e (do
-                           (fs/delete (.f w))
+                           (cio/delete-file (.f w))
                            (logging/error "Failed to create FASTA index")
                            (throw e))))))
 

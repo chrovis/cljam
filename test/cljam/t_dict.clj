@@ -2,7 +2,6 @@
   "Tests for cljam.dict."
   (:require [clojure.test :refer :all]
             [clojure.string :as string]
-            [me.raynes.fs :as fs]
             [clojure.java.io :as cio]
             [cljam.t-common :refer :all]
             [cljam.dict :as dict]))
@@ -33,7 +32,8 @@
 
 (deftest about-create-dict
   (with-before-after {:before (do (prepare-cache!)
-                                  (fs/copy test-fa-file temp-fa-file))
+                                  (cio/copy (cio/file test-fa-file)
+                                            (cio/file temp-fa-file)))
                       :after (clean-cache!)}
     ;; Create dictionary without errors
     (is (not-throw? (dict/create-dict temp-fa-file out-dict-file)))

@@ -52,5 +52,11 @@
     "Writes variants to thee VCF/BCF file."))
 
 (defprotocol ISequenceReader
+  (read-all-sequences [this] [this option]
+    "Reads all sequences of FASTA/2BIT file.")
   (read-sequence [this region] [this region option]
-    "Reads all sequences of FASTA/2BIT file."))
+    "Reads sequence in region of FASTA/2BIT file."))
+
+(defprotocol ISequenceWriter
+  (write-sequences [this seqs]
+    "Writes all sequences to FASTA/2BIT file."))

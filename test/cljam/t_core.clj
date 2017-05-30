@@ -199,6 +199,9 @@
       core/alignment-writer? true
       core/sam-writer? true
       core/bam-writer? false
+      core/sequence-writer? false
+      core/fasta-writer? false
+      core/twobit-writer? false
       core/variant-writer? false
       core/vcf-writer? false
       core/bcf-writer? false
@@ -211,6 +214,39 @@
       core/alignment-writer? true
       core/sam-writer? false
       core/bam-writer? true
+      core/sequence-writer? false
+      core/fasta-writer? false
+      core/twobit-writer? false
+      core/variant-writer? false
+      core/vcf-writer? false
+      core/bcf-writer? false
+      core/fastq-writer? false
+      core/bed-writer? false))
+
+  (with-open [r (core/writer (.getAbsolutePath (cio/file util/temp-dir "temp.fa")))]
+    (are [?pred ?expected]
+        (= (?pred r) ?expected)
+      core/alignment-writer? false
+      core/sam-writer? false
+      core/bam-writer? false
+      core/sequence-writer? true
+      core/fasta-writer? true
+      core/twobit-writer? false
+      core/variant-writer? false
+      core/vcf-writer? false
+      core/bcf-writer? false
+      core/fastq-writer? false
+      core/bed-writer? false))
+
+  (with-open [r (core/writer (.getAbsolutePath (cio/file util/temp-dir "temp.2bit")))]
+    (are [?pred ?expected]
+        (= (?pred r) ?expected)
+      core/alignment-writer? false
+      core/sam-writer? false
+      core/bam-writer? false
+      core/sequence-writer? true
+      core/fasta-writer? false
+      core/twobit-writer? true
       core/variant-writer? false
       core/vcf-writer? false
       core/bcf-writer? false
@@ -223,6 +259,9 @@
       core/alignment-writer? false
       core/sam-writer? false
       core/bam-writer? false
+      core/sequence-writer? false
+      core/fasta-writer? false
+      core/twobit-writer? false
       core/variant-writer?  true
       core/vcf-writer? true
       core/bcf-writer? false
@@ -235,6 +274,9 @@
       core/alignment-writer? false
       core/sam-writer? false
       core/bam-writer? false
+      core/sequence-writer? false
+      core/fasta-writer? false
+      core/twobit-writer? false
       core/variant-writer?  true
       core/vcf-writer? false
       core/bcf-writer? true
@@ -247,6 +289,9 @@
       core/alignment-writer? false
       core/sam-writer? false
       core/bam-writer? false
+      core/sequence-writer? false
+      core/fasta-writer? false
+      core/twobit-writer? false
       core/variant-writer?  false
       core/vcf-writer? false
       core/bcf-writer? false
@@ -259,6 +304,9 @@
       core/alignment-writer? false
       core/sam-writer? false
       core/bam-writer? false
+      core/sequence-writer? false
+      core/fasta-writer? false
+      core/twobit-writer? false
       core/variant-writer?  false
       core/vcf-writer? false
       core/bcf-writer? false

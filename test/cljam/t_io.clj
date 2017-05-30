@@ -27,6 +27,8 @@
             (= (io/writer-path r) (.getAbsolutePath (cio/file f)))))
       "sam"
       "bam"
+      "fasta"
+      "2bit"
       "fastq"
       "bed")
 
@@ -102,6 +104,18 @@
 
   (is
    (= (with-open [r (core/reader common/test-fa-file)]
+        (doall (io/read-all-sequences r)))
+      [{:name "ref", :sequence "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"}
+       {:name "ref2", :sequence "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"}]))
+
+  (is
+   (= (with-open [r (core/reader common/test-fa-file)]
+        (doall (io/read-all-sequences r {})))
+      [{:name "ref", :sequence "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"}
+       {:name "ref2", :sequence "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"}]))
+
+  (is
+   (= (with-open [r (core/reader common/test-fa-file)]
         (io/read-in-region r {:chr "ref" :start 1 :end 10}))
       "AGCATGTTAG"))
 
@@ -120,6 +134,17 @@
   (is
    (= (with-open [r (core/reader common/test-twobit-file)]
         (doall (io/read r {:mask? true})))
+      [{:name "ref", :sequence "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"}
+       {:name "ref2", :sequence "aggttttataaaacaattaagtctacagagcaactacgcg"}]))
+  (is
+   (= (with-open [r (core/reader common/test-twobit-file)]
+        (doall (io/read-all-sequences r)))
+      [{:name "ref", :sequence "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"}
+       {:name "ref2", :sequence "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"}]))
+
+  (is
+   (= (with-open [r (core/reader common/test-twobit-file)]
+        (doall (io/read-all-sequences r {:mask? true})))
       [{:name "ref", :sequence "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"}
        {:name "ref2", :sequence "aggttttataaaacaattaagtctacagagcaactacgcg"}]))
 

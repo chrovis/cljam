@@ -1,7 +1,8 @@
 (ns cljam.t-twobit
   (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
-            [cljam.twobit :as tb]))
+            [cljam.twobit :as tb]
+            [cljam.io :as io]))
 
 (deftest twobit-reference
   (with-open [r (tb/reader test-twobit-file)]
@@ -46,3 +47,21 @@
   (with-open [r (tb/reader test-twobit-be-n-file)]
     (is (= (tb/read-sequence r {:chr "ref"})
            "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"))))
+
+(deftest twobit-writer
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (let [f (str temp-dir "/test.2bit")]
+      (with-open [r (tb/reader test-twobit-file)
+                  w (tb/writer f)]
+        (io/write-sequences w (io/read-all-sequences r {:mask? true})))
+      (is (same-file? f test-twobit-file))
+      (with-open [r1 (tb/reader f)
+                  r2 (tb/reader test-twobit-file)]
+        (is (= (io/read-all-sequences r1 {:mask? true}) (io/read-all-sequences r2 {:mask? true})))))
+
+    (let [f (str temp-dir "/test-n.2bit")]
+      (with-open [r (tb/reader test-twobit-n-file)
+                  w (tb/writer f)]
+        (io/write-sequences w (io/read-all-sequences r {:mask? true})))
+      (is (same-file? f test-twobit-n-file)))))

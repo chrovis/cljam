@@ -77,15 +77,30 @@
   [rdr]
   (satisfies? cljam.io/ISequenceReader rdr))
 
+(defn sequence-writer?
+  "Checks if given object implements protocol ISequenceWriter."
+  [wtr]
+  (satisfies? cljam.io/ISequenceWriter wtr))
+
 (defn fasta-reader?
   "Checks if given object is an instance of FASTAReader."
   [rdr]
   (instance? cljam.fasta.reader.FASTAReader rdr))
 
+(defn fasta-writer?
+  "Checks if given object is an instance of FASTAWriter."
+  [wtr]
+  (instance? cljam.fasta.writer.FASTAWriter wtr))
+
 (defn twobit-reader?
   "Checks if given object is an instance of TwoBitReader."
   [rdr]
-  (instance? cljam.twobit.TwoBitReader rdr))
+  (instance? cljam.twobit.reader.TwoBitReader rdr))
+
+(defn twobit-writer?
+  "Checks if given object is an instance of TwoBitWriter."
+  [wtr]
+  (instance? cljam.twobit.writer.TwoBitWriter wtr))
 
 (defn fastq-reader?
   "Checks if given object is an instance of FASTQReader."
@@ -145,11 +160,13 @@
 
 (defn ^Closeable writer
   "Selects suitable writer from f's extension, returning the writer.
-  This function supports SAM,BAM,FASTQ,VCF,BCF and BED format."
+  This function supports SAM,BAM,FASTA,2BIT,FASTQ,VCF,BCF and BED format."
   [f & args]
   (case (file-type f)
     :sam (sam/writer f)
     :bam (bam/writer f)
+    :fasta (apply fasta/writer f args)
+    :2bit (twobit/writer f)
     :fastq (fastq/writer f)
     :vcf (apply vcf/writer f args)
     :bcf (apply bcf/writer f args)

@@ -1,7 +1,7 @@
 (ns cljam.t-bam-indexer
   "Tests for cljam.bam-indexer."
   (:require [clojure.test :refer :all]
-            [me.raynes.fs :as fs]
+            [clojure.java.io :as cio]
             [cljam.t-common :refer :all]
             [cljam.bam :as bam]
             [cljam.io :as io]
@@ -13,12 +13,12 @@
 
 (deftest about-bam-indexer
   (with-before-after {:before (do (prepare-cache!)
-                                  (fs/copy test-sorted-bam-file
-                                           temp-file-sorted))
+                                  (cio/copy (cio/file test-sorted-bam-file)
+                                            (cio/file temp-file-sorted)))
                       :after (clean-cache!)}
     (is (not-throw? (bai/create-index temp-file-sorted
                                       (str temp-file-sorted ".bai"))))
-    (is (fs/exists? (str temp-file-sorted ".bai")))
+    (is (.isFile (cio/file (str temp-file-sorted ".bai"))))
     (is (same-file? (str temp-file-sorted ".bai") test-bai-file))
     (is (= (with-open [r (bam/reader temp-file-sorted)]
              (doall (io/read-alignments r {:chr "ref" :start 0 :end 1000})))
@@ -43,7 +43,7 @@
                                       (sorter/sort-by-pos rdr wtr)))
                         :after (clean-cache!)}
       (is (not-throw? (bai/create-index sorted-f (str sorted-f ".bai"))))
-      (is (fs/exists? (str sorted-f ".bai")))
+      (is (.isFile (cio/file (str sorted-f ".bai"))))
       (is (= (with-open [r (bam/reader sorted-f)]
                (doall (io/read-alignments r {:chr "ref" :start 0 :end 1000})))
              (filter #(= "ref" (:rname %))
@@ -54,19 +54,21 @@
 
 (deftest about-bam-indexer-small-file
   (with-before-after {:before (do (prepare-cache!)
-                                  (fs/copy small-bam-file temp-file-sorted)
-                                  (fs/copy small-bam-file temp-file-sorted-2))
+                                  (cio/copy (cio/file small-bam-file)
+                                            (cio/file temp-file-sorted))
+                                  (cio/copy (cio/file small-bam-file)
+                                            (cio/file temp-file-sorted-2)))
                       :after (clean-cache!)}
     (let [temp-file-sorted-bai (str temp-file-sorted ".bai")
           temp-file-sorted-bai-2 (str temp-file-sorted-2 ".bai")]
       (is (not-throw? (bai/create-index temp-file-sorted
                                         temp-file-sorted-bai
                                         :n-threads 1)))
-      (is (fs/exists? temp-file-sorted-bai))
+      (is (.isFile (cio/file temp-file-sorted-bai)))
       (is (not-throw? (bai/create-index temp-file-sorted-2
                                         temp-file-sorted-bai-2
                                         :n-threads 4)))
-      (is (fs/exists? temp-file-sorted-bai-2))
+      (is (.isFile (cio/file temp-file-sorted-bai-2)))
       (is (same-file? temp-file-sorted-bai temp-file-sorted-bai-2))
       (with-open [r (bam/reader temp-file-sorted)]
         ;; Random read with different number of spans.
@@ -80,7 +82,8 @@
 
 (deftest-slow about-bam-indexer-medium-file
   (with-before-after {:before (do (prepare-cache!)
-                                  (fs/copy medium-bam-file temp-file-sorted))
+                                  (cio/copy (cio/file medium-bam-file)
+                                            (cio/file temp-file-sorted)))
                       :after (clean-cache!)}
     (is (not-throw? (bai/create-index temp-file-sorted
                                       (str temp-file-sorted ".bai"))))
@@ -91,13 +94,14 @@
                                (= (:tlen a) 0)
                                (pos? (bit-and (:flag a) 4))))
                   (io/read-alignments r {:chr "*"}))))
-    (is (fs/exists? (str temp-file-sorted ".bai")))))
+    (is (.isFile (cio/file (str temp-file-sorted ".bai"))))))
 
 (deftest-remote about-bam-indexer-large-file
   (with-before-after {:before (do (prepare-cavia!)
                                   (prepare-cache!)
-                                  (fs/copy large-bam-file temp-file-sorted))
+                                  (cio/copy (cio/file large-bam-file)
+                                            (cio/file temp-file-sorted)))
                       :after (clean-cache!)}
     (is (not-throw? (bai/create-index temp-file-sorted
                                       (str temp-file-sorted ".bai"))))
-    (is (fs/exists? (str temp-file-sorted ".bai")))))
+    (is (.isFile (cio/file (str temp-file-sorted ".bai"))))))

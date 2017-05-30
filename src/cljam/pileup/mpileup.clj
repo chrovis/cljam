@@ -1,8 +1,8 @@
 (ns cljam.pileup.mpileup
-  (:require [clojure.string :as cstr]
+  (:require [clojure.java.io :as cio]
+            [clojure.string :as cstr]
             [clojure.java.io :refer [writer]]
             [clojure.tools.logging :as logging]
-            [me.raynes.fs :as fs]
             [cljam.util.sam-util :as sam-util]
             [cljam.sequence :as cseq]
             [cljam.io :as io]
@@ -178,6 +178,6 @@
           (when-not (zero? (:count line))
             (write-line! w line)))))
     (catch Exception e (do
-                         (fs/delete f)
+                         (cio/delete-file f)
                          (logging/error "Failed to create mpileup")
                          (throw e)))))

@@ -2,7 +2,6 @@
   "The core of BAM index features."
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
-            [me.raynes.fs :as fs]
             (cljam.bam-index [common :refer :all]
                              [chunk :as chunk]
                              [reader :as reader]
@@ -88,6 +87,6 @@
     (try
       (writer/write-index! w alns)
       (catch Exception e (do
-                           (fs/delete (.f w))
+                           (cio/delete-file (.f w))
                            (logging/error "Failed to create BAM index")
                            (throw e))))))

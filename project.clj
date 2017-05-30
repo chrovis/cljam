@@ -6,7 +6,6 @@
   :dependencies [[org.clojure/tools.logging "0.3.1"]
                  [org.clojure/tools.cli "0.3.5"]
                  [org.apache.commons/commons-compress "1.14"]
-                 [me.raynes/fs "1.4.6"]
                  [clj-sub-command "0.3.0"]
                  [digest "1.4.5"]
                  [bgzf4j "0.1.0"]

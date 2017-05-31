@@ -131,6 +131,9 @@
 (def ^:private sort-cli-options
   [["-o" "--order ORDER" "Sorting order of alignments <coordinate|queryname>"
     :default "coordinate"]
+   ["-c" "--chunk CHUNK" "Maximum number of alignments sorted per thread."
+    :default sorter/default-chunk-size
+    :parse-fn #(Integer/parseInt %)]
    ["-h" "--help" "Print help"]])
 
 (defn- sort-usage [options-summary]
@@ -152,8 +155,8 @@
       (with-open [r (reader in)
                   w (writer out)]
         (condp = (:order options)
-          (name sorter/order-coordinate) (sorter/sort-by-pos r w)
-          (name sorter/order-queryname) (sorter/sort-by-qname r w)))))
+          (name sorter/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
+          (name sorter/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
   nil)
 
 ;; ### index command

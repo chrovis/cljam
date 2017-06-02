@@ -108,6 +108,10 @@
     (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-bam-sam-file))))
     (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-sam-bam-file))))
     (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-bam-file))))
+    (is (coord-sorted? tmp-coordinate-sorted-sam-sam-file))
+    (is (coord-sorted? tmp-coordinate-sorted-sam-bam-file))
+    (is (coord-sorted? tmp-coordinate-sorted-bam-sam-file))
+    (is (coord-sorted? tmp-coordinate-sorted-bam-bam-file))
     (is (qname-sorted? tmp-queryname-sorted-sam-file-2))
     (is (qname-sorted? tmp-queryname-sorted-bam-file-2))
     ;; compare generated files
@@ -129,6 +133,7 @@
            (sorter/sort-by-pos r w {:chunk-size 3}))))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-bam-file))
     (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-bam-file))))
+    (is (coord-sorted? tmp-coordinate-sorted-bam-bam-file))
 
     (is (not-throw?
          (with-open [r (core/reader tmp-shuffled-sam-file :ignore-index true)
@@ -136,6 +141,7 @@
            (sorter/sort-by-pos r w {:chunk-size 3 :cache-fmt :sam}))))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-sam-file))
     (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-sam-file))))
+    (is (coord-sorted? tmp-coordinate-sorted-sam-sam-file))
 
     ;; queryname
     (is (not-throw?
@@ -155,44 +161,48 @@
 (deftest-slow about-sorting-medium-file
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (is (thrown? Exception
-                 (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-sam-file)))
-    (is (nil? (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-bam-file)))
-    ;; (is (not-throw? (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-sam-file))) ; TODO: future
-    ;; (is (not-throw? (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-bam-file))) ; TODO: future
+    (is (not-throw? (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-sam-file)))
+    (is (not-throw? (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-bam-file)))
+    (is (not-throw? (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-sam-file)))
+    (is (not-throw? (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-bam-file)))
     (is (not (with-reader sorter/sorted-by? medium-bam-file)))
-    (is (not (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file)))
+    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file))
-    ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file)) ; TODO: future
-    ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file)) ; TODO: future
-    (is (= (with-reader sorter/sort-order medium-bam-file)
-           sorter/order-unknown))
-    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file)
-           sorter/order-unknown))
-    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file)
-           sorter/order-coordinate))
-    ;; (is (= (with-reader sorter/sort-order tmp-queryname-sorted-sam-file)
-    ;;        sorter/order-queryname)) ; TODO: future
-    ;; (is (= (with-reader sorter/sort-order tmp-queryname-sorted-bam-file)
-    ;;        sorter/order-queryname)) ; TODO: future
+    (is (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file))
+    (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file))
+    (is (= (with-reader sorter/sort-order medium-bam-file) sorter/order-unknown))
+    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file) sorter/order-coordinate))
+    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file) sorter/order-coordinate))
+    (is (= (with-reader sorter/sort-order tmp-queryname-sorted-sam-file) sorter/order-queryname))
+    (is (= (with-reader sorter/sort-order tmp-queryname-sorted-bam-file) sorter/order-queryname))
     ;; check sorting order
     (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-file))))
-    (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file))))))
+    (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file))))
+    (is (coord-sorted? tmp-coordinate-sorted-sam-file))
+    (is (coord-sorted? tmp-coordinate-sorted-bam-file))
+    (is (qname-sorted? tmp-queryname-sorted-sam-file))
+    (is (qname-sorted? tmp-queryname-sorted-bam-file))))
 
 (deftest-remote about-sorting-large-file
   (with-before-after {:before (do (prepare-cavia!)
                                   (prepare-cache!))
                       :after (clean-cache!)}
-    (is (nil? (with-reader sorter/sort-by-pos large-bam-file tmp-coordinate-sorted-bam-file)))
-    ;; (is (not-throw? (with-reader sorter/sort-by-qname large-bam-file tmp-queryname-sorted-bam-file))) ; TODO: future
-    ;; (is (not (with-reader sorter/sorted-by? large-bam-file)))
+    (is (not-throw?
+         (with-open [r (core/reader large-bam-file)
+                     w (core/writer tmp-coordinate-sorted-bam-file)]
+           ;; Use small chunk size to avoid OOM
+           (sorter/sort-by-pos r w {:chunk-size 100000}))))
+    (is (not-throw?
+         (with-open [r (core/reader large-bam-file)
+                     w (core/writer tmp-queryname-sorted-bam-file)]
+           ;; Use small chunk size to avoid OOM
+           (sorter/sort-by-qname r w {:chunk-size 100000}))))
+    (is (with-reader sorter/sorted-by? large-bam-file))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file))
-    ;; (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file)) ; TODO: future
-    ;; (is (= (with-reader sorter/sort-order large-bam-file) sorter/order-unknown))
-    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file)
-           sorter/order-coordinate))
-    ;; (is (= (with-reader sorter/sort-order tmp-queryname-sorted-bam-file)
-    ;;        sorter/order-queryname)) ; TODO: future
+    (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file))
+    (is (= (with-reader sorter/sort-order large-bam-file) sorter/order-coordinate))
+    (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file) sorter/order-coordinate))
+    (is (= (with-reader sorter/sort-order tmp-queryname-sorted-bam-file) sorter/order-queryname))
     ;; check sorting order
-    ;; (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-file))))
-    ))
+    (is (coord-sorted? tmp-coordinate-sorted-bam-file))
+    (is (qname-sorted? tmp-queryname-sorted-bam-file))))

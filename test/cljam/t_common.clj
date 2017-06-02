@@ -424,10 +424,35 @@
             (filter #(= rname (:rname %)) (:alignments target-sam))))
         target-rnames))))
 
+(defn coord-sorted? [f]
+  (with-open [r (core/reader f :ignore-index true)]
+    (let [rname->id (into {} (map-indexed (fn [i v] [(:name v) i]) (io/read-refs r)))
+          upos #(if (zero? %) Integer/MAX_VALUE %)]
+      (some?
+       (reduce
+        (fn [r x]
+          (let [rf (compare (rname->id (:rname r) Integer/MAX_VALUE) (rname->id (:rname x) Integer/MAX_VALUE))
+                ps (compare (upos (:pos r)) (upos (:pos x)))
+                fl (compare (bit-and 0x10 (:flag r)) (bit-and 0x10 (:flag x)))]
+            (if (or (pos? rf)
+                    (and (zero? rf) (pos? ps))
+                    (and (zero? rf) (zero? ps) (pos? fl)))
+              (reduced nil)
+              x)))
+        (io/read-alignments r))))))
+
 (defn qname-sorted? [f]
   (with-open [r (core/reader f :ignore-index true)]
-    (let [x (map :qname (io/read-alignments r))]
-      (= x (sort x)))))
+    (some?
+     (reduce
+      (fn [r x]
+        (let [qn (compare (:qname r) (:qname x))
+              fl (compare (bit-and 0xc0 (:flag r)) (bit-and 0xc0 (:flag x)))]
+          (if (or (pos? qn)
+                  (and (zero? qn) (pos? fl)))
+            (reduced nil)
+            x)))
+      (io/read-alignments r)))))
 
 ;; Utilities
 ;; ---------

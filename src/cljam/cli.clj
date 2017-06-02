@@ -139,7 +139,7 @@
 (defn- sort-usage [options-summary]
   (->> ["Sort alignments by leftmost coordinates."
         ""
-        "Usage: cljam sort [-o ORDER] <in.bam|sam> <out.bam|sam>"
+        "Usage: cljam sort [-o ORDER] [-c CHUNK] <in.bam|sam> <out.bam|sam>"
         ""
         "Options:"
         options-summary]

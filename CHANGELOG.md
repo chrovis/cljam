@@ -1,5 +1,17 @@
 # Change Log
 
+## [Unreleased]
+
+### Added
+
+* Add protocols for I/O APIs. [#78](https://github.com/chrovis/cljam/pull/78)
+* Add FASTAWriter and TwoBitWriter. [#79](https://github.com/chrovis/cljam/pull/79)
+
+### Changed
+
+* Remove dependency on [raynes/fs](https://github.com/Raynes/fs). [#80](https://github.com/chrovis/cljam/pull/80)
+* Improve sorter. [#81](https://github.com/chrovis/cljam/pull/81)
+
 ## [0.3.1] - 2017-05-29
 
 ### Added

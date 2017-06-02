@@ -57,26 +57,22 @@
 (deftest about-sort-by-pos
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    ;; see https://gitlab.xcoo.jp/chrovis/cljam/issues/12
-    ;; (is (not-throw? (with-out-file temp-out (cli/sort ["-o" "coordinate" test-sam-file temp-sam])))) ; TODO: future
-    ;; (is (= (slurp-sam-for-test temp-sam) test-sam-sorted-by-pos)) ; TODO: future
-    ;; (is (not-throw? (check-sort-order (slurp-sam-for-test temp-sam)
-    ;;                                   test-sam-sorted-by-pos))) ; TODO: future
-    (is (not-throw? (with-out-file temp-out (cli/sort ["-o" "coordinate" test-bam-file temp-bam]))))
+    (is (not-throw? (with-out-file temp-out (cli/sort ["-o" "coordinate" test-sam-file temp-sam]))))
+    (is (= (slurp-sam-for-test temp-sam) test-sam-sorted-by-pos))
+    (is (not-throw? (check-sort-order (slurp-sam-for-test temp-sam) test-sam-sorted-by-pos)))
+    (is (not-throw? (with-out-file temp-out (cli/sort ["-o" "coordinate" "-c" "4" test-bam-file temp-bam]))))
     (is (= (slurp-bam-for-test temp-bam) test-sam-sorted-by-pos))
-    (is (not-throw? (check-sort-order (slurp-bam-for-test temp-bam)
-                                      test-sam-sorted-by-pos)))
+    (is (not-throw? (check-sort-order (slurp-bam-for-test temp-bam) test-sam-sorted-by-pos)))
     (is (thrown? IllegalArgumentException (with-out-file temp-out (cli/sort ["-o" "coordinate" test-fa-file temp-bam]))))
     (is (thrown? IllegalArgumentException (with-out-file temp-out (cli/sort ["-o" "coordinate" test-bam-file (str temp-dir "/test.unknown")]))))))
 
 (deftest about-sort-by-qname
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    ;; (is (not-throw? (with-out-file temp-out (cli/sort ["-o" "queryname" test-sam-file temp-sam])))) ; TODO: future
-    ;; (is (= (slurp-sam-for-test temp-sam) test-sam-sorted-by-qname)) ; TODO: future
-    ;; (is (not-throw? (with-out-file temp-out (cli/sort ["-o" "queryname" test-bam-file temp-bam])))) ; TODO: future
-    ;; (is (= (slurp-bam-for-test temp-bam) test-sam-sorted-by-qname)) ; TODO: future
-    ))
+    (is (not-throw? (with-out-file temp-out (cli/sort ["-o" "queryname" test-sam-file temp-sam]))))
+    (is (= (slurp-sam-for-test temp-sam) test-sam-sorted-by-qname))
+    (is (not-throw? (with-out-file temp-out (cli/sort ["-o" "queryname" test-bam-file temp-bam]))))
+    (is (= (slurp-bam-for-test temp-bam) test-sam-sorted-by-qname))))
 
 (deftest about-index
   (with-before-after {:before (do (prepare-cache!)

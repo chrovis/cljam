@@ -100,16 +100,20 @@
       (is (= (data->clj (io/read-blocks rdr))
              test-sorted-bam-data)))
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      (is (= (map #(dissoc % :pos :qname :rname) (data->clj (io/read-blocks rdr {:chr "ref2"})))
+      (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
+                  (data->clj (io/read-blocks rdr {:chr "ref2"})))
              (drop 6 test-sorted-bam-data))))
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      (is (= (map #(dissoc % :pos :qname :rname) (data->clj (io/read-blocks rdr {:chr "ref2" :start 2})))
+      (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
+                  (data->clj (io/read-blocks rdr {:chr "ref2" :start 2})))
              (drop 7 test-sorted-bam-data))))
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      (is (= (map #(dissoc % :pos :qname :rname) (data->clj (io/read-blocks rdr {:chr "ref2" :end 2})))
+      (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
+                  (data->clj (io/read-blocks rdr {:chr "ref2" :end 2})))
              (take 2 (drop 6 test-sorted-bam-data)))))
     (with-open [rdr (bam/reader test-sorted-bam-file :ignore-index false)]
-      (is (= (map #(dissoc % :pos :qname :rname) (data->clj (io/read-blocks rdr {:chr "ref2" :start 4 :end 12})))
+      (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
+                  (data->clj (io/read-blocks rdr {:chr "ref2" :start 4 :end 12})))
              (take 3 (drop 8 test-sorted-bam-data)))))))
 
 (deftest bamreader-invalid-files

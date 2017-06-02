@@ -49,7 +49,7 @@
   [^SAMWriter sam-writer blocks]
   (let [wtr ^BufferedWriter (.writer sam-writer)]
    (doseq [b blocks]
-     (.write wtr ^String (:line b))
+     (.write wtr ^String (:data b))
      (.newLine wtr))))
 
 ;; Public

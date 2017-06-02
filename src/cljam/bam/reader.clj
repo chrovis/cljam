@@ -84,7 +84,7 @@
 
 (defn- read-coordinate-alignment-block
   "Reads an alignment block, returning a map including the block size, the data
-  as byte array, qname, rname, and pos."
+  as byte array, rname, flag and pos."
   [^BAMReader bam-reader refs]
   (let [rdr (.data-reader bam-reader)
         block-size (lsb/read-int rdr)]
@@ -95,14 +95,37 @@
           ref-id (lsb/read-int bb)
           rname (or (ref-name refs ref-id) "*")
           pos (inc (lsb/read-int bb))
-          l-read-name (int (lsb/read-ubyte bb))
-          _ (lsb/skip bb 23)
-          qname (lsb/read-string bb (dec l-read-name))]
+          _ (lsb/skip bb 6) ;; l_qname, MAPQ, bin, n_cigar_op
+          flag (lsb/read-ushort bb)
+          ;; l_seq, rnext, pnext, tlen, qname
+          ]
+      {:size block-size
+       :data data
+       :rname rname
+       :pos pos
+       :flag flag
+       :ref-id ref-id})))
+
+(defn- read-queryname-alignment-block
+  "Reads an alignment block, returning a map including the block size, the data
+  as byte array, qname and flag."
+  [^BAMReader bam-reader refs]
+  (let [rdr (.data-reader bam-reader)
+        block-size (lsb/read-int rdr)]
+    (when (< block-size fixed-block-size)
+      (throw (Exception. (str "Invalid block size: " block-size))))
+    (let [data (lsb/read-bytes rdr block-size)
+          bb (ByteBuffer/wrap data)
+          _ (lsb/skip bb 8) ;; ref-id, pos
+          l-read-name (lsb/read-ubyte bb)
+          _ (lsb/skip bb 5) ;; MAPQ, bin, n_cigar_op
+          flag (lsb/read-ushort bb)
+          _ (lsb/skip bb 16) ;; l_seq, rnext, pnext, tlen
+          qname (lsb/read-string bb l-read-name)]
       {:size block-size
        :data data
        :qname qname
-       :rname rname
-       :pos pos})))
+       :flag flag})))
 
 (defn- read-pointer-alignment-block
   "Reads an alignment block, returning a map including the data as byte array
@@ -221,6 +244,7 @@
   (let [read-block-fn (case mode
                         :normal read-alignment-block
                         :coordinate read-coordinate-alignment-block
+                        :queryname read-queryname-alignment-block
                         :pointer read-pointer-alignment-block)
         read-fn (fn read-fn* [^BAMReader r ^clojure.lang.PersistentVector refs]
                   (if-let [b (try (read-block-fn r refs)

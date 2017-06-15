@@ -49,15 +49,13 @@
 
 (deftest about-encode-variant-indv
   (let [bb (#'bcf-writer/encode-variant-indv
-            {:genotype {0 [0 1] 1 [16 32] :n-sample 2}})]
+            {:genotype {0 [0 1] 1 [16 32]} :n-sample 2})]
     (is
      (= (seq (.array ^ByteBuffer bb))
         [0x11 0
          0x11 0 1
          0x11 1
-         0x11 16 32]))))
-
-(deftest about-encode-variant-indv
+         0x11 16 32])))
   (let [bb (#'bcf-writer/encode-variant-indv
             {:genotype {0 [[2 3] [4 3] [4 4]] 1 [48 48 43] 2 [1 8 5] 3 [[51 51] [51 51] [nil nil]]}
              :n-sample 3})]

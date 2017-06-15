@@ -146,8 +146,9 @@
     (.position shared 0)
     (assoc m :chr (:id (contigs chrom-id)) :pos pos :rlen rlen)))
 
-(defn- parse-data-line-deep [{:keys [^ByteBuffer shared ^ByteBuffer individual]}]
+(defn- parse-data-line-deep
   "Parses full data of a variant. Returns a map containing indices for meta-info."
+  [{:keys [^ByteBuffer shared ^ByteBuffer individual]}]
   (let [chrom-id (lsb/read-int shared)
         pos (inc (lsb/read-int shared))
         rlen (lsb/read-int shared)

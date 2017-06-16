@@ -156,7 +156,6 @@
 
 (defn write-header* [^BAMWriter wtr header]
   (let [w (.writer wtr)
-        refs (make-refs header)
         header-string (str (stringify-header header) \newline)]
     (lsb/write-bytes w (.getBytes ^String bam-magic)) ; magic
     (lsb/write-int w (count header-string))

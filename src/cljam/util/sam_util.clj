@@ -66,7 +66,7 @@
 
 (def into-header
   (-> (group-by-rf first ((map second) (into-rf [])))
-      (finalize-rf (fn [m] (if-let [hd (:HD m)] (update m :HD first) m)))))
+      (finalize-rf (fn [m] (if (some? (:HD m)) (update m :HD first) m)))))
 
 (defn parse-header
   "Parse a header string, returning a map of the header."

@@ -61,7 +61,7 @@
               refs->regions
               (cp/pmap
                pool
-               (fn [{:keys [start end] :as region}]
+               (fn [region]
                  (with-open [r (bam/reader in)]
                    (->> (io/read-alignments r region)
                         (sequence (dedupe-xform :remove-dups remove-dups))

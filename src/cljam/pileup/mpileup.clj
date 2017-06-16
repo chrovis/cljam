@@ -130,7 +130,7 @@
 
 (defn pileup
   "Returns a lazy sequence of MPileupElement calculated from FASTA and BAM."
-  ([bam-reader {:keys [chr start end] :or {start -1 end -1} :as region}]
+  ([bam-reader region]
    (pileup nil bam-reader region))
   ([ref-reader bam-reader {:keys [chr start end] :or {start -1 end -1}}]
    (try

@@ -155,7 +155,7 @@
 (defn sort!
   "Sort alignments of rdr by mode and writes them to wtr.
   :coordinate and :queryname are available for mode."
-  [rdr wtr {:keys [mode chunk-size cache-fmt] :or {cache-fmt :bam} :as option}]
+  [rdr wtr {:keys [mode chunk-size cache-fmt] :or {cache-fmt :bam}}]
   (let [name-fn (->> rdr
                      io/reader-path
                      util/basename

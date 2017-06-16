@@ -41,7 +41,7 @@
 
 (defn first-pos
   "Return a position of first alignment in left-right, or nil."
-  [bam-reader {:keys [chr start end] :as region}]
+  [bam-reader region]
   (-> bam-reader
       (io/read-alignments (assoc region :depth :first-only))
       first

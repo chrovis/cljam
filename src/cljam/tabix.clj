@@ -9,12 +9,6 @@
 
 (def tabix-magic "TBI\1")
 
-(def ^:private max-bin 37450)
-
-(def ^:private tad-min-chunk-gap 32768)
-
-(def ^:private tad-lidx-shift 14)
-
 (defn- read-seq
   [buf len]
   (loop [i 0, j 0, seq* []]

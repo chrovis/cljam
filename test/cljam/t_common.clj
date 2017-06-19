@@ -1,10 +1,10 @@
 (ns cljam.t-common
   (:require [digest]
             [clojure.java.io :refer [file]]
-            [cljam.core :as core]
-            [cljam.sam :as sam]
-            [cljam.bam :as bam]
             [cljam.io :as io]
+            [cljam.io.core :as io-core]
+            [cljam.io.sam :as sam]
+            [cljam.io.bam :as bam]
             [cavia.core :as cavia :refer [defprofile with-profile]]))
 
 (defn- _in-cloverage? []
@@ -425,7 +425,7 @@
         target-rnames))))
 
 (defn coord-sorted? [f]
-  (with-open [r (core/reader f :ignore-index true)]
+  (with-open [r (io-core/reader f :ignore-index true)]
     (let [rname->id (into {} (map-indexed (fn [i v] [(:name v) i]) (io/read-refs r)))
           upos #(if (zero? %) Integer/MAX_VALUE %)]
       (some?
@@ -442,7 +442,7 @@
         (io/read-alignments r))))))
 
 (defn qname-sorted? [f]
-  (with-open [r (core/reader f :ignore-index true)]
+  (with-open [r (io-core/reader f :ignore-index true)]
     (some?
      (reduce
       (fn [r x]

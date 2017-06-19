@@ -1,8 +1,6 @@
 (ns cljam.common
   "Common vars.")
 
-(def version "SAM format version" "1.4")
-
 (def ^:dynamic *n-threads*
   "The number of threads."
   1)

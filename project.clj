@@ -21,12 +21,12 @@
                                     :slow :slow   ; Slow tests with local resources
                                     :remote :remote ; Tests with remote resources
                                     :all (constantly true)}
-                   :main ^:skip-aot cljam.main
+                   :main ^:skip-aot cljam.tools.main
                    :global-vars {*warn-on-reflection* true}}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0-alpha14"]]}
-             :uberjar {:main cljam.main
+             :uberjar {:main cljam.tools.main
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]
                        :aot :all}}
   :deploy-repositories [["snapshots" {:url "https://clojars.org/repo/"
@@ -35,7 +35,7 @@
   :aliases {"docs" ["do" "codox" ["marg" "-d" "target/literate" "-m"]]}
   :bin {:name "cljam"
         :bootclasspath true}
-  :codox {:namespaces [#"^cljam\.(?!cli)(?!lsb)(?!main)(?!util)[^\.]+$"]
+  :codox {:namespaces [#"^cljam\.(?!tools)\w+(\.\w+)?$"]
           :output-path "target/docs"
           :source-uri "https://github.com/chrovis/cljam/blob/{version}/{filepath}#L{line}"}
   :repl-options {:init-ns user}

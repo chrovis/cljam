@@ -5,13 +5,6 @@
   (:import [org.apache.commons.compress.compressors
             CompressorStreamFactory CompressorException]))
 
-;; CPU info
-;; --------
-
-(def num-cores
-  "The number of processors available to the Java virtual machine."
-  (.availableProcessors (Runtime/getRuntime)))
-
 ;; Disk cache
 ;; ----------
 
@@ -94,15 +87,6 @@
   text."
   [c]
   (not (nil? (#{\space \tab \newline \formfeed \return (char 0x0b)} c))))
-
-;; seq utils
-;; ---------
-
-(defn gen-vec
-  ([n]
-     (gen-vec n nil))
-  ([n ini]
-     (vec (repeat n ini))))
 
 ;; map utils
 ;; ---------

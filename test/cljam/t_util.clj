@@ -13,10 +13,6 @@
     -1
     256))
 
-(deftest gen-vec
-  (is (= (util/gen-vec 3) [nil nil nil]))
-  (is (= (util/gen-vec 4 1) [1 1 1 1])))
-
 (deftest str->int
   (is (= (util/str->int "123") 123))
   (is (= (util/str->int "-456") -456))

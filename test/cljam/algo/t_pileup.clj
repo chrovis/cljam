@@ -1,8 +1,8 @@
 (ns cljam.algo.t-pileup
   (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
-            [cljam.io.bam :as bam]
-            [cljam.io.fasta :as fa]
+            [cljam.io.sam :as sam]
+            [cljam.io.sequence :as cseq]
             [cljam.algo.pileup :as plp]
             [cljam.algo.pileup.mpileup :as mplp]))
 
@@ -34,17 +34,17 @@
     [\~] [\~] [\~] [\~] [\~]))
 
 (deftest pileup-returns-LazySeq
-  (with-open [r (bam/reader test-sorted-bam-file)]
+  (with-open [r (sam/bam-reader test-sorted-bam-file)]
     (instance? clojure.lang.LazySeq (plp/pileup r {:chr "ref"})))
-  (with-open [r (bam/reader test-sorted-bam-file)]
+  (with-open [r (sam/bam-reader test-sorted-bam-file)]
     (instance? clojure.lang.LazySeq (plp/pileup r {:chr "ref2"}))))
 
 (deftest about-pileup
-  (is (= (with-open [r (bam/reader test-sorted-bam-file)]
+  (is (= (with-open [r (sam/bam-reader test-sorted-bam-file)]
            (doall (plp/pileup r {:chr "ref"})))
          test-bam-pileup-ref))
   (doseq [n-threads [1 4]]
-    (are [?param] (= (with-open [r (bam/reader test-sorted-bam-file)]
+    (are [?param] (= (with-open [r (sam/bam-reader test-sorted-bam-file)]
                        (doall (plp/pileup r {:chr "ref"} ?param)))
                      test-bam-pileup-ref)
       {:n-threads n-threads}
@@ -54,14 +54,14 @@
       {:step 7 :n-threads n-threads}
       {:step 11 :n-threads n-threads}
       {:step 13 :n-threads n-threads}))
-  (is (= (with-open [r (bam/reader test-sorted-bam-file)]
+  (is (= (with-open [r (sam/bam-reader test-sorted-bam-file)]
            (doall (plp/pileup r {:chr "ref2"})))
          test-bam-pileup-ref2)))
 
 (deftest about-first-pos
-  (with-open [r (bam/reader test-sorted-bam-file)]
+  (with-open [r (sam/bam-reader test-sorted-bam-file)]
     (is (= (plp/first-pos r {:chr "ref" :start 0 :end 64}) 7)))
-  (with-open [r (bam/reader test-sorted-bam-file)]
+  (with-open [r (sam/bam-reader test-sorted-bam-file)]
     (is (= (plp/first-pos r {:chr "ref2" :start 0 :end 64}) 1))))
 
 (deftest about-pileup-seq
@@ -110,8 +110,8 @@
          [1 2 3 4 5 6 6 6 6 6])))
 
 (deftest about-mpileup
-  (with-open [br (bam/reader test-sorted-bam-file)
-              fr (fa/reader test-fa-file)]
+  (with-open [br (sam/bam-reader test-sorted-bam-file)
+              fr (cseq/fasta-reader test-fa-file)]
     (let [mplp-ref (doall (plp/mpileup br {:chr "ref"}))
           mplp-ref2 (doall (plp/mpileup br {:chr "ref2"}))]
       (is (= (map :rname mplp-ref) (repeat 45 "ref")))
@@ -134,8 +134,8 @@
       (is (= (map :qual mplp-ref) test-bam-mpileup-qual-ref)))))
 
 (deftest mpileup-region
-  (with-open [br (bam/reader test-sorted-bam-file)
-              fr (fa/reader test-fa-file)]
+  (with-open [br (sam/bam-reader test-sorted-bam-file)
+              fr (cseq/fasta-reader test-fa-file)]
     ;; 1234567890123456789012345678901234567890
     ;; aggttttataaaacaattaagtctacagagcaactacgcg
     (let [mplp-ref1 (doall (plp/mpileup fr br {:chr "ref" :start 1 :end 40}))

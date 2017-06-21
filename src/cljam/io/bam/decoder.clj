@@ -7,7 +7,7 @@
             [cljam.io.util.lsb :as lsb])
   (:import java.util.Arrays
            [java.nio ByteBuffer ByteOrder CharBuffer]
-           [cljam.io SAMAlignment]))
+           [cljam.io.protocols SAMAlignment]))
 
 (definline validate-tag-type
   [t]

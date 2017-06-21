@@ -3,8 +3,7 @@
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
             [cljam.t-common :refer :all]
-            [cljam.io.bam :as bam]
-            [cljam.io :as io]
+            [cljam.io.sam :as sam]
             [cljam.algo.sorter :as sorter]
             [cljam.algo.bam-indexer :as bai]))
 
@@ -20,8 +19,8 @@
                                       (str temp-file-sorted ".bai"))))
     (is (.isFile (cio/file (str temp-file-sorted ".bai"))))
     (is (same-file? (str temp-file-sorted ".bai") test-bai-file))
-    (is (= (with-open [r (bam/reader temp-file-sorted)]
-             (doall (io/read-alignments r {:chr "ref" :start 0 :end 1000})))
+    (is (= (with-open [r (sam/bam-reader temp-file-sorted)]
+             (doall (sam/read-alignments r {:chr "ref" :start 0 :end 1000})))
            (filter #(= "ref" (:rname %))
                    (:alignments test-sam-sorted-by-pos))))))
 
@@ -38,14 +37,14 @@
                                     ;; generate incomplete bam on the fly
                                     (spit-bam-for-test f test-sam-incomplete-alignments)
                                     ;; TODO: go independent from sorter
-                                    (with-open [rdr (bam/reader f :ignore-index true)
-                                                wtr (bam/writer sorted-f)]
+                                    (with-open [rdr (sam/bam-reader f :ignore-index true)
+                                                wtr (sam/bam-writer sorted-f)]
                                       (sorter/sort-by-pos rdr wtr)))
                         :after (clean-cache!)}
       (is (not-throw? (bai/create-index sorted-f (str sorted-f ".bai"))))
       (is (.isFile (cio/file (str sorted-f ".bai"))))
-      (is (= (with-open [r (bam/reader sorted-f)]
-               (doall (io/read-alignments r {:chr "ref" :start 0 :end 1000})))
+      (is (= (with-open [r (sam/bam-reader sorted-f)]
+               (doall (sam/read-alignments r {:chr "ref" :start 0 :end 1000})))
              (filter #(= "ref" (:rname %))
                      (:alignments test-sam-incomplete-alignments-sorted-by-pos))))
       ;; TODO: need more strictly check to .bai files
@@ -70,9 +69,9 @@
                                         :n-threads 4)))
       (is (.isFile (cio/file temp-file-sorted-bai-2)))
       (is (same-file? temp-file-sorted-bai temp-file-sorted-bai-2))
-      (with-open [r (bam/reader temp-file-sorted)]
+      (with-open [r (sam/bam-reader temp-file-sorted)]
         ;; Random read with different number of spans.
-        (are [?param ?counts] (= (count (io/read-alignments r ?param)) ?counts)
+        (are [?param ?counts] (= (count (sam/read-alignments r ?param)) ?counts)
           {:chr "chr1" :start 23000000 :end 23001000 :depth :deep} 46 ;; 1 span
           {:chr "chr1" :start 24900000 :end 24902000 :depth :deep} 3  ;; 2 spans
           {:chr "chr1" :start 24000000 :end 24001000 :depth :deep} 6  ;; 3 spans
@@ -87,13 +86,13 @@
                       :after (clean-cache!)}
     (is (not-throw? (bai/create-index temp-file-sorted
                                       (str temp-file-sorted ".bai"))))
-    (with-open [r (bam/reader temp-file-sorted)]
-      (is (= (count (io/read-alignments r {:chr "*"})) 4348))
+    (with-open [r (sam/bam-reader temp-file-sorted)]
+      (is (= (count (sam/read-alignments r {:chr "*"})) 4348))
       (is (every? (fn [a] (and (= (:mapq a) 0)
                                (= (:pos a) 0)
                                (= (:tlen a) 0)
                                (pos? (bit-and (:flag a) 4))))
-                  (io/read-alignments r {:chr "*"}))))
+                  (sam/read-alignments r {:chr "*"}))))
     (is (.isFile (cio/file (str temp-file-sorted ".bai"))))))
 
 (deftest-remote about-bam-indexer-large-file

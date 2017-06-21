@@ -1,10 +1,8 @@
 (ns cljam.t-common
   (:require [digest]
             [clojure.java.io :refer [file]]
-            [cljam.io :as io]
-            [cljam.io.core :as io-core]
+            [cljam.io.protocols :as protocols]
             [cljam.io.sam :as sam]
-            [cljam.io.bam :as bam]
             [cavia.core :as cavia :refer [defprofile with-profile]]))
 
 (defn- _in-cloverage? []
@@ -69,26 +67,26 @@
 
 ;;; slurp (for test)
 (defn slurp-sam-for-test [f]
-  (with-open [r (sam/reader f)]
-    {:header (io/read-header r)
-     :alignments (doall (io/read-alignments r {}))}))
+  (with-open [r (sam/sam-reader f)]
+    {:header (sam/read-header r)
+     :alignments (doall (sam/read-alignments r {}))}))
 
 (defn slurp-bam-for-test [f]
-  (with-open [r (bam/reader f :ignore-index true)]
-    {:header (io/read-header r)
-     :alignments (doall (io/read-alignments r {}))}))
+  (with-open [r (sam/bam-reader f :ignore-index true)]
+    {:header (sam/read-header r)
+     :alignments (doall (sam/read-alignments r {}))}))
 
 ;; spit (for test)
 (defn spit-sam-for-test [f sam]
-  (with-open [w (sam/writer f)]
-    (io/write-header w (:header sam))
-    (io/write-alignments w (:alignments sam) nil)))
+  (with-open [w (sam/sam-writer f)]
+    (sam/write-header w (:header sam))
+    (sam/write-alignments w (:alignments sam) nil)))
 
 (defn spit-bam-for-test [f sam]
-  (with-open [w (bam/writer f)]
-    (io/write-header w (:header sam))
-    (io/write-refs w (:header sam))
-    (io/write-alignments w (:alignments sam) (:header sam))))
+  (with-open [w (sam/bam-writer f)]
+    (sam/write-header w (:header sam))
+    (sam/write-refs w (:header sam))
+    (sam/write-alignments w (:alignments sam) (:header sam))))
 
 ;; Test resources
 ;; --------------
@@ -172,7 +170,7 @@
 
 (def to-sam-alignment
   (comp
-   io/map->SAMAlignment
+   protocols/map->SAMAlignment
    #(update % :flag int)
    #(update % :pos int)
    #(update % :end int)
@@ -425,8 +423,8 @@
         target-rnames))))
 
 (defn coord-sorted? [f]
-  (with-open [r (io-core/reader f :ignore-index true)]
-    (let [rname->id (into {} (map-indexed (fn [i v] [(:name v) i]) (io/read-refs r)))
+  (with-open [r (sam/reader f :ignore-index true)]
+    (let [rname->id (into {} (map-indexed (fn [i v] [(:name v) i]) (sam/read-refs r)))
           upos #(if (zero? %) Integer/MAX_VALUE %)]
       (some?
        (reduce
@@ -439,10 +437,10 @@
                     (and (zero? rf) (zero? ps) (pos? fl)))
               (reduced nil)
               x)))
-        (io/read-alignments r))))))
+        (sam/read-alignments r))))))
 
 (defn qname-sorted? [f]
-  (with-open [r (io-core/reader f :ignore-index true)]
+  (with-open [r (sam/reader f :ignore-index true)]
     (some?
      (reduce
       (fn [r x]
@@ -452,7 +450,7 @@
                   (and (zero? qn) (pos? fl)))
             (reduced nil)
             x)))
-      (io/read-alignments r)))))
+      (sam/read-alignments r)))))
 
 ;; Utilities
 ;; ---------
@@ -464,12 +462,12 @@
 
 (defn same-bam-file?
   [f1 f2]
-  (with-open [r1 (bam/reader f1)
-              r2 (bam/reader f2)]
-    (and (= (io/read-header r1)
-            (io/read-header r2))
-         (= (io/read-alignments r1 {})
-            (io/read-alignments r2 {})))))
+  (with-open [r1 (sam/bam-reader f1)
+              r2 (sam/bam-reader f2)]
+    (and (= (sam/read-header r1)
+            (sam/read-header r2))
+         (= (sam/read-alignments r1 {})
+            (sam/read-alignments r2 {})))))
 
 ;;;; FASTA
 

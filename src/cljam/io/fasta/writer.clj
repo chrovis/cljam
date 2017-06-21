@@ -2,7 +2,7 @@
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [cljam.util :as util]
-            [cljam.io :as io])
+            [cljam.io.protocols :as protocols])
   (:import [java.io Closeable BufferedWriter]))
 
 (declare write-sequences)
@@ -13,10 +13,10 @@
     (.close ^Closeable (.writer this))
     (when-let [iw (.index-writer this)]
       (.close ^Closeable iw)))
-  io/IWriter
+  protocols/IWriter
   (writer-path [this]
     (.f this))
-  io/ISequenceWriter
+  protocols/ISequenceWriter
   (write-sequences [this seqs]
     (write-sequences this seqs)))
 

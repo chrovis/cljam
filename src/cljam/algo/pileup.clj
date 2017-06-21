@@ -1,6 +1,6 @@
 (ns cljam.algo.pileup
   (:require [cljam.common :refer [*n-threads*]]
-            [cljam.io.bam :as bam]
+            [cljam.io.sam :as sam]
             [cljam.algo.pileup.common :as plpc]
             [cljam.algo.pileup.pileup :as plp]
             [cljam.algo.pileup.mpileup :as mplp]))
@@ -25,5 +25,5 @@
 (defn create-mpileup
   "Creates a mpileup file from the BAM file."
   [in-bam out-mplp]
-  (with-open [r (bam/reader in-bam)]
+  (with-open [r (sam/bam-reader in-bam)]
     (mplp/create-mpileup out-mplp nil r)))

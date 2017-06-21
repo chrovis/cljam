@@ -4,12 +4,9 @@
   (:require [clojure.string :as cstr]
             [clj-sub-command.core :refer [sub-command candidate-message]]
             [clojure.tools.cli :refer [parse-opts]]
-            [cljam.io :as io]
-            [cljam.io.core :refer [reader writer]]
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :refer [stringify-header stringify-alignment]]
-            [cljam.io.bam :as bam]
-            [cljam.io.fasta :as fa]
+            [cljam.io.sequence :as cseq]
             [cljam.algo.bam-indexer :as bai]
             [cljam.algo.normal :as normal]
             [cljam.algo.sorter :as sorter]
@@ -63,12 +60,12 @@
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
       (with-open [^Closeable r (condp = (:format options)
-                                 "auto" (reader f)
-                                 "sam"  (sam/reader f)
-                                 "bam"  (bam/reader f :ignore-index true))]
+                                 "auto" (sam/reader f)
+                                 "sam"  (sam/sam-reader f)
+                                 "bam"  (sam/bam-reader f :ignore-index true))]
         (when (:header options)
-          (println (stringify-header (io/read-header r))))
-        (doseq [aln (io/read-alignments r {})]
+          (println (stringify-header (sam/read-header r))))
+        (doseq [aln (sam/read-alignments r {})]
           (println (stringify-alignment aln))))))
   nil)
 
@@ -121,8 +118,8 @@
      (not= (count arguments) 2) (exit 1 (normalize-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (with-open [r (reader in)
-                  w (writer out)]
+      (with-open [r (sam/reader in)
+                  w (sam/writer out)]
         (normal/normalize r w))))
   nil)
 
@@ -152,8 +149,8 @@
      (not= (count arguments) 2) (exit 1 (sort-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (with-open [r (reader in)
-                  w (writer out)]
+      (with-open [r (sam/reader in)
+                  w (sam/writer out)]
         (condp = (:order options)
           (name sorter/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
           (name sorter/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
@@ -209,7 +206,7 @@
 
 (defn- pileup-simple
   ([rdr n-threads]
-   (doseq [rname (map :name (io/read-refs rdr))]
+   (doseq [rname (map :name (sam/read-refs rdr))]
      (pileup-simple rdr n-threads rname -1 -1)))
   ([rdr n-threads rname start end]
    (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
@@ -220,8 +217,8 @@
 
 (defn- pileup-with-ref
   ([rdr ref-fa]
-   (with-open [fa-rdr (fa/reader ref-fa)]
-     (doseq [rname (map :name (io/read-refs rdr))
+   (with-open [fa-rdr (cseq/reader ref-fa)]
+     (doseq [rname (map :name (sam/read-refs rdr))
              line  (plp/mpileup fa-rdr rdr {:chr rname})]
        (if-not (zero? (:count line))
          (println (cstr/join \tab (map #(case %
@@ -229,7 +226,7 @@
                                           :seq (cstr/join (% line))
                                           (% line)) [:rname :pos :ref :count :seq :qual])))))))
   ([rdr ref-fa rname start end]
-   (with-open [fa-rdr (fa/reader ref-fa)]
+   (with-open [fa-rdr (cseq/reader ref-fa)]
      (doseq [line  (plp/mpileup fa-rdr rdr {:chr rname :start start :end end})]
        (if-not (zero? (:count line))
          (println (cstr/join \tab (map #(case %
@@ -239,7 +236,7 @@
 
 (defn- pileup-without-ref
   ([rdr]
-   (doseq [rname (map :name (io/read-refs rdr))
+   (doseq [rname (map :name (sam/read-refs rdr))
            line  (plp/mpileup rdr {:chr rname})]
      (if-not (zero? (:count line))
        (println (cstr/join \tab (map #(case %
@@ -270,7 +267,7 @@
      (not= (count arguments) 1) (exit 1 (pileup-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (with-open [r (reader f :ignore-index false)]
+      (with-open [r (sam/reader f :ignore-index false)]
         (when (= (type r) cljam.io.sam.reader.SAMReader)
           (exit 1 "Not support SAM file"))
         (when-not (sorter/sorted-by? r)
@@ -357,8 +354,8 @@
       (not= (count arguments) 2) (exit 1 (level-usage summary))
       errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (with-open [r (reader in :ignore-index false)
-                  w (writer out)]
+      (with-open [r (sam/reader in :ignore-index false)
+                  w (sam/writer out)]
         (level/add-level r w))))
   nil)
 

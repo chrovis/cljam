@@ -1,7 +1,7 @@
 (ns cljam.io.bam.writer
   (:require [clojure.string :refer [split]]
             [cljam.util :refer [string->bytes ubyte]]
-            [cljam.io :as io]
+            [cljam.io.protocols :as protocols]
             [cljam.io.sam.util :refer [reg->bin normalize-bases fastq->phred
                                        str->compressed-bases make-refs ref-id
                                        stringify-header]]
@@ -21,10 +21,10 @@
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
-  io/IWriter
+  protocols/IWriter
   (writer-path [this]
     (.f this))
-  io/IAlignmentWriter
+  protocols/IAlignmentWriter
   (write-header [this header]
     (write-header* this header))
   (write-refs [this header]

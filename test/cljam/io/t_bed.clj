@@ -2,10 +2,9 @@
   (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
             [cljam.io.bed :as bed]
-            [cljam.io.fasta :as fa]
-            [cljam.io :as io]
-            [cljam.io.bam :as bam]
-            [cljam.io.sam.util :as sam-util])
+            [cljam.io.sam :as sam]
+            [cljam.io.sam.util :as sam-util]
+            [cljam.io.sequence :as cseq])
   (:import [java.io BufferedReader InputStreamReader ByteArrayInputStream
             ByteArrayOutputStream OutputStreamWriter BufferedWriter]
            [cljam.io.bed BEDReader BEDWriter]))
@@ -168,9 +167,9 @@
          [{:chr "chr1" :start 1 :end 13 :name "chr1:1-10+chr1:4-13"}])))
 
 (deftest bed-reader-and-bam-reader
-  (with-open [bam (bam/reader test-sorted-bam-file)]
+  (with-open [bam (sam/bam-reader test-sorted-bam-file)]
     (letfn [(ref-pos-end [m] {:rname (:rname m) :pos (:pos m) :end (sam-util/get-end m)})
-            (read-region [s] (->> (str->bed s) (mapcat #(io/read-alignments bam %)) (map ref-pos-end)))]
+            (read-region [s] (->> (str->bed s) (mapcat #(sam/read-alignments bam %)) (map ref-pos-end)))]
       (are [?region-str ?result] (= (read-region ?region-str) ?result)
         "ref 0 6" []
         "ref 6 7" [{:rname "ref" :pos 7 :end 22}]
@@ -189,9 +188,9 @@
                     {:rname "ref" :pos 37 :end 45}]))))
 
 (deftest bed-reader-and-fasta-reader
-  (with-open [fa (fa/reader medium-fa-file)]
+  (with-open [fa (cseq/fasta-reader medium-fa-file)]
     (comment "chr1" "TAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCC...")
-    (letfn [(read-region [s] (->> (str->bed s) (map #(fa/read-sequence fa %))))]
+    (letfn [(read-region [s] (->> (str->bed s) (map #(cseq/read-sequence fa %))))]
       (are [?region-str ?result] (= (read-region ?region-str) ?result)
         "1 0 1" ["T"]
         "1 0 10" ["TAACCCTAAC"]

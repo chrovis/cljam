@@ -2,7 +2,7 @@
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [cljam.io.sam.util :as sam-util]
-            [cljam.io :as io])
+            [cljam.io.protocols :as protocols])
   (:import [java.io BufferedReader Closeable]))
 
 (declare read-alignments* read-blocks* read-alignments-in-region*)
@@ -13,35 +13,35 @@
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
-  io/IReader
+  protocols/IReader
   (reader-path [this]
     (.f this))
   (read [this]
-    (io/read this {}))
+    (protocols/read this {}))
   (read [this option]
     (read-alignments* this))
-  io/IRegionReader
+  protocols/IRegionReader
   (read-in-region [this region]
-    (io/read-in-region this region {}))
+    (protocols/read-in-region this region {}))
   (read-in-region [this region option]
     (read-alignments-in-region* this region option))
-  io/IAlignmentReader
+  protocols/IAlignmentReader
   (read-header [this]
     (.header this))
   (read-refs [this]
     (vec (sam-util/make-refs (.header this))))
   (read-alignments [this]
-    (io/read-alignments this {} {}))
+    (protocols/read-alignments this {} {}))
   (read-alignments [this region]
-    (io/read-alignments this region {}))
+    (protocols/read-alignments this region {}))
   (read-alignments [this {:keys [chr start end] :as region} option]
     (if (or chr start end)
       (read-alignments-in-region* this region option)
       (read-alignments* this)))
   (read-blocks [this]
-    (io/read-blocks this {}))
+    (protocols/read-blocks this {}))
   (read-blocks [this region]
-    (io/read-blocks this region {}))
+    (protocols/read-blocks this region {}))
   (read-blocks [this region option]
     (read-blocks* this option)))
 

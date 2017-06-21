@@ -3,7 +3,7 @@
   https://samtools.github.io/hts-specs/ for the detail VCF specifications."
   (:require [clojure.string :as cstr]
             [camel-snake-kebab.core :refer [->camelCaseString]]
-            [cljam.io :as io]
+            [cljam.io.protocols :as protocols]
             [cljam.io.vcf.util :as vcf-util])
   (:import [java.io Closeable BufferedWriter]))
 
@@ -16,9 +16,9 @@
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
-  io/IWriter
+  protocols/IWriter
   (writer-path [this] (.f this))
-  io/IVariantWriter
+  protocols/IVariantWriter
   (write-variants [this variants]
     (write-variants this variants)))
 

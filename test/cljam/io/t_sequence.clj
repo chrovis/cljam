@@ -1,9 +1,23 @@
 (ns cljam.io.t-sequence
   (:require [clojure.test :refer :all]
+            [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [cljam.t-common :refer :all]
             [cljam.io.fasta.core :as fa-core]
-            [cljam.io.sequence :as cseq]))
+            [cljam.io.sequence :as cseq]
+            [cljam.util :as util]))
+
+(deftest reader-test
+  (testing "fasta"
+    (with-open [rdr (cseq/reader test-fa-file)]
+      (is (instance? cljam.io.fasta.reader.FASTAReader rdr))))
+  (testing "twobit"
+    (with-open [rdr (cseq/reader test-twobit-file)]
+      (is (instance? cljam.io.twobit.reader.TwoBitReader rdr))))
+  (testing "throws Exception"
+    (are [f] (thrown? Exception (cseq/reader f))
+      "test-resources/fasta/not-found.fa"
+      test-fai-file)))
 
 (deftest read-sequence-fasta-test
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
@@ -63,6 +77,18 @@
     (with-open [r (cseq/twobit-reader test-twobit-be-n-file)]
       (is (= (cseq/read-sequence r {:chr "ref"})
              "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT")))))
+
+(deftest writer-test
+  (testing "fasta"
+    (with-open [wtr (cseq/writer (.getAbsolutePath (cio/file util/temp-dir "temp.fa")))]
+      (is (instance? cljam.io.fasta.writer.FASTAWriter wtr))))
+  (testing "twobit"
+    (with-open [wtr (cseq/writer (.getAbsolutePath (cio/file util/temp-dir "temp.2bit")))]
+      (is (instance? cljam.io.twobit.writer.TwoBitWriter wtr))))
+  (testing "throws Exception"
+    (are [f] (thrown? Exception (cseq/writer (.getAbsolutePath (cio/file util/temp-dir f))))
+      "temp.fsta"
+      "temp.fa.fai")))
 
 (deftest write-sequences-fasta-test
   (with-before-after {:before (prepare-cache!)

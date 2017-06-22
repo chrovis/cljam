@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
             [cljam.t-common :refer :all]
-            [cljam.io.vcf :as vcf])
+            [cljam.io.vcf :as vcf]
+            [cljam.util :as util])
   (:import bgzf4j.BGZFException))
 
 (def ^:private temp-file (str temp-dir "/test.vcf"))
@@ -26,6 +27,18 @@
                (with-open [r (vcf/bcf-reader test-bam-file)] nil)))
   (is (thrown? java.io.IOException
                (with-open [r (vcf/bcf-reader test-bcf-invalid-file)] nil))))
+
+(deftest reader-test
+  (testing "vcf"
+    (with-open [rdr (vcf/reader test-vcf-v4_3-file)]
+      (is (instance? cljam.io.vcf.reader.VCFReader rdr))))
+  (testing "bcf"
+    (with-open [rdr (vcf/reader test-bcf-v4_3-file)]
+      (is (instance? cljam.io.bcf.reader.BCFReader rdr))))
+  (testing "throws Exception"
+    (are [f] (thrown? Exception (vcf/reader f))
+      "test-resources/vcf/not-found.vcf"
+      "test-resources/bcf/not-found.bcf")))
 
 (deftest meta-info-vcf-test
   (testing "VCF v4.0"
@@ -83,6 +96,17 @@
                            (map (juxt :chr :pos :id :ref :alt) (vcf/read-variants r {:depth :bcf}))
                            (map (fn [v] [0 (:pos v) (:id v) (:ref v) (:alt v)]) test-vcf-v4_3-variants-deep))]
         (is (= v1 v2))))))
+
+(deftest writer-test
+  (testing "vcf"
+    (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.vcf")) {} [])]
+      (is (instance? cljam.io.vcf.writer.VCFWriter wtr))))
+  (testing "bcf"
+    (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bcf")) {} [])]
+      (is (instance? cljam.io.bcf.writer.BCFWriter wtr))))
+  (testing "throws Exception"
+    (is (thrown? Exception
+                 (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.vccf")) {} [])))))
 
 (deftest about-writing-vcf-v4_0-deep
   (with-before-after {:before (prepare-cache!)

@@ -3,8 +3,9 @@
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [com.climate.claypoole :as cp]
-            [cljam.io :as io]
-            [cljam.io.core :as io-core]
+            [cljam.io.protocols :as protocols]
+            [cljam.io.sam :as sam]
+            [cljam.io.util :as io-util]
             [cljam.util :as util]
             [cljam.io.sam.common :refer [sam-version]])
   (:import [java.io Closeable File]
@@ -53,14 +54,14 @@
 (defn- same-type?
   "Returns true if given files are the same type."
   [f & files]
-  (apply = (io-core/file-type f) (map io-core/file-type files)))
+  (apply = (io-util/file-type f) (map io-util/file-type files)))
 
 (defn- split**
   "Splits SAM/BAM file into multiple files each containing alignments up to chunk-size.
   name-fn must be a function taking a int value i and returning a path string for i-th output.
   read-fn must produce a sequence of alignments and write-fn must consume the splitted sequence."
   [rdr chunk-size name-fn read-fn write-fn]
-  (let [hdr (replace-header (io/read-header rdr) sam-version (name order-coordinate))]
+  (let [hdr (replace-header (sam/read-header rdr) sam-version (name order-coordinate))]
     (logging/info "Splitting...")
     (cp/with-shutdown! [p (cp/threadpool (cp/ncpus))]
       (->> (read-fn rdr)
@@ -72,9 +73,9 @@
             p
             (fn [[f xs]]
               (logging/info (str "Sorting " (count xs) " alignments..."))
-              (with-open [wtr (io-core/writer f)]
-                (io/write-header wtr hdr)
-                (io/write-refs wtr hdr)
+              (with-open [wtr (sam/writer f)]
+                (sam/write-header wtr hdr)
+                (sam/write-refs wtr hdr)
                 (write-fn wtr xs hdr))
               f))
            doall))))
@@ -82,13 +83,13 @@
 (defn- split*
   "Splits SAM/BAM files with appropriate reader/writer functions."
   [rdr chunk-size name-fn mode sort-fn]
-  (let [block? (same-type? (io/reader-path rdr) (name-fn 0))
+  (let [block? (same-type? (protocols/reader-path rdr) (name-fn 0))
         read-fn (if block?
-                  (fn [r] (io/read-blocks r {} {:mode mode}))
-                  io/read-alignments)
+                  (fn [r] (sam/read-blocks r {} {:mode mode}))
+                  sam/read-alignments)
         write-fn (if block?
-                   (fn [w xs _] (io/write-blocks w (sort-fn xs)))
-                   (fn [w xs hdr] (io/write-alignments w (sort-fn xs) hdr)))]
+                   (fn [w xs _] (sam/write-blocks w (sort-fn xs)))
+                   (fn [w xs hdr] (sam/write-alignments w (sort-fn xs) hdr)))]
     (split** rdr chunk-size name-fn read-fn write-fn)))
 
 (defn- head-pq
@@ -117,10 +118,10 @@
 (defn- merge**
   "Merges multiple SAM/BAM files into single SAM/BAM file."
   [wtr hdr files key-fn read-fn write-fn]
-  (let [rdrs (map #(io-core/reader % :ignore-index true) files)
+  (let [rdrs (map #(sam/reader % :ignore-index true) files)
         alns (map read-fn rdrs)]
-    (io/write-header wtr hdr)
-    (io/write-refs wtr hdr)
+    (sam/write-header wtr hdr)
+    (sam/write-refs wtr hdr)
     (write-fn wtr (merge-sorted-seqs-by key-fn alns) hdr)
     (doseq [rdr rdrs]
       (.close ^Closeable rdr))))
@@ -128,13 +129,13 @@
 (defn- merge*
   "Merges multiple SAM/BAM files with appropriate reader/writer functions."
   [wtr hdr files mode key-fn]
-  (let [block? (apply same-type? (io/writer-path wtr) files)
+  (let [block? (apply same-type? (protocols/writer-path wtr) files)
         read-fn (if block?
-                  (fn [r] (io/read-blocks r {} {:mode mode}))
-                  io/read-alignments)
+                  (fn [r] (sam/read-blocks r {} {:mode mode}))
+                  sam/read-alignments)
         write-fn (if block?
-                   (fn [w xs _] (io/write-blocks w xs))
-                   io/write-alignments)]
+                   (fn [w xs _] (sam/write-blocks w xs))
+                   sam/write-alignments)]
     (merge** wtr hdr files key-fn read-fn write-fn)))
 
 ;; Sorter
@@ -157,14 +158,14 @@
   :coordinate and :queryname are available for mode."
   [rdr wtr {:keys [mode chunk-size cache-fmt] :or {cache-fmt :bam}}]
   (let [name-fn (->> rdr
-                     io/reader-path
+                     protocols/reader-path
                      util/basename
                      (partial gen-cache-filename (name cache-fmt)))
         key-fn (case mode
-                 :coordinate (partial coordinate-key (refmap (io/read-refs rdr)))
+                 :coordinate (partial coordinate-key (refmap (sam/read-refs rdr)))
                  :queryname queryname-key)
         splitted-files (split* rdr chunk-size name-fn mode #(sort-by-index key-fn %))
-        hdr (replace-header (io/read-header rdr) sam-version (name mode))]
+        hdr (replace-header (sam/read-header rdr) sam-version (name mode))]
     (logging/info (str "Merging from " (count splitted-files) " files..."))
     (merge* wtr hdr splitted-files mode key-fn)
     (logging/info "Deleting cache files...")
@@ -184,7 +185,7 @@
   "Returns true if the sam is sorted, false if not. It is detected by
   `@HD SO:***` tag in the header."
   [rdr]
-  (let [so (:SO (:HD (io/read-header rdr)))]
+  (let [so (:SO (:HD (sam/read-header rdr)))]
     (or (= so (name order-queryname))
         (= so (name order-coordinate)))))
 
@@ -192,6 +193,6 @@
   "Returns sorting order of the sam as Keyword. Returning order is one of the
   following: :queryname, :coordinate, :unsorted, :unknown ."
   [rdr]
-  (if-let [so (:SO (:HD (io/read-header rdr)))]
+  (if-let [so (:SO (:HD (sam/read-header rdr)))]
     (keyword so)
     order-unknown))

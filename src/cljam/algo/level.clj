@@ -3,9 +3,9 @@
   (:require [clojure.java.io :refer [file]]
             [com.climate.claypoole :as cp]
             [cljam.common :refer [get-exec-n-threads *n-threads*]]
-            [cljam.io :as io]
-            [cljam.io.core :refer [sam-reader? bam-reader?]]
-            [cljam.io.bam :as bam]
+            [cljam.io.protocols :as protocols]
+            [cljam.io.sam :as sam]
+            [cljam.io.util :refer [sam-reader? bam-reader?]]
             [cljam.io.sam.util :as sam-util]
             [cljam.util :as util]))
 
@@ -61,37 +61,37 @@
 (defn- create-level-cache!
   "Create a temporary BAM file consisting of alignments of a single chromosome."
   [chr length source-path cache-path]
-  (with-open [local-rdr (bam/reader source-path :ignore-index true)
-              cache-wtr (bam/writer cache-path)]
-    (let [hdr (io/read-header local-rdr)
+  (with-open [local-rdr (sam/bam-reader source-path :ignore-index true)
+              cache-wtr (sam/bam-writer cache-path)]
+    (let [hdr (sam/read-header local-rdr)
           alignments (->> {:depth :deep}
-                          (io/read-alignments local-rdr)
+                          (sam/read-alignments local-rdr)
                           (map-with-state calc-level (sorted-map)))]
-      (io/write-header cache-wtr hdr)
-      (io/write-refs cache-wtr hdr)
-      (io/write-alignments cache-wtr alignments hdr))))
+      (sam/write-header cache-wtr hdr)
+      (sam/write-refs cache-wtr hdr)
+      (sam/write-alignments cache-wtr alignments hdr))))
 
 (defn- add-level-mt
   "Adds level information to alignments from rdr and write them to wtr.
   Level calculation process is multithreaded."
   [rdr wtr]
-  (let [source-path (io/reader-path rdr)
+  (let [source-path (protocols/reader-path rdr)
         cache-name-fn #(->> (str (util/basename source-path) "_" % ".cache")
                             (file util/temp-dir)
                             (.getPath))
         level-cache-name-fn #(->> (str (util/basename source-path) "_" % ".level.cache")
                                   (file util/temp-dir)
                                   (.getPath))
-        hdr (io/read-header rdr)
+        hdr (sam/read-header rdr)
         ;; Split into BAM files according to chromosomes.
         caches (doall
                 (map (fn [{:keys [SN LN]}]
                        (let [cache-path (cache-name-fn SN)
-                             blocks (io/read-blocks rdr {:chr SN :start 0 :end LN})]
-                         (with-open [cache-wtr (bam/writer cache-path)]
-                           (io/write-header cache-wtr hdr)
-                           (io/write-refs cache-wtr hdr)
-                           (io/write-blocks cache-wtr blocks))
+                             blocks (sam/read-blocks rdr {:chr SN :start 0 :end LN})]
+                         (with-open [cache-wtr (sam/bam-writer cache-path)]
+                           (sam/write-header cache-wtr hdr)
+                           (sam/write-refs cache-wtr hdr)
+                           (sam/write-blocks cache-wtr blocks))
                          cache-path))
                      (hdr :SQ)))
         leval-caches (cp/with-shutdown! [pool (cp/threadpool (get-exec-n-threads))]
@@ -107,17 +107,17 @@
     (doseq [cache caches]
       (clean! cache))
     ;; Merge cache files
-    (io/write-header wtr hdr)
-    (io/write-refs wtr hdr)
+    (sam/write-header wtr hdr)
+    (sam/write-refs wtr hdr)
     (doseq [cache leval-caches]
-      (with-open [cache-rdr (bam/reader cache :ignore-index true)]
-        (io/write-blocks wtr (io/read-blocks cache-rdr)))
+      (with-open [cache-rdr (sam/bam-reader cache :ignore-index true)]
+        (sam/write-blocks wtr (sam/read-blocks cache-rdr)))
       (clean! cache))))
 
 (defn- check-bam-sorted!
   "Checks if the bam file is sorted by coordinate and throws an exception if not."
   [rdr]
-  (when-not (-> rdr io/read-header :HD :SO (= "coordinate"))
+  (when-not (-> rdr sam/read-header :HD :SO (= "coordinate"))
     (throw (ex-info "Source BAM file must be sorted by coordinate."
                     {:type :bam-not-sorted}))))
 

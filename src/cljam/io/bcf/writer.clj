@@ -1,7 +1,7 @@
 (ns cljam.io.bcf.writer
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
-            [cljam.io :as io]
+            [cljam.io.protocols :as protocols]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.vcf.writer :as vw]
             [cljam.io.vcf.util :as vcf-util])
@@ -15,9 +15,9 @@
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
-  io/IWriter
+  protocols/IWriter
   (writer-path [this] (.f this))
-  io/IVariantWriter
+  protocols/IVariantWriter
   (write-variants [this variants]
     (write-variants this variants)))
 

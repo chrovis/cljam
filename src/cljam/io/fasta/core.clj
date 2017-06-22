@@ -1,7 +1,7 @@
 (ns cljam.io.fasta.core
   (:refer-clojure :exclude [read])
   (:require [clojure.java.io :as cio]
-            [cljam.io :as io]
+            [cljam.io.protocols :as protocols]
             [cljam.util :as util]
             [cljam.io.fasta-index.core :as fasta-index]
             [cljam.io.fasta.reader :as reader])
@@ -43,10 +43,10 @@
   (reader/read-sequences rdr))
 
 (defn read-sequence
-  ([rdr name]
-     (reader/read-whole-sequence rdr name))
-  ([rdr name start end]
-     (reader/read-sequence rdr name start end)))
+  [rdr {:keys [chr start end]}]
+  (if (and (nil? start) (nil? end))
+    (reader/read-whole-sequence rdr chr)
+    (reader/read-sequence rdr chr start end)))
 
 (defn read
   [rdr]
@@ -62,24 +62,24 @@
     (reader/sequential-read-string stream (* 1024 1024 10) 536870912)))
 
 (extend-type FASTAReader
-  io/IReader
+  protocols/IReader
   (reader-path [this] (.f this))
   (read
-    ([this] (io/read this {}))
-    ([this option] (io/read-all-sequences this option)))
-  io/IRegionReader
+    ([this] (protocols/read this {}))
+    ([this option] (protocols/read-all-sequences this option)))
+  protocols/IRegionReader
   (read-in-region
     ([this region]
-     (io/read-in-region this region {}))
+     (protocols/read-in-region this region {}))
     ([this region option]
-     (io/read-sequence this region option)))
-  io/ISequenceReader
+     (protocols/read-sequence this region option)))
+  protocols/ISequenceReader
   (read-all-sequences
-    ([this] (io/read-all-sequences this {}))
+    ([this] (protocols/read-all-sequences this {}))
     ([this option]
      (sequential-read (.f this))))
   (read-sequence
     ([this region]
-     (io/read-sequence this region {}))
-    ([this {:keys [chr start end]} option]
-     (reader/read-sequence this chr start end))))
+     (protocols/read-sequence this region {}))
+    ([this region option]
+     (read-sequence this region))))

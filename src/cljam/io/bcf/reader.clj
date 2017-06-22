@@ -3,7 +3,7 @@
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [clojure.tools.logging :as logging]
-            [cljam.io :as io]
+            [cljam.io.protocols :as protocols]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.vcf.reader :as vcf-reader]
             [cljam.io.vcf.util :as vcf-util])
@@ -17,13 +17,13 @@
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
-  io/IReader
+  protocols/IReader
   (reader-path [this] (.f this))
-  (read [this] (io/read this {}))
+  (read [this] (protocols/read this {}))
   (read [this option] (read-variants this option))
-  io/IRegionReader
+  protocols/IRegionReader
   (read-in-region [this region]
-    (io/read-in-region this region {}))
+    (protocols/read-in-region this region {}))
   (read-in-region [this {:keys [chr start end]} option]
     (logging/warn "May cause degradation of performance.")
     (filter
@@ -34,11 +34,11 @@
 
 ;; need dynamic extension for namespace issue.
 (extend-type BCFReader
-  io/IVariantReader
+  protocols/IVariantReader
   (meta-info [this] (meta-info this))
   (header [this] (.header this))
   (read-variants
-    ([this] (io/read-variants this {}))
+    ([this] (protocols/read-variants this {}))
     ([this option] (read-variants this option))))
 
 (defn- parse-meta-and-header

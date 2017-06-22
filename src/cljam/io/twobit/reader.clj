@@ -1,6 +1,6 @@
 (ns cljam.io.twobit.reader
   (:require [clojure.java.io :as cio]
-            [cljam.io :as io]
+            [cljam.io.protocols :as protocols]
             [cljam.io.util.lsb :as lsb])
   (:import [java.io Closeable DataInput RandomAccessFile]
            [java.nio CharBuffer]))
@@ -128,25 +128,25 @@
      {:name name :sequence (read-sequence rdr {:chr name} option)})))
 
 (extend-type TwoBitReader
-  io/IReader
+  protocols/IReader
   (reader-path [this] (.f this))
   (read
-    ([this] (io/read this {}))
-    ([this option] (io/read-all-sequences this option)))
-  io/ISequenceReader
+    ([this] (protocols/read this {}))
+    ([this option] (protocols/read-all-sequences this option)))
+  protocols/ISequenceReader
   (read-all-sequences
-    ([this] (io/read-all-sequences this {}))
+    ([this] (protocols/read-all-sequences this {}))
     ([this option]
      (read-all-sequences this option)))
   (read-sequence
     (^String [this region]
-     (io/read-sequence this region {}))
+     (protocols/read-sequence this region {}))
     (^String [this region option]
      (read-sequence this region option)))
-  io/IRegionReader
+  protocols/IRegionReader
   (read-in-region
     (^String [this region]
-     (io/read-in-region this region {}))
+     (protocols/read-in-region this region {}))
     (^String [this {:keys [chr start end] :as region} option]
      (read-sequence this region option))))
 

@@ -1,12 +1,12 @@
 (ns cljam.io.sam.util
   "Utilities related to SAM/BAM format."
   (:require [clojure.string :as cstr]
-            [cljam.io :as io]
+            cljam.io.protocols
             [cljam.io.util.cigar :refer [count-ref]]
             [cljam.util :refer [ubyte str->int str->float]])
   (:import [java.nio CharBuffer ByteBuffer]
            [java.nio.charset StandardCharsets]
-           [cljam.io SAMAlignment]))
+           [cljam.io.protocols SAMAlignment]))
 
 ;;; parse
 

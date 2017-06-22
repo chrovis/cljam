@@ -1,5 +1,5 @@
 (ns cljam.io.bam.reader
-  (:require [cljam.io :as io]
+  (:require [cljam.io.protocols :as protocols]
             [cljam.io.sam.util :refer [ref-id ref-name parse-header get-end]]
             [cljam.io.bam-index :refer [get-spans]]
             [cljam.io.bam-index.core :as bai]
@@ -22,22 +22,22 @@
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
-  io/IReader
+  protocols/IReader
   (reader-path [this]
     (.f this))
   (read [this]
-    (io/read this {}))
+    (protocols/read this {}))
   (read [this option]
-    (io/read-alignments this {} option))
-  io/IAlignmentReader
+    (protocols/read-alignments this {} option))
+  protocols/IAlignmentReader
   (read-header [this]
     (.header this))
   (read-refs [this]
     (.refs this))
   (read-alignments [this]
-    (io/read-alignments this {} {}))
+    (protocols/read-alignments this {} {}))
   (read-alignments [this region]
-    (io/read-alignments this region {}))
+    (protocols/read-alignments this region {}))
   (read-alignments [this
                     {:keys [chr start end]
                      :or {chr nil
@@ -49,9 +49,9 @@
       (read-alignments-sequentially* this depth)
       (read-alignments* this chr start end depth)))
   (read-blocks [this]
-    (io/read-blocks this {} {}))
+    (protocols/read-blocks this {} {}))
   (read-blocks [this region]
-    (io/read-blocks this region {}))
+    (protocols/read-blocks this region {}))
   (read-blocks [this
                 {:keys [chr start end]
                  :or {chr nil
@@ -62,11 +62,11 @@
     (if (nil? chr)
       (read-blocks-sequentially* this mode)
       (read-blocks* this chr start end)))
-  io/IRegionReader
+  protocols/IRegionReader
   (read-in-region [this region]
-    (io/read-in-region this region {}))
+    (protocols/read-in-region this region {}))
   (read-in-region [this region option]
-    (io/read-alignments this region option)))
+    (protocols/read-alignments this region option)))
 
 ;; Reading a single block
 ;; --------------------

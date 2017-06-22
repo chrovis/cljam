@@ -1,4 +1,4 @@
-(ns cljam.io
+(ns cljam.io.protocols
   "Protocols of reader/writer for various file formats."
   (:refer-clojure :exclude [read]))
 

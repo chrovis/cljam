@@ -2,9 +2,9 @@
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [clojure.tools.logging :as logging]
-            [cljam.io :as io]
-            [cljam.io.fasta :as fa]
+            [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]
+            [cljam.io.sequence :as cseq]
             [cljam.io.util.cigar :as cig]
             [cljam.algo.pileup.common :refer [window-width step center]]))
 
@@ -132,13 +132,13 @@
    (pileup nil bam-reader region))
   ([ref-reader bam-reader {:keys [chr start end] :or {start -1 end -1}}]
    (try
-     (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) chr)]
+     (if-let [r (sam-util/ref-by-name (sam/read-refs bam-reader) chr)]
        (let [s (if (neg? start) 1 start)
              e (if (neg? end) (:len r) end)
              refseq (if ref-reader
-                      (io/read-sequence ref-reader {:chr chr :start s :end e})
+                      (cseq/read-sequence ref-reader {:chr chr :start s :end e})
                       (repeat \N))]
-         (->> (io/read-alignments bam-reader {:chr chr :start s :end e :depth :deep})
+         (->> (sam/read-alignments bam-reader {:chr chr :start s :end e :depth :deep})
               (sequence
                (comp
                 (filter basic-mpileup-pred)
@@ -171,7 +171,7 @@
   [f fa-rdr bam-reader]
   (try
     (with-open [w (cio/writer f)]
-      (doseq [rname (map :name (io/read-refs bam-reader))]
+      (doseq [rname (map :name (sam/read-refs bam-reader))]
         (doseq [line (pileup fa-rdr bam-reader {:chr rname})]
           (when-not (zero? (:count line))
             (write-line! w line)))))

@@ -1,7 +1,7 @@
 (ns cljam.io.fastq
   (:require [clojure.java.io :as cio]
             [clojure.string :as string]
-            [cljam.io :as io]
+            [cljam.io.protocols :as protocols]
             [cljam.util :as util])
   (:import [java.io Closeable]))
 
@@ -11,7 +11,7 @@
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
-  io/IReader
+  protocols/IReader
   (reader-path [this] (.f this))
   (read [this] (read-sequences this))
   (read [this opts] (read-sequences this opts)))
@@ -20,7 +20,7 @@
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
-  io/IWriter
+  protocols/IWriter
   (writer-path [this] (.f this)))
 
 (defn ^FASTQReader reader [^String f]

@@ -3,8 +3,7 @@
   (:require [com.climate.claypoole :as cp]
             [cljam.common :refer [get-exec-n-threads]]
             [cljam.util :as util]
-            [cljam.io :as io]
-            [cljam.io.bam :as bam]
+            [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]
             [cljam.algo.pileup.common :as common]))
 
@@ -26,14 +25,14 @@
   [rdr rname rlength start end step]
   (let [n-threads (get-exec-n-threads)
         read-fn (fn [r start end]
-                  (io/read-alignments r {:chr rname :start start :end end :depth :shallow}))
+                  (sam/read-alignments r {:chr rname :start start :end end :depth :shallow}))
         count-fn (fn [xs]
                    (if (= n-threads 1)
                      (map (fn [[start end]]
                             (count-for-positions (read-fn rdr start end) start end)) xs)
                      (cp/pmap (dec n-threads)
                               (fn [[start end]]
-                                (with-open [r (bam/clone-reader rdr)]
+                                (with-open [r (sam/clone-bam-reader rdr)]
                                   (count-for-positions (read-fn r start end) start end))) xs)))]
     (->> (util/divide-region start end step)
          count-fn
@@ -43,7 +42,7 @@
   "Return a position of first alignment in left-right, or nil."
   [bam-reader region]
   (-> bam-reader
-      (io/read-alignments (assoc region :depth :first-only))
+      (sam/read-alignments (assoc region :depth :first-only))
       first
       :pos))
 
@@ -53,7 +52,7 @@
   supplied, piles whole range up."
   [bam-reader {:keys [chr start end] :or {start -1 end -1}} & {:keys [step] :or {step common/step}}]
   (try
-    (if-let [r (sam-util/ref-by-name (io/read-refs bam-reader) chr)]
+    (if-let [r (sam-util/ref-by-name (sam/read-refs bam-reader) chr)]
       (pileup*
        bam-reader
        chr (:len r)

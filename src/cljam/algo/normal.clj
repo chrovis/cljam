@@ -1,6 +1,6 @@
 (ns cljam.algo.normal
   (:require [clojure.java.io :refer [file]]
-            [cljam.io :as io]
+            [cljam.io.sam :as sam]
             [cljam.util :refer [swap]]
             [cljam.util.chromosome :refer [normalize-chromosome-key]]))
 
@@ -28,9 +28,9 @@
 
 (defmethod normalize :bam
   [rdr wtr]
-  (let [hdr (normalize-header (io/read-header rdr))]
-    (io/write-header wtr hdr)
-    (io/write-refs wtr hdr)
+  (let [hdr (normalize-header (sam/read-header rdr))]
+    (sam/write-header wtr hdr)
+    (sam/write-refs wtr hdr)
     ;; TODO copy all rest of stream for performance. (do not read, parse and write)
-    (doseq [blks (partition-all chunk-size (io/read-blocks rdr))]
-      (io/write-blocks wtr blks))))
+    (doseq [blks (partition-all chunk-size (sam/read-blocks rdr))]
+      (sam/write-blocks wtr blks))))

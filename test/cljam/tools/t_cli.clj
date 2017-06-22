@@ -3,8 +3,7 @@
             [cljam.t-common :refer :all]
             [clojure.java.io :as cio]
             [cljam.tools.cli :as cli]
-            [cljam.io :as io]
-            [cljam.io.bam :as bam])
+            [cljam.io.sam :as sam])
   (:import [java.io PrintStream]))
 
 (defmacro with-out-file
@@ -130,9 +129,9 @@
                  (with-out-file temp-out (cli/level [test-bam-file temp-bam]))))
     (is (not-throw? (with-out-file temp-out (cli/level [test-sorted-bam-file
                                                         temp-bam]))))
-    (with-open [rdr (bam/reader temp-bam :ignore-index true)]
+    (with-open [rdr (sam/bam-reader temp-bam :ignore-index true)]
       (is (= (map #(first (keep :LV (:options %)))
-                  (io/read-alignments rdr))
+                  (sam/read-alignments rdr))
              test-sorted-bam-levels)))))
 
 (deftest about-run

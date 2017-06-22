@@ -1,8 +1,7 @@
 (ns cljam.algo.dedupe
   (:refer-clojure :exclude [dedupe])
   (:require [com.climate.claypoole :as cp]
-            [cljam.io :as io]
-            [cljam.io.bam :as bam]
+            [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]))
 
 (defn- refs->regions [refs]
@@ -51,19 +50,19 @@
   "Remove PCR duplications from paired-end alignments."
   [in out & {:keys [remove-dups] :or {remove-dups true}}]
   (cp/with-shutdown! [pool (cp/ncpus)]
-    (let [[header refs] (with-open [r (bam/reader in)] [(io/read-header r) (io/read-refs r)])]
-      (with-open [w (bam/writer out)]
-        (io/write-header w header)
-        (io/write-refs w header)
-        (io/write-alignments
+    (let [[header refs] (with-open [r (sam/bam-reader in)] [(sam/read-header r) (sam/read-refs r)])]
+      (with-open [w (sam/bam-writer out)]
+        (sam/write-header w header)
+        (sam/write-refs w header)
+        (sam/write-alignments
          w
          (->> refs
               refs->regions
               (cp/pmap
                pool
                (fn [region]
-                 (with-open [r (bam/reader in)]
-                   (->> (io/read-alignments r region)
+                 (with-open [r (sam/bam-reader in)]
+                   (->> (sam/read-alignments r region)
                         (sequence (dedupe-xform :remove-dups remove-dups))
                         doall))))
               (sequence cat))

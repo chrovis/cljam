@@ -3,7 +3,7 @@
   https://samtools.github.io/hts-specs/ for the detail VCF specifications."
   (:require [clojure.string :as cstr]
             [clojure.tools.logging :as logging]
-            [cljam.io :as io]
+            [cljam.io.protocols :as protocols]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [cljam.util :refer [str->long]]
             [cljam.io.vcf.util :as vcf-util])
@@ -19,13 +19,13 @@
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
-  io/IReader
+  protocols/IReader
   (reader-path [this] (.f this))
   (read [this] (read-variants this))
   (read [this option] (read-variants this option))
-  io/IRegionReader
+  protocols/IRegionReader
   (read-in-region [this region]
-    (io/read-in-region this region {}))
+    (protocols/read-in-region this region {}))
   (read-in-region [this {:keys [chr start end]} {:keys [depth] :as option}]
     (logging/warn "May cause degradation of performance.")
     (filter
@@ -36,11 +36,11 @@
 
 ;; need dynamic extension for namespace issue.
 (extend-type VCFReader
-  io/IVariantReader
+  protocols/IVariantReader
   (meta-info [this] (.meta-info this))
   (header [this] (.header this))
   (read-variants
-    ([this] (io/read-variants this {}))
+    ([this] (protocols/read-variants this {}))
     ([this option] (read-variants this option))))
 
 ;; Utilities

@@ -4,7 +4,7 @@
             [clojure.tools.logging :as logging]
             [cljam.io.sam.util :refer [stringify-header
                                        stringify-alignment]]
-            [cljam.io :as io])
+            [cljam.io.protocols :as protocols])
   (:import [java.io BufferedWriter Closeable]))
 
 (declare write-header* write-alignments* write-blocks*)
@@ -16,10 +16,10 @@
   Closeable
   (close [this]
     (.close writer))
-  io/IWriter
+  protocols/IWriter
   (writer-path [this]
     (.f this))
-  io/IAlignmentWriter
+  protocols/IAlignmentWriter
   (write-header [this header]
     (write-header* this header))
   (write-refs [this refs]

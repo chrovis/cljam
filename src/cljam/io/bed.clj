@@ -1,7 +1,7 @@
 (ns cljam.io.bed
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
-            [cljam.io :as io]
+            [cljam.io.protocols :as protocols]
             [cljam.util :as util]
             [cljam.util.chromosome :as chr-util]
             [clojure.tools.logging :as logging])
@@ -13,13 +13,13 @@
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
-  io/IReader
+  protocols/IReader
   (reader-path [this] (.f this))
-  (read [this] (io/read this {}))
+  (read [this] (protocols/read this {}))
   (read [this option] (read-fields this))
-  io/IRegionReader
+  protocols/IRegionReader
   (read-in-region [this region]
-    (io/read-in-region this region {}))
+    (protocols/read-in-region this region {}))
   (read-in-region [this {:keys [chr start end]} option]
     (logging/warn "May cause degradation of performance.")
     (filter (fn [m] (and (or (not chr) (= (:chr m) chr))
@@ -31,7 +31,7 @@
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
-  io/IWriter
+  protocols/IWriter
   (writer-path [this] (.getAbsolutePath (cio/file (.f this)))))
 
 (defn ^BEDReader reader

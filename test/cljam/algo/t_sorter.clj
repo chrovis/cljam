@@ -1,7 +1,7 @@
 (ns cljam.algo.t-sorter
   (:require [clojure.test :refer :all]
             [cljam.t-common :refer :all]
-            [cljam.io.core :as io-core]
+            [cljam.io.sam :as sam]
             [cljam.algo.sorter :as sorter])
   (:import [java.io Closeable]))
 
@@ -30,8 +30,8 @@
 
 (defn- with-reader
   [target-fn src-file & [dst-file]]
-  (let [src-rdr (io-core/reader src-file)
-        dst-wtr (when dst-file (io-core/writer dst-file))]
+  (let [src-rdr (sam/reader src-file)
+        dst-wtr (when dst-file (sam/writer dst-file))]
     (if-not (nil? dst-wtr)
       (with-open [src ^Closeable src-rdr
                   dst ^Closeable dst-wtr] (target-fn src dst))
@@ -126,16 +126,16 @@
                       :after (clean-cache!)}
     ;; coordinate
     (is (not-throw?
-         (with-open [r (io-core/reader tmp-shuffled-bam-file :ignore-index true)
-                     w (io-core/writer tmp-coordinate-sorted-bam-bam-file)]
+         (with-open [r (sam/reader tmp-shuffled-bam-file :ignore-index true)
+                     w (sam/writer tmp-coordinate-sorted-bam-bam-file)]
            (sorter/sort-by-pos r w {:chunk-size 3}))))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-bam-file))
     (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-bam-file))))
     (is (coord-sorted? tmp-coordinate-sorted-bam-bam-file))
 
     (is (not-throw?
-         (with-open [r (io-core/reader tmp-shuffled-sam-file :ignore-index true)
-                     w (io-core/writer tmp-coordinate-sorted-sam-sam-file)]
+         (with-open [r (sam/reader tmp-shuffled-sam-file :ignore-index true)
+                     w (sam/writer tmp-coordinate-sorted-sam-sam-file)]
            (sorter/sort-by-pos r w {:chunk-size 3 :cache-fmt :sam}))))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-sam-file))
     (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-sam-file))))
@@ -143,15 +143,15 @@
 
     ;; queryname
     (is (not-throw?
-         (with-open [r (io-core/reader tmp-shuffled-bam-file :ignore-index true)
-                     w (io-core/writer tmp-queryname-sorted-bam-file-2)]
+         (with-open [r (sam/reader tmp-shuffled-bam-file :ignore-index true)
+                     w (sam/writer tmp-queryname-sorted-bam-file-2)]
            (sorter/sort-by-qname r w {:chunk-size 3}))))
     (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file-2)
     (is (qname-sorted? tmp-queryname-sorted-bam-file-2))
 
     (is (not-throw?
-         (with-open [r (io-core/reader tmp-shuffled-bam-file :ignore-index true)
-                     w (io-core/writer tmp-queryname-sorted-sam-file-2)]
+         (with-open [r (sam/reader tmp-shuffled-bam-file :ignore-index true)
+                     w (sam/writer tmp-queryname-sorted-sam-file-2)]
            (sorter/sort-by-qname r w {:chunk-size 3 :cache-fmt :sam}))))
     (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file-2)
     (is (qname-sorted? tmp-queryname-sorted-sam-file-2))))
@@ -186,13 +186,13 @@
                                   (prepare-cache!))
                       :after (clean-cache!)}
     (is (not-throw?
-         (with-open [r (io-core/reader large-bam-file)
-                     w (io-core/writer tmp-coordinate-sorted-bam-file)]
+         (with-open [r (sam/reader large-bam-file)
+                     w (sam/writer tmp-coordinate-sorted-bam-file)]
            ;; Use small chunk size to avoid OOM
            (sorter/sort-by-pos r w {:chunk-size 100000}))))
     (is (not-throw?
-         (with-open [r (io-core/reader large-bam-file)
-                     w (io-core/writer tmp-queryname-sorted-bam-file)]
+         (with-open [r (sam/reader large-bam-file)
+                     w (sam/writer tmp-queryname-sorted-bam-file)]
            ;; Use small chunk size to avoid OOM
            (sorter/sort-by-qname r w {:chunk-size 100000}))))
     (is (with-reader sorter/sorted-by? large-bam-file))

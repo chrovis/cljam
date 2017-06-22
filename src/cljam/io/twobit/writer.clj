@@ -1,6 +1,6 @@
 (ns cljam.io.twobit.writer
   (:require [clojure.java.io :as cio]
-            [cljam.io :as io]
+            [cljam.io.protocols :as protocols]
             [cljam.io.util.lsb :as lsb])
   (:import [java.io Closeable OutputStream DataOutputStream BufferedOutputStream FileOutputStream]
            [java.nio ByteBuffer]))
@@ -11,10 +11,10 @@
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
-  io/IWriter
+  protocols/IWriter
   (writer-path [this]
     (.f this))
-  io/ISequenceWriter
+  protocols/ISequenceWriter
   (write-sequences [this seqs]
     (write-sequences this seqs)))
 

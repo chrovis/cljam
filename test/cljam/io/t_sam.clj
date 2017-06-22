@@ -1,7 +1,9 @@
 (ns cljam.io.t-sam
   (:require [clojure.test :refer :all]
+            [clojure.java.io :as cio]
             [cljam.t-common :refer :all]
-            [cljam.io.sam :as sam]))
+            [cljam.io.sam :as sam]
+            [cljam.util :as util]))
 
 (def temp-sam-file (str temp-dir "/test.sam"))
 (def temp-bam-file (str temp-dir "/test.bam"))
@@ -166,6 +168,23 @@
       (is (= (sam/read-refs rdr) large-sam-refs))
       (is (not-throw? (sam/read-alignments rdr))))))
 
+(deftest reader-test
+  (testing "sam"
+    (with-open [rdr (sam/reader test-sam-file)]
+      (is (instance? cljam.io.sam.reader.SAMReader rdr))))
+  (testing "bam"
+    (with-open [rdr (sam/reader test-bam-file)]
+      (is (instance? cljam.io.bam.reader.BAMReader rdr))))
+  (testing "clone bam"
+    (with-open [rdr (sam/reader test-bam-file)
+                crdr (sam/reader rdr)]
+      (is (instance? cljam.io.bam.reader.BAMReader crdr))))
+  (testing "throws Exception"
+    (are [f] (thrown? Exception (sam/reader f))
+      "./test-resources/bam/foo.bam"
+      test-bai-file
+      "./test-resources/bam/foo.baam")))
+
 (deftest sam-writer-test
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
@@ -183,3 +202,15 @@
       (is (= (sam/read-header r) (:header test-sam)))
       (is (= (sam/read-refs r) test-sam-refs))
       (is (= (sam/read-alignments r) (:alignments test-sam))))))
+
+(deftest writer-test
+  (testing "sam"
+    (with-open [wtr (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.sam")))]
+      (is (instance? cljam.io.sam.writer.SAMWriter wtr))))
+  (testing "bam"
+    (with-open [wtr (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bam")))]
+      (is (instance? cljam.io.bam.writer.BAMWriter wtr))))
+  (testing "throws Exception"
+    (are [f] (thrown? Exception (sam/writer (.getAbsolutePath (cio/file util/temp-dir f))))
+      "temp.baam"
+      "temp.bai")))

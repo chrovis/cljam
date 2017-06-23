@@ -51,7 +51,7 @@
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
     (is (not-throw? (with-out-file temp-out (cli/normalize [normalize-before-bam-file temp-bam]))))
-    (is (same-bam-file? temp-bam normalize-after-bam-file))))
+    (is (same-sam-contents? temp-bam normalize-after-bam-file))))
 
 (deftest about-sort-by-pos
   (with-before-after {:before (prepare-cache!)

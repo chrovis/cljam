@@ -8,7 +8,7 @@
                       :after (clean-cache!)}
     (let [out-file (str temp-dir "/deduped.bam")]
       (is (not-throw? (dedupe/dedupe dedupe-before-bam-file out-file)))
-      (is (same-bam-file? out-file dedupe-after-bam-file)))))
+      (is (same-sam-contents? out-file dedupe-after-bam-file)))))
 
 (deftest simple-pe-dedupe-xform
   (is (= (into #{}

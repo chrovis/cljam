@@ -95,6 +95,9 @@
 
 (def test-sam-file "test-resources/sam/test.sam")
 
+(def normalize-before-sam-file "test-resources/sam/normalize_before.sam")
+(def normalize-after-sam-file "test-resources/sam/normalize_after.sam")
+
 ;; ### BAM files
 
 (def test-bam-file "test-resources/bam/test.bam")
@@ -460,10 +463,11 @@
   [f1 f2]
   (= (digest/sha1 (file f1)) (digest/sha1 (file f2))))
 
-(defn same-bam-file?
+(defn same-sam-contents?
+  "Returns true if the contents of two SAM/BAM files are equivalent, false if not."
   [f1 f2]
-  (with-open [r1 (sam/bam-reader f1)
-              r2 (sam/bam-reader f2)]
+  (with-open [r1 (sam/reader f1)
+              r2 (sam/reader f2)]
     (and (= (sam/read-header r1)
             (sam/read-header r2))
          (= (sam/read-alignments r1 {})

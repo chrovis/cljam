@@ -1,7 +1,7 @@
 (ns cljam.io.bam.encoder
   "Encoder of BAM alignment blocks."
   (:require [clojure.string :refer [split]]
-            [cljam.util :refer [string->bytes ubyte]]
+            [cljam.util :refer [ubyte]]
             [cljam.io.sam.util :refer [reg->bin normalize-bases fastq->phred
                                        str->compressed-bases make-refs ref-id
                                        stringify-header]]
@@ -117,8 +117,7 @@
          (Arrays/copyOfRange (.array bb) 0 4))
     \Z (let [^String text value
              text-size (count text)
-             buf (byte-array (inc text-size))]
-         (.getBytes text 0 text-size buf 0)
+             buf (byte-array (inc text-size) (.getBytes text))]
          (aset-byte buf text-size 0)
          buf)
     ;; \H nil

@@ -1,6 +1,6 @@
 (ns cljam.io.bam.writer
   (:require [clojure.string :refer [split]]
-            [cljam.util :refer [string->bytes ubyte]]
+            [cljam.util :refer [ubyte]]
             [cljam.io.protocols :as protocols]
             [cljam.io.sam.util :refer [reg->bin normalize-bases fastq->phred
                                        str->compressed-bases make-refs ref-id

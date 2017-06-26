@@ -1,6 +1,7 @@
 (ns cljam.io.bed
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
+            [proton.core :refer [as-int as-long]]
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]
             [cljam.util.chromosome :as chr-util]
@@ -55,7 +56,7 @@
   Returns nil if input is nil."
   [^String s]
   (when-not (nil? s)
-    (map util/str->long (cstr/split s #","))))
+    (map as-long (cstr/split s #","))))
 
 (defn- long-list->str
   "Inverse function of str->long-list."
@@ -95,13 +96,13 @@
   (reduce
    (fn deserialize-bed-reduce-fn [m [k f]] (update-some m k f))
    (zipmap bed-columns (cstr/split s #"\s+"))
-   {:start util/str->long
-    :end util/str->long
-    :score util/str->long
+   {:start as-long
+    :end as-long
+    :score as-long
     :strand #(case % "." :no-strand "+" :plus "-" :minus)
-    :thick-start util/str->long
-    :thick-end util/str->long
-    :block-count util/str->long
+    :thick-start as-long
+    :thick-end as-long
+    :block-count as-long
     :block-sizes str->long-list
     :block-starts str->long-list}))
 
@@ -185,7 +186,7 @@
   [xs]
   (sort-by
    (fn [m]
-     [(or (util/str->int (last (re-find #"(chr)?(\d+)" (:chr m)))) Integer/MAX_VALUE)
+     [(or (as-int (last (re-find #"(chr)?(\d+)" (:chr m)))) Integer/MAX_VALUE)
       (or ({"X" 23 "Y" 24 "M" 25} (last (re-find #"(chr)?([X|Y|M])" (:chr m)))) Integer/MAX_VALUE)
       (:chr m)
       (:start m)

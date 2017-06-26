@@ -34,49 +34,6 @@
 (defn ^String bytes->string [^bytes b]
   (String. b 0 (alength b)))
 
-(defn from-hex-digit [^Character c]
-  (let [d (Character/digit c 16)]
-    (when (= d -1)
-      (throw (NumberFormatException. (str "Invalid hex digit: " c))))
-    d))
-
-(defn hex-string->bytes [s]
-  {:pre [(even? (count s))]}
-  (byte-array
-   (map #(byte (bit-or (bit-shift-left (from-hex-digit (nth s (* % 2))) 4)
-                       from-hex-digit (nth s (inc (* % 2)))))
-        (range (count s)))))
-
-(defn str->long [s]
-  (if-not (nil? s)
-    (try
-      (let [[n _ _] (re-matches #"(|-|\+)(\d+)" s)]
-        (Long. ^String n))
-      (catch Exception e
-        nil))
-    nil))
-
-(defn str->int [s]
-  (if-not (nil? s)
-    (try
-      (let [[n _ _] (re-matches #"(|-|\+)(\d+)" s)]
-        (Integer. ^String n))
-      (catch NumberFormatException e
-        (str->long s))
-      (catch Exception e
-        nil))
-    nil))
-
-(defn str->float
-  [s]
-  (if-not (nil? s)
-    (try
-      (let [[n _ _ _] (re-matches #"(|-|\+)(\d+)\.?(\d*)" s)]
-        (Float. ^String n))
-      (catch Exception e
-        nil))
-    nil))
-
 (defn graph?
   "Returns true if c is a visible character, false if not."
   [c]

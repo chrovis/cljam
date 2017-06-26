@@ -1,9 +1,10 @@
 (ns cljam.io.sam.util
   "Utilities related to SAM/BAM format."
   (:require [clojure.string :as cstr]
+            [proton.core :refer [as-long as-double]]
             cljam.io.protocols
             [cljam.io.util.cigar :refer [count-ref]]
-            [cljam.util :refer [ubyte str->int str->float]])
+            [cljam.util :refer [ubyte]])
   (:import [java.nio CharBuffer ByteBuffer]
            [java.nio.charset StandardCharsets]
            [cljam.io.protocols SAMAlignment]))
@@ -80,13 +81,13 @@
   (case val-type
     \Z val
     \A (first val)
-    \I (str->int val)
-    \i (str->int val)
-    \s (str->int val)
-    \S (str->int val)
-    \c (str->int val)
-    \C (str->int val)
-    \f (str->float val)
+    \I (as-long val)
+    \i (as-long val)
+    \s (as-long val)
+    \S (as-long val)
+    \c (as-long val)
+    \C (as-long val)
+    \f (as-double val)
     \H nil ;;FIXME
     (throw (Exception. "Unrecognized tag type"))))
 

@@ -5,7 +5,7 @@
             [clojure.tools.logging :as logging]
             [cljam.io.protocols :as protocols]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            [cljam.util :refer [str->long]]
+            [proton.core :refer [as-long]]
             [cljam.io.vcf.util :as vcf-util])
   (:import [java.io Closeable]
            [clojure.lang LazilyPersistentVector]))
@@ -70,14 +70,14 @@
 
 (defn- parse-meta-info-contig
   [m]
-  (update m :length str->long))
+  (update m :length as-long))
 
 (defn- parse-meta-info-info
   [m]
   (update m :number (fn [s]
                       (if (#{"A" "R" "G"} s)
                         s
-                        (str->long s)))))
+                        (as-long s)))))
 
 (defn parse-meta-info-line
   [line]
@@ -135,7 +135,7 @@
     (->> gt-fields
          (interleave kws)
          (concat [:chr (first fields)
-                  :pos (str->long (nth fields 1))
+                  :pos (as-long (nth fields 1))
                   :id (nth fields 2)
                   :ref (nth fields 3)
                   :alt (some-> (nth fields 4) (cstr/split #","))

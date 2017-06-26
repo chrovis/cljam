@@ -43,13 +43,6 @@
   [c]
   (not (nil? (#{\space \tab \newline \formfeed \return (char 0x0b)} c))))
 
-;; map utils
-;; ---------
-
-(defmacro swap
-  [m k f]
-  `(assoc ~m ~k (~f (get ~m ~k))))
-
 
 ;; file utils
 ;; ---------

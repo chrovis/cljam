@@ -1,7 +1,8 @@
 (ns cljam.io.bam.decoder
   "Decoder of BAM alignment blocks."
   (:require [clojure.string :refer [join]]
-            [cljam.util :refer [ubyte hex-string->bytes]]
+            [proton.core :refer [hex->bytes]]
+            [cljam.util :refer [ubyte]]
             [cljam.io.sam.util :as sam-util]
             [cljam.io.bam.common :refer [fixed-block-size]]
             [cljam.io.util.lsb :as lsb])
@@ -30,7 +31,7 @@
     ~(long \c) (int (.get ~bb))
     ~(long \C) (bit-and (int (.get ~bb)) 0xff)
     ~(long \f) (.getFloat ~bb)
-    ~(long \H) (hex-string->bytes (lsb/read-null-terminated-string ~bb))
+    ~(long \H) (hex->bytes (lsb/read-null-terminated-string ~bb))
     (throw (Exception. "Unrecognized tag type"))))
 
 (defn- parse-tag-array [^ByteBuffer bb]

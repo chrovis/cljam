@@ -13,14 +13,6 @@
     -1
     256))
 
-(deftest str->int
-  (is (= (util/str->int "123") 123))
-  (is (= (util/str->int "-456") -456))
-  (is (= (util/str->int "+789") 789))
-  (is (instance? Integer (util/str->int "123")))
-  (is (instance? Long (util/str->int "12345678901")))
-  (is (= (util/str->int "12345678901") 12345678901)))
-
 (deftest divide-region
   (are [?start ?end ?step ?expected]
       (= (util/divide-region ?start ?end ?step) ?expected)

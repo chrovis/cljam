@@ -1,16 +1,14 @@
 (ns cljam.algo.normal
   (:require [cljam.io.sam :as sam]
             [cljam.io.util :as io-util]
-            [cljam.util :refer [swap]]
             [cljam.util.chromosome :refer [normalize-chromosome-key]]))
 
 (def ^:private chunk-size 1500000)
 
 (defn- normalize-header
   [hdr]
-  (let [seq (:SQ hdr)]
-    (assoc hdr
-      :SQ (vec (map #(swap % :SN normalize-chromosome-key) seq)))))
+  (update hdr :SQ (fn [xs]
+                    (mapv #(update % :SN normalize-chromosome-key) xs))))
 
 ;; TODO: copy all rest of stream for performance. (do not read, parse and write)
 (defn- transfer-blocks

@@ -6,11 +6,18 @@
 
 * Add protocols for I/O APIs. [#78](https://github.com/chrovis/cljam/pull/78)
 * Add FASTAWriter and TwoBitWriter. [#79](https://github.com/chrovis/cljam/pull/79)
+* Support SAM normalization. [#86](https://github.com/chrovis/cljam/pull/86)
 
 ### Changed
 
 * Remove dependency on [raynes/fs](https://github.com/Raynes/fs). [#80](https://github.com/chrovis/cljam/pull/80)
 * Improve sorter. [#81](https://github.com/chrovis/cljam/pull/81)
+* Namespace refactoring. [#83](https://github.com/chrovis/cljam/pull/83)
+* I/O API refactoring. [#84](https://github.com/chrovis/cljam/pull/84) [#85](https://github.com/chrovis/cljam/pull/85)
+
+### Fixed
+
+* Fix test of BCF writer. [#82](https://github.com/chrovis/cljam/pull/82)
 
 ## [0.3.1] - 2017-05-29
 

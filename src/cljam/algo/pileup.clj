@@ -2,7 +2,6 @@
   "Functions to calculate pileup from the BAM."
   (:require [cljam.common :refer [*n-threads*]]
             [cljam.io.sam :as sam]
-            [cljam.algo.pileup.common :as plpc]
             [cljam.algo.pileup.pileup :as plp]
             [cljam.algo.pileup.mpileup :as mplp]))
 

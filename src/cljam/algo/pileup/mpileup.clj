@@ -5,8 +5,7 @@
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]
             [cljam.io.sequence :as cseq]
-            [cljam.io.util.cigar :as cig]
-            [cljam.algo.pileup.common :refer [window-width step center]]))
+            [cljam.io.util.cigar :as cig]))
 
 (defn to-mpileup
   "Stringify mpileup sequence."

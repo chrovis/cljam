@@ -1,4 +1,5 @@
 (ns cljam.io.util
+  "I/O utilities."
   (:require [cljam.io.protocols :as protocols]
             cljam.io.sam.reader
             cljam.io.sam.writer
@@ -116,17 +117,18 @@
   (instance? cljam.io.fastq.FASTQWriter wtr))
 
 (defn bed-reader?
-  "Checks if given object is an instance of BEDReader"
+  "Checks if given object is an instance of BEDReader."
   [rdr]
   (instance? cljam.io.bed.BEDReader rdr))
 
 (defn bed-writer?
-  "Checks if given object is an instance of BEDWriter"
+  "Checks if given object is an instance of BEDWriter."
   [wtr]
   (instance? cljam.io.bed.BEDWriter wtr))
 
 (defn file-type
-  "Detects file format from input path string."
+  "Detects a file format from path string f, returning a keyword representing
+  the format. Throws an exception if an unsupported file is supplied."
   [f]
   (condp re-find f
     #"(?i)\.sam$" :sam

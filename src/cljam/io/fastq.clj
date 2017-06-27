@@ -1,4 +1,5 @@
 (ns cljam.io.fastq
+  "Functions to read and write the FASTQ format."
   (:require [clojure.java.io :as cio]
             [clojure.string :as string]
             [cljam.io.protocols :as protocols]
@@ -23,14 +24,20 @@
   protocols/IWriter
   (writer-path [this] (.f this)))
 
-(defn ^FASTQReader reader [^String f]
+(defn ^FASTQReader reader
+  "Returns an open cljam.io.fastq.FASTQReader of f. Should be used inside
+  with-open to ensure the reader is properly closed."
+  [^String f]
   (let [file (cio/file f)
         path (.getAbsolutePath file)]
     (-> (util/compressor-input-stream path)
         cio/reader
         (FASTQReader. path))))
 
-(defn ^FASTQWriter writer [^String f]
+(defn ^FASTQWriter writer
+  "Returns an open cljam.io.fastq.FASTQWriter of f. Should be used inside
+  with-open to ensure the writer is properly closed."
+  [^String f]
   (let [file (cio/file f)
         path (.getAbsolutePath file)]
     (-> (util/compressor-output-stream path)

@@ -1,4 +1,5 @@
 (ns cljam.algo.dedupe
+  "Functions to remove duplications."
   (:refer-clojure :exclude [dedupe])
   (:require [com.climate.claypoole :as cp]
             [cljam.io.sam :as sam]
@@ -47,7 +48,7 @@
                (map (fn [a] (update a :flag #(bit-or % 1024))) dups))))))))))
 
 (defn dedupe
-  "Remove PCR duplications from paired-end alignments."
+  "Removes PCR duplications from paired-end alignments."
   [in out & {:keys [remove-dups] :or {remove-dups true}}]
   (cp/with-shutdown! [pool (cp/ncpus)]
     (let [[header refs] (with-open [r (sam/bam-reader in)] [(sam/read-header r) (sam/read-refs r)])]

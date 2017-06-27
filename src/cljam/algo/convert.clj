@@ -1,5 +1,5 @@
 (ns cljam.algo.convert
-  "Convert file from sam to bam, and vice versa"
+  "Format converter from SAM to BAM, and vice versa."
   (:require [cljam.io.sam :as sam]
             [cljam.io.bam.encoder :as encoder]
             [cljam.io.sam.util :as sam-util]
@@ -36,7 +36,7 @@
     (write-alignments-fn rdr wtr hdr num-block num-write-block)))
 
 (defn convert
-  "Convert file format from input file to output file by file extension"
+  "Converts file format from input file to output file by the file extension."
   [in out & {:keys [num-block num-write-block]
              :or {num-block default-num-block
                   num-write-block default-num-write-block}}]

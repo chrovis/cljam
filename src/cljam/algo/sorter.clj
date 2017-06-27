@@ -1,5 +1,5 @@
 (ns cljam.algo.sorter
-  "Sorter of SAM/BAM format alignments."
+  "Sorter of the SAM/BAM format alignments."
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [com.climate.claypoole :as cp]
@@ -17,7 +17,7 @@
 (def ^:const order-queryname :queryname)
 
 (defn- replace-header
-  "Replace version number and sorting info of the header."
+  "Replaces version number and sorting info of the header."
   [hdr vn so]
   (assoc hdr :HD {:VN vn, :SO so}))
 
@@ -154,7 +154,7 @@
   (format "%s/%s_%05d.%s" util/temp-dir prefix i fmt))
 
 (defn sort!
-  "Sort alignments of rdr by mode and writes them to wtr.
+  "Sorts alignments of rdr by mode and writes them to wtr.
   :coordinate and :queryname are available for mode."
   [rdr wtr {:keys [mode chunk-size cache-fmt] :or {cache-fmt :bam}}]
   (let [name-fn (->> rdr
@@ -172,7 +172,7 @@
     (clean-all! splitted-files)))
 
 (defn sort-by-pos
-  "Sort alignments by chromosomal position."
+  "Sorts alignments by chromosomal position."
   [rdr wtr & [option]]
   (sort! rdr wtr (into (or option {}) {:mode :coordinate})))
 
@@ -191,7 +191,7 @@
 
 (defn sort-order
   "Returns sorting order of the sam as Keyword. Returning order is one of the
-  following: :queryname, :coordinate, :unsorted, :unknown ."
+  following: :queryname, :coordinate, :unsorted, :unknown."
   [rdr]
   (if-let [so (:SO (:HD (sam/read-header rdr)))]
     (keyword so)

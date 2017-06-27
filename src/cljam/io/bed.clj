@@ -1,4 +1,6 @@
 (ns cljam.io.bed
+  "Functions to read and write the BED (Browser Extensible Data) format. See
+  http://genome.ucsc.edu/FAQ/FAQformat#format1 for the detail BED specifications."
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [proton.core :refer [as-int as-long]]
@@ -36,13 +38,15 @@
   (writer-path [this] (.getAbsolutePath (cio/file (.f this)))))
 
 (defn ^BEDReader reader
-  "Returns BED file reader of f."
+  "Returns an open cljam.io.bed.BEDReader of f. Should be used inside with-open
+  to ensure the reader is properly closed."
   [f]
   (let [abs (.getAbsolutePath (cio/file f))]
     (BEDReader. (cio/reader (util/compressor-input-stream abs)) abs)))
 
 (defn ^BEDWriter writer
-  "Returns BED file writer of f."
+  "Returns an open cljam.io.bed.BEDWriter of f. Should be used inside with-open
+  to ensure the writer is properly closed."
   [f]
   (let [abs (.getAbsolutePath (cio/file f))]
   (BEDWriter. (cio/writer (util/compressor-output-stream abs)) abs)))

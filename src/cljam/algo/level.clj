@@ -1,5 +1,5 @@
 (ns cljam.algo.level
-  "Analyze level of alignments in BAM."
+  "Level analyzer of alignments in BAM."
   (:require [clojure.java.io :refer [file]]
             [com.climate.claypoole :as cp]
             [cljam.common :refer [get-exec-n-threads *n-threads*]]
@@ -10,6 +10,9 @@
             [cljam.util :as util]))
 
 (defmulti add-level
+  "Adds level information to alignments from rdr and writes them to wtr. Level
+  calculation process is multithreaded."
+  {:arglists '([rdr wtr])}
   (fn [rdr wtr]
     (cond
       (sam-reader? rdr) :sam

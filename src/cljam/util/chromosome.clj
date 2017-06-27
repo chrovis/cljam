@@ -1,4 +1,5 @@
 (ns cljam.util.chromosome
+  "Utilities for handling chromosome name."
   (:require [clojure.string :as cstr]))
 
 (defn normalize-name
@@ -10,6 +11,7 @@
       (cstr/replace #"\'"  "")))
 
 (defn trim-chromosome-key
+  "Removes chr prefix from chromosome name."
   [s]
   (cstr/replace s #"(?i)^chr" ""))
 
@@ -33,6 +35,7 @@
         (str "chr" (cstr/upper-case (str base leftover)))))))
 
 (defn normalize-chromosome-key
+  "Normalizes chromosome name."
   [s]
   (-> s
       normalize-name

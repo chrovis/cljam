@@ -1,4 +1,5 @@
 (ns cljam.algo.normal
+  "Functions to normalize the SAM/BAM format."
   (:require [cljam.io.sam :as sam]
             [cljam.io.util :as io-util]
             [cljam.util.chromosome :refer [normalize-chromosome-key]]))

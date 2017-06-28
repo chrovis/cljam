@@ -2,11 +2,21 @@
 
 ## [Unreleased]
 
+### BREAKING
+
+Namespaces of most APIs are changed in this release.
+
+* `cljam.io.***` - reader/writer functions of various formats such as SAM, VCF, and FASTA.
+* `cljam.algo.***` - algorithms such as sort, indexing, and pileup.
+* `cljam.util.***` - utilities such as chromosome name normalization.
+* `cljam.tools.***` - tools such as command-line interface.
+
 ### Added
 
 * Add protocols for I/O APIs. [#78](https://github.com/chrovis/cljam/pull/78)
 * Add FASTAWriter and TwoBitWriter. [#79](https://github.com/chrovis/cljam/pull/79)
 * Support SAM normalization. [#86](https://github.com/chrovis/cljam/pull/86)
+* Add docstring. [#88](https://github.com/chrovis/cljam/pull/88)
 
 ### Changed
 
@@ -14,6 +24,7 @@
 * Improve sorter. [#81](https://github.com/chrovis/cljam/pull/81)
 * Namespace refactoring. [#83](https://github.com/chrovis/cljam/pull/83)
 * I/O API refactoring. [#84](https://github.com/chrovis/cljam/pull/84) [#85](https://github.com/chrovis/cljam/pull/85)
+* Use [proton](https://github.com/xcoo/proton) instead of some utilities. [#87](https://github.com/chrovis/cljam/pull/87)
 
 ### Fixed
 

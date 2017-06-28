@@ -12,7 +12,7 @@ A DNA Sequence Alignment/Map (SAM) library for Clojure. [[API Reference]][api-re
 
 ## Installation
 
-cljam is available as a Maven artifact from [Clojars][clojars].
+cljam is available as a Maven artifact from [Clojars](https://clojars.org/cljam).
 
 To use with Leiningen/Boot, add the following dependency.
 
@@ -30,40 +30,37 @@ To use with Maven, add the following dependency.
 </dependency>
 ```
 
-## Breaking changes in 0.2.0
+## Breaking changes in 0.4.0
 
-From 0.2.0 release, ranges are represented as one-based closed intervals. For example,
+Namespaces of most APIs are changed in 0.4.0.
 
-```clojure
-{:chr "chr1", :start 1, :end 3}
-```
-
-represents the first three bases of chromosome 1.
+* `cljam.io.***` - reader/writer functions of various formats such as SAM, VCF, and FASTA.
+* `cljam.algo.***` - algorithms such as sort, indexing, and pileup.
+* `cljam.util.***` - utilities such as chromosome name normalization.
 
 ## Getting started
 
 To read a SAM/BAM format file,
 
 ```clojure
-(require '[cljam.core :refer [reader]]
-         '[cljam.io :as io])
+(require '[cljam.io.sam :as sam])
 
 ;; Open a file
-(with-open [r (reader "path/to/file.bam")]
+(with-open [r (sam/reader "path/to/file.bam")]
   ;; Retrieve header
-  (io/read-header r)
+  (sam/read-header r)
   ;; Retrieve alignments
-  (doall (take 5 (io/read-alignments r)))
+  (doall (take 5 (sam/read-alignments r)))
 ```
 
 To create a sorted file,
 
 ```clojure
-(require '[cljam.core :refer [reader writer]]
-         '[cljam.sorter :as sorter])
+(require '[cljam.io.sam :as sam]
+         '[cljam.algo.sorter :as sorter])
 
-(with-open [r (reader "path/to/file.bam")
-            w (writer "path/to/sorted.bam")]
+(with-open [r (sam/reader "path/to/file.bam")
+            w (sam/writer "path/to/sorted.bam")]
   ;; Sort by chromosomal coordinates
   (sorter/sort-by-pos r w))
 ```
@@ -71,7 +68,7 @@ To create a sorted file,
 To create a BAM index file,
 
 ```clojure
-(require '[cljam.bam-indexer :as bai])
+(require '[cljam.algo.bam-indexer :as bai])
 
 ;; Create a new BAM index file
 (bai/create-index "path/to/sorted.bam" "path/to/sorted.bam.bai")
@@ -80,13 +77,13 @@ To create a BAM index file,
 To pileup,
 
 ```clojure
-(require '[cljam.core :refer [reader]]
-         '[cljam.pileup :as plp])
+(require '[cljam.io.sam :as sam]
+         '[cljam.algo.pileup :as plp])
 
-(with-open [r (reader "path/to/sorted.bam" :ignore-index false)]
+(with-open [r (sam/reader "path/to/sorted.bam" :ignore-index false)]
   ;; Pileup "chr1" alignments
-  (take 10 (plp/pileup r "chr1" nil)))
-;; => (0 0 1 1 3 3 3 3 2 3)
+  (plp/pileup r {:chr "chr1" :start 1 :end 10}))
+;;=> (0 0 0 0 0 0 1 1 3 3)
 ```
 
 Check https://chrovis.github.io/cljam for more information.
@@ -99,7 +96,7 @@ cljam provides a command-line tool to use the features easily.
 
 ### Executable installation
 
-Run `lein-bin` plugin and it creates standalone console executable into `target` directory.
+`lein bin` creates standalone console executable into `target` directory.
 
 ```console
 $ lein with-profile +1.8 bin
@@ -172,7 +169,6 @@ Copyright 2013-2017 [Xcoo, Inc.][xcoo]
 
 Licensed under the [Apache License, Version 2.0][apache-license-2.0].
 
-[clojars]: https://clojars.org/cljam
 [api-reference]: https://chrovis.github.io/cljam/docs
 [annotated-source]: https://chrovis.github.io/cljam/literate
 [xcoo]: https://xcoo.jp/

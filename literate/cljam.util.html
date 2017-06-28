@@ -2867,13 +2867,10 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.util" name="cljam.util"><h1 class="project-name">cljam.util</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>General utilities.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.util
-  (:require [clojure.java.io :refer [file] :as io]
+  (:require [clojure.java.io :refer [file] :as cio]
             [clojure.string :as cstr])
   (:import [org.apache.commons.compress.compressors
-            CompressorStreamFactory CompressorException]))</pre></td></tr><tr><td class="docs"><h2>CPU info</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>The number of processors available to the Java virtual machine.</p>
-</td><td class="codes"><pre class="brush: clojure">(def num-cores
-  (.availableProcessors (Runtime/getRuntime)))</pre></td></tr><tr><td class="docs"><h2>Disk cache</h2>
+            CompressorStreamFactory CompressorException]))</pre></td></tr><tr><td class="docs"><h2>Disk cache</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def temp-dir (let [system-tmp-dir-path (or (System/getenv &quot;TMPDIR&quot;)
                                             (System/getProperty &quot;java.io.tmpdir&quot;))
@@ -2887,66 +2884,16 @@ net.brehaut.ClojureTools = (function (SH) {
   (byte (if (&lt; n 0x80) n (- n 0x100))))</pre></td></tr><tr><td class="docs"><h2>string utils</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^&quot;[B&quot; string-&gt;bytes [^String s]
-  (let [buf (byte-array (count s))]
-    (.getBytes s 0 (alength buf) buf 0)
-    buf))</pre></td></tr><tr><td class="docs">
+  (.getBytes s))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^String bytes-&gt;string [^bytes b]
-  (String. b 0 (alength b)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn from-hex-digit [^Character c]
-  (let [d (Character/digit c 16)]
-    (when (= d -1)
-      (throw (NumberFormatException. (str &quot;Invalid hex digit: &quot; c))))
-    d))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn hex-string-&gt;bytes [s]
-  {:pre [(even? (count s))]}
-  (byte-array
-   (map #(byte (bit-or (bit-shift-left (from-hex-digit (nth s (* % 2))) 4)
-                       from-hex-digit (nth s (inc (* % 2)))))
-        (range (count s)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn str-&gt;long [s]
-  (if-not (nil? s)
-    (try
-      (let [[n _ _] (re-matches #&quot;(|-|\+)(\d+)&quot; s)]
-        (Long. ^String n))
-      (catch Exception e
-        nil))
-    nil))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn str-&gt;int [s]
-  (if-not (nil? s)
-    (try
-      (let [[n _ _] (re-matches #&quot;(|-|\+)(\d+)&quot; s)]
-        (Integer. ^String n))
-      (catch NumberFormatException e
-        (str-&gt;long s))
-      (catch Exception e
-        nil))
-    nil))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn str-&gt;float
-  [s]
-  (if-not (nil? s)
-    (try
-      (let [[n _ _ _] (re-matches #&quot;(|-|\+)(\d+)\.?(\d*)&quot; s)]
-        (Float. ^String n))
-      (catch Exception e
-        nil))
-    nil))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a visible character, false if not.</p>
+  (String. b 0 (alength b)))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a visible character, false if not.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn graph?
   [c]
   (&lt;= 0x20 (byte c) 0x7E))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a character that creates "white space" in displayed
   text.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn space?
   [c]
-  (not (nil? (#{\space \tab \newline \formfeed \return (char 0x0b)} c))))</pre></td></tr><tr><td class="docs"><h2>seq utils</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn gen-vec
-  ([n]
-     (gen-vec n nil))
-  ([n ini]
-     (vec (repeat n ini))))</pre></td></tr><tr><td class="docs"><h2>map utils</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro swap
-  [m k f]
-  `(assoc ~m ~k (~f (get ~m ~k))))</pre></td></tr><tr><td class="docs"><h2>file utils</h2>
+  (not (nil? (#{\space \tab \newline \formfeed \return (char 0x0b)} c))))</pre></td></tr><tr><td class="docs"><h2>file utils</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn basename
   [path]
@@ -2960,7 +2907,7 @@ net.brehaut.ClojureTools = (function (SH) {
   InputStream is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^java.io.InputStream compressor-input-stream
   [f]
-  (let [is (io/input-stream f)]
+  (let [is (cio/input-stream f)]
     (try
       (-&gt; (CompressorStreamFactory. true)
           (.createCompressorInputStream is))
@@ -2977,11 +2924,27 @@ net.brehaut.ClojureTools = (function (SH) {
                                  #&quot;(?i)\.(bz2|bzip2)$&quot; :bzip2
                                  nil)))
   ([f k]
-   (let [os (io/output-stream f)]
+   (let [os (cio/output-stream f)]
      (if-let [s (get compressor-map k)]
        (-&gt; (CompressorStreamFactory.)
            (.createCompressorOutputStream s os))
-       os))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+       os))))</pre></td></tr><tr><td class="docs"><h2>region utils</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Divides a region [start end] into several chunks with maximum length 'step'.
+  Returns a lazy sequence of vector.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn divide-region
+  [start end step]
+  (-&gt;&gt; [(inc end)]
+       (concat (range start (inc end) step))
+       (partition 2 1)
+       (map (fn [[s e]] [s (dec e)]))))</pre></td></tr><tr><td class="docs"><p>Divides refs into several chunks with maximum length 'step'.
+  Returns a lazy sequence of map containing {:chr :start :end}.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn divide-refs
+  [refs step]
+  (mapcat
+   (fn [{:keys [name len]}]
+     (map (fn [[s e]] {:chr name :start s :end e})
+          (divide-region 1 len step)))
+   refs))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

@@ -3,7 +3,7 @@
   :url "https://github.com/chrovis/cljam"
   :license {:name "Apache License, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
-  :dependencies [[org.clojure/tools.logging "0.3.1"]
+  :dependencies [[org.clojure/tools.logging "0.4.0"]
                  [org.clojure/tools.cli "0.3.5"]
                  [org.apache.commons/commons-compress "1.14"]
                  [clj-sub-command "0.3.0"]
@@ -13,13 +13,13 @@
                  [camel-snake-kebab "0.4.0"]
                  [proton "0.1.1"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.8.0"]
-                                  [cavia "0.4.0"]]
+                                  [cavia "0.4.1"]]
                    :plugins [[lein-binplus "0.6.2"]
                              [lein-codox "0.10.3"]
                              [lein-marginalia "0.9.0" :exclusions [org.clojure/clojure]]
                              [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure]]]
                    :test-selectors {:default #(not-any? % [:slow :remote])
-                                    :slow :slow   ; Slow tests with local resources
+                                    :slow :slow ; Slow tests with local resources
                                     :remote :remote ; Tests with remote resources
                                     :all (constantly true)}
                    :main ^:skip-aot cljam.tools.main

@@ -13,6 +13,7 @@
     "chrY" "chrY"
     "chrM" "chrM"
     "chrMT" "chrMT"
+    "chrUn" "chrUn"
 
     "Chr1" "chr1"
     "Chr01" "chr1"
@@ -21,6 +22,7 @@
     "ChrY" "chrY"
     "ChrM" "chrM"
     "ChrMT" "chrMT"
+    "ChrUn" "chrUn"
 
     "CHR1" "chr1"
     "CHR01" "chr1"
@@ -29,6 +31,7 @@
     "CHRY" "chrY"
     "CHRM" "chrM"
     "CHRMT" "chrMT"
+    "CHRUN" "chrUn"
 
     "1" "chr1"
     "01" "chr1"
@@ -37,11 +40,13 @@
     "Y" "chrY"
     "M" "chrM"
     "MT" "chrMT"
+    "Un" "chrUn"
 
     "x" "chrX"
     "y" "chrY"
     "m" "chrM"
     "mt" "chrMT"
+    "un" "chrUn"
 
     "_1" "_1"
     "GL000226_1" "GL000226_1"

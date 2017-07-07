@@ -6,6 +6,8 @@
             [cljam.io.sam :as sam])
   (:import [java.io PrintStream]))
 
+(use-fixtures :once disable-log-fixture)
+
 (defmacro with-out-file
   [f & body]
   `(let [os# (cio/output-stream ~f)

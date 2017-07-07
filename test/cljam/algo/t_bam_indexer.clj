@@ -7,6 +7,8 @@
             [cljam.algo.sorter :as sorter]
             [cljam.algo.bam-indexer :as bai]))
 
+(use-fixtures :once disable-log-fixture)
+
 (def temp-file-sorted (str temp-dir "/test.sorted.bam"))
 (def temp-file-sorted-2 (str temp-dir "/test.sorted2.bam"))
 

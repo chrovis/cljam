@@ -1,6 +1,8 @@
 (ns cljam.t-common
   (:require [digest]
             [clojure.java.io :refer [file]]
+            [clojure.tools.logging :refer [*logger-factory*]]
+            [clojure.tools.logging.impl :refer [disabled-logger-factory]]
             [cljam.io.protocols :as protocols]
             [cljam.io.sam :as sam]
             [cavia.core :as cavia :refer [defprofile with-profile]]))
@@ -58,6 +60,13 @@
        (try
          ~@body
          (finally ~after-expr)))))
+
+(defn disable-log-fixture
+  "A fixture function to suppress log output. Call as
+  (use-fixtures :once disable-log-fixture) in a test namespace."
+  [f]
+  (binding [*logger-factory* disabled-logger-factory]
+    (f)))
 
 (defn just-map? [checker-map target-map]
   (when (= (set (keys checker-map)) (set (keys target-map)))

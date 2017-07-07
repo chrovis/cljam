@@ -5,6 +5,8 @@
             [cljam.algo.sorter :as sorter])
   (:import [java.io Closeable]))
 
+(use-fixtures :once disable-log-fixture)
+
 (def tmp-coordinate-sorted-sam-file (str temp-dir "/" "tmp.coordinate.sorted.sam"))
 (def tmp-coordinate-sorted-bam-file (str temp-dir "/" "tmp.coordinate.sorted.bam"))
 

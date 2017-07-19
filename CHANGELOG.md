@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Changed
+
+* Improve chromosome normalization. [#89](https://github.com/chrovis/cljam/pull/89)
+* Suppress log output in test. [#90](https://github.com/chrovis/cljam/pull/90)
+
 ## [0.4.0] - 2017-06-28
 
 ### BREAKING

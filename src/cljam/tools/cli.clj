@@ -12,9 +12,11 @@
             [cljam.algo.sorter :as sorter]
             [cljam.algo.fasta-indexer :as fai]
             [cljam.algo.dict :as dict]
+            [cljam.algo.depth :as depth]
             [cljam.algo.pileup :as plp]
             [cljam.algo.convert :as convert]
-            [cljam.algo.level :as level])
+            [cljam.algo.level :as level]
+            [cljam.util :as util])
   (:import [java.io Closeable BufferedWriter OutputStreamWriter]))
 
 ;; CLI functions
@@ -207,11 +209,11 @@
 (defn- pileup-simple
   ([rdr n-threads]
    (doseq [rname (map :name (sam/read-refs rdr))]
-     (pileup-simple rdr n-threads rname -1 -1)))
-  ([rdr n-threads rname start end]
+     (pileup-simple rdr n-threads {:chr rname})))
+  ([rdr n-threads region]
    (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
              *flush-on-newline* false]
-     (doseq [line (plp/pileup rdr {:chr rname :start start :end end} {:n-threads n-threads})]
+     (doseq [line (depth/lazy-depth rdr region {:n-threads n-threads})]
        (println line))
      (flush))))
 
@@ -225,9 +227,9 @@
                                           :qual (cstr/join (% line))
                                           :seq (cstr/join (% line))
                                           (% line)) [:rname :pos :ref :count :seq :qual])))))))
-  ([rdr ref-fa rname start end]
+  ([rdr ref-fa region]
    (with-open [fa-rdr (cseq/reader ref-fa)]
-     (doseq [line  (plp/mpileup fa-rdr rdr {:chr rname :start start :end end})]
+     (doseq [line  (plp/mpileup fa-rdr rdr region)]
        (if-not (zero? (:count line))
          (println (cstr/join \tab (map #(case %
                                           :qual (cstr/join (% line))
@@ -243,22 +245,13 @@
                                         :qual (cstr/join (% line))
                                         :seq (cstr/join (% line))
                                         (% line)) [:rname :pos :ref :count :seq :qual]))))))
-  ([rdr rname start end]
-   (doseq [line  (plp/mpileup nil rdr {:chr rname :start start :end end})]
+  ([rdr region]
+   (doseq [line  (plp/mpileup nil rdr region)]
      (if-not (zero? (:count line))
        (println (cstr/join \tab (map #(case %
                                         :qual (cstr/join (% line))
                                         :seq (cstr/join (% line))
                                         (% line)) [:rname :pos :ref :count :seq :qual])))))))
-
-(defn- parse-region
-  [region-str]
-  (if-let [m (re-find #"^([^:]+)$" region-str)]
-    (conj (vec (rest m)) -1 -1)
-    (if-let [m (re-find #"^([^:]+):([0-9]+)-([0-9]+)$" region-str)]
-      (-> (vec (rest m))
-          (update-in [1] #(Integer/parseInt %))
-          (update-in [2] #(Integer/parseInt %))))))
 
 (defn pileup [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args pileup-cli-options)]
@@ -273,11 +266,11 @@
         (when-not (sorter/sorted-by? r)
           (exit 1 "Not sorted"))
         (if (:region options)
-          (if-let [region (parse-region (:region options))]
+          (if-let [region (util/parse-region (:region options))]
             (cond
-              (:simple options) (apply pileup-simple r (:thread options) region)
-              (:ref options) (apply pileup-with-ref r (:ref options) region)
-              :else (apply pileup-without-ref r region))
+              (:simple options) (pileup-simple r (:thread options) region)
+              (:ref options) (pileup-with-ref r (:ref options) region)
+              :else (pileup-without-ref r region))
             (exit 1 "Invalid region format"))
           (cond
             (:simple options) (pileup-simple r (:thread options))

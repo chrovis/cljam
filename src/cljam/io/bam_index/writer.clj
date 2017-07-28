@@ -9,6 +9,7 @@
             [cljam.io.bam.decoder :as bam-decoder])
   (:import [java.io DataOutputStream Closeable]
            [java.nio ByteBuffer ByteOrder]
+           [cljam.io.bam.decoder BAMPointerBlock]
            [cljam.io.bam_index.chunk Chunk]))
 
 (declare make-index-from-blocks)
@@ -54,13 +55,14 @@
 ;; ### Updating
 
 (defn- update-meta-data
-  [^MetaData meta-data aln]
+  [^MetaData meta-data ^BAMPointerBlock aln]
   (let [first-offset (.first-offset meta-data)
         last-offset (.last-offset meta-data)
         aligned-alns (.aligned-alns meta-data)
         unaligned-alns (.unaligned-alns meta-data)
-        {:keys [beg end]} (:chunk (:meta aln))
-        aligned? (zero? (bit-and (:flag aln) 4))]
+        beg (.pointer-beg aln)
+        end (.pointer-end aln)
+        aligned? (zero? (bit-and (.flag aln) 4))]
     (MetaData.
      ;; first-offset
      (if (or (< (bgzf/compare beg first-offset) 1)
@@ -75,23 +77,23 @@
      (if-not aligned? (inc unaligned-alns) unaligned-alns))))
 
 (defn- update-bin-index
-  [bin-index aln]
-  (let [bin (sam-util/compute-bin aln)
-        meta-chunk (:chunk (:meta aln))
-        achunk (Chunk. (:beg meta-chunk) (:end meta-chunk))]
+  [bin-index ^BAMPointerBlock aln]
+  (let [bin (sam-util/reg->bin (.pos aln) (inc (.end aln)))
+        beg (.pointer-beg aln)
+        end (.pointer-end aln)]
     (assoc bin-index bin
            (if-let [chunks (get bin-index bin)]
-             (if (bgzf/same-or-adjacent-blocks? (.end ^Chunk (peek chunks)) (.beg achunk))
-               (let [l (assoc (peek chunks) :end (.end achunk))]
-                 (assoc chunks (dec (count chunks)) l))
-               (conj chunks achunk))
-             (vector achunk)))))
+             (let [last-chunk ^Chunk (peek chunks)]
+               (if (bgzf/same-or-adjacent-blocks? (.end last-chunk) beg)
+                 (conj (pop chunks) (Chunk. (.beg last-chunk) end))
+                 (conj chunks (Chunk. beg end))))
+             [(Chunk. beg end)]))))
 
 (defn- update-linear-index
-  [linear-index aln]
-  (let [beg (-> aln :meta :chunk :beg)
-        aln-beg (:pos aln)
-        aln-end (sam-util/get-end aln)
+  [linear-index ^BAMPointerBlock aln]
+  (let [beg (.pointer-beg aln)
+        aln-beg (.pos aln)
+        aln-end (.end aln)
         win-beg (if (zero? aln-end)
                   (pos->lidx-offset (dec aln-beg))
                   (pos->lidx-offset aln-beg))
@@ -118,17 +120,17 @@
   Returned index is still intermidate. It must be passed to finalize function
   in the final stage."
   [alns]
-  (loop [[aln & rest] alns
-         rid (:ref-id aln)
+  (loop [[^BAMPointerBlock aln & rest] alns
+         rid (.ref-id aln)
          idx-status (init-index-status)
          no-coordinate-alns 0
          indices {}]
     (if aln
-      (let [rid' (:ref-id aln)
+      (let [rid' (.ref-id aln)
             new-ref? (not= rid' rid)
             idx-status' (update-index-status
                          (if new-ref? (init-index-status) idx-status) aln)
-            no-coordinate-alns' (if (zero? (:pos aln))
+            no-coordinate-alns' (if (zero? (.pos aln))
                                   (inc no-coordinate-alns)
                                   no-coordinate-alns)
             indices' (if new-ref?
@@ -225,25 +227,24 @@
   (loop [i 0
          index index]
     (if (< i nrefs)
-      (let []
-        (if (get index i)
-          (recur (inc i) (-> index
-                             (update-in [i :bin-index] finalize-bin-index)
-                             (update-in [i :linear-index] finalize-linear-index)))
-          (recur (inc i) index)))
+      (if (get index i)
+        (recur (inc i) (-> index
+                           (update-in [i :bin-index] finalize-bin-index)
+                           (update-in [i :linear-index] finalize-linear-index)))
+        (recur (inc i) index))
       index)))
 
 ;; Writing index
 ;; -----------
 
 (defn- write-bin
-  [w bin chunks]
+  [w ^long bin chunks]
   (lsb/write-int w bin)
   ;; chunks
   (lsb/write-int w (count chunks))
-  (doseq [{:keys [beg end]} chunks]
-    (lsb/write-long w beg)
-    (lsb/write-long w end)))
+  (doseq [^Chunk chunk chunks]
+    (lsb/write-long w (.beg chunk))
+    (lsb/write-long w (.end chunk))))
 
 (defn- write-meta-data
   [w meta-data]
@@ -255,7 +256,7 @@
   (lsb/write-long w (:unaligned-alns meta-data)))
 
 (defn- write-index*!
-  [wtr nrefs alns]
+  [wtr ^long nrefs alns]
   ;; magic
   (lsb/write-bytes wtr (.getBytes ^String bai-magic))
   ;; n_ref
@@ -297,14 +298,14 @@
         make-index-fn (fn [blocks]
                         (if (= n-threads 1)
                           (->> blocks
-                               (map #(bam-decoder/decode-alignment-block % nil :pointer))
+                               (eduction (map bam-decoder/decode-pointer-block))
                                make-index*)
                           (cp/with-shutdown! [pool (cp/threadpool (dec n-threads))]
                             (->> blocks
-                                 (partition-all *alignments-partition-size*)
+                                 (eduction (partition-all *alignments-partition-size*))
                                  (cp/upmap pool (fn [sub-blocks]
                                                   (->> sub-blocks
-                                                       (map #(bam-decoder/decode-alignment-block % nil :pointer))
+                                                       (eduction (map bam-decoder/decode-pointer-block))
                                                        make-index*)))
                                  (reduce merge-index)))))]
     (->> blocks

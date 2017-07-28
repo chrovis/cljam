@@ -119,7 +119,7 @@
   "Merges multiple SAM/BAM files into single SAM/BAM file."
   [wtr hdr files key-fn read-fn write-fn]
   (let [rdrs (map sam/reader files)
-        alns (map read-fn rdrs)]
+        alns (map (comp seq read-fn) rdrs)]
     (sam/write-header wtr hdr)
     (sam/write-refs wtr hdr)
     (write-fn wtr (merge-sorted-seqs-by key-fn alns) hdr)

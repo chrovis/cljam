@@ -3,8 +3,7 @@
   (:require [clojure.string :as cstr]
             [proton.core :refer [as-long as-double hex->bytes]]
             cljam.io.protocols
-            [cljam.io.util.cigar :refer [count-ref]]
-            [cljam.util :refer [ubyte]])
+            [cljam.io.util.cigar :as cigar])
   (:import [java.nio CharBuffer ByteBuffer]
            [java.nio.charset StandardCharsets]
            [cljam.io.protocols SAMAlignment]))
@@ -109,7 +108,7 @@
   [line]
   (let [[qname flag rname pos-str mapq cigar rnext pnext tlen seq qual & options] (cstr/split line #"\t")
         pos (Integer/parseInt pos-str)
-        ref-length (count-ref cigar)
+        ref-length (cigar/count-ref cigar)
         end (if (zero? ref-length) 0 (int (dec (+ pos ref-length))))]
     (SAMAlignment. qname (Integer/parseInt flag) rname pos end (Integer/parseInt mapq)
                    cigar rnext (Integer/parseInt pnext) (Integer/parseInt tlen) (parse-seq-text seq)
@@ -183,18 +182,18 @@
      :else 0)))
 
 (defn get-end
+  "Returns the end position in reference for the given alignment."
   [aln]
-  (dec
-   (+ (:pos aln)
-      (count-ref (or (:cigar-bytes (:meta aln))
-                     (:cigar aln))))))
+  (let [ref-length (cigar/count-ref (:cigar aln))]
+    (if (zero? ref-length)
+      (:pos aln)
+      (dec (+ (:pos aln) ref-length)))))
 
 (defn compute-bin
   "Returns indexing bin based on alignment start and end."
   [aln]
   (let [beg (dec (:pos aln))
-        tmp-end (get-end aln)
-        end (if (<= tmp-end 0) (inc beg) tmp-end)]
+        end (get-end aln)]
    (reg->bin beg end)))
 
 (def ^:private ^:const nibble-to-base-table

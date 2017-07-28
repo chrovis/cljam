@@ -3,7 +3,8 @@
             [clojure.tools.logging :as logging]
             [cljam.io.sam.util :as sam-util]
             [cljam.io.protocols :as protocols])
-  (:import [java.io BufferedReader Closeable]))
+  (:import [java.io BufferedReader Closeable]
+           [cljam.io.protocols SAMCoordinateBlock SAMQuerynameBlock]))
 
 (declare read-alignments* read-blocks* read-alignments-in-region*)
 
@@ -18,8 +19,8 @@
     (.f this))
   (read [this]
     (protocols/read this {}))
-  (read [this option]
-    (read-alignments* this))
+  (read [this region]
+    (protocols/read-alignments this region))
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
@@ -31,12 +32,10 @@
   (read-refs [this]
     (vec (sam-util/make-refs (.header this))))
   (read-alignments [this]
-    (protocols/read-alignments this {} {}))
-  (read-alignments [this region]
-    (protocols/read-alignments this region {}))
-  (read-alignments [this {:keys [chr start end] :as region} option]
+    (protocols/read-alignments this {}))
+  (read-alignments [this {:keys [chr start end] :as region}]
     (if (or chr start end)
-      (read-alignments-in-region* this region option)
+      (read-alignments-in-region* this region)
       (read-alignments* this)))
   (read-blocks [this]
     (protocols/read-blocks this {}))
@@ -47,22 +46,24 @@
 
 (defn- read-alignments*
   [^SAMReader sam-reader]
-  (when-let [line (.readLine ^BufferedReader (.reader sam-reader))]
-    (if-not (= (first line) \@)
-      (cons (sam-util/parse-alignment line) (lazy-seq (read-alignments* sam-reader)))
-      (lazy-seq (read-alignments* sam-reader)))))
+  (eduction
+   (comp
+    (drop-while (fn [[f]] (= f \@)))
+    (map sam-util/parse-alignment))
+   (line-seq (.reader sam-reader))))
 
 (defn- read-alignments-in-region*
-  [^SAMReader sam-reader {:keys [chr start end]} option]
+  [^SAMReader sam-reader {:keys [chr start end]}]
   (logging/warn "May cause degradation of performance.")
-  (filter
-   (fn [a] (and (if chr (= (:rname a) chr) true)
-                (if start (<= start (sam-util/get-end a)) true)
-                (if end (<= (:pos a) end) true)))
+  (eduction
+   (filter
+    (fn [a] (and (if chr (= (:rname a) chr) true)
+                 (if start (<= start (sam-util/get-end a)) true)
+                 (if end (<= (:pos a) end) true))))
    (read-alignments* sam-reader)))
 
 (defn- parse-coordinate
-  [^String line]
+  [rname->ref-id ^String line]
   (let [t0 (.indexOf line (int \tab) 0)
         t1 (.indexOf line (int \tab) (unchecked-inc t0))
         t2 (.indexOf line (int \tab) (unchecked-inc t1))
@@ -70,10 +71,7 @@
         flag (Integer/parseInt (.substring line (unchecked-inc t0) t1))
         rname (.substring line (unchecked-inc t1) t2)
         pos (Integer/parseInt (.substring line (unchecked-inc t2) t3))]
-    {:data line
-     :rname rname
-     :pos pos
-     :flag flag}))
+    (SAMCoordinateBlock. line (rname->ref-id rname 0) pos flag)))
 
 (defn- parse-qname
   [^String line]
@@ -81,24 +79,24 @@
         t1 (.indexOf line (int \tab) (unchecked-inc t0))
         qname (.substring line 0 t0)
         flag (Integer/parseInt (.substring line (unchecked-inc t0) t1))]
-    {:data line
-     :qname qname
-     :flag flag}))
-
-(defn- read-blocks**
-  [parse-fn ^BufferedReader rdr]
-  (when-let [line (.readLine rdr)]
-    (if-not (= (first line) \@)
-      (cons (parse-fn line) (lazy-seq (read-blocks** parse-fn rdr)))
-      (lazy-seq (read-blocks** parse-fn rdr)))))
+    (SAMQuerynameBlock. line qname flag)))
 
 (defn- read-blocks*
   [^SAMReader sam-reader {:keys [mode] :or {mode :normal}}]
-  (let [parse-fn (case mode
-                   :normal (fn [line] {:data line})
-                   :coordinate parse-coordinate
-                   :queryname parse-qname)]
-    (read-blocks** parse-fn (.reader sam-reader))))
+  (let [parse-fn (if (fn? mode)
+                   mode
+                   (case mode
+                     :normal (fn [line] {:data line})
+                     :coordinate (->> (.header sam-reader)
+                                      :SQ
+                                      (into {"*" -1} (map-indexed (fn [i {:keys [SN]}] [SN i])))
+                                      (partial parse-coordinate))
+                     :queryname parse-qname))]
+    (eduction
+     (comp
+      (drop-while (fn [[f]] (= f \@)))
+      (map parse-fn))
+     (line-seq (.reader sam-reader)))))
 
 (defn- read-header* [^BufferedReader rdr]
   (->> (line-seq rdr)

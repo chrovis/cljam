@@ -4,7 +4,8 @@
             [cljam.common :as common]
             [cljam.util :as util]
             [cljam.io.sam :as sam]
-            [cljam.io.sam.util :as sam-util]))
+            [cljam.io.sam.util :as sam-util])
+  (:import [cljam.io.protocols SAMRegionBlock]))
 
 (def ^:const default-step 1000000)
 
@@ -17,7 +18,7 @@
   (let [pile (long-array (inc (- end beg)))]
     (doseq [aln alns]
       (let [left (max (:pos aln) beg)
-            right (min (sam-util/get-end aln) end)
+            right (min (:end aln) end)
             left-index (- left beg)]
         (dotimes [i (inc (- right left))]
           (aset-long pile (+ i left-index) (inc (aget pile (+ i left-index)))))))
@@ -28,7 +29,7 @@
   [rdr rname start end step]
   (let [n-threads (common/get-exec-n-threads)
         read-fn (fn [r start end]
-                  (sam/read-alignments r {:chr rname :start start :end end :depth :shallow}))
+                  (sam/read-blocks r {:chr rname :start start :end end} {:mode :region}))
         count-fn (fn [xs]
                    (if (= n-threads 1)
                      (map (fn [[start end]]
@@ -62,9 +63,9 @@
   (let [beg (int beg)
         end (int end)
         offset (int offset)]
-    (doseq [aln alns]
-      (let [left (Math/max ^int (:pos aln) (unchecked-int beg))
-            right (unchecked-inc-int (or (:end aln) (sam-util/get-end aln)))
+    (doseq [^SAMRegionBlock aln alns]
+      (let [left (Math/max ^int (.pos aln) beg)
+            right (unchecked-inc-int (.end aln))
             left-index (unchecked-add-int (unchecked-subtract-int left beg) offset)
             right-index (unchecked-add-int (unchecked-subtract-int right beg) offset)]
         (aset-int pile left-index (unchecked-inc-int (aget pile left-index)))
@@ -103,12 +104,12 @@
   (let [pile (int-array (inc (- end start)))
         f (if unchecked? unchecked-aset-depth-in-region! aset-depth-in-region!)]
     (if (= n-threads 1)
-      (f (sam/read-alignments rdr region {:depth :shallow}) start end 0 pile)
+      (f (sam/read-blocks rdr region {:mode :region}) start end 0 pile)
       (cp/pdoseq
        n-threads
        [[s e] (util/divide-region start end step)]
        (with-open [r (sam/clone-bam-reader rdr)]
-         (-> (sam/read-alignments r {:chr chr, :start s, :end e} {:depth :shallow})
+         (-> (sam/read-blocks r {:chr chr, :start s, :end e} {:mode :region})
              (f s e (- s start) pile)))))
     pile))
 

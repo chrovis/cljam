@@ -97,9 +97,10 @@
       (is (= (sam/read-refs rdr) test-sam-refs))
       (is (pointer= (sam/read-alignments rdr {:depth :pointer})
                     (:alignments test-sam))))
-    (with-open [rdr (sam/bam-reader temp-bam-file)]
-      (is (= (sam/read-refs rdr) test-sam-refs))
-      (is (= (data->clj (sam/read-blocks rdr)) test-sam-data)))
+    (doseq [mode [:normal :region :coordinate :queryname :pointer]]
+      (with-open [rdr (sam/bam-reader temp-bam-file)]
+        (is (= (sam/read-refs rdr) test-sam-refs))
+        (is (= (data->clj (sam/read-blocks rdr {} {:mode mode})) test-sam-data))))
     (with-open [rdr (sam/bam-reader temp-bam-file)]
       (is (= (sam/read-refs rdr) test-sam-refs))
       (is (thrown? Exception (data->clj (sam/read-blocks rdr {:chr "ref2"})))))))
@@ -107,37 +108,40 @@
 (deftest bam-reader-with-index-test
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
-      (is (= (sam/read-alignments rdr {:chr "ref2"})
-             (drop 6 (:alignments test-sam-sorted-by-pos)))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
-      (is (= (sam/read-alignments rdr {:chr "ref2" :start 21})
-             (drop 7 (:alignments test-sam-sorted-by-pos)))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
-      (is (= (sam/read-alignments rdr {:chr "ref2" :end 9})
-             (take 3 (drop 6 (:alignments test-sam-sorted-by-pos))))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
-      (is (= (sam/read-alignments rdr {:chr "ref2" :start 10 :end 12})
-             (take 5 (drop 6 (:alignments test-sam-sorted-by-pos))))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
-      (is (= (data->clj (sam/read-blocks rdr))
-             test-sorted-bam-data)))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
-      (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
-                  (data->clj (sam/read-blocks rdr {:chr "ref2"})))
-             (drop 6 test-sorted-bam-data))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
-      (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
-                  (data->clj (sam/read-blocks rdr {:chr "ref2" :start 2})))
-             (drop 7 test-sorted-bam-data))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
-      (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
-                  (data->clj (sam/read-blocks rdr {:chr "ref2" :end 2})))
-             (take 2 (drop 6 test-sorted-bam-data)))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
-      (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
-                  (data->clj (sam/read-blocks rdr {:chr "ref2" :start 4 :end 12})))
-             (take 3 (drop 8 test-sorted-bam-data)))))))
+    (testing "read-alignments"
+      (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+        (is (= (sam/read-alignments rdr {:chr "ref2"})
+               (drop 6 (:alignments test-sam-sorted-by-pos)))))
+      (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+        (is (= (sam/read-alignments rdr {:chr "ref2" :start 21})
+               (drop 7 (:alignments test-sam-sorted-by-pos)))))
+      (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+        (is (= (sam/read-alignments rdr {:chr "ref2" :end 9})
+               (take 3 (drop 6 (:alignments test-sam-sorted-by-pos))))))
+      (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+        (is (= (sam/read-alignments rdr {:chr "ref2" :start 10 :end 12})
+               (take 5 (drop 6 (:alignments test-sam-sorted-by-pos)))))))
+    (testing "read-blocks"
+      (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+        (is (= (data->clj (sam/read-blocks rdr))
+               test-sorted-bam-data)))
+      (doseq [mode [:normal :region :coordinate :queryname :pointer]]
+        (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+          (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
+                      (data->clj (sam/read-blocks rdr {:chr "ref2"} {:mode mode})))
+                 (drop 6 test-sorted-bam-data))))
+        (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+          (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
+                      (data->clj (sam/read-blocks rdr {:chr "ref2" :start 2} {:mode mode})))
+                 (drop 6 test-sorted-bam-data))))
+        (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+          (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
+                      (data->clj (sam/read-blocks rdr {:chr "ref2" :end 2} {:mode mode})))
+                 (take 2 (drop 6 test-sorted-bam-data)))))
+        (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+          (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
+                      (data->clj (sam/read-blocks rdr {:chr "ref2" :start 4 :end 12} {:mode mode})))
+                 (take 5 (drop 6 test-sorted-bam-data)))))))))
 
 (deftest bam-reader-invalid-test
   (with-before-after {:before (prepare-cache!)

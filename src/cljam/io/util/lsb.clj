@@ -184,69 +184,84 @@
 ;; Writing
 ;; -------
 
-(defn write-char
-  [^DataOutputStream w b]
-  (let [bb (gen-byte-buffer)]
-    (.putChar bb b)
-    (.write w (.array bb) 0 1)
-    nil))
+(defprotocol LSBWritable
+  "Provides feature of writing little-endian values."
+  (write-ubyte [this n] "Writes 1 byte.")
+  (write-char [this n] "Writes a 1-byte ascii character.")
+  (write-short [this n] "Writes a 2-byte short value.")
+  (write-ushort [this n] "Writes a 2-byte unsigned short value.")
+  (write-int [this n] "Writes a 4-byte integer value.")
+  (write-uint [this n] "Writes a 4-byte unsigned integer value.")
+  (write-long [this n] "Writes a 8-byte long value.")
+  (write-float [this n] "Writes a 4-byte float value.")
+  (write-bytes [this b] "Writes a byte-array.")
+  (write-string [this s] "Writes a string as a sequence of ascii characters."))
 
-(defn write-bytes
-  [^DataOutputStream w ^bytes b]
-  (.write w b 0 (alength b))
-  nil)
+(extend-type ByteBuffer
+  LSBWritable
+  (write-ubyte [w b]
+    (.put w (unchecked-byte b)))
+  (write-char [w b]
+    (.put w (unchecked-byte (long b))))
+  (write-short [w n]
+    (.order w ByteOrder/LITTLE_ENDIAN)
+    (.putShort w n))
+  (write-ushort [w n]
+    (.order w ByteOrder/LITTLE_ENDIAN)
+    (.putShort w (unchecked-short n)))
+  (write-int [w n]
+    (.order w ByteOrder/LITTLE_ENDIAN)
+    (.putInt w n))
+  (write-uint [w n]
+    (.order w ByteOrder/LITTLE_ENDIAN)
+    (.putInt w (unchecked-int n)))
+  (write-long [w n]
+    (.order w ByteOrder/LITTLE_ENDIAN)
+    (.putLong w n))
+  (write-float [w n]
+    (.order w ByteOrder/LITTLE_ENDIAN)
+    (.putFloat w n))
+  (write-bytes [w ^bytes b]
+    (.put w b))
+  (write-string [w s]
+    (.put w (string->bytes s))))
 
-(defn write-ubyte
-  [^DataOutputStream w b]
-  (let [bb (gen-byte-buffer)]
-    (.putShort bb b)
-    (.write w (.array bb) 0 1)
-    nil))
-
-(defn write-short
-  [^DataOutputStream w n]
-  (let [bb (gen-byte-buffer)]
-    (.putShort bb n)
-    (.write w (.array bb) 0 2)
-    nil))
-
-(defn write-ushort
-  [^DataOutputStream w n]
-  (let [bb (gen-byte-buffer)]
-    (.putInt bb n)
-    (.write w (.array bb) 0 2)
-    nil))
-
-(defn write-int
-  [^DataOutputStream w n]
-  (let [bb (gen-byte-buffer)]
-    (.putInt bb n)
-    (.write w (.array bb) 0 4)
-    nil))
-
-(defn write-uint
-  [^DataOutputStream w n]
-  (let [bb (gen-byte-buffer)]
-    (.putInt bb (unchecked-int n))
-    (.write w (.array bb) 0 4)
-    nil))
-
-(defn write-long
-  [^DataOutputStream w n]
-  (let [bb (gen-byte-buffer)]
-    (.putLong bb n)
-    (.write w (.array bb) 0 8)
-    nil))
-
-(defn write-float
-  [^DataOutputStream w n]
-  (let [bb (gen-byte-buffer)]
-    (.putFloat bb n)
-    (.write w (.array bb) 0 4)
-    nil))
-
-(defn write-string
-  [^DataOutputStream w s]
-  (let [data-bytes (string->bytes s)]
-   (.write w data-bytes 0 (alength data-bytes))
-   nil))
+(extend-type DataOutputStream
+  LSBWritable
+  (write-ubyte [w b]
+    (let [bb (gen-byte-buffer)]
+      (.putShort bb b)
+      (.write w (.array bb) 0 1)))
+  (write-char [w b]
+    (let [bb (gen-byte-buffer)]
+      (.putChar bb b)
+      (.write w (.array bb) 0 1)))
+  (write-short [w n]
+    (let [bb (gen-byte-buffer)]
+      (.putShort bb n)
+      (.write w (.array bb) 0 2)))
+  (write-ushort [w n]
+    (let [bb (gen-byte-buffer)]
+      (.putInt bb n)
+      (.write w (.array bb) 0 2)))
+  (write-int [w n]
+    (let [bb (gen-byte-buffer)]
+      (.putInt bb n)
+      (.write w (.array bb) 0 4)))
+  (write-uint [w n]
+    (let [bb (gen-byte-buffer)]
+      (.putInt bb (unchecked-int n))
+      (.write w (.array bb) 0 4)))
+  (write-long [w n]
+    (let [bb (gen-byte-buffer)]
+      (.putLong bb n)
+      (.write w (.array bb) 0 8)))
+  (write-float [w n]
+    (let [bb (gen-byte-buffer)]
+      (.putFloat bb n)
+      (.write w (.array bb) 0 4)))
+  (write-bytes [w ^bytes b]
+    (.write w b 0 (alength b)))
+  (write-string [w s]
+    (let [data-bytes (string->bytes s)]
+      (.write w data-bytes 0 (alength data-bytes)))))

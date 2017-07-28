@@ -62,26 +62,43 @@
 (def ^:private count-ref-str
   (memoize count-ref-str*))
 
-(def ^:private bases-op-bytes
-  #{(byte 0)
-    (byte 2)
-    (byte 3)
-    (byte 7)
-    (byte 8)})
-
-(defn- count-ref-bytes
+(defn count-ref-bytes
+  "Count covering length in reference from encoded CIGAR byte-array."
   [cigar-bytes]
   (let [buf (ByteBuffer/wrap cigar-bytes)]
     (.order buf ByteOrder/LITTLE_ENDIAN)
-    (loop [len 0]
+    (loop [ref-length 0]
       (if (.hasRemaining buf)
         (let [b (.getInt buf)
               op (bit-and b 0xF)
               n (bit-shift-right b 4)]
-          (if (bases-op-bytes op)
-            (recur (+ len n))
-            (recur len)))
-        len))))
+          (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
+        ref-length))))
+
+(defn decode-cigar-and-ref-length
+  "Decode CIGAR string and length of alignment in reference.
+  Returns a vector of [cigar, ref-length]."
+  [cigar-bytes]
+  (let [buf (ByteBuffer/wrap cigar-bytes)
+        sb (StringBuilder.)]
+    (.order buf ByteOrder/LITTLE_ENDIAN)
+    (loop [ref-length 0]
+      (if (.hasRemaining buf)
+        (let [b (.getInt buf)
+              op (bit-and b 0xF)
+              n  (bit-shift-right b 4)]
+          (doto sb
+            (.append n)
+            (.append (case op 0 \M 1 \I 2 \D 3 \N 4 \S 5 \H 6 \P 7 \= 8 \X)))
+          (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
+        [(.toString sb) ref-length]))))
+
+(defn encode-cigar
+  "Encodes CIGAR string into a sequence of longs."
+  [cigar]
+  (mapv #(bit-or (bit-shift-left (first %) 4)
+                 (case (second %) \M 0 \I 1 \D 2 \N 3 \S 4 \H 5 \P 6 \= 7 \X 8))
+        (parse cigar)))
 
 (defmulti count-ref
   "Returns length of reference bases."

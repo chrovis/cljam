@@ -4,6 +4,9 @@
 
 (defrecord SAMAlignment
   [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])
+(defrecord SAMRegionBlock [data ^int ref-id ^int pos ^int end])
+(defrecord SAMCoordinateBlock [data ^int ref-id ^int pos ^int flag])
+(defrecord SAMQuerynameBlock [data qname ^int flag])
 
 (defprotocol IReader
   (reader-path [this]
@@ -24,10 +27,10 @@
     "Returns header of the SAM/BAM file.")
   (read-refs [this]
     "Returns references of the SAM/BAM file.")
-  (read-alignments [this] [this region] [this region option]
-    "Reads alignments of the SAM/BAM file, returning the alignments as a lazy sequence.")
+  (read-alignments [this] [this region]
+    "Reads alignments of the SAM/BAM file, returning the alignments as an eduction.")
   (read-blocks [this] [this region] [this region option]
-    "Reads alignment blocks of the SAM/BAM file, returning the blocks as a lazy sequence."))
+    "Reads alignment blocks of the SAM/BAM file, returning the blocks as an eduction."))
 
 (defprotocol IAlignmentWriter
   (write-header [this header]

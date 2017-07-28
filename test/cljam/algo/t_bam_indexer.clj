@@ -22,7 +22,7 @@
     (is (.isFile (cio/file (str temp-file-sorted ".bai"))))
     (is (same-file? (str temp-file-sorted ".bai") test-bai-file))
     (is (= (with-open [r (sam/bam-reader temp-file-sorted)]
-             (doall (sam/read-alignments r {:chr "ref" :start 0 :end 1000})))
+             (doall (seq (sam/read-alignments r {:chr "ref" :start 0 :end 1000}))))
            (filter #(= "ref" (:rname %))
                    (:alignments test-sam-sorted-by-pos))))))
 
@@ -46,7 +46,7 @@
       (is (not-throw? (bai/create-index sorted-f (str sorted-f ".bai"))))
       (is (.isFile (cio/file (str sorted-f ".bai"))))
       (is (= (with-open [r (sam/bam-reader sorted-f)]
-               (doall (sam/read-alignments r {:chr "ref" :start 0 :end 1000})))
+               (doall (seq (sam/read-alignments r {:chr "ref" :start 0 :end 1000}))))
              (filter #(= "ref" (:rname %))
                      (:alignments test-sam-incomplete-alignments-sorted-by-pos))))
       ;; TODO: need more strictly check to .bai files
@@ -73,7 +73,7 @@
       (is (same-file? temp-file-sorted-bai temp-file-sorted-bai-2))
       (with-open [r (sam/bam-reader temp-file-sorted)]
         ;; Random read with different number of spans.
-        (are [?param ?counts] (= (count (sam/read-alignments r ?param)) ?counts)
+        (are [?param ?counts] (= (count (seq (sam/read-alignments r ?param))) ?counts)
           {:chr "chr1" :start 23000000 :end 23001000 :depth :deep} 46 ;; 1 span
           {:chr "chr1" :start 24900000 :end 24902000 :depth :deep} 3  ;; 2 spans
           {:chr "chr1" :start 24000000 :end 24001000 :depth :deep} 6  ;; 3 spans
@@ -89,7 +89,7 @@
     (is (not-throw? (bai/create-index temp-file-sorted
                                       (str temp-file-sorted ".bai"))))
     (with-open [r (sam/bam-reader temp-file-sorted)]
-      (is (= (count (sam/read-alignments r {:chr "*"})) 4348))
+      (is (= (count (seq (sam/read-alignments r {:chr "*"}))) 4348))
       (is (every? (fn [a] (and (= (:mapq a) 0)
                                (= (:pos a) 0)
                                (= (:tlen a) 0)

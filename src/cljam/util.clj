@@ -1,7 +1,8 @@
 (ns cljam.util
   "General utilities."
   (:require [clojure.java.io :refer [file] :as cio]
-            [clojure.string :as cstr])
+            [clojure.string :as cstr]
+            [proton.core :as proton])
   (:import [org.apache.commons.compress.compressors
             CompressorStreamFactory CompressorException]))
 
@@ -108,3 +109,46 @@
      (map (fn [[s e]] {:chr name :start s :end e})
           (divide-region 1 len step)))
    refs))
+
+(defn valid-rname?
+  "Checks if the given rname conforms to the spec of sam."
+  [rname]
+  (and rname (string? rname) (re-matches #"[!-)+-<>-~][!-~]*" rname)))
+
+(defn valid-region?
+  "Checks if the given region map is a valid 1-based closed range."
+  [{:keys [chr start end]}]
+  (and start end
+       (valid-rname? chr)
+       (number? start) (pos? start)
+       (number? end) (pos? end)
+       (<= start end)))
+
+(defn parse-region
+  "Parse a region string into a map."
+  [region-str]
+  (when region-str
+    (let [[_ chr _ start _ end] (re-matches #"([!-)+-<>-~][!-~]*?)(:(\d+)?(-(\d+))?)?" region-str)
+          start' (proton/as-long start)
+          end' (proton/as-long end)]
+      (when chr
+        (cond-> {:chr chr}
+          start' (assoc :start start')
+          end' (assoc :end end'))))))
+
+(defn parse-region-strict
+  "Parse a region string into a map strictly."
+  [region-str]
+  (let [region-map (parse-region region-str)]
+    (when (valid-region? region-map) region-map)))
+
+(defn format-region
+  "Format a region map into a string."
+  [{:keys [chr start end]}]
+  (let [result (apply str (interleave [nil \: \-] (take-while some? [chr start end])))]
+    (when-not (cstr/blank? result) result)))
+
+(defn format-region-strict
+  "Format a region map into a string strictly."
+  [region-map]
+  (when (valid-region? region-map) (format-region region-map)))

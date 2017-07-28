@@ -33,37 +33,6 @@
     [\~] [\~] [\~ \~] [\~ \~] [\~ \~] [\~ \~] [\~ \~] [\~] [\~] [\~] [\~ \~] [\~ \~] [\~ \~] [\~ \~]
     [\~] [\~] [\~] [\~] [\~]))
 
-(deftest pileup-returns-LazySeq
-  (with-open [r (sam/bam-reader test-sorted-bam-file)]
-    (instance? clojure.lang.LazySeq (plp/pileup r {:chr "ref"})))
-  (with-open [r (sam/bam-reader test-sorted-bam-file)]
-    (instance? clojure.lang.LazySeq (plp/pileup r {:chr "ref2"}))))
-
-(deftest about-pileup
-  (is (= (with-open [r (sam/bam-reader test-sorted-bam-file)]
-           (doall (plp/pileup r {:chr "ref"})))
-         test-bam-pileup-ref))
-  (doseq [n-threads [1 4]]
-    (are [?param] (= (with-open [r (sam/bam-reader test-sorted-bam-file)]
-                       (doall (plp/pileup r {:chr "ref"} ?param)))
-                     test-bam-pileup-ref)
-      {:n-threads n-threads}
-      {:step 2 :n-threads n-threads}
-      {:step 3 :n-threads n-threads}
-      {:step 5 :n-threads n-threads}
-      {:step 7 :n-threads n-threads}
-      {:step 11 :n-threads n-threads}
-      {:step 13 :n-threads n-threads}))
-  (is (= (with-open [r (sam/bam-reader test-sorted-bam-file)]
-           (doall (plp/pileup r {:chr "ref2"})))
-         test-bam-pileup-ref2)))
-
-(deftest about-first-pos
-  (with-open [r (sam/bam-reader test-sorted-bam-file)]
-    (is (= (plp/first-pos r {:chr "ref" :start 0 :end 64}) 7)))
-  (with-open [r (sam/bam-reader test-sorted-bam-file)]
-    (is (= (plp/first-pos r {:chr "ref2" :start 0 :end 64}) 1))))
-
 (deftest about-pileup-seq
 
   ;; ----------

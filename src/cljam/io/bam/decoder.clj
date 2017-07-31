@@ -23,7 +23,7 @@
 (definline parse-tag-single [tag-type ^ByteBuffer bb]
   `(case (long ~tag-type)
     ~(long \Z) (lsb/read-null-terminated-string ~bb)
-    ~(long \A) (.get ~bb)
+    ~(long \A) (char (.get ~bb))
     ~(long \I) (bit-and (.getInt ~bb) 0xffffffff)
     ~(long \i) (.getInt ~bb)
     ~(long \s) (int (.getShort ~bb))
@@ -37,7 +37,7 @@
 (defn- parse-tag-array [^ByteBuffer bb]
   (let [typ (char (.get bb))
         len (.getInt bb)]
-    (->> (for [i (range len)]
+    (->> (for [_ (range len)]
            (case typ
              \c (int (.get bb))
              \C (bit-and (int (.get bb)) 0xff)
@@ -118,7 +118,7 @@
           pos         (inc (lsb/read-int buffer))
           l-read-name (int (lsb/read-ubyte buffer))
           mapq        (lsb/read-ubyte buffer)
-          bin         (lsb/read-ushort buffer)
+          _           (lsb/read-ushort buffer) ; bin
           n-cigar-op  (lsb/read-ushort buffer)
           flag        (lsb/read-ushort buffer)
           l-seq       (lsb/read-int buffer)

@@ -107,6 +107,8 @@
 (def normalize-before-sam-file "test-resources/sam/normalize_before.sam")
 (def normalize-after-sam-file "test-resources/sam/normalize_after.sam")
 
+(def opts-sam-file "test-resources/sam/opts.sam")
+
 ;; ### BAM files
 
 (def test-bam-file "test-resources/bam/test.bam")
@@ -120,6 +122,7 @@
 
 (def normalize-before-bam-file "test-resources/bam/normalize_before.bam")
 (def normalize-after-bam-file "test-resources/bam/normalize_after.bam")
+(def opts-bam-file "test-resources/bam/opts.bam")
 
 ;; ### BAM index files
 

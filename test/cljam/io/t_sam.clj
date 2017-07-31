@@ -214,3 +214,34 @@
     (are [f] (thrown? Exception (sam/writer (.getAbsolutePath (cio/file util/temp-dir f))))
       "temp.baam"
       "temp.bai")))
+
+(def test-options
+  [{:Xa {:type "A", :value \p}}
+   {:Xi {:type "i", :value -100}}
+   {:Xf {:type "f", :value -1400.0}}
+   {:Xz {:type "Z", :value "AATTGGCC"}}
+   {:Xh {:type "H", :value (map unchecked-byte [0x1A 0xE3 0x01])}}
+   {:Xc {:type "B", :value "c,-128,0,127"}}
+   {:XC {:type "B", :value "C,0,127,255"}}
+   {:Xs {:type "B", :value "s,-32768,0,32767"}}
+   {:XS {:type "B", :value "S,0,32767,65535"}}
+   {:Xi {:type "B", :value "i,-2147483648,0,2147483647"}}
+   {:XI {:type "B", :value "I,0,2147483647,4294967295"}}
+   {:Xf {:type "B", :value "f,-0.3,0.0,0.3"}}])
+
+(defn bytes-to-seq [t]
+  (if (= (get-in t [(ffirst t) :type]) "H")
+    (update-in t [(ffirst t) :value] seq)
+    t))
+
+(deftest options
+  (testing "sam"
+    (is
+     (= (with-open [r (sam/reader opts-sam-file)]
+          (->> (sam/read-alignments r) (mapcat :options) (map bytes-to-seq) doall))
+        test-options)))
+  (testing "bam"
+    (is
+     (= (with-open [r (sam/reader opts-bam-file)]
+          (->> (sam/read-alignments r) (mapcat :options) (map bytes-to-seq) doall))
+        test-options))))

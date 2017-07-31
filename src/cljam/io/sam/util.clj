@@ -1,7 +1,7 @@
 (ns cljam.io.sam.util
   "Utilities related to SAM/BAM format."
   (:require [clojure.string :as cstr]
-            [proton.core :refer [as-long as-double]]
+            [proton.core :refer [as-long as-double hex->bytes]]
             cljam.io.protocols
             [cljam.io.util.cigar :refer [count-ref]]
             [cljam.util :refer [ubyte]])
@@ -88,7 +88,7 @@
     \c (as-long val)
     \C (as-long val)
     \f (as-double val)
-    \H nil ;;FIXME
+    \H (hex->bytes val)
     (throw (Exception. "Unrecognized tag type"))))
 
 (defn- parse-optional-fields [options]

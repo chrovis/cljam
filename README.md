@@ -17,7 +17,7 @@ cljam is available as a Maven artifact from [Clojars](https://clojars.org/cljam)
 To use with Leiningen/Boot, add the following dependency.
 
 ```clojure
-[cljam "0.4.0"]
+[cljam "0.4.1"]
 ```
 
 To use with Maven, add the following dependency.
@@ -26,7 +26,7 @@ To use with Maven, add the following dependency.
 <dependency>
   <groupId>cljam</groupId>
   <artifactId>cljam</artifactId>
-  <version>0.4.0</version>
+  <version>0.4.1</version>
 </dependency>
 ```
 
@@ -100,12 +100,10 @@ cljam provides a command-line tool to use the features easily.
 
 ```console
 $ lein with-profile +1.8 bin
-Created /path/to/cljam/target/cljam-0.4.0.jar
-Created /path/to/cljam/target/cljam-0.4.0-standalone.jar
 Creating standalone executable: /path/to/cljam/target/cljam
 ```
 
-Copy the executable somewhere in your `$PATH`.
+Copy the executable `cljam` somewhere in your `$PATH`.
 
 ### Usage
 
@@ -120,6 +118,8 @@ For example, to display contents of a SAM file including the header,
 ```console
 $ cljam view --header path/to/file.sam
 ```
+
+See [command-line tool manual](https://github.com/chrovis/cljam/wiki/Command-line-tool) for more information.
 
 ## Development
 

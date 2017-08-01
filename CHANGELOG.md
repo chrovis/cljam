@@ -1,11 +1,16 @@
 # Change Log
 
-## [Unreleased]
+## [0.4.1] - 2017-08-01
 
 ### Changed
 
 * Improve chromosome normalization. [#89](https://github.com/chrovis/cljam/pull/89)
 * Suppress log output in test. [#90](https://github.com/chrovis/cljam/pull/90)
+* Extract depth algorithm and improve performance. [#91](https://github.com/chrovis/cljam/pull/91)
+
+### Fixed
+
+* Fix parser of optional fields in SAM/BAM. [#92](https://github.com/chrovis/cljam/pull/92)
 
 ## [0.4.0] - 2017-06-28
 
@@ -213,7 +218,8 @@ represents the first three bases of chromosome 1.
 
 First release
 
-[Unreleased]: https://github.com/chrovis/cljam/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.4.1...HEAD
+[0.4.1]: https://github.com/chrovis/cljam/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/chrovis/cljam/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/chrovis/cljam/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/chrovis/cljam/compare/0.2.1...0.3.0

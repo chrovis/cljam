@@ -2868,7 +2868,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util" name="cljam.io.sam.util"><h1 class="project-name">cljam.io.sam.util</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utilities related to SAM/BAM format.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam.util
   (:require [clojure.string :as cstr]
-            [proton.core :refer [as-long as-double]]
+            [proton.core :refer [as-long as-double hex-&gt;bytes]]
             cljam.io.protocols
             [cljam.io.util.cigar :refer [count-ref]]
             [cljam.util :refer [ubyte]])
@@ -2940,7 +2940,7 @@ net.brehaut.ClojureTools = (function (SH) {
     \c (as-long val)
     \C (as-long val)
     \f (as-double val)
-    \H nil ;;FIXME
+    \H (hex-&gt;bytes val)
     (throw (Exception. &quot;Unrecognized tag type&quot;))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-optional-fields [options]
   (map (fn [op]

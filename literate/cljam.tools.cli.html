@@ -2879,9 +2879,11 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.algo.sorter :as sorter]
             [cljam.algo.fasta-indexer :as fai]
             [cljam.algo.dict :as dict]
+            [cljam.algo.depth :as depth]
             [cljam.algo.pileup :as plp]
             [cljam.algo.convert :as convert]
-            [cljam.algo.level :as level])
+            [cljam.algo.level :as level]
+            [cljam.util :as util])
   (:import [java.io Closeable BufferedWriter OutputStreamWriter]))</pre></td></tr><tr><td class="docs"><h2>CLI functions</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Exits the program with the status after printing the message.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- exit
@@ -3030,11 +3032,11 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- pileup-simple
   ([rdr n-threads]
    (doseq [rname (map :name (sam/read-refs rdr))]
-     (pileup-simple rdr n-threads rname -1 -1)))
-  ([rdr n-threads rname start end]
+     (pileup-simple rdr n-threads {:chr rname})))
+  ([rdr n-threads region]
    (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
              *flush-on-newline* false]
-     (doseq [line (plp/pileup rdr {:chr rname :start start :end end} {:n-threads n-threads})]
+     (doseq [line (depth/lazy-depth rdr region {:n-threads n-threads})]
        (println line))
      (flush))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- pileup-with-ref
@@ -3047,9 +3049,9 @@ net.brehaut.ClojureTools = (function (SH) {
                                           :qual (cstr/join (% line))
                                           :seq (cstr/join (% line))
                                           (% line)) [:rname :pos :ref :count :seq :qual])))))))
-  ([rdr ref-fa rname start end]
+  ([rdr ref-fa region]
    (with-open [fa-rdr (cseq/reader ref-fa)]
-     (doseq [line  (plp/mpileup fa-rdr rdr {:chr rname :start start :end end})]
+     (doseq [line  (plp/mpileup fa-rdr rdr region)]
        (if-not (zero? (:count line))
          (println (cstr/join \tab (map #(case %
                                           :qual (cstr/join (% line))
@@ -3064,21 +3066,13 @@ net.brehaut.ClojureTools = (function (SH) {
                                         :qual (cstr/join (% line))
                                         :seq (cstr/join (% line))
                                         (% line)) [:rname :pos :ref :count :seq :qual]))))))
-  ([rdr rname start end]
-   (doseq [line  (plp/mpileup nil rdr {:chr rname :start start :end end})]
+  ([rdr region]
+   (doseq [line  (plp/mpileup nil rdr region)]
      (if-not (zero? (:count line))
        (println (cstr/join \tab (map #(case %
                                         :qual (cstr/join (% line))
                                         :seq (cstr/join (% line))
                                         (% line)) [:rname :pos :ref :count :seq :qual])))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- parse-region
-  [region-str]
-  (if-let [m (re-find #&quot;^([^:]+)$&quot; region-str)]
-    (conj (vec (rest m)) -1 -1)
-    (if-let [m (re-find #&quot;^([^:]+):([0-9]+)-([0-9]+)$&quot; region-str)]
-      (-&gt; (vec (rest m))
-          (update-in [1] #(Integer/parseInt %))
-          (update-in [2] #(Integer/parseInt %))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn pileup [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args pileup-cli-options)]
     (cond
@@ -3092,11 +3086,11 @@ net.brehaut.ClojureTools = (function (SH) {
         (when-not (sorter/sorted-by? r)
           (exit 1 &quot;Not sorted&quot;))
         (if (:region options)
-          (if-let [region (parse-region (:region options))]
+          (if-let [region (util/parse-region (:region options))]
             (cond
-              (:simple options) (apply pileup-simple r (:thread options) region)
-              (:ref options) (apply pileup-with-ref r (:ref options) region)
-              :else (apply pileup-without-ref r region))
+              (:simple options) (pileup-simple r (:thread options) region)
+              (:ref options) (pileup-with-ref r (:ref options) region)
+              :else (pileup-without-ref r region))
             (exit 1 &quot;Invalid region format&quot;))
           (cond
             (:simple options) (pileup-simple r (:thread options))

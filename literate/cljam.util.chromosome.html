@@ -2871,30 +2871,25 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn normalize-name
   [s]
   (-&gt; s
-      (cstr/replace #&quot;\.&quot;  &quot;_&quot;)
-      (cstr/replace #&quot;,&quot;  &quot;_&quot;)
-      (cstr/replace #&quot;\  )
-      (cstr/replace #&quot;\'&quot;  )))</pre></td></tr><tr><td class="docs"><p>Removes chr prefix from chromosome name.</p>
+      (cstr/replace #&quot;[,\.]&quot; &quot;_&quot;)
+      (cstr/replace #&quot;[\&quot;\']&quot; )))</pre></td></tr><tr><td class="docs"><p>Removes chr prefix from chromosome name.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn trim-chromosome-key
   [s]
   (cstr/replace s #&quot;(?i)^chr&quot; &quot;&quot;))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- normalize-chromosome-prefix
   [s]
-  (let [m (re-matches #&quot;(?i)^chr([0-9]{1,2}|X|Y|M|MT)(.*)$&quot; s)]
-    (if (nil? m)
-      s
-      (let [[_ base leftover] m
-            base  (if (re-find #&quot;^\d+$&quot; base)
-                    (str (Integer. ^String base))
-                    base)]
-        (str &quot;chr&quot; (cstr/upper-case (str base leftover)))))))</pre></td></tr><tr><td class="docs">
+  (if-let [[_ base leftover] (re-matches #&quot;(?i)chr([0-9]{1,2}|X|Y|M|MT|Un)(.*)&quot; s)]
+    (let [base* (condp re-matches base
+                  #&quot;\d+&quot; (str (Integer/parseInt base))
+                  #&quot;(?i)Un&quot; &quot;Un&quot;
+                  (cstr/upper-case base))]
+      (str &quot;chr&quot; (str base* (cstr/upper-case leftover))))
+    s))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- prepend-chromosome-prefix
   [s]
-  (let [m (re-matches #&quot;(?i)^([0-9]{1,2}|X|Y|M|MT)(.*)$&quot; s)]
-    (if (nil? m)
-      s
-      (let [[_ base leftover] m]
-        (str &quot;chr&quot; (cstr/upper-case (str base leftover)))))))</pre></td></tr><tr><td class="docs"><p>Normalizes chromosome name.</p>
+  (if (re-matches #&quot;(?i)([0-9]{1,2}|X|Y|M|MT|Un).*&quot; s)
+    (str &quot;chr&quot; s)
+    s))</pre></td></tr><tr><td class="docs"><p>Normalizes chromosome name.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn normalize-chromosome-key
   [s]
   (-&gt; s

@@ -74,15 +74,15 @@ To create a BAM index file,
 (bai/create-index "path/to/sorted.bam" "path/to/sorted.bam.bai")
 ```
 
-To pileup,
+To calculate coverage depth for a BAM file,
 
 ```clojure
 (require '[cljam.io.sam :as sam]
-         '[cljam.algo.pileup :as plp])
+         '[cljam.algo.depth :as depth])
 
-(with-open [r (sam/reader "path/to/sorted.bam" :ignore-index false)]
+(with-open [r (sam/reader "path/to/sorted.bam")]
   ;; Pileup "chr1" alignments
-  (plp/pileup r {:chr "chr1" :start 1 :end 10}))
+  (depth/depth r {:chr "chr1", :start 1, :end 10}))
 ;;=> (0 0 0 0 0 0 1 1 3 3)
 ```
 

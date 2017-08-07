@@ -5,10 +5,8 @@
             [cljam.io.bam-index [common :refer :all]
                                 [chunk :as chunk]
                                 [reader :as reader]
-                                [writer :as writer]]
-            [cljam.io.sam.util :refer [ref-id]])
-  (:import java.util.BitSet
-           [java.io DataOutputStream FileOutputStream]
+                                [writer :as writer]])
+  (:import [java.io DataOutputStream FileOutputStream]
            cljam.io.bam_index.reader.BAIReader
            cljam.io.bam_index.writer.BAIWriter))
 
@@ -31,22 +29,24 @@
     (reader/read-linear-index! r ref-idx)))
 
 (defn- reg->bins*
-  "Returns candidate bins for the specified region as java.util.BitSet."
-  [beg end]
+  "Returns candidate bins for the specified region as a vector."
+  [^long beg ^long end]
   (let [max-pos 0x1FFFFFFF
         beg (if (<= beg 0) 0 (bit-and (dec beg) max-pos))
         end (if (<= end 0) max-pos (bit-and (dec end) max-pos))]
     (if (<= beg end)
-      (let [bit-set (transient [])]
-        (conj! bit-set 0)
-        (doseq [[ini shift] [[1 26] [9 23] [73 20] [585 17] [4681 14]]]
+      (loop [bins (transient [0])
+             xs [[1 26] [9 23] [73 20] [585 17] [4681 14]]]
+        (if-let [[^long ini shift] (first xs)]
           (let [ini* (+ ini (bit-shift-right beg shift))
                 end* (+ ini (bit-shift-right end shift))]
-           (loop [k ini*]
-             (when (<= k end*)
-               (conj! bit-set k)
-               (recur (inc k))))))
-        (persistent! bit-set)))))
+            (recur
+             (loop [b bins k ini*]
+               (if (<= k end*)
+                 (recur (conj! b k) (inc k))
+                 b))
+             (next xs)))
+          (persistent! bins))))))
 
 (def ^:private reg->bins (memoize reg->bins*))
 

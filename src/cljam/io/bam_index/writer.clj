@@ -4,26 +4,27 @@
             [cljam.io.sam.util :as sam-util]
             [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
-            [cljam.io.bam.decoder :as bam-decoder]
             [cljam.io.bam-index.common :refer :all]
-            [cljam.io.bam-index.chunk :as chunk])
-  (:import [java.nio ByteBuffer ByteOrder]))
+            [cljam.io.bam-index.chunk :as chunk]
+            [cljam.io.bam.decoder :as bam-decoder])
+  (:import [java.io DataOutputStream Closeable]
+           [java.nio ByteBuffer ByteOrder]
+           [cljam.io.bam_index.chunk Chunk]))
 
-(declare make-index)
 (declare make-index-from-blocks)
 
 ;; BAIWriter
 ;; ---------
 
-(deftype BAIWriter [^java.io.DataOutputStream writer refs f]
-  java.io.Closeable
+(deftype BAIWriter [^DataOutputStream writer refs f]
+  Closeable
   (close [this]
     (.close writer)))
 
 ;; Indexing
 ;; --------
 
-(defn- pos->lidx-offset
+(defn pos->lidx-offset
   [^long pos]
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
@@ -32,7 +33,7 @@
 ;; Use record for performance.
 ;; Record is faster than map for retrieving elements.
 
-(defrecord MetaData [first-offset last-offset aligned-alns unaligned-alns])
+(defrecord MetaData [^long first-offset ^long last-offset ^long aligned-alns ^long unaligned-alns])
 
 (defrecord IndexStatus [^MetaData meta-data bin-index linear-index])
 
@@ -76,11 +77,12 @@
 (defn- update-bin-index
   [bin-index aln]
   (let [bin (sam-util/compute-bin aln)
-        achunk (:chunk (:meta aln))]
+        meta-chunk (:chunk (:meta aln))
+        achunk (Chunk. (:beg meta-chunk) (:end meta-chunk))]
     (assoc bin-index bin
            (if-let [chunks (get bin-index bin)]
-             (if (bgzf/same-or-adjacent-blocks? (:end (peek chunks)) (:beg achunk))
-               (let [l (assoc (peek chunks) :end (:end achunk))]
+             (if (bgzf/same-or-adjacent-blocks? (.end ^Chunk (peek chunks)) (.beg achunk))
+               (let [l (assoc (peek chunks) :end (.end achunk))]
                  (assoc chunks (dec (count chunks)) l))
                (conj chunks achunk))
              (vector achunk)))))
@@ -115,25 +117,25 @@
   "Calculates index from the references and alignments, returning it as a map.
   Returned index is still intermidate. It must be passed to finalize function
   in the final stage."
-  [refs alns]
+  [alns]
   (loop [[aln & rest] alns
-         ref-name (:rname aln)
+         rid (:ref-id aln)
          idx-status (init-index-status)
          no-coordinate-alns 0
          indices {}]
     (if aln
-      (let [ref-name' (:rname aln)
-            new-ref? (not= ref-name' ref-name)
+      (let [rid' (:ref-id aln)
+            new-ref? (not= rid' rid)
             idx-status' (update-index-status
                          (if new-ref? (init-index-status) idx-status) aln)
             no-coordinate-alns' (if (zero? (:pos aln))
                                   (inc no-coordinate-alns)
                                   no-coordinate-alns)
             indices' (if new-ref?
-                       (assoc indices ref-name idx-status)
+                       (assoc indices rid idx-status)
                        indices)]
-        (recur rest ref-name' idx-status' no-coordinate-alns' indices'))
-      (assoc indices ref-name idx-status
+        (recur rest rid' idx-status' no-coordinate-alns' indices'))
+      (assoc indices rid idx-status
                      :no-coordinate-alns no-coordinate-alns))))
 
 ;; Merging indices
@@ -153,12 +155,12 @@
 
 (defn- merge-chunks
   [chunks1 chunks2]
-  (loop [[f & r] (sort chunk/compare (concat chunks1 chunks2))
+  (loop [[^Chunk f & r] (sort chunk/compare (concat chunks1 chunks2))
          chunks' []]
     (if f
-      (if-let [last-chunk (peek chunks')]
-        (if (bgzf/same-or-adjacent-blocks? (:end last-chunk) (:beg f))
-          (let [l (assoc last-chunk :end (:end f))]
+      (if-let [last-chunk ^Chunk (peek chunks')]
+        (if (bgzf/same-or-adjacent-blocks? (.end last-chunk) (.beg f))
+          (let [l (assoc last-chunk :end (.end f))]
             (recur r (assoc chunks' (dec (count chunks')) l)))
           (recur r (conj chunks' f)))
         (recur r (conj chunks' f)))
@@ -219,16 +221,16 @@
 (defn- finalize-index
   "Converts intermidate BAM index data structure into final one. Must be called
   in the final stage."
-  [refs index]
-  (loop [[f & r] refs
+  [^long nrefs index]
+  (loop [i 0
          index index]
-    (if f
-      (let [rname (:name f)]
-        (if (get index rname)
-          (recur r (-> index
-                       (update-in [rname :bin-index] finalize-bin-index)
-                       (update-in [rname :linear-index] finalize-linear-index)))
-          (recur r index)))
+    (if (< i nrefs)
+      (let []
+        (if (get index i)
+          (recur (inc i) (-> index
+                             (update-in [i :bin-index] finalize-bin-index)
+                             (update-in [i :linear-index] finalize-linear-index)))
+          (recur (inc i) index)))
       index)))
 
 ;; Writing index
@@ -253,14 +255,14 @@
   (lsb/write-long w (:unaligned-alns meta-data)))
 
 (defn- write-index*!
-  [wtr refs alns]
+  [wtr nrefs alns]
   ;; magic
   (lsb/write-bytes wtr (.getBytes ^String bai-magic))
   ;; n_ref
-  (lsb/write-int wtr (count refs))
-  (let [indices (make-index-from-blocks refs alns)]
-    (doseq [ref refs]
-      (let [index (get indices (:name ref))
+  (lsb/write-int wtr nrefs)
+  (let [indices (make-index-from-blocks nrefs alns)]
+    (dotimes [i nrefs]
+      (let [index (get indices i)
             n-bin (count (:bin-index index))]
         ;; bins
         (if (zero? n-bin)
@@ -287,44 +289,29 @@
   effect on performance of concurrent indexing. The default value is 10,000."
   10000)
 
-(defn make-index
-  "Calculates a BAM index from provided references and alignments. Optionally,
-   you can do this process concurrently."
-  [refs alns]
-  (let [n-threads (get-exec-n-threads)
-        make-index-fn (fn [refs alns]
-                        (if (= n-threads 1)
-                          (make-index* refs alns)
-                          (cp/with-shutdown! [pool (cp/threadpool n-threads)]
-                            (->> (partition-all *alignments-partition-size* alns)
-                                 (cp/pmap pool (partial make-index* refs))
-                                 (reduce merge-index)))))]
-    (->> alns
-         (make-index-fn refs)
-         (finalize-index refs))))
-
 (defn make-index-from-blocks
   "Calculates a BAM index from provided references and alignment blocks.
   Optionally, you can do this process concurrently."
-  [refs blocks]
+  [^long nrefs blocks]
   (let [n-threads (get-exec-n-threads)
-        make-index-fn (fn [refs blocks]
+        make-index-fn (fn [blocks]
                         (if (= n-threads 1)
                           (->> blocks
-                               (map #(bam-decoder/decode-alignment-block % refs :pointer))
-                               (make-index* refs))
+                               (map #(bam-decoder/decode-alignment-block % nil :pointer))
+                               make-index*)
                           (cp/with-shutdown! [pool (cp/threadpool (dec n-threads))]
-                            (->> (partition-all *alignments-partition-size* blocks)
-                                 (cp/pmap pool (fn [sub-blocks]
-                                                 (->> sub-blocks
-                                                      (map #(bam-decoder/pointer-decode-alignment-block % refs))
-                                                      (make-index* refs))))
+                            (->> blocks
+                                 (partition-all *alignments-partition-size*)
+                                 (cp/upmap pool (fn [sub-blocks]
+                                                  (->> sub-blocks
+                                                       (map #(bam-decoder/decode-alignment-block % nil :pointer))
+                                                       make-index*)))
                                  (reduce merge-index)))))]
     (->> blocks
-         (make-index-fn refs)
-         (finalize-index refs))))
+         make-index-fn
+         (finalize-index nrefs))))
 
 (defn write-index!
   "Calculates a BAM index from alns, writing the index to a file."
   [^BAIWriter wtr alns]
-  (write-index*! (.writer wtr) (.refs wtr) alns))
+  (write-index*! (.writer wtr) (count (.refs wtr)) alns))

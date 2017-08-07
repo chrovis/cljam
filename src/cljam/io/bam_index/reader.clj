@@ -1,9 +1,11 @@
 (ns cljam.io.bam-index.reader
   (:require [clojure.java.io :as cio]
             [cljam.io.util.lsb :as lsb]
-            [cljam.io.bam-index.common :refer [bai-magic]])
+            [cljam.io.bam-index.common :refer [bai-magic]]
+            [cljam.io.bam-index.chunk :as chunk])
   (:import java.util.Arrays
-           [java.io DataInputStream FileInputStream Closeable IOException]))
+           [java.io DataInputStream FileInputStream Closeable IOException]
+           [cljam.io.bam_index.chunk Chunk]))
 
 (deftype BAIReader [f reader]
   Closeable
@@ -48,8 +50,7 @@
   (let [n (lsb/read-int rdr)]
    (loop [i 0, chunks []]
      (if (< i n)
-       (recur (inc i) (conj chunks {:beg (lsb/read-long rdr)
-                                    :end (lsb/read-long rdr)}))
+       (recur (inc i) (conj chunks (Chunk. (lsb/read-long rdr) (lsb/read-long rdr))))
        chunks))))
 
 (defn- read-bin-index**!
@@ -100,8 +101,7 @@
   (let [rdr (.reader r)
         n-ref (lsb/read-int rdr)
         refs (range n-ref)
-        all-idx (map (fn [i] [(read-bin-index**! rdr) (read-linear-index**! rdr)])
-                     refs)
+        all-idx (map (fn [_] [(read-bin-index**! rdr) (read-linear-index**! rdr)]) refs)
         bidx-seq (map first all-idx)
         bidx (zipmap
               refs

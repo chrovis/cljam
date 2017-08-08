@@ -131,7 +131,7 @@
                  (with-out-file temp-out (cli/level [test-bam-file temp-bam]))))
     (is (not-throw? (with-out-file temp-out (cli/level [test-sorted-bam-file
                                                         temp-bam]))))
-    (with-open [rdr (sam/bam-reader temp-bam :ignore-index true)]
+    (with-open [rdr (sam/bam-reader temp-bam)]
       (is (= (map #(first (keep :LV (:options %)))
                   (sam/read-alignments rdr))
              test-sorted-bam-levels)))))

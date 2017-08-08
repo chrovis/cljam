@@ -39,7 +39,7 @@
                                     ;; generate incomplete bam on the fly
                                     (spit-bam-for-test f test-sam-incomplete-alignments)
                                     ;; TODO: go independent from sorter
-                                    (with-open [rdr (sam/bam-reader f :ignore-index true)
+                                    (with-open [rdr (sam/bam-reader f)
                                                 wtr (sam/bam-writer sorted-f)]
                                       (sorter/sort-by-pos rdr wtr)))
                         :after (clean-cache!)}

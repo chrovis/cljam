@@ -68,7 +68,7 @@
                    cache))]
         ;; merge
         (doseq [cache xs]
-          (with-open [r (sam/reader cache :ignore-index true)]
+          (with-open [r (sam/reader cache)]
             (sam/write-blocks wtr (sam/read-blocks r)))
           (.delete (cio/file cache)))))))
 

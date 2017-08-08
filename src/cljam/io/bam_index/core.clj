@@ -51,21 +51,22 @@
 (def ^:private reg->bins (memoize reg->bins*))
 
 (defn get-spans
-  [^BAMIndex bai ref-idx beg end]
+  [^BAMIndex bai ^long ref-idx ^long beg ^long end]
   (let [bins (reg->bins beg end)
         bidx (get (.bidx bai) ref-idx)
         lidx (get (.lidx bai) ref-idx)
-        chunks (flatten (filter (complement nil?) (map #(get bidx %) bins)))
-        min-offset (or (first lidx) 0)]
+        chunks (into [] (comp (map bidx) cat) bins)
+        lin-beg (writer/pos->lidx-offset beg)
+        min-offset (get lidx lin-beg 0)]
     (->> (chunk/optimize-chunks chunks min-offset)
          (map vals))))
 
 (defn get-unplaced-spans
   [^BAMIndex bai]
   (if-let [begin (some->>
-                  (for [[ref-id bins] (.bidx bai)
-                        [bin chunks] bins
-                        {:keys [beg end]} chunks]
+                  (for [[_ bins] (.bidx bai)
+                        [_ chunks] bins
+                        {:keys [end]} chunks]
                     end)
                   seq
                   (reduce max))]

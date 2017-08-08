@@ -150,9 +150,9 @@
       {:rname rname, :pos pos, :meta {:cigar-bytes cigar-bytes}})))
 
 (defn pointer-decode-alignment-block
-  [block refs]
+  [block _]
   (let [buffer (ByteBuffer/wrap (:data block))]
-    (let [rname       (or (sam-util/ref-name refs (lsb/read-int buffer)) "*")
+    (let [ref-id      (lsb/read-int buffer)
           pos         (inc (lsb/read-int buffer))
           l-read-name (int (lsb/read-ubyte buffer))
           _           (lsb/skip buffer 3)
@@ -160,7 +160,7 @@
           flag        (lsb/read-ushort buffer)
           _           (lsb/skip buffer (+ 16 l-read-name))
           cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))]
-      {:flag flag, :rname rname, :pos pos,
+      {:flag flag, :ref-id ref-id, :pos pos,
        :meta {:chunk {:beg (:pointer-beg block),
                       :end (:pointer-end block)}
               :cigar-bytes cigar-bytes}})))

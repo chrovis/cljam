@@ -128,7 +128,7 @@
                       :after (clean-cache!)}
     ;; coordinate
     (is (not-throw?
-         (with-open [r (sam/reader tmp-shuffled-bam-file :ignore-index true)
+         (with-open [r (sam/reader tmp-shuffled-bam-file)
                      w (sam/writer tmp-coordinate-sorted-bam-bam-file)]
            (sorter/sort-by-pos r w {:chunk-size 3}))))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-bam-file))
@@ -136,7 +136,7 @@
     (is (coord-sorted? tmp-coordinate-sorted-bam-bam-file))
 
     (is (not-throw?
-         (with-open [r (sam/reader tmp-shuffled-sam-file :ignore-index true)
+         (with-open [r (sam/reader tmp-shuffled-sam-file)
                      w (sam/writer tmp-coordinate-sorted-sam-sam-file)]
            (sorter/sort-by-pos r w {:chunk-size 3 :cache-fmt :sam}))))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-sam-file))
@@ -145,14 +145,14 @@
 
     ;; queryname
     (is (not-throw?
-         (with-open [r (sam/reader tmp-shuffled-bam-file :ignore-index true)
+         (with-open [r (sam/reader tmp-shuffled-bam-file)
                      w (sam/writer tmp-queryname-sorted-bam-file-2)]
            (sorter/sort-by-qname r w {:chunk-size 3}))))
     (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file-2)
     (is (qname-sorted? tmp-queryname-sorted-bam-file-2))
 
     (is (not-throw?
-         (with-open [r (sam/reader tmp-shuffled-bam-file :ignore-index true)
+         (with-open [r (sam/reader tmp-shuffled-bam-file)
                      w (sam/writer tmp-queryname-sorted-sam-file-2)]
            (sorter/sort-by-qname r w {:chunk-size 3 :cache-fmt :sam}))))
     (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file-2)

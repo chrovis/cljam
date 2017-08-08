@@ -118,7 +118,7 @@
 (defn- merge**
   "Merges multiple SAM/BAM files into single SAM/BAM file."
   [wtr hdr files key-fn read-fn write-fn]
-  (let [rdrs (map #(sam/reader % :ignore-index true) files)
+  (let [rdrs (map sam/reader files)
         alns (map read-fn rdrs)]
     (sam/write-header wtr hdr)
     (sam/write-refs wtr hdr)

@@ -64,7 +64,7 @@
       (with-open [^Closeable r (condp = (:format options)
                                  "auto" (sam/reader f)
                                  "sam"  (sam/sam-reader f)
-                                 "bam"  (sam/bam-reader f :ignore-index true))]
+                                 "bam"  (sam/bam-reader f))]
         (when (:header options)
           (println (stringify-header (sam/read-header r))))
         (doseq [aln (sam/read-alignments r {})]
@@ -260,7 +260,7 @@
      (not= (count arguments) 1) (exit 1 (pileup-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (with-open [r (sam/reader f :ignore-index false)]
+      (with-open [r (sam/reader f)]
         (when (= (type r) cljam.io.sam.reader.SAMReader)
           (exit 1 "Not support SAM file"))
         (when-not (sorter/sorted-by? r)
@@ -347,7 +347,7 @@
       (not= (count arguments) 2) (exit 1 (level-usage summary))
       errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (with-open [r (sam/reader in :ignore-index false)
+      (with-open [r (sam/reader in)
                   w (sam/writer out)]
         (level/add-level r w))))
   nil)

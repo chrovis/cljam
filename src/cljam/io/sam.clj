@@ -23,11 +23,10 @@
   (sam-reader/reader f))
 
 (defn ^BAMReader bam-reader
-  "Returns an open cljam.io.bam.reader.BAMReader of f with option:
-   :ignore-index - returns reader without index, default false.
-  Should be used inside with-open to ensure the reader is properly closed."
-  [f & option]
-  (bam-core/reader f option))
+  "Returns an open cljam.io.bam.reader.BAMReader of f. Should be used inside
+  with-open to ensure the reader is properly closed."
+  [f]
+  (bam-core/reader f))
 
 (defn ^BAMReader clone-bam-reader
   "Clones bam reader sharing persistent objects."
@@ -38,11 +37,11 @@
   "Selects suitable reader from f's extension, returning the reader. Opens a new
   reader if given a path, clones the reader if given a reader. This function
   supports SAM and BAM formats."
-  [f & option]
+  [f]
   (if (string? f)
     (case (io-util/file-type f)
       :sam (sam-reader f)
-      :bam (apply bam-reader f option)
+      :bam (bam-reader f)
       (throw (IllegalArgumentException. "Invalid file type")))
     (cond
       (io-util/bam-reader? f) (clone-bam-reader f)

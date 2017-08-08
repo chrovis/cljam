@@ -81,7 +81,7 @@
      :alignments (doall (sam/read-alignments r {}))}))
 
 (defn slurp-bam-for-test [f]
-  (with-open [r (sam/bam-reader f :ignore-index true)]
+  (with-open [r (sam/bam-reader f)]
     {:header (sam/read-header r)
      :alignments (doall (sam/read-alignments r {}))}))
 
@@ -438,7 +438,7 @@
         target-rnames))))
 
 (defn coord-sorted? [f]
-  (with-open [r (sam/reader f :ignore-index true)]
+  (with-open [r (sam/reader f)]
     (let [rname->id (into {} (map-indexed (fn [i v] [(:name v) i]) (sam/read-refs r)))
           upos #(if (zero? %) Integer/MAX_VALUE %)]
       (some?
@@ -455,7 +455,7 @@
         (sam/read-alignments r))))))
 
 (defn qname-sorted? [f]
-  (with-open [r (sam/reader f :ignore-index true)]
+  (with-open [r (sam/reader f)]
     (some?
      (reduce
       (fn [r x]

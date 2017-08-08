@@ -7,7 +7,7 @@
 (defn create-index
   "Creates a BAM index file from the BAM file."
   [in-bam out-bai & {:keys [n-threads] :or {n-threads 0}}]
-  (with-open [r (sam/bam-reader in-bam :ignore-index true)]
+  (with-open [r (sam/bam-reader in-bam)]
     (binding [*n-threads* n-threads]
       (bai-core/create-index out-bai
                              (sam/read-blocks r {} {:mode :pointer})

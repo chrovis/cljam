@@ -18,27 +18,25 @@
 
 (defn- bam-index
   "Load an index file (BAI) for the given BAM file."
-  [bam-path {:keys [ignore]}]
-  (let [bai-path (->> ["$1.bai" ".bai" "$1.BAI" ".BAI"]
-                      (eduction
-                       (comp
-                        (map #(cstr/replace bam-path #"(?i)(\.bam)$" %))
-                        (filter #(.isFile (cio/file %)))))
-                      first)]
-    (if (and bai-path (not ignore))
-      (bai/bam-index bai-path)
-      (throw (FileNotFoundException. (str "Could not find BAM Index file for " bam-path))))))
+  [bam-path]
+  (if-let [bai-path (->> ["$1.bai" ".bai" "$1.BAI" ".BAI"]
+                         (eduction
+                          (comp
+                           (map #(cstr/replace bam-path #"(?i)(\.bam)$" %))
+                           (filter #(.isFile (cio/file %)))))
+                         first)]
+    (bai/bam-index bai-path)
+    (throw (FileNotFoundException. (str "Could not find BAM Index file for " bam-path)))))
 
 (defn ^BAMReader reader
-  "Creates a `cljam.io.bam.BAMReader` instancer for the given path.
-  Pass {:ignore-index true} to force to ignore BAI file."
-  [f {:keys [ignore-index]}]
+  "Creates a `cljam.io.bam.BAMReader` instance for the given path."
+  [f]
   (let [rdr (BGZFInputStream. (cio/file f))
         data-rdr (DataInputStream. rdr)]
     (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes ^String bam-magic))
       (throw (IOException. "Invalid BAM file")))
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
-          index-delay (delay (bam-index f {:ignore ignore-index}))]
+          index-delay (delay (bam-index f))]
       (BAMReader. (.getAbsolutePath (cio/file f))
                   header refs rdr data-rdr index-delay (.getFilePointer rdr)))))
 

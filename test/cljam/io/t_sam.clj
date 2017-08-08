@@ -80,61 +80,61 @@
   (with-before-after {:before (do (prepare-cache!)
                                   (spit-bam-for-test temp-bam-file test-sam))
                       :after (clean-cache!)}
-    (with-open [rdr (sam/bam-reader temp-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader temp-bam-file)]
       (is (= (sam/read-refs rdr) test-sam-refs))
       (is (= (sam/read-alignments rdr) (:alignments test-sam))))
-    (with-open [rdr (sam/bam-reader temp-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader temp-bam-file)]
       (is (= (sam/read-refs rdr) test-sam-refs))
       (is (thrown? Exception (sam/read-alignments rdr {:chr "ref2"}))))
-    (with-open [rdr (sam/bam-reader temp-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader temp-bam-file)]
       (is (= (sam/read-refs rdr) test-sam-refs))
       (is (= (sam/read-alignments rdr {:depth :deep}) (:alignments test-sam))))
-    (with-open [rdr (sam/bam-reader temp-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader temp-bam-file)]
       (is (= (sam/read-refs rdr) test-sam-refs))
       (is (shallow= (sam/read-alignments rdr {:depth :shallow})
                     (:alignments test-sam))))
-    (with-open [rdr (sam/bam-reader temp-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader temp-bam-file)]
       (is (= (sam/read-refs rdr) test-sam-refs))
       (is (pointer= (sam/read-alignments rdr {:depth :pointer})
                     (:alignments test-sam))))
-    (with-open [rdr (sam/bam-reader temp-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader temp-bam-file)]
       (is (= (sam/read-refs rdr) test-sam-refs))
       (is (= (data->clj (sam/read-blocks rdr)) test-sam-data)))
-    (with-open [rdr (sam/bam-reader temp-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader temp-bam-file)]
       (is (= (sam/read-refs rdr) test-sam-refs))
       (is (thrown? Exception (data->clj (sam/read-blocks rdr {:chr "ref2"})))))))
 
 (deftest bam-reader-with-index-test
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
       (is (= (sam/read-alignments rdr {:chr "ref2"})
              (drop 6 (:alignments test-sam-sorted-by-pos)))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
       (is (= (sam/read-alignments rdr {:chr "ref2" :start 21})
              (drop 7 (:alignments test-sam-sorted-by-pos)))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
       (is (= (sam/read-alignments rdr {:chr "ref2" :end 9})
              (take 3 (drop 6 (:alignments test-sam-sorted-by-pos))))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
       (is (= (sam/read-alignments rdr {:chr "ref2" :start 10 :end 12})
              (take 5 (drop 6 (:alignments test-sam-sorted-by-pos))))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
       (is (= (data->clj (sam/read-blocks rdr))
              test-sorted-bam-data)))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
       (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
                   (data->clj (sam/read-blocks rdr {:chr "ref2"})))
              (drop 6 test-sorted-bam-data))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
       (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
                   (data->clj (sam/read-blocks rdr {:chr "ref2" :start 2})))
              (drop 7 test-sorted-bam-data))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
       (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
                   (data->clj (sam/read-blocks rdr {:chr "ref2" :end 2})))
              (take 2 (drop 6 test-sorted-bam-data)))))
-    (with-open [rdr (sam/bam-reader test-sorted-bam-file :ignore-index false)]
+    (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
       (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
                   (data->clj (sam/read-blocks rdr {:chr "ref2" :start 4 :end 12})))
              (take 3 (drop 8 test-sorted-bam-data)))))))
@@ -142,14 +142,14 @@
 (deftest bam-reader-invalid-test
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (is (thrown? Exception (sam/bam-reader invalid-bam-file-1 :ignore-index true)))
-    (is (thrown? java.io.IOException (sam/bam-reader invalid-bam-file-2 :ignore-index true)))
-    (is (thrown? java.io.IOException (sam/bam-reader not-found-bam-file :ignore-index true)))))
+    (is (thrown? Exception (sam/bam-reader invalid-bam-file-1)))
+    (is (thrown? java.io.IOException (sam/bam-reader invalid-bam-file-2)))
+    (is (thrown? java.io.IOException (sam/bam-reader not-found-bam-file)))))
 
 (deftest-slow bam-reader-medium-test
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (with-open [rdr (sam/bam-reader medium-bam-file :ignore-index true)]
+    (with-open [rdr (sam/bam-reader medium-bam-file)]
       (let [header (sam/read-header rdr)
             refs (sam/read-refs rdr)
             alns (sam/read-alignments rdr)]
@@ -164,7 +164,7 @@
   (with-before-after {:before (do (prepare-cache!)
                                   (prepare-cavia!))
                       :after (clean-cache!)}
-    (with-open [rdr (sam/bam-reader large-bam-file :ignore-index true)]
+    (with-open [rdr (sam/bam-reader large-bam-file)]
       (is (= (sam/read-refs rdr) large-sam-refs))
       (is (not-throw? (sam/read-alignments rdr))))))
 

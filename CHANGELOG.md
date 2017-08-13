@@ -1,5 +1,19 @@
 # Change Log
 
+## [Unreleased]
+
+### Changed
+
+* Refactor cljam.algo.level. [#93](https://github.com/chrovis/cljam/pull/93)
+* Refactor BAI I/O. [#96](https://github.com/chrovis/cljam/pull/96)
+
+
+### Fixed
+
+* Update an example usage of depth in README. [#94](https://github.com/chrovis/cljam/pull/94)
+* Use returned values of conj! in reg->bins\*. [#95](https://github.com/chrovis/cljam/pull/95)
+
+
 ## [0.4.1] - 2017-08-01
 
 ### Changed

@@ -45,7 +45,7 @@
              normalize-chromosome-prefix)
          (if version-suffix (cstr/lower-case version-suffix)))))
 
-(defn is-primary?
+(defn is-primary-chromosome?
   [s]
   (not (nil? (re-matches #"^chr([0-9]{1,2}|X|Y|M|MT)$"
                          (normalize-chromosome-key s)))))

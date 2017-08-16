@@ -89,8 +89,8 @@
     "chr14_KI270723v1_random" "chr14_KI270723" "v1_random"
     "chr14_KI270723V1_Random" "chr14_KI270723" "V1_Random"))
 
-(deftest is-primary?-test
-  (are [?key ?pattern] (= (chr/is-primary? ?key) ?pattern)
+(deftest is-primary-chromosome?-test
+  (are [?key ?pattern] (= (chr/is-primary-chromosome? ?key) ?pattern)
     "chr1" true
     "chr22" true
 

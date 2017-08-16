@@ -54,6 +54,18 @@
     "NC_007605" "NC_007605"
     "hs37d5" "hs37d5"
 
+    "chr4_GL000257v2_alt" "chr4_GL000257v2_alt"
+    "4_GL000257v2_alt" "chr4_GL000257v2_alt"
+    "chr4_GL000257V2_ALT" "chr4_GL000257v2_alt"
+
+    "chr14_KI270723v1_random" "chr14_KI270723v1_random"
+    "14_KI270723v1_random" "chr14_KI270723v1_random"
+    "14_KI270723V1_Random" "chr14_KI270723v1_random"
+
+    "chrUn_KI270316v1" "chrUn_KI270316v1"
+    "Un_KI270316v1" "chrUn_KI270316v1"
+    "Un_KI270316V1" "chrUn_KI270316v1"
+
     ;; TODO: Add more SN name
     )
 
@@ -66,3 +78,13 @@
 
     ;; TODO: Add more SN name
     ))
+
+(def split-version-suffix #'chr/split-version-suffix)
+
+(deftest split-version-suffix-test
+  (are [?key ?base ?version-suffix] (= (split-version-suffix ?key) [?base ?version-suffix])
+    "chr4_GL000257v2_alt" "chr4_GL000257" "v2_alt"
+    "chr4_GL000257V2_ALT" "chr4_GL000257" "V2_ALT"
+
+    "chr14_KI270723v1_random" "chr14_KI270723" "v1_random"
+    "chr14_KI270723V1_Random" "chr14_KI270723" "V1_Random"))

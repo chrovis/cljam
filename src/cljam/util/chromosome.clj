@@ -1,6 +1,7 @@
 (ns cljam.util.chromosome
   "Utilities for handling chromosome name."
-  (:require [clojure.string :as cstr]))
+  (:require [clojure.string :as cstr]
+            [clojure.string :as string]))
 
 (defn normalize-name
   [s]
@@ -43,3 +44,8 @@
              prepend-chromosome-prefix
              normalize-chromosome-prefix)
          (if version-suffix (cstr/lower-case version-suffix)))))
+
+(defn is-primary?
+  [s]
+  (not (nil? (re-matches #"^chr([0-9]{1,2}|X|Y|M|MT)$"
+                         (normalize-chromosome-key s)))))

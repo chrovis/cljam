@@ -88,3 +88,17 @@
 
     "chr14_KI270723v1_random" "chr14_KI270723" "v1_random"
     "chr14_KI270723V1_Random" "chr14_KI270723" "V1_Random"))
+
+(deftest is-primary?-test
+  (are [?key ?pattern] (= (chr/is-primary? ?key) ?pattern)
+    "chr1" true
+    "chr22" true
+
+    "1" true
+    "X" true
+
+    "Un" false
+    "chrUn_KI270316v1" false
+
+    "chr4_GL000257v2_alt" false
+    "14_KI270723V1_random" false))

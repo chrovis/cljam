@@ -58,15 +58,12 @@
   (protocols/read-refs rdr))
 
 (defn read-alignments
-  "Reads alignments of the SAM/BAM file, returning the alignments as a lazy
-  sequence."
+  "Reads alignments of the SAM/BAM file, returning the alignments as an eduction."
   ([rdr] (protocols/read-alignments rdr))
-  ([rdr region] (protocols/read-alignments rdr region))
-  ([rdr region option] (protocols/read-alignments rdr region option)))
+  ([rdr region] (protocols/read-alignments rdr region)))
 
 (defn read-blocks
-  "Reads alignment blocks of the SAM/BAM file, returning the blocks as a lazy
-  sequence."
+  "Reads alignment blocks of the SAM/BAM file, returning the blocks as an eduction."
   ([rdr] (protocols/read-blocks rdr))
   ([rdr region] (protocols/read-blocks rdr region))
   ([rdr region option] (protocols/read-blocks rdr region option)))

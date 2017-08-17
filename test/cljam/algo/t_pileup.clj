@@ -38,7 +38,7 @@
   ;; ----------
   ;; 1234567890...
   (is (= (map (fn [xs] (map #(dissoc % :end) xs))
-              (mplp/pileup-seq 1 2 [{:pos 1 :cigar "10M"}]))
+              (mplp/pileup-seq 1 2 [{:pos 1 :cigar "10M" :end 10}]))
          [[{:pos 1 :cigar "10M"}] [{:pos 1 :cigar "10M"}]]))
 
   ;;    ----------
@@ -47,13 +47,13 @@
   ;; ----------
   ;; 1234567890123...
   (is (= (map count
-              (mplp/pileup-seq 1 20 (map #(hash-map :pos (inc %) :cigar "10M") (range))))
+              (mplp/pileup-seq 1 20 (map #(hash-map :pos (inc %) :cigar "10M" :end (+ % 10)) (range))))
          [1 2 3 4 5 6 7 8 9 10 10 10 10 10 10 10 10 10 10 10]))
   (is (= (map count
-              (mplp/pileup-seq 101 120 (map #(hash-map :pos (inc %) :cigar "10M") (range))))
+              (mplp/pileup-seq 101 120 (map #(hash-map :pos (inc %) :cigar "10M" :end (+ % 10)) (range))))
          [10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10]))
   (is (= (map :pos
-              (last (mplp/pileup-seq 1 100000 (map #(hash-map :pos (inc %) :cigar "10M") (range)))))
+              (last (mplp/pileup-seq 1 100000 (map #(hash-map :pos (inc %) :cigar "10M" :end (+ % 10)) (range)))))
          [99991 99992 99993 99994 99995 99996 99997 99998 99999 100000]))
 
   ;;     -----
@@ -63,7 +63,7 @@
   ;; -
   ;; 1234567890...
   (is (= (map count
-              (mplp/pileup-seq 1 10 (map #(hash-map :pos (inc %) :cigar (str (inc %) "M")) (range))))
+              (mplp/pileup-seq 1 10 (map #(hash-map :pos (inc %) :cigar (str (inc %) "M") :end (+ % (inc %))) (range))))
          [1 1 2 2 3 3 4 4 5 5]))
 
   ;;       --------
@@ -75,7 +75,7 @@
   ;; ----------
   ;; 1234567890...
   (is (= (map count
-              (mplp/pileup-seq 1 10 (map #(hash-map :pos (inc %) :cigar (str (- 10 (* (mod % 5) 2)) "M")) (range))))
+              (mplp/pileup-seq 1 10 (map #(hash-map :pos (inc %) :cigar (str (- 10 (* (mod % 5) 2)) "M") :end (+ % (- 10 (* (mod % 5) 2)))) (range))))
          [1 2 3 4 5 6 6 6 6 6])))
 
 (deftest about-mpileup
@@ -118,9 +118,9 @@
              "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG")))))
 
 (def reads-for-pileup
-  [{:qname "R001" :flag 99 :rname "seq1" :pos 3 :seq "AATTGGCCAA" :qual "AABBCCDDEE" :cigar "2S8M"
+  [{:qname "R001" :flag 99 :rname "seq1" :pos 3 :end 10 :seq "AATTGGCCAA" :qual "AABBCCDDEE" :cigar "2S8M"
     :rnext "=" :pnext 1 :tlen 8 :mapq 60}
-   {:qname "R001" :flag 147 :rname "seq1" :pos 3 :seq "TTGGCCAATT" :qual "AABBCCDDEE" :cigar "8M2S"
+   {:qname "R001" :flag 147 :rname "seq1" :pos 3 :end 10 :seq "TTGGCCAATT" :qual "AABBCCDDEE" :cigar "8M2S"
     :rnext "=" :pnext 3 :tlen -8 :mapq 20}])
 
 (deftest overlap-correction

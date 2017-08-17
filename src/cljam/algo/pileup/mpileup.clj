@@ -43,8 +43,7 @@
     (->> reads
          (sequence
           (comp
-           (remove #(and (empty? (:cigar %)) (nil? (:cigar-bytes (:meta %)))))
-           (map #(assoc % :end (sam-util/get-end %)))
+           (remove #(empty? (:cigar %)))
            (drop-while #(< (:end %) start))))
          (step (dec start) []))))
 
@@ -137,7 +136,7 @@
              refseq (if ref-reader
                       (cseq/read-sequence ref-reader {:chr chr :start s :end e})
                       (repeat \N))]
-         (->> (sam/read-alignments bam-reader {:chr chr :start s :end e :depth :deep})
+         (->> (sam/read-alignments bam-reader {:chr chr :start s :end e})
               (sequence
                (comp
                 (filter basic-mpileup-pred)

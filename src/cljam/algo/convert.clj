@@ -5,45 +5,42 @@
             [cljam.io.sam.util :as sam-util]
             [cljam.io.util :as io-util]
             [com.climate.claypoole :as cp])
-  (:import [cljam.io.bam.writer BAMWriter]))
+  (:import [java.nio ByteBuffer]
+           [cljam.io.bam.writer BAMWriter]))
 
 (def ^:private default-num-block 100000)
-(def ^:private default-num-write-block 10000)
 
-(defn- sam-write-alignments [rdr wtr hdr num-block num-write-block]
+(defn- sam-write-alignments [rdr wtr hdr num-block]
   (doseq [alns (partition-all num-block (sam/read-alignments rdr {}))]
     (sam/write-alignments wtr alns hdr)))
 
-(defn- bam-write-alignments [rdr wtr hdr num-block num-write-block]
-  (let [refs (sam-util/make-refs hdr)
-        w (.writer ^BAMWriter wtr)]
+(defn- bam-write-alignments [rdr wtr hdr num-block]
+  (let [refs (sam-util/make-refs hdr)]
     (cp/with-shutdown! [pool (cp/threadpool (cp/ncpus))]
-      (doseq [alns (partition-all num-block (sam/read-alignments rdr {}))]
-        (let [blocks (doall (cp/pmap pool
-                                     (fn [lalns]
-                                       (doall (map #(encoder/encode % refs)
-                                                   lalns)))
-                                     (partition-all num-write-block alns)))]
-          (doseq [block blocks]
-            (doseq [e block]
-              (encoder/write-encoded-alignment w e))))))))
+      (doseq [blocks (cp/pmap pool
+                              (fn [chunk]
+                                (mapv #(let [bb (ByteBuffer/allocate (encoder/get-block-size %))]
+                                         (encoder/encode-alignment bb % refs)
+                                         {:data (.array bb)})
+                                      chunk))
+                              (partition-all num-block (sam/read-alignments rdr {})))]
+        (sam/write-blocks wtr blocks)))))
 
 (defn- _convert!
-  [rdr wtr num-block num-write-block write-alignments-fn]
+  [rdr wtr num-block write-alignments-fn]
   (let [hdr (sam/read-header rdr)]
     (sam/write-header wtr hdr)
     (sam/write-refs wtr hdr)
-    (write-alignments-fn rdr wtr hdr num-block num-write-block)))
+    (write-alignments-fn rdr wtr hdr num-block)))
 
 (defn convert
   "Converts file format from input file to output file by the file extension."
-  [in out & {:keys [num-block num-write-block]
-             :or {num-block default-num-block
-                  num-write-block default-num-write-block}}]
+  [in out & {:keys [num-block]
+             :or {num-block default-num-block}}]
   (with-open [rdr (sam/reader in)
               wtr (sam/writer out)]
     (cond
-      (io-util/sam-writer? wtr) (_convert! rdr wtr num-block num-write-block sam-write-alignments)
-      (io-util/bam-writer? wtr) (_convert! rdr wtr num-block num-write-block bam-write-alignments)
+      (io-util/sam-writer? wtr) (_convert! rdr wtr num-block sam-write-alignments)
+      (io-util/bam-writer? wtr) (_convert! rdr wtr num-block bam-write-alignments)
       :else (throw (ex-info (str "Unsupported output file format " out) {}))))
   nil)

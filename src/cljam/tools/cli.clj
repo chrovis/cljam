@@ -5,7 +5,7 @@
             [clj-sub-command.core :refer [sub-command candidate-message]]
             [clojure.tools.cli :refer [parse-opts]]
             [cljam.io.sam :as sam]
-            [cljam.io.sam.util :refer [stringify-header stringify-alignment]]
+            [cljam.io.sam.util :as sam-util]
             [cljam.io.sequence :as cseq]
             [cljam.algo.bam-indexer :as bai]
             [cljam.algo.normal :as normal]
@@ -66,9 +66,9 @@
                                  "sam"  (sam/sam-reader f)
                                  "bam"  (sam/bam-reader f))]
         (when (:header options)
-          (println (stringify-header (sam/read-header r))))
-        (doseq [aln (sam/read-alignments r {})]
-          (println (stringify-alignment aln))))))
+          (println (sam-util/stringify-header (sam/read-header r))))
+        (doseq [aln (sam/read-alignments r)]
+          (println (sam-util/stringify-alignment aln))))))
   nil)
 
 ;; ### convert command

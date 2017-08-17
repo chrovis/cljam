@@ -2,7 +2,7 @@
   "The core of BAM features."
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
-            [cljam.io.bam [common :refer [bam-magic]]
+            [cljam.io.bam [common :as common]
                           [reader :as reader]
                           [writer :as writer]]
             [cljam.io.bam-index :as bai]
@@ -33,7 +33,7 @@
   [f]
   (let [rdr (BGZFInputStream. (cio/file f))
         data-rdr (DataInputStream. rdr)]
-    (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes ^String bam-magic))
+    (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes ^String common/bam-magic))
       (throw (IOException. "Invalid BAM file")))
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
           index-delay (delay (bam-index f))]

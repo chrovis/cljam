@@ -13,6 +13,11 @@
   [s]
   (cstr/replace s #"(?i)^chr" ""))
 
+(defn- split-version-suffix
+  [s]
+  (let [[_ base suffix _] (re-matches #"(.+?)((?i)v[0-9](_alt|_random)?)?" s)]
+    [base suffix]))
+
 (defn- normalize-chromosome-prefix
   [s]
   (if-let [[_ base leftover] (re-matches #"(?i)chr([0-9]{1,2}|X|Y|M|MT|Un)(.*)" s)]
@@ -32,7 +37,14 @@
 (defn normalize-chromosome-key
   "Normalizes chromosome name."
   [s]
-  (-> s
-      normalize-name
-      prepend-chromosome-prefix
-      normalize-chromosome-prefix))
+  (let [[base version-suffix] (split-version-suffix s)]
+    (str (-> base
+             normalize-name
+             prepend-chromosome-prefix
+             normalize-chromosome-prefix)
+         (if version-suffix (cstr/lower-case version-suffix)))))
+
+(defn is-primary-chromosome?
+  [s]
+  (some? (re-matches #"^chr([0-9]{1,2}|X|Y|M|MT)"
+                     (normalize-chromosome-key s))))

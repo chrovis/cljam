@@ -54,8 +54,25 @@
     "NC_007605" "NC_007605"
     "hs37d5" "hs37d5"
 
+    "chr4_GL000257v2_alt" "chr4_GL000257v2_alt"
+    "4_GL000257v2_alt" "chr4_GL000257v2_alt"
+    "chr4_GL000257V2_ALT" "chr4_GL000257v2_alt"
+
+    "chr14_KI270723v1_random" "chr14_KI270723v1_random"
+    "14_KI270723v1_random" "chr14_KI270723v1_random"
+    "14_KI270723V1_Random" "chr14_KI270723v1_random"
+
+    "chrUn_KI270316v1" "chrUn_KI270316v1"
+    "Un_KI270316v1" "chrUn_KI270316v1"
+    "Un_KI270316V1" "chrUn_KI270316v1"
+
     ;; TODO: Add more SN name
     )
+
+  ;; test for cascaded normalization
+  (is (= (-> "17_KI270730V1_RANDOM" chr/normalize-chromosome-key)
+         (-> "17_KI270730V1_RANDOM" chr/normalize-chromosome-key chr/normalize-chromosome-key)
+         (-> "17_KI270730V1_RANDOM" chr/normalize-chromosome-key chr/normalize-chromosome-key chr/normalize-chromosome-key)))
 
   (are [?key ?trimmed-key] (= (chr/trim-chromosome-key ?key) ?trimmed-key)
     "chr1" "1"
@@ -66,3 +83,27 @@
 
     ;; TODO: Add more SN name
     ))
+
+(def split-version-suffix #'chr/split-version-suffix)
+
+(deftest split-version-suffix-test
+  (are [?key ?base ?version-suffix] (= (split-version-suffix ?key) [?base ?version-suffix])
+    "chr4_GL000257v2_alt" "chr4_GL000257" "v2_alt"
+    "chr4_GL000257V2_ALT" "chr4_GL000257" "V2_ALT"
+
+    "chr14_KI270723v1_random" "chr14_KI270723" "v1_random"
+    "chr14_KI270723V1_Random" "chr14_KI270723" "V1_Random"))
+
+(deftest is-primary-chromosome?-test
+  (are [?key ?pattern] (= (chr/is-primary-chromosome? ?key) ?pattern)
+    "chr1" true
+    "chr22" true
+
+    "1" true
+    "X" true
+
+    "Un" false
+    "chrUn_KI270316v1" false
+
+    "chr4_GL000257v2_alt" false
+    "14_KI270723V1_random" false))

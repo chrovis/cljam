@@ -15,7 +15,7 @@
 
 (defn- split-version-suffix
   [s]
-  (let [[_ base suffix leftover] (re-matches #"(.+?)((?i)v[0-9](_alt|_random)?)?$" s)]
+  (let [[_ base suffix _] (re-matches #"(.+?)((?i)v[0-9](_alt|_random)?)?" s)]
     [base suffix]))
 
 (defn- normalize-chromosome-prefix
@@ -46,5 +46,5 @@
 
 (defn is-primary-chromosome?
   [s]
-  (not (nil? (re-matches #"^chr([0-9]{1,2}|X|Y|M|MT)$"
-                         (normalize-chromosome-key s)))))
+  (some? (re-matches #"^chr([0-9]{1,2}|X|Y|M|MT)"
+                     (normalize-chromosome-key s))))

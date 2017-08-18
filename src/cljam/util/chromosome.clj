@@ -1,7 +1,6 @@
 (ns cljam.util.chromosome
   "Utilities for handling chromosome name."
-  (:require [clojure.string :as cstr]
-            [clojure.string :as string]))
+  (:require [clojure.string :as cstr]))
 
 (defn normalize-name
   [s]

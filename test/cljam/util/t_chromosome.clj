@@ -69,6 +69,11 @@
     ;; TODO: Add more SN name
     )
 
+  ;; test for cascaded normalization
+  (is (= (-> "17_KI270730V1_RANDOM" chr/normalize-chromosome-key)
+         (-> "17_KI270730V1_RANDOM" chr/normalize-chromosome-key chr/normalize-chromosome-key)
+         (-> "17_KI270730V1_RANDOM" chr/normalize-chromosome-key chr/normalize-chromosome-key chr/normalize-chromosome-key)))
+
   (are [?key ?trimmed-key] (= (chr/trim-chromosome-key ?key) ?trimmed-key)
     "chr1" "1"
     "Chr2" "2"

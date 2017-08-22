@@ -27,7 +27,11 @@
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0-alpha14"]]}
-             :uberjar {:main cljam.tools.main
+             :uberjar {:dependencies [[org.clojure/clojure "1.8.0"]
+                                      [org.apache.logging.log4j/log4j-api "2.8.2"]
+                                      [org.apache.logging.log4j/log4j-core "2.8.2"]]
+                       :resource-paths ["bin-resources"]
+                       :main cljam.tools.main
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]
                        :aot :all}}
   :deploy-repositories [["snapshots" {:url "https://clojars.org/repo/"

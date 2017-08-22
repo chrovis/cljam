@@ -25,7 +25,8 @@
 (defn- exit
   "Exits the program with the status after printing the message."
   [status message]
-  (println message)
+  (binding [*out* (if (zero? status) *out* *err*)]
+    (println message))
   (System/exit status))
 
 (defn- error-msg
@@ -392,7 +393,6 @@
       :dict    (dict args)
       :level   (level args)
       :version (version args)
-      (do (println "Invalid command. See 'cljam --help'.")
-          (when (seq cands)
-            (newline)
-            (exit 1 (candidate-message cands)))))))
+      (exit 1 (str "Invalid command. See 'cljam --help'."
+                   (when (seq cands)
+                     (str \newline (candidate-message cands))))))))

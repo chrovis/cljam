@@ -17,11 +17,10 @@
 ;; -------
 
 (defn ^FASTAReader fasta-reader
-  "Returns an open cljam.io.fasta.reader.FASTAReader of f with options:
-    :ignore-index - returns reader without index, default false.
-  Should be used inside with-open to ensure the reader is properly closed."
-  [f & options]
-  (fa-core/reader f options))
+  "Returns an open cljam.io.fasta.reader.FASTAReader of f. Should be used inside
+  with-open to ensure the reader is properly closed."
+  [f]
+  (fa-core/reader f))
 
 (defn ^TwoBitReader twobit-reader
   "Returns an open cljam.io.twobit.reader.TwoBitReader of f. Should be used
@@ -32,9 +31,9 @@
 (defn ^Closeable reader
   "Selects suitable reader from f's extension, returning the open reader. This
   function supports FASTA and TwoBit formats."
-  [f & options]
+  [f]
   (case (io-util/file-type f)
-    :fasta (apply fasta-reader f options)
+    :fasta (fasta-reader f)
     :2bit (twobit-reader f)
     (throw (IllegalArgumentException. "Invalid file type"))))
 

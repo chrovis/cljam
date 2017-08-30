@@ -10,7 +10,7 @@
   "Creates a FASTA sequence dictionary file (.dict) from the specified FASTA
   file. The unfinished file will be deleted when failing."
   [fasta out-dict]
-  (with-open [r (cseq/fasta-reader fasta :ignore-index true)]
+  (with-open [r (cseq/fasta-reader fasta)]
     (dict-core/create-dict out-dict
                            (fa-core/read-headers r)
                            (fa-core/read-sequences r)

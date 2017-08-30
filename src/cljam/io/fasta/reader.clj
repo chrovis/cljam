@@ -9,7 +9,7 @@
 ;; FASTAReader
 ;; -----------
 
-(deftype FASTAReader [reader f index]
+(deftype FASTAReader [reader f index-delay]
   java.io.Closeable
   (close [this]
     (.close ^java.io.Closeable (.reader this))))
@@ -85,22 +85,20 @@
 
 (defn read-whole-sequence
   [^FASTAReader rdr name]
-  (if-let [fai (.index rdr)]
-    (let [header (fasta-index/get-header fai name)
-          [offset-start offset-end] (fasta-index/get-span fai name 0 (:len header))]
-      (read-sequence-with-offset rdr offset-start offset-end))
-    (throw (Exception. "FASTA index not found"))))
+  (let [fai @(.index-delay rdr)
+        header (fasta-index/get-header fai name)
+        [offset-start offset-end] (fasta-index/get-span fai name 0 (:len header))]
+    (read-sequence-with-offset rdr offset-start offset-end)))
 
 (defn read-sequence
   [^FASTAReader rdr name start end]
-  (if-let [fai (.index rdr)]
-    (let [header (fasta-index/get-header fai name)]
-      (when-let [[offset-start offset-end] (fasta-index/get-span fai name (dec start) end)]
-        (->> (concat (repeat (max 0 (- 1 start)) \N)
-                       (read-sequence-with-offset rdr offset-start offset-end)
-                       (repeat (max 0 (- end (:len header))) \N))
-             (apply str))))
-    (throw (Exception. "FASTA index not found"))))
+  (let [fai @(.index-delay rdr)
+        header (fasta-index/get-header fai name)]
+    (when-let [[offset-start offset-end] (fasta-index/get-span fai name (dec start) end)]
+      (->> (concat (repeat (max 0 (- 1 start)) \N)
+                   (read-sequence-with-offset rdr offset-start offset-end)
+                   (repeat (max 0 (- end (:len header))) \N))
+           (apply str)))))
 
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."

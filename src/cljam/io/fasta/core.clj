@@ -1,40 +1,46 @@
 (ns cljam.io.fasta.core
   (:refer-clojure :exclude [read])
   (:require [clojure.java.io :as cio]
+            [clojure.string :as cstr]
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]
-            [cljam.io.fasta-index.core :as fasta-index]
+            [cljam.io.fasta-index.core :as fai]
             [cljam.io.fasta.reader :as reader])
-  (:import [java.io RandomAccessFile]
+  (:import [java.io FileNotFoundException RandomAccessFile]
            [cljam.io.fasta.reader FASTAReader]))
 
 ;; Reading
 ;; -------
 
+(defn- fasta-index
+  [fasta-path]
+  (if-let [fai-path (->> ["$1.fai" ".fai" "$1.FAI" ".FAI"]
+                         (eduction
+                          (comp
+                           (map #(cstr/replace fasta-path #"(?i)(\.fa(sta)?)$" %))
+                           (filter #(.isFile (cio/file %)))))
+                         first)]
+    (fai/reader fai-path)
+    (throw (FileNotFoundException.
+            (str "Could not find FASTA Index file for " fasta-path)))))
+
 (defn ^FASTAReader reader
-  [^String f {:keys [ignore-index]
-              :or {ignore-index false}}]
-  (let [f (.getAbsolutePath (cio/file f))
-        index-f (str f ".fai")
-        index (if-not ignore-index
-                (if (.exists (cio/file index-f))
-                  (fasta-index/reader index-f)
-                  (throw (java.io.FileNotFoundException.
-                          (str index-f " (No such FASTA index)")))))]
+  [f]
+  (let [f (.getAbsolutePath (cio/file f))]
     (FASTAReader. (RandomAccessFile. f "r")
                   f
-                  index)))
+                  (delay (fasta-index f)))))
 
 (defn read-headers
   [^FASTAReader rdr]
-  (if (.index rdr)
-    (fasta-index/get-headers (.index rdr))
-    (reader/load-headers (.reader rdr))))
+  (try
+    (fai/get-headers @(.index-delay rdr))
+    (catch FileNotFoundException _
+      (reader/load-headers (.reader rdr)))))
 
 (defn read-indices
   [^FASTAReader rdr]
-  (when (.index rdr)
-    (fasta-index/get-indices (.index rdr))))
+  (fai/get-indices @(.index-delay rdr)))
 
 (defn read-sequences
   "Reads sequences by line, returning the line-separated sequences
@@ -76,10 +82,10 @@
   protocols/ISequenceReader
   (read-all-sequences
     ([this] (protocols/read-all-sequences this {}))
-    ([this option]
+    ([this _]
      (sequential-read (.f this))))
   (read-sequence
     ([this region]
      (protocols/read-sequence this region {}))
-    ([this region option]
+    ([this region _]
      (read-sequence this region))))

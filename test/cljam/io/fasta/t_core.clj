@@ -7,27 +7,27 @@
 (def illegal-fasta-file test-tabix-file)
 
 (deftest read-headers-test
-  (with-open [rdr (fa-core/reader test-fa-file {})]
+  (with-open [rdr (fa-core/reader test-fa-file)]
     (is (= (fa-core/read-headers rdr) test-fa-header))))
 
 (deftest read-indices-test
-  (with-open [rdr (fa-core/reader test-fa-file {})]
+  (with-open [rdr (fa-core/reader test-fa-file)]
     (is (= (fa-core/read-indices rdr)
            [{:name "ref" :len 45 :offset 5 :line-blen 45 :line-len 46}
             {:name "ref2" :len 40 :offset 57 :line-blen 40 :line-len 41}]))))
 
 (deftest read-sequences-test
-  (with-open [rdr (fa-core/reader test-fa-file {})]
+  (with-open [rdr (fa-core/reader test-fa-file)]
     (is (= (fa-core/read-sequences rdr) test-fa-sequences))))
 
 (deftest read-test
-  (with-open [rdr (fa-core/reader test-fa-file {})]
+  (with-open [rdr (fa-core/reader test-fa-file)]
     (is (= (fa-core/read rdr) test-fa-data))
     (is (= (fa-core/read rdr) [{:len 0}]))
     (is (not-throw? (fa-core/reset rdr)))
     (is (= (fa-core/read rdr) test-fa-data)))
-  (is (thrown? java.io.IOException
-               (with-open [rdr (fa-core/reader test-tabix-file {})]
+  (is (thrown? Exception
+               (with-open [rdr (fa-core/reader test-tabix-file)]
                  (fa-core/read rdr)))))
 
 (deftest sequential-read-test

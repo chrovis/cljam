@@ -15,13 +15,13 @@
    {:name "chrM", :len 16569}])
 
 (deftest chr->wg
-  (let [idx (wg/create-chr-to-whole-genome-index simple-refs)]
+  (let [idx (wg/chr-to-whole-genome-index simple-refs)]
     (testing "chr -> whole-genome index"
       (is (= idx {"1" {:offset 0, :len 100}, "2" {:offset 100, :len 200}, "3" {:offset 300, :len 300}})))
 
     (testing "chr -> whole-genome (simple)"
       (are [?chr ?pos ?wg-pos]
-          (= (wg/to-whole-genome-coord idx ?chr ?pos) ?wg-pos)
+          (= (wg/->whole-genome-coord idx ?chr ?pos) ?wg-pos)
         "0" 1 nil
         "1" 0 nil
         "1" 1 1
@@ -34,10 +34,10 @@
         "3" 300 600
         "3" 301 nil)))
 
-  (let [idx (wg/create-chr-to-whole-genome-index refs)]
+  (let [idx (wg/chr-to-whole-genome-index refs)]
     (testing "chr -> whole-genome"
       (are [?chr ?pos ?wg-pos]
-          (= (wg/to-whole-genome-coord idx ?chr ?pos) ?wg-pos)
+          (= (wg/->whole-genome-coord idx ?chr ?pos) ?wg-pos)
         "chr1" 1 1
         "chr1" 248956422 248956422
         "chr2" 1 (+ 248956422 1)
@@ -45,13 +45,13 @@
         "chr3" 1 (+ 248956422 242193529 1)))))
 
 (deftest wg->chr
-  (let [idx (wg/create-whole-genome-to-chr-index simple-refs)]
+  (let [idx (wg/whole-genome-to-chr-index simple-refs)]
     (testing "whole-genome -> chr index"
       (is (= idx {0 {:name "1", :len 100}, 100 {:name "2", :len 200}, 300 {:name "3", :len 300}})))
 
     (testing "whole-genome -> chr"
       (are [?wg-pos ?chr-and-pos]
-          (= (wg/to-chr-and-pos idx ?wg-pos) ?chr-and-pos)
+          (= (wg/->chr-and-pos idx ?wg-pos) ?chr-and-pos)
         0 nil
         1 ["1" 1]
         2 ["1" 2]
@@ -65,7 +65,7 @@
 
     (testing "whole-genome [start, end] -> regions"
       (are [?wg-start ?wg-end ?regions]
-          (= (wg/to-regions idx ?wg-start ?wg-end) ?regions)
+          (= (wg/->regions idx ?wg-start ?wg-end) ?regions)
         0 0 nil
         0 1 [{:chr "1", :start 1, :end 1}]
         1 0 nil

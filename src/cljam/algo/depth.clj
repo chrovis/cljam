@@ -1,6 +1,7 @@
 (ns cljam.algo.depth
   "Provides algorithms for calculating simple depth of coverage."
   (:require [com.climate.claypoole :as cp]
+            [com.climate.claypoole.lazy :as lazy]
             [cljam.common :as common]
             [cljam.util :as util]
             [cljam.io.sam :as sam]
@@ -34,10 +35,10 @@
                    (if (= n-threads 1)
                      (map (fn [[start end]]
                             (count-for-positions (read-fn rdr start end) start end)) xs)
-                     (cp/pmap (dec n-threads)
-                              (fn [[start end]]
-                                (with-open [r (sam/clone-bam-reader rdr)]
-                                  (count-for-positions (read-fn r start end) start end))) xs)))]
+                     (lazy/pmap (dec n-threads)
+                                (fn [[start end]]
+                                  (with-open [r (sam/clone-bam-reader rdr)]
+                                    (count-for-positions (read-fn r start end) start end))) xs)))]
     (->> (util/divide-region start end step)
          count-fn
          (apply concat))))

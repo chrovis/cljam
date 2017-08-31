@@ -6,7 +6,7 @@
             [proton.core :refer [as-int as-long]]
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]
-            [cljam.util.chromosome :as chr-util]
+            [cljam.util.chromosome :as chr]
             [clojure.tools.logging :as logging])
   (:import [java.io BufferedReader BufferedWriter Closeable]))
 
@@ -154,7 +154,7 @@
   This function converts the coordinate into cljam style: 1-origin and inclusice-start / inclusive-end."
   [m]
   (-> m
-      (update :chr chr-util/normalize-chromosome-key)
+      (update :chr chr/normalize-chromosome-key)
       (update :start inc)
       (update-some :thick-start inc)))
 
@@ -190,9 +190,7 @@
   [xs]
   (sort-by
    (fn [m]
-     [(or (as-int (last (re-find #"(chr)?(\d+)" (:chr m)))) Integer/MAX_VALUE)
-      (or ({"X" 23 "Y" 24 "M" 25} (last (re-find #"(chr)?([X|Y|M])" (:chr m)))) Integer/MAX_VALUE)
-      (:chr m)
+     [(chr/chromosome-order-key (:chr m))
       (:start m)
       (:end m)])
    xs))

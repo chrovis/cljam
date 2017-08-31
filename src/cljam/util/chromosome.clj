@@ -1,6 +1,7 @@
 (ns cljam.util.chromosome
   "Utilities for handling chromosome name."
-  (:require [clojure.string :as cstr]))
+  (:require [clojure.string :as cstr]
+            [proton.core :as proton]))
 
 (defn normalize-name
   [s]
@@ -48,3 +49,10 @@
   [s]
   (some? (re-matches #"^chr([0-9]{1,2}|X|Y|M|MT)"
                      (normalize-chromosome-key s))))
+
+(defn chromosome-order-key [s]
+  (if-let [[_ _ chr suffix] (re-find #"(?i)^(chr)?([1-9][0-9]*|X|Y|MT|M)(\S*)" s)]
+    (if-let [num (proton/as-int chr)]
+      [num suffix]
+      [(- Integer/MAX_VALUE (case chr "X" 4 "Y" 3 "M" 2 "MT" 1)) suffix])
+    [Integer/MAX_VALUE s]))

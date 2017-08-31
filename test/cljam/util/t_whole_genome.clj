@@ -52,16 +52,16 @@
     (testing "whole-genome -> chr"
       (are [?wg-pos ?chr-and-pos]
           (= (wg/to-chr-and-pos idx ?wg-pos) ?chr-and-pos)
-          0 nil
-          1 ["1" 1]
-          2 ["1" 2]
-          99 ["1" 99]
-          100 ["1" 100]
-          101 ["2" 1]
-          300 ["2" 200]
-          301 ["3" 1]
-          600 ["3" 300]
-          601 nil))
+        0 nil
+        1 ["1" 1]
+        2 ["1" 2]
+        99 ["1" 99]
+        100 ["1" 100]
+        101 ["2" 1]
+        300 ["2" 200]
+        301 ["3" 1]
+        600 ["3" 300]
+        601 nil))
 
     (testing "whole-genome [start, end] -> regions"
       (are [?wg-start ?wg-end ?regions]

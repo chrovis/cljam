@@ -35,7 +35,7 @@
   "Clones fasta reader sharing persistent objects."
   [^FASTAReader rdr]
   (let [f (.f rdr)
-        raf (RandomAccessFile. f "r")]
+        raf (RandomAccessFile. ^String f "r")]
     (FASTAReader. raf f (.index-delay rdr))))
 
 (defn read-headers

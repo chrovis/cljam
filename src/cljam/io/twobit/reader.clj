@@ -170,5 +170,5 @@
   "Clones .2bit reader sharing persistent objects."
   [^TwoBitReader rdr]
   (let [f (.f rdr)
-        raf (RandomAccessFile. f "r")]
+        raf (RandomAccessFile. ^String f "r")]
     (TwoBitReader. raf f (.endian rdr) (.file-index rdr) (.seq-index rdr))))

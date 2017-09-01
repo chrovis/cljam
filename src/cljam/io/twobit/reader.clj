@@ -160,7 +160,15 @@
       (let [indices (vec (repeatedly nseq #(read-index! rdr endian)))
             seq-indices (mapv (fn [{:keys [offset] :as m}]
                                 (delay
-                                 (.seek rdr offset)
-                                 (read-sequence-header! rdr endian)))
+                                 (with-open [raf (RandomAccessFile. abs-f "r")]
+                                   (.seek raf offset)
+                                   (read-sequence-header! raf endian))))
                               indices)]
         (TwoBitReader. rdr abs-f endian indices seq-indices)))))
+
+(defn ^TwoBitReader clone-reader
+  "Clones .2bit reader sharing persistent objects."
+  [^TwoBitReader rdr]
+  (let [f (.f rdr)
+        raf (RandomAccessFile. f "r")]
+    (TwoBitReader. raf f (.endian rdr) (.file-index rdr) (.seq-index rdr))))

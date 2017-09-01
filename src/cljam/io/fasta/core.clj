@@ -31,6 +31,13 @@
                   f
                   (delay (fasta-index f)))))
 
+(defn ^FASTAReader clone-reader
+  "Clones fasta reader sharing persistent objects."
+  [^FASTAReader rdr]
+  (let [f (.f rdr)
+        raf (RandomAccessFile. f "r")]
+    (FASTAReader. raf f (.index-delay rdr))))
+
 (defn read-headers
   [^FASTAReader rdr]
   (try

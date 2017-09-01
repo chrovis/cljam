@@ -31,6 +31,13 @@
                   f
                   (delay (fasta-index f)))))
 
+(defn ^FASTAReader clone-reader
+  "Clones fasta reader sharing persistent objects."
+  [^FASTAReader rdr]
+  (let [f (.f rdr)
+        raf (RandomAccessFile. ^String f "r")]
+    (FASTAReader. raf f (.index-delay rdr))))
+
 (defn read-headers
   [^FASTAReader rdr]
   (try
@@ -49,10 +56,10 @@
   (reader/read-sequences rdr))
 
 (defn read-sequence
-  [rdr {:keys [chr start end]}]
+  [rdr {:keys [chr start end]} opts]
   (if (and (nil? start) (nil? end))
-    (reader/read-whole-sequence rdr chr)
-    (reader/read-sequence rdr chr start end)))
+    (reader/read-whole-sequence rdr chr opts)
+    (reader/read-sequence rdr chr start end opts)))
 
 (defn read
   [rdr]
@@ -63,9 +70,11 @@
   (reader/reset rdr))
 
 (defn sequential-read
-  [f]
-  (with-open [stream (util/compressor-input-stream f)]
-    (reader/sequential-read-string stream (* 1024 1024 10) 536870912)))
+  ([f]
+   (sequential-read f {}))
+  ([f opts]
+   (with-open [stream (util/compressor-input-stream f)]
+     (reader/sequential-read-string stream (* 1024 1024 10) 536870912 opts))))
 
 (extend-type FASTAReader
   protocols/IReader
@@ -82,10 +91,10 @@
   protocols/ISequenceReader
   (read-all-sequences
     ([this] (protocols/read-all-sequences this {}))
-    ([this _]
-     (sequential-read (.f this))))
+    ([this opts]
+     (sequential-read (.f this) opts)))
   (read-sequence
     ([this region]
      (protocols/read-sequence this region {}))
-    ([this region _]
-     (read-sequence this region))))
+    ([this region opts]
+     (read-sequence this region opts))))

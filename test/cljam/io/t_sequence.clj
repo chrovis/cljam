@@ -9,36 +9,64 @@
 
 (deftest reader-test
   (testing "fasta"
-    (with-open [rdr (cseq/reader test-fa-file)]
-      (is (instance? cljam.io.fasta.reader.FASTAReader rdr))))
+    (with-open [rdr (cseq/reader test-fa-file)
+                cloned (cseq/reader rdr)]
+      (is (instance? cljam.io.fasta.reader.FASTAReader rdr))
+      (is (instance? cljam.io.fasta.reader.FASTAReader cloned))))
   (testing "twobit"
-    (with-open [rdr (cseq/reader test-twobit-file)]
-      (is (instance? cljam.io.twobit.reader.TwoBitReader rdr))))
+    (with-open [rdr (cseq/reader test-twobit-file)
+                cloned (cseq/reader rdr)]
+      (is (instance? cljam.io.twobit.reader.TwoBitReader rdr))
+      (is (instance? cljam.io.twobit.reader.TwoBitReader cloned))))
   (testing "throws Exception"
     (are [f] (thrown? Exception (cseq/reader f))
       "test-resources/fasta/not-found.fa"
-      test-fai-file)))
+      test-fai-file
+      (Object.))))
 
 (deftest read-sequence-fasta-test
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
-    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10}) "TGTTAG")))
+    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10}) "TGTTAG"))
+    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10} {:mask? false})
+           "TGTTAG"))
+    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10} {:mask? true})
+           "TGTTAG")))
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
     (is (= (cseq/read-sequence rdr {:chr "ref2" :start 1 :end 16})
-           "AGGTTTTATAAAACAA")))
+           "AGGTTTTATAAAACAA"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 1 :end 16} {:mask? false})
+           "AGGTTTTATAAAACAA"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 1 :end 16} {:mask? true})
+           "aggttttataaaacaa")))
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
     (is (= (cseq/read-sequence rdr {:chr "ref2" :start 0 :end 45})
-           "NAGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCGNNNNN")))
+           "NAGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCGNNNNN"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 0 :end 45} {:mask? false})
+           "NAGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCGNNNNN"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 0 :end 45} {:mask? true})
+           "NaggttttataaaacaattaagtctacagagcaactacgcgNNNNN")))
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
     (is (= (cseq/read-sequence rdr {:chr "ref"})
+           "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"))
+    (is (= (cseq/read-sequence rdr {:chr "ref"} {:mask? false})
+           "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"))
+    (is (= (cseq/read-sequence rdr {:chr "ref"} {:mask? true})
            "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT")))
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
     (is (= (cseq/read-sequence rdr {:chr "ref2"})
-           "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))))
+           "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2"} {:mask? false})
+           "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2"} {:mask? true})
+           "aggttttataaaacaattaagtctacagagcaactacgcg"))))
 
 (deftest read-sequence-twobit-test
   (testing "reference test"
-    (with-open [r (cseq/twobit-reader test-twobit-file)]
-      (are [?region ?opt ?result] (= (cseq/read-sequence r ?region ?opt) ?result)
+    (with-open [r (cseq/twobit-reader test-twobit-file)
+                c (cseq/reader r)]
+      (are [?region ?opt ?result] (= (cseq/read-sequence r ?region ?opt)
+                                     (cseq/read-sequence c ?region ?opt)
+                                     ?result)
         {:chr "ref"} {} "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"
         {:chr "ref2"} {} "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"
         {:chr "ref2"} {:mask? true} "aggttttataaaacaattaagtctacagagcaactacgcg"
@@ -54,8 +82,11 @@
              (for [i (range 1 45) j (range i 46)]
                (subs "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT" (dec i) j))))))
   (testing "reference test with N"
-    (with-open [r (cseq/twobit-reader test-twobit-n-file)]
-      (are [?region ?opt ?result] (= (cseq/read-sequence r ?region ?opt) ?result)
+    (with-open [r (cseq/twobit-reader test-twobit-n-file)
+                c (cseq/reader r)]
+      (are [?region ?opt ?result] (= (cseq/read-sequence r ?region ?opt)
+                                     (cseq/read-sequence c ?region ?opt)
+                                     ?result)
         {:chr "ref"} {} "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"
         {:chr "ref2"} {} "AGNNNTTATAAAACAATTANNNCTACAGAGCAACTANNNN"
         {:chr "ref2"} {:mask? true} "agNNNttataaaacaattaNNNctacagagcaactaNNNN"

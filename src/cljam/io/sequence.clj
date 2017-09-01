@@ -29,13 +29,19 @@
   (tb-reader/reader f))
 
 (defn ^Closeable reader
-  "Selects suitable reader from f's extension, returning the open reader. This
+  "Selects suitable reader from f's extension, returning the open reader. Opens
+  a new reader if given a path, clones the reader if given a reader. This
   function supports FASTA and TwoBit formats."
   [f]
-  (case (io-util/file-type f)
-    :fasta (fasta-reader f)
-    :2bit (twobit-reader f)
-    (throw (IllegalArgumentException. "Invalid file type"))))
+  (if (string? f)
+    (case (io-util/file-type f)
+      :fasta (fasta-reader f)
+      :2bit (twobit-reader f)
+      (throw (IllegalArgumentException. "Invalid file type")))
+    (cond
+      (io-util/fasta-reader? f) (fa-core/clone-reader f)
+      (io-util/twobit-reader? f) (tb-reader/clone-reader f)
+      :else (throw (IllegalArgumentException. "Invalid reader type")))))
 
 (defn read-sequence
   "Reads sequence in region of FASTA/TwoBit file."

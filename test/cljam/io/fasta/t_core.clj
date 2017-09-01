@@ -33,8 +33,16 @@
 (deftest sequential-read-test
   (is (= (fa-core/sequential-read test-fa-file)
          (map #(update % :sequence cstr/upper-case) test-fa-sequences)))
+  (is (= (fa-core/sequential-read test-fa-file {:mask? false})
+         (map #(update % :sequence cstr/upper-case) test-fa-sequences)))
+  (is (= (fa-core/sequential-read test-fa-file {:mask? true})
+         test-fa-sequences))
   (is (= (fa-core/sequential-read test-fa-bz2-file)
          (map #(update % :sequence cstr/upper-case) test-fa-sequences)))
+  (is (= (fa-core/sequential-read test-fa-bz2-file {:mask? false})
+         (map #(update % :sequence cstr/upper-case) test-fa-sequences)))
+  (is (= (fa-core/sequential-read test-fa-bz2-file {:mask? true})
+         test-fa-sequences))
   (let [fa (fa-core/sequential-read medium-fa-file)]
     (is (= (map :name fa) '("chr1")))
     (is (= (map (comp count :sequence) fa) '(100000))))

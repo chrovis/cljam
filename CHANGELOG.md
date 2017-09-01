@@ -2,17 +2,25 @@
 
 ## [Unreleased]
 
+### Added
+
+* Add a logging configuration for cli. [#99](https://github.com/chrovis/cljam/pull/99)
+* Add an ordering function for chromosome name. [#101](https://github.com/chrovis/cljam/pull/101)
+* Add utilities for whole-genome coordinate. [#103](https://github.com/chrovis/cljam/pull/103)
+
 ### Changed
 
 * Refactor cljam.algo.level. [#93](https://github.com/chrovis/cljam/pull/93)
 * Refactor BAI I/O. [#96](https://github.com/chrovis/cljam/pull/96)
-
+* Reorganize BAM I/O. [#97](https://github.com/chrovis/cljam/pull/97)
+* Tweak the normalization function for chromosome name. [#98](https://github.com/chrovis/cljam/pull/98)
+* Make index reading of FASTA reader delayed. [#100](https://github.com/chrovis/cljam/pull/100)
 
 ### Fixed
 
 * Update an example usage of depth in README. [#94](https://github.com/chrovis/cljam/pull/94)
 * Use returned values of conj! in reg->bins\*. [#95](https://github.com/chrovis/cljam/pull/95)
-
+* Use lazy pmap for lazy-depth. [#102](https://github.com/chrovis/cljam/pull/102)
 
 ## [0.4.1] - 2017-08-01
 

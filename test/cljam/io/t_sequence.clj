@@ -26,19 +26,39 @@
 
 (deftest read-sequence-fasta-test
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
-    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10}) "TGTTAG")))
+    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10}) "TGTTAG"))
+    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10} {:mask? false})
+           "TGTTAG"))
+    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10} {:mask? true})
+           "TGTTAG")))
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
     (is (= (cseq/read-sequence rdr {:chr "ref2" :start 1 :end 16})
-           "AGGTTTTATAAAACAA")))
+           "AGGTTTTATAAAACAA"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 1 :end 16} {:mask? false})
+           "AGGTTTTATAAAACAA"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 1 :end 16} {:mask? true})
+           "aggttttataaaacaa")))
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
     (is (= (cseq/read-sequence rdr {:chr "ref2" :start 0 :end 45})
-           "NAGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCGNNNNN")))
+           "NAGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCGNNNNN"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 0 :end 45} {:mask? false})
+           "NAGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCGNNNNN"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 0 :end 45} {:mask? true})
+           "NaggttttataaaacaattaagtctacagagcaactacgcgNNNNN")))
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
     (is (= (cseq/read-sequence rdr {:chr "ref"})
+           "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"))
+    (is (= (cseq/read-sequence rdr {:chr "ref"} {:mask? false})
+           "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"))
+    (is (= (cseq/read-sequence rdr {:chr "ref"} {:mask? true})
            "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT")))
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
     (is (= (cseq/read-sequence rdr {:chr "ref2"})
-           "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))))
+           "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2"} {:mask? false})
+           "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
+    (is (= (cseq/read-sequence rdr {:chr "ref2"} {:mask? true})
+           "aggttttataaaacaattaagtctacagagcaactacgcg"))))
 
 (deftest read-sequence-twobit-test
   (testing "reference test"

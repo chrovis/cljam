@@ -72,7 +72,7 @@
     (read-fn rdr nil)))
 
 (defn- read-sequence-with-offset
-  [^FASTAReader rdr offset-start offset-end]
+  [^FASTAReader rdr offset-start offset-end {:keys [mask?]}]
   (let [len (- offset-end offset-start)
         ba (byte-array len)
         r ^RandomAccessFile (.reader rdr)]
@@ -81,22 +81,22 @@
       (.read ba 0 len))
     (-> (String. ba)
         (cstr/replace #"\n" "")
-        cstr/upper-case)))
+        ((if mask? identity cstr/upper-case)))))
 
 (defn read-whole-sequence
-  [^FASTAReader rdr name]
+  [^FASTAReader rdr name opts]
   (let [fai @(.index-delay rdr)
         header (fasta-index/get-header fai name)
         [offset-start offset-end] (fasta-index/get-span fai name 0 (:len header))]
-    (read-sequence-with-offset rdr offset-start offset-end)))
+    (read-sequence-with-offset rdr offset-start offset-end opts)))
 
 (defn read-sequence
-  [^FASTAReader rdr name start end]
+  [^FASTAReader rdr name start end opts]
   (let [fai @(.index-delay rdr)
         header (fasta-index/get-header fai name)]
     (when-let [[offset-start offset-end] (fasta-index/get-span fai name (dec start) end)]
       (->> (concat (repeat (max 0 (- 1 start)) \N)
-                   (read-sequence-with-offset rdr offset-start offset-end)
+                   (read-sequence-with-offset rdr offset-start offset-end opts)
                    (repeat (max 0 (- end (:len header))) \N))
            (apply str)))))
 
@@ -165,13 +165,14 @@
 
 (defn sequential-read-string
   "Returns list of maps containing sequence as upper-case string."
-  [^InputStream stream page-size seq-buf-size]
+  [^InputStream stream page-size seq-buf-size {:keys [mask?]}]
   (let [s (atom [])
         byte-map (byte-array (range 128))
         handler (fn [{:keys [name sequence]}]
                   (when (and name sequence)
                     (swap! s conj {:name (String. ^bytes name) :sequence (String. ^bytes sequence)})))]
-    (doseq [[i v] [[\a \A] [\c \C] [\g \G] [\t \T] [\n \N]]]
-      (aset-byte byte-map (byte i) (byte v)))
+    (when-not mask?
+      (doseq [[i v] [[\a \A] [\c \C] [\g \G] [\t \T] [\n \N]]]
+        (aset-byte byte-map (byte i) (byte v))))
     (sequqntial-read* stream page-size seq-buf-size byte-map handler)
     @s))

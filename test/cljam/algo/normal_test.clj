@@ -1,6 +1,6 @@
-(ns cljam.algo.t-normal
+(ns cljam.algo.normal-test
   (:require [clojure.test :refer :all]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.algo.normal :refer :all]
             [cljam.io.sam :as sam]))
 

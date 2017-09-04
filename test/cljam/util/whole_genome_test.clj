@@ -1,4 +1,4 @@
-(ns cljam.util.t-whole-genome
+(ns cljam.util.whole-genome-test
   (:require [clojure.test :refer :all]
             [cljam.util.whole-genome :as wg]))
 

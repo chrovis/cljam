@@ -1,7 +1,7 @@
-(ns cljam.io.vcf.t-util
+(ns cljam.io.vcf.util-test
   (:require  [clojure.test :refer :all]
              [clojure.string :as cstr]
-             [cljam.t-common :refer :all]
+             [cljam.test-common :refer :all]
              [cljam.io.vcf.util :as vcf-util]))
 
 (deftest about-parse-info

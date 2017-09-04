@@ -1,7 +1,7 @@
-(ns cljam.io.t-vcf
+(ns cljam.io.vcf-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.vcf :as vcf]
             [cljam.util :as util])
   (:import bgzf4j.BGZFException))

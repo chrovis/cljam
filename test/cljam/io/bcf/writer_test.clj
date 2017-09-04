@@ -1,4 +1,4 @@
-(ns cljam.io.bcf.t-writer
+(ns cljam.io.bcf.writer-test
   (:require [clojure.test :refer :all]
             [cljam.io.bcf.writer :as bcf-writer])
   (:import [java.nio ByteBuffer]))

@@ -1,6 +1,6 @@
-(ns cljam.algo.t-pileup
+(ns cljam.algo.pileup-test
   (:require [clojure.test :refer :all]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.sam :as sam]
             [cljam.io.sequence :as cseq]
             [cljam.algo.pileup :as plp]

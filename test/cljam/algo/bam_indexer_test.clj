@@ -1,8 +1,8 @@
-(ns cljam.algo.t-bam-indexer
+(ns cljam.algo.bam-indexer-test
   "Tests for cljam.algo.bam-indexer."
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.sam :as sam]
             [cljam.algo.sorter :as sorter]
             [cljam.algo.bam-indexer :as bai]))

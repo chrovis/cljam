@@ -1,7 +1,7 @@
-(ns cljam.io.t-util
+(ns cljam.io.util-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.util :as util]
             [cljam.io.bed :as bed]
             [cljam.io.fastq :as fastq]

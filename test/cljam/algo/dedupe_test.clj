@@ -1,6 +1,6 @@
-(ns cljam.algo.t-dedupe
+(ns cljam.algo.dedupe-test
   (:require [clojure.test :refer :all]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.algo.dedupe :as dedupe]))
 
 (deftest simple-pe-dedupe

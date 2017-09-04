@@ -1,4 +1,4 @@
-(ns cljam.util.t-chromosome
+(ns cljam.util.chromosome-test
   (:require [clojure.test :refer :all]
             [cljam.util.chromosome :as chr]))
 

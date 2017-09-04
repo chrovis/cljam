@@ -1,7 +1,7 @@
-(ns cljam.io.util.t-lsb
+(ns cljam.io.util.lsb-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
-            [cljam.t-common :as common]
+            [cljam.test-common :as common]
             [cljam.io.util.lsb :as lsb])
   (:import [java.nio ByteBuffer ByteOrder]
            [java.io RandomAccessFile DataInputStream FileInputStream]

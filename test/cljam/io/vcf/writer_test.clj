@@ -1,6 +1,6 @@
-(ns cljam.io.vcf.t-writer
+(ns cljam.io.vcf.writer-test
   (:require [clojure.test :refer :all]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.vcf.writer :as vcf-writer]))
 
 (deftest stringify-meta-info-pedigree

@@ -1,6 +1,6 @@
-(ns cljam.io.t-fastq
+(ns cljam.io.fastq-test
   (:require [clojure.test :refer :all]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [clojure.java.io :as cio]
             [cljam.io.fastq :as fq]))
 

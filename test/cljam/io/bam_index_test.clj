@@ -1,7 +1,7 @@
-(ns cljam.io.t-bam-index
+(ns cljam.io.bam-index-test
   "Tests for cljam.io.bam-index."
   (:require [clojure.test :refer :all]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.bam-index :as bai]))
 
 ;;; bin-index

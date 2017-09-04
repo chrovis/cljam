@@ -1,7 +1,7 @@
-(ns cljam.io.fasta.t-core
+(ns cljam.io.fasta.core-test
   (:require [clojure.test :refer :all]
             [clojure.string :as cstr]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.fasta.core :as fa-core]))
 
 (def illegal-fasta-file test-tabix-file)

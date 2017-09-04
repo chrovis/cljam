@@ -1,8 +1,8 @@
-(ns cljam.io.sam.t-util
+(ns cljam.io.sam.util-test
   "Tests for cljam.io.sam.util."
   (:require [clojure.test :refer :all]
             [clojure.string :as cstr]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.util :as util]
             [cljam.io.sam.util :as sam-util]))
 

@@ -1,4 +1,4 @@
-(ns cljam.t-util
+(ns cljam.util-test
   "Tests for cljam.util."
   (:require [clojure.test :refer :all]
             [cljam.util :as util]))

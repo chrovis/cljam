@@ -1,6 +1,6 @@
-(ns cljam.algo.t-sorter
+(ns cljam.algo.sorter-test
   (:require [clojure.test :refer :all]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.sam :as sam]
             [cljam.algo.sorter :as sorter])
   (:import [java.io Closeable]))

@@ -1,6 +1,6 @@
-(ns cljam.io.t-bed
+(ns cljam.io.bed-test
   (:require [clojure.test :refer :all]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.bed :as bed]
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]

@@ -1,6 +1,6 @@
-(ns cljam.tools.t-cli
+(ns cljam.tools.cli-test
   (:require [clojure.test :refer :all]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [clojure.java.io :as cio]
             [cljam.tools.cli :as cli]
             [cljam.io.sam :as sam])

@@ -1,8 +1,8 @@
-(ns cljam.io.t-sequence
+(ns cljam.io.sequence-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
             [clojure.string :as cstr]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.fasta.core :as fa-core]
             [cljam.io.sequence :as cseq]
             [cljam.util :as util]))

@@ -1,6 +1,6 @@
-(ns cljam.io.t-tabix
+(ns cljam.io.tabix-test
   (:require [clojure.test :refer :all]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.tabix :as tbi]))
 
 (deftest about-read-index-with-error

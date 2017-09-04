@@ -1,4 +1,4 @@
-(ns cljam.t-common
+(ns cljam.test-common
   (:require [digest]
             [clojure.java.io :refer [file]]
             [clojure.tools.logging :refer [*logger-factory*]]

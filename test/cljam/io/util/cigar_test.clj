@@ -1,4 +1,4 @@
-(ns cljam.io.util.t-cigar
+(ns cljam.io.util.cigar-test
   (:require [clojure.test :refer :all]
             [cljam.io.util.cigar :as cgr]))
 

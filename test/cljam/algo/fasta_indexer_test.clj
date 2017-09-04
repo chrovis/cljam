@@ -1,8 +1,8 @@
-(ns cljam.algo.t-fasta-indexer
+(ns cljam.algo.fasta-indexer-test
   "Tests for cljam.fasta-indexer."
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.algo.fasta-indexer :as fai]))
 
 (def temp-fa-file (str temp-dir "/test.fa"))

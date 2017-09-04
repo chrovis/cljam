@@ -1,9 +1,9 @@
-(ns cljam.algo.t-dict
+(ns cljam.algo.dict-test
   "Tests for cljam.algo.dict."
   (:require [clojure.test :refer :all]
             [clojure.string :as string]
             [clojure.java.io :as cio]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.algo.dict :as dict]))
 
 (defn same-dict-file? [f1 f2]

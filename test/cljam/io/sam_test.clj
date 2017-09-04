@@ -1,7 +1,7 @@
-(ns cljam.io.t-sam
+(ns cljam.io.sam-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
-            [cljam.t-common :refer :all]
+            [cljam.test-common :refer :all]
             [cljam.io.sam :as sam]
             [cljam.util :as util]))
 

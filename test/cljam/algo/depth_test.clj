@@ -1,6 +1,6 @@
-(ns cljam.algo.t-depth
+(ns cljam.algo.depth-test
   (:require [clojure.test :refer :all]
-            [cljam.t-common :as common]
+            [cljam.test-common :as common]
             [cljam.io.sam :as sam]
             [cljam.algo.depth :as depth])
   (:import [clojure.lang LazySeq ArraySeq]))

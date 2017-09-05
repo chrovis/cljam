@@ -1,6 +1,12 @@
 # Change Log
 
-## [Unreleased]
+## [0.5.0] - 2017-09-05
+
+### BREAKING
+
+* `:ignore-index` option of `cljam.io.sam/bam-reader` and `cljam.io.sequence/fasta-reader` is removed.
+* `:depth` option of `cljam.io.sam/read-alignments` is removed. It returns `SAMAlignment` only.
+* SAM/BAM reading functions return `Eduction` instances instead of lazy sequences.
 
 ### Added
 
@@ -15,6 +21,9 @@
 * Reorganize BAM I/O. [#97](https://github.com/chrovis/cljam/pull/97)
 * Tweak the normalization function for chromosome name. [#98](https://github.com/chrovis/cljam/pull/98)
 * Make index reading of FASTA reader delayed. [#100](https://github.com/chrovis/cljam/pull/100)
+* Improve sequence readers. [#104](https://github.com/chrovis/cljam/pull/104)
+* Rename test namespaces to conventional names. [#105](https://github.com/chrovis/cljam/pull/105)
+* Upgrade dependencies. [#106](https://github.com/chrovis/cljam/pull/106)
 
 ### Fixed
 
@@ -240,7 +249,8 @@ represents the first three bases of chromosome 1.
 
 First release
 
-[Unreleased]: https://github.com/chrovis/cljam/compare/0.4.1...HEAD
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/chrovis/cljam/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/chrovis/cljam/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/chrovis/cljam/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/chrovis/cljam/compare/0.3.0...0.3.1

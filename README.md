@@ -17,7 +17,7 @@ cljam is available as a Maven artifact from [Clojars](https://clojars.org/cljam)
 To use with Leiningen/Boot, add the following dependency.
 
 ```clojure
-[cljam "0.4.1"]
+[cljam "0.5.0"]
 ```
 
 To use with Maven, add the following dependency.
@@ -26,17 +26,15 @@ To use with Maven, add the following dependency.
 <dependency>
   <groupId>cljam</groupId>
   <artifactId>cljam</artifactId>
-  <version>0.4.1</version>
+  <version>0.5.0</version>
 </dependency>
 ```
 
-## Breaking changes in 0.4.0
+## Breaking changes in 0.5.0
 
-Namespaces of most APIs are changed in 0.4.0.
-
-* `cljam.io.***` - reader/writer functions of various formats such as SAM, VCF, and FASTA.
-* `cljam.algo.***` - algorithms such as sort, indexing, and pileup.
-* `cljam.util.***` - utilities such as chromosome name normalization.
+* `:ignore-index` option of `cljam.io.sam/bam-reader` and `cljam.io.sequence/fasta-reader` is removed.
+* `:depth` option of `cljam.io.sam/read-alignments` is removed. It returns `SAMAlignment` only.
+* SAM/BAM reading functions return `Eduction` instances instead of lazy sequences.
 
 ## Getting started
 
@@ -50,7 +48,7 @@ To read a SAM/BAM format file,
   ;; Retrieve header
   (sam/read-header r)
   ;; Retrieve alignments
-  (doall (take 5 (sam/read-alignments r)))
+  (doall (take 5 (sam/read-alignments r))))
 ```
 
 To create a sorted file,
@@ -86,8 +84,6 @@ To calculate coverage depth for a BAM file,
 ;;=> (0 0 0 0 0 0 1 1 3 3)
 ```
 
-Check https://chrovis.github.io/cljam for more information.
-
 If you are Clojure beginner, read [Getting Started for Clojure Beginners](https://github.com/chrovis/cljam/wiki/Getting-Started-for-Clojure-Beginners).
 
 ## Command-line tool
@@ -99,7 +95,7 @@ cljam provides a command-line tool to use the features easily.
 `lein bin` creates standalone console executable into `target` directory.
 
 ```console
-$ lein with-profile +1.8 bin
+$ lein bin
 Creating standalone executable: /path/to/cljam/target/cljam
 ```
 
@@ -165,11 +161,9 @@ Sorted by first commit.
 
 ## License
 
-Copyright 2013-2017 [Xcoo, Inc.][xcoo]
+Copyright 2013-2017 [Xcoo, Inc.](https://xcoo.jp/)
 
-Licensed under the [Apache License, Version 2.0][apache-license-2.0].
+Licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
 [api-reference]: https://chrovis.github.io/cljam/docs
 [annotated-source]: https://chrovis.github.io/cljam/literate
-[xcoo]: https://xcoo.jp/
-[apache-license-2.0]: http://www.apache.org/licenses/LICENSE-2.0.html

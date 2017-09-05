@@ -2870,8 +2870,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (:require [clojure.string :as cstr]
             [proton.core :refer [as-long as-double hex-&gt;bytes]]
             cljam.io.protocols
-            [cljam.io.util.cigar :refer [count-ref]]
-            [cljam.util :refer [ubyte]])
+            [cljam.io.util.cigar :as cigar])
   (:import [java.nio CharBuffer ByteBuffer]
            [java.nio.charset StandardCharsets]
            [cljam.io.protocols SAMAlignment]))</pre></td></tr><tr><td class="docs"><p>parse</p>
@@ -2957,7 +2956,7 @@ net.brehaut.ClojureTools = (function (SH) {
   [line]
   (let [[qname flag rname pos-str mapq cigar rnext pnext tlen seq qual &amp; options] (cstr/split line #&quot;\t&quot;)
         pos (Integer/parseInt pos-str)
-        ref-length (count-ref cigar)
+        ref-length (cigar/count-ref cigar)
         end (if (zero? ref-length) 0 (int (dec (+ pos ref-length))))]
     (SAMAlignment. qname (Integer/parseInt flag) rname pos end (Integer/parseInt mapq)
                    cigar rnext (Integer/parseInt pnext) (Integer/parseInt tlen) (parse-seq-text seq)
@@ -3015,18 +3014,17 @@ net.brehaut.ClojureTools = (function (SH) {
      (+ 9 (bit-shift-right beg 23))
      (= (bit-shift-right beg 26) (bit-shift-right end 26))
      (+ 1 (bit-shift-right beg 26))
-     :else 0)))</pre></td></tr><tr><td class="docs">
+     :else 0)))</pre></td></tr><tr><td class="docs"><p>Returns the end position in reference for the given alignment.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn get-end
   [aln]
-  (dec
-   (+ (:pos aln)
-      (count-ref (or (:cigar-bytes (:meta aln))
-                     (:cigar aln))))))</pre></td></tr><tr><td class="docs"><p>Returns indexing bin based on alignment start and end.</p>
+  (let [ref-length (cigar/count-ref (:cigar aln))]
+    (if (zero? ref-length)
+      (:pos aln)
+      (dec (+ (:pos aln) ref-length)))))</pre></td></tr><tr><td class="docs"><p>Returns indexing bin based on alignment start and end.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn compute-bin
   [aln]
   (let [beg (dec (:pos aln))
-        tmp-end (get-end aln)
-        end (if (&lt;= tmp-end 0) (inc beg) tmp-end)]
+        end (get-end aln)]
    (reg-&gt;bin beg end)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const nibble-to-base-table
   ;; Index: nibble of a compressed base.

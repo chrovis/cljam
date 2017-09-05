@@ -2872,26 +2872,28 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.sam.util :as sam-util]
             [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
-            [cljam.io.bam.decoder :as bam-decoder]
             [cljam.io.bam-index.common :refer :all]
-            [cljam.io.bam-index.chunk :as chunk])
-  (:import [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(declare make-index)
-(declare make-index-from-blocks)</pre></td></tr><tr><td class="docs"><h2>BAIWriter</h2>
+            [cljam.io.bam-index.chunk :as chunk]
+            [cljam.io.bam.decoder :as bam-decoder])
+  (:import [java.io DataOutputStream Closeable]
+           [java.nio ByteBuffer ByteOrder]
+           [cljam.io.bam.decoder BAMPointerBlock]
+           [cljam.io.bam_index.chunk Chunk]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(declare make-index-from-blocks)</pre></td></tr><tr><td class="docs"><h2>BAIWriter</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype BAIWriter [^java.io.DataOutputStream writer refs f]
-  java.io.Closeable
+</td><td class="codes"><pre class="brush: clojure">(deftype BAIWriter [^DataOutputStream writer refs f]
+  Closeable
   (close [this]
     (.close writer)))</pre></td></tr><tr><td class="docs"><h2>Indexing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- pos-&gt;lidx-offset
+</td><td class="codes"><pre class="brush: clojure">(defn pos-&gt;lidx-offset
   [^long pos]
   (bit-shift-right (if (&lt;= pos 0) 0 (dec pos)) linear-index-shift))</pre></td></tr><tr><td class="docs"><h3>Intermidate data definitions</h3>
 
 <p>Use record for performance.
 Record is faster than map for retrieving elements.</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord MetaData [first-offset last-offset aligned-alns unaligned-alns])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord MetaData [^long first-offset ^long last-offset ^long aligned-alns ^long unaligned-alns])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord IndexStatus [^MetaData meta-data bin-index linear-index])</pre></td></tr><tr><td class="docs"><h3>Initializing</h3>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns initialized index status. This data structure is intermidate. Must
   be passed <code>finalize-index</code> in the final stage.</p>
@@ -2906,13 +2908,14 @@ Record is faster than map for retrieving elements.</p>
                 {}))</pre></td></tr><tr><td class="docs"><h3>Updating</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- update-meta-data
-  [^MetaData meta-data aln]
+  [^MetaData meta-data ^BAMPointerBlock aln]
   (let [first-offset (.first-offset meta-data)
         last-offset (.last-offset meta-data)
         aligned-alns (.aligned-alns meta-data)
         unaligned-alns (.unaligned-alns meta-data)
-        {:keys [beg end]} (:chunk (:meta aln))
-        aligned? (zero? (bit-and (:flag aln) 4))]
+        beg (.pointer-beg aln)
+        end (.pointer-end aln)
+        aligned? (zero? (bit-and (.flag aln) 4))]
     (MetaData.
      ;; first-offset
      (if (or (&lt; (bgzf/compare beg first-offset) 1)
@@ -2926,21 +2929,22 @@ Record is faster than map for retrieving elements.</p>
      ;; unaligned-alns
      (if-not aligned? (inc unaligned-alns) unaligned-alns))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- update-bin-index
-  [bin-index aln]
-  (let [bin (sam-util/compute-bin aln)
-        achunk (:chunk (:meta aln))]
+  [bin-index ^BAMPointerBlock aln]
+  (let [bin (sam-util/reg-&gt;bin (.pos aln) (inc (.end aln)))
+        beg (.pointer-beg aln)
+        end (.pointer-end aln)]
     (assoc bin-index bin
            (if-let [chunks (get bin-index bin)]
-             (if (bgzf/same-or-adjacent-blocks? (:end (peek chunks)) (:beg achunk))
-               (let [l (assoc (peek chunks) :end (:end achunk))]
-                 (assoc chunks (dec (count chunks)) l))
-               (conj chunks achunk))
-             (vector achunk)))))</pre></td></tr><tr><td class="docs">
+             (let [last-chunk ^Chunk (peek chunks)]
+               (if (bgzf/same-or-adjacent-blocks? (.end last-chunk) beg)
+                 (conj (pop chunks) (Chunk. (.beg last-chunk) end))
+                 (conj chunks (Chunk. beg end))))
+             [(Chunk. beg end)]))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- update-linear-index
-  [linear-index aln]
-  (let [beg (-&gt; aln :meta :chunk :beg)
-        aln-beg (:pos aln)
-        aln-end (sam-util/get-end aln)
+  [linear-index ^BAMPointerBlock aln]
+  (let [beg (.pointer-beg aln)
+        aln-beg (.pos aln)
+        aln-end (.end aln)
         win-beg (if (zero? aln-end)
                   (pos-&gt;lidx-offset (dec aln-beg))
                   (pos-&gt;lidx-offset aln-beg))
@@ -2962,25 +2966,25 @@ Record is faster than map for retrieving elements.</p>
   Returned index is still intermidate. It must be passed to finalize function
   in the final stage.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- make-index*
-  [refs alns]
-  (loop [[aln &amp; rest] alns
-         ref-name (:rname aln)
+  [alns]
+  (loop [[^BAMPointerBlock aln &amp; rest] alns
+         rid (.ref-id aln)
          idx-status (init-index-status)
          no-coordinate-alns 0
          indices {}]
     (if aln
-      (let [ref-name' (:rname aln)
-            new-ref? (not= ref-name' ref-name)
+      (let [rid' (.ref-id aln)
+            new-ref? (not= rid' rid)
             idx-status' (update-index-status
                          (if new-ref? (init-index-status) idx-status) aln)
-            no-coordinate-alns' (if (zero? (:pos aln))
+            no-coordinate-alns' (if (zero? (.pos aln))
                                   (inc no-coordinate-alns)
                                   no-coordinate-alns)
             indices' (if new-ref?
-                       (assoc indices ref-name idx-status)
+                       (assoc indices rid idx-status)
                        indices)]
-        (recur rest ref-name' idx-status' no-coordinate-alns' indices'))
-      (assoc indices ref-name idx-status
+        (recur rest rid' idx-status' no-coordinate-alns' indices'))
+      (assoc indices rid idx-status
                      :no-coordinate-alns no-coordinate-alns))))</pre></td></tr><tr><td class="docs"><h2>Merging indices</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- merge-meta-data
@@ -2996,12 +3000,12 @@ Record is faster than map for retrieving elements.</p>
              (+ (.unaligned-alns meta1) (.unaligned-alns meta2))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- merge-chunks
   [chunks1 chunks2]
-  (loop [[f &amp; r] (sort chunk/compare (concat chunks1 chunks2))
+  (loop [[^Chunk f &amp; r] (sort chunk/compare (concat chunks1 chunks2))
          chunks' []]
     (if f
-      (if-let [last-chunk (peek chunks')]
-        (if (bgzf/same-or-adjacent-blocks? (:end last-chunk) (:beg f))
-          (let [l (assoc last-chunk :end (:end f))]
+      (if-let [last-chunk ^Chunk (peek chunks')]
+        (if (bgzf/same-or-adjacent-blocks? (.end last-chunk) (.beg f))
+          (let [l (assoc last-chunk :end (.end f))]
             (recur r (assoc chunks' (dec (count chunks')) l)))
           (recur r (conj chunks' f)))
         (recur r (conj chunks' f)))
@@ -3050,26 +3054,25 @@ Record is faster than map for retrieving elements.</p>
        (map second)))</pre></td></tr><tr><td class="docs"><p>Converts intermidate BAM index data structure into final one. Must be called
   in the final stage.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- finalize-index
-  [refs index]
-  (loop [[f &amp; r] refs
+  [^long nrefs index]
+  (loop [i 0
          index index]
-    (if f
-      (let [rname (:name f)]
-        (if (get index rname)
-          (recur r (-&gt; index
-                       (update-in [rname :bin-index] finalize-bin-index)
-                       (update-in [rname :linear-index] finalize-linear-index)))
-          (recur r index)))
+    (if (&lt; i nrefs)
+      (if (get index i)
+        (recur (inc i) (-&gt; index
+                           (update-in [i :bin-index] finalize-bin-index)
+                           (update-in [i :linear-index] finalize-linear-index)))
+        (recur (inc i) index))
       index)))</pre></td></tr><tr><td class="docs"><h2>Writing index</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-bin
-  [w bin chunks]
+  [w ^long bin chunks]
   (lsb/write-int w bin)
   ;; chunks
   (lsb/write-int w (count chunks))
-  (doseq [{:keys [beg end]} chunks]
-    (lsb/write-long w beg)
-    (lsb/write-long w end)))</pre></td></tr><tr><td class="docs">
+  (doseq [^Chunk chunk chunks]
+    (lsb/write-long w (.beg chunk))
+    (lsb/write-long w (.end chunk))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-meta-data
   [w meta-data]
   (lsb/write-int w max-bins)
@@ -3079,14 +3082,14 @@ Record is faster than map for retrieving elements.</p>
   (lsb/write-long w (:aligned-alns meta-data))
   (lsb/write-long w (:unaligned-alns meta-data)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-index*!
-  [wtr refs alns]
+  [wtr ^long nrefs alns]
   ;; magic
   (lsb/write-bytes wtr (.getBytes ^String bai-magic))
   ;; n_ref
-  (lsb/write-int wtr (count refs))
-  (let [indices (make-index-from-blocks refs alns)]
-    (doseq [ref refs]
-      (let [index (get indices (:name ref))
+  (lsb/write-int wtr nrefs)
+  (let [indices (make-index-from-blocks nrefs alns)]
+    (dotimes [i nrefs]
+      (let [index (get indices i)
             n-bin (count (:bin-index index))]
         ;; bins
         (if (zero? n-bin)
@@ -3107,43 +3110,30 @@ Record is faster than map for retrieving elements.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>The number of alignments that is loaded each indexing process. This has an
   effect on performance of concurrent indexing. The default value is 10,000.</p>
 </td><td class="codes"><pre class="brush: clojure">(def ^:dynamic *alignments-partition-size*
-  10000)</pre></td></tr><tr><td class="docs"><p>Calculates a BAM index from provided references and alignments. Optionally,
-   you can do this process concurrently.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn make-index
-  [refs alns]
-  (let [n-threads (get-exec-n-threads)
-        make-index-fn (fn [refs alns]
-                        (if (= n-threads 1)
-                          (make-index* refs alns)
-                          (cp/with-shutdown! [pool (cp/threadpool n-threads)]
-                            (-&gt;&gt; (partition-all *alignments-partition-size* alns)
-                                 (cp/pmap pool (partial make-index* refs))
-                                 (reduce merge-index)))))]
-    (-&gt;&gt; alns
-         (make-index-fn refs)
-         (finalize-index refs))))</pre></td></tr><tr><td class="docs"><p>Calculates a BAM index from provided references and alignment blocks.
+  10000)</pre></td></tr><tr><td class="docs"><p>Calculates a BAM index from provided references and alignment blocks.
   Optionally, you can do this process concurrently.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn make-index-from-blocks
-  [refs blocks]
+  [^long nrefs blocks]
   (let [n-threads (get-exec-n-threads)
-        make-index-fn (fn [refs blocks]
+        make-index-fn (fn [blocks]
                         (if (= n-threads 1)
                           (-&gt;&gt; blocks
-                               (map #(bam-decoder/decode-alignment-block % refs :pointer))
-                               (make-index* refs))
+                               (eduction (map bam-decoder/decode-pointer-block))
+                               make-index*)
                           (cp/with-shutdown! [pool (cp/threadpool (dec n-threads))]
-                            (-&gt;&gt; (partition-all *alignments-partition-size* blocks)
-                                 (cp/pmap pool (fn [sub-blocks]
-                                                 (-&gt;&gt; sub-blocks
-                                                      (map #(bam-decoder/pointer-decode-alignment-block % refs))
-                                                      (make-index* refs))))
+                            (-&gt;&gt; blocks
+                                 (eduction (partition-all *alignments-partition-size*))
+                                 (cp/upmap pool (fn [sub-blocks]
+                                                  (-&gt;&gt; sub-blocks
+                                                       (eduction (map bam-decoder/decode-pointer-block))
+                                                       make-index*)))
                                  (reduce merge-index)))))]
     (-&gt;&gt; blocks
-         (make-index-fn refs)
-         (finalize-index refs))))</pre></td></tr><tr><td class="docs"><p>Calculates a BAM index from alns, writing the index to a file.</p>
+         make-index-fn
+         (finalize-index nrefs))))</pre></td></tr><tr><td class="docs"><p>Calculates a BAM index from alns, writing the index to a file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-index!
   [^BAIWriter wtr alns]
-  (write-index*! (.writer wtr) (.refs wtr) alns))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (write-index*! (.writer wtr) (count (.refs wtr)) alns))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

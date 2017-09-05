@@ -2903,8 +2903,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (-&gt;&gt; reads
          (sequence
           (comp
-           (remove #(and (empty? (:cigar %)) (nil? (:cigar-bytes (:meta %)))))
-           (map #(assoc % :end (sam-util/get-end %)))
+           (remove #(empty? (:cigar %)))
            (drop-while #(&lt; (:end %) start))))
          (step (dec start) []))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord MPileupElement [^String rname ^long pos ^Character ref pile])</pre></td></tr><tr><td class="docs"><p>Compute mpileup info from piled-up reads and reference.</p>
@@ -2981,7 +2980,7 @@ net.brehaut.ClojureTools = (function (SH) {
              refseq (if ref-reader
                       (cseq/read-sequence ref-reader {:chr chr :start s :end e})
                       (repeat \N))]
-         (-&gt;&gt; (sam/read-alignments bam-reader {:chr chr :start s :end e :depth :deep})
+         (-&gt;&gt; (sam/read-alignments bam-reader {:chr chr :start s :end e})
               (sequence
                (comp
                 (filter basic-mpileup-pred)

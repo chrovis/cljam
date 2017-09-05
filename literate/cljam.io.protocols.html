@@ -2869,7 +2869,10 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.protocols
   (:refer-clojure :exclude [read]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord SAMAlignment
-  [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])</pre></td></tr><tr><td class="docs">
+  [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])
+(defrecord SAMRegionBlock [data ^int ref-id ^int pos ^int end])
+(defrecord SAMCoordinateBlock [data ^int ref-id ^int pos ^int flag])
+(defrecord SAMQuerynameBlock [data qname ^int flag])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defprotocol IReader
   (reader-path [this]
     &quot;Returns the file's absolute path.&quot;)
@@ -2886,10 +2889,10 @@ net.brehaut.ClojureTools = (function (SH) {
     &quot;Returns header of the SAM/BAM file.&quot;)
   (read-refs [this]
     &quot;Returns references of the SAM/BAM file.&quot;)
-  (read-alignments [this] [this region] [this region option]
-    &quot;Reads alignments of the SAM/BAM file, returning the alignments as a lazy sequence.&quot;)
+  (read-alignments [this] [this region]
+    &quot;Reads alignments of the SAM/BAM file, returning the alignments as an eduction.&quot;)
   (read-blocks [this] [this region] [this region option]
-    &quot;Reads alignment blocks of the SAM/BAM file, returning the blocks as a lazy sequence.&quot;))</pre></td></tr><tr><td class="docs">
+    &quot;Reads alignment blocks of the SAM/BAM file, returning the blocks as an eduction.&quot;))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defprotocol IAlignmentWriter
   (write-header [this header]
     &quot;Writes header to the SAM/BAM file.&quot;)

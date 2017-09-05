@@ -2865,199 +2865,53 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bed" name="cljam.io.bed"><h1 class="project-name">cljam.io.bed</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to read and write the BED (Browser Extensible Data) format. See
-  http://genome.ucsc.edu/FAQ/FAQformat#format1 for the detail BED specifications.</p>
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bed
-  (:require [clojure.java.io :as cio]
-            [clojure.string :as cstr]
-            [proton.core :refer [as-int as-long]]
-            [cljam.io.protocols :as protocols]
-            [cljam.util :as util]
-            [cljam.util.chromosome :as chr]
-            [clojure.tools.logging :as logging])
-  (:import [java.io BufferedReader BufferedWriter Closeable]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(declare read-fields write-fields)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord BEDReader [^BufferedReader reader ^String f]
-  Closeable
-  (close [this]
-    (.close ^Closeable (.reader this)))
-  protocols/IReader
-  (reader-path [this] (.f this))
-  (read [this] (protocols/read this {}))
-  (read [this option] (read-fields this))
-  protocols/IRegionReader
-  (read-in-region [this region]
-    (protocols/read-in-region this region {}))
-  (read-in-region [this {:keys [chr start end]} option]
-    (logging/warn &quot;May cause degradation of performance.&quot;)
-    (filter (fn [m] (and (or (not chr) (= (:chr m) chr))
-                         (or (not start) (&lt;= start (:start m)))
-                         (or (not end) (&lt;= (:end m) end))))
-            (read-fields this))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord BEDWriter [^BufferedWriter writer ^String f]
-  Closeable
-  (close [this]
-    (.close ^Closeable (.writer this)))
-  protocols/IWriter
-  (writer-path [this] (.getAbsolutePath (cio/file (.f this)))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bed.BEDReader of f. Should be used inside with-open
-  to ensure the reader is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BEDReader reader
-  [f]
-  (let [abs (.getAbsolutePath (cio/file f))]
-    (BEDReader. (cio/reader (util/compressor-input-stream abs)) abs)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bed.BEDWriter of f. Should be used inside with-open
-  to ensure the writer is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BEDWriter writer
-  [f]
-  (let [abs (.getAbsolutePath (cio/file f))]
-  (BEDWriter. (cio/writer (util/compressor-output-stream abs)) abs)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:const bed-columns
-  [:chr :start :end :name :score :strand :thick-start :thick-end :item-rgb :block-count :block-sizes :block-starts])</pre></td></tr><tr><td class="docs"><p>Convert string of comma-separated long values into list of longs.
-  Comma at the end of input string will be ignored.
-  Returns nil if input is nil.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- str-&gt;long-list
-  [^String s]
-  (when-not (nil? s)
-    (map as-long (cstr/split s #&quot;,&quot;))))</pre></td></tr><tr><td class="docs"><p>Inverse function of str->long-list.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- long-list-&gt;str
-  [xs]
-  (when-not (nil? xs)
-    (apply str (interpose &quot;,&quot; xs))))</pre></td></tr><tr><td class="docs"><p>Same as update if map 'm' contains key 'k'. Otherwise returns the original map 'm'.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- update-some
-  [m k f &amp; args]
-  (if (get m k)
-    (apply update m k f args)
-    m))</pre></td></tr><tr><td class="docs"><p>Parse BED fields string and returns a map.
-  Based on information at https://genome.ucsc.edu/FAQ/FAQformat#format1.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- deserialize-bed
-  [^String s]
-  {:post [;; First 3 fields are required.
-          (:chr %) (:start %) (:end %)
-          ;; The chromEnd base is not included in the display of the feature.
-          (&lt; (:start %) (:end %))
-          ;; Lower-numbered fields must be populated if higher-numbered fields are used.
-          (every? true? (drop-while false? (map nil? ((apply juxt bed-columns) %))))
-          ;; A score between 0 and 1000.
-          (if-let [s (:score %)] (&lt;= 0 s 1000) true)
-          ;; The number of items in this list should correspond to blockCount.
-          (if-let [xs (:block-sizes %)] (= (count xs) (:block-count %)) true)
-          ;; The number of items in this list should correspond to blockCount.
-          (if-let [xs (:block-starts %)] (= (count xs) (:block-count %)) true)
-          ;; The first blockStart value must be 0.
-          (if-let [[f] (:block-starts %)] (= 0 f) true)
-          ;; The final blockStart position plus the final blockSize value must equal chromEnd.
-          (if-let [xs (:block-starts %)] (= (+ (last xs) (last (:block-sizes %))) (- (:end %) (:start %))) true)
-          ;; Blocks may not overlap.
-          (if-let [xs (:block-starts %)] (apply &lt;= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes %))) true)]}
-  (reduce
-   (fn deserialize-bed-reduce-fn [m [k f]] (update-some m k f))
-   (zipmap bed-columns (cstr/split s #&quot;\s+&quot;))
-   {:start as-long
-    :end as-long
-    :score as-long
-    :strand #(case % &quot;.&quot; :no-strand &quot;+&quot; :plus &quot;-&quot; :minus)
-    :thick-start as-long
-    :thick-end as-long
-    :block-count as-long
-    :block-sizes str-&gt;long-list
-    :block-starts str-&gt;long-list}))</pre></td></tr><tr><td class="docs"><p>Serialize bed fields into string.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- serialize-bed
-  [m]
-  {:pre [;; First 3 fields are required.
-         (:chr m) (:start m) (:end m)
-         ;; The chromEnd base is not included in the display of the feature.
-         (&lt; (:start m) (:end m))
-         ;; Lower-numbered fields must be populated if higher-numbered fields are used.
-         (every? true? (drop-while false? (map nil? ((apply juxt bed-columns) m))))
-         ;; A score between 0 and 1000.
-         (if-let [s (:score m)] (&lt;= 0 s 1000) true)
-         ;; The number of items in this list should correspond to blockCount.
-         (if-let [xs (:block-sizes m)] (= (count xs) (:block-count m)) true)
-         ;; The number of items in this list should correspond to blockCount.
-         (if-let [xs (:block-starts m)] (= (count xs) (:block-count m)) true)
-         ;; The first blockStart value must be 0.
-         (if-let [[f] (:block-starts m)] (= 0 f) true)
-         ;; The final blockStart position plus the final blockSize value must equal chromEnd.
-         (if-let [xs (:block-starts m)] (= (+ (last xs) (last (:block-sizes m))) (- (:end m) (:start m))) true)
-         ;; Blocks may not overlap.
-         (if-let [xs (:block-starts m)] (apply &lt;= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes m))) true)]}
-  (-&gt;&gt; (-&gt; m
-           (update-some :strand #(case % :plus &quot;+&quot; :minus &quot;-&quot; :no-strand &quot;.&quot;))
-           (update-some :block-sizes long-list-&gt;str)
-           (update-some :block-starts long-list-&gt;str))
-       ((apply juxt bed-columns))
-       (take-while identity)
-       (interpose &quot; &quot;)
-       (apply str)))</pre></td></tr><tr><td class="docs"><p>Checks if given string is neither a header nor a comment line.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- header-or-comment?
-  [^String s]
-  (or (empty? s)
-      (.startsWith s &quot;browser&quot;)
-      (.startsWith s &quot;track&quot;)
-      (.startsWith s &quot;#&quot;)))</pre></td></tr><tr><td class="docs"><p>Normalize BED fields.
-  BED fields are stored in format: 0-origin and inclusive-start / exclusive-end.
-  This function converts the coordinate into cljam style: 1-origin and inclusice-start / inclusive-end.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- normalize
-  [m]
-  (-&gt; m
-      (update :chr chr/normalize-chromosome-key)
-      (update :start inc)
-      (update-some :thick-start inc)))</pre></td></tr><tr><td class="docs"><p>De-normalize BED fields.
-  This is an inverse function of normalize.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- denormalize
-  [m]
-  (-&gt; m
-      (update :start dec)
-      (update-some :thick-start dec)))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of unnormalized BED fields.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn read-raw-fields
-  [^BEDReader rdr]
-  (sequence
-   (comp (remove header-or-comment?)
-         (map deserialize-bed))
-   (line-seq (.reader rdr))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of normalized BED fields.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn read-fields
-  [^BEDReader rdr]
-  (sequence
-   (comp (remove header-or-comment?)
-         (map deserialize-bed)
-         (map normalize))
-   (line-seq (.reader rdr))))</pre></td></tr><tr><td class="docs"><p>Sort BED fields based on :chr, :start and :end.
-  :chr with common names come first, in order of (chr1, chr2, ..., chrX, chrY, chrM).
-  Other chromosomes follow after in lexicographic order.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn sort-fields
-  [xs]
-  (sort-by
-   (fn [m]
-     [(chr/chromosome-order-key (:chr m))
-      (:start m)
-      (:end m)])
-   xs))</pre></td></tr><tr><td class="docs"><p>Sort and merge overlapped regions.
-  Currently, this function affects only :end and :name fields.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn merge-fields
-  [xs]
-  (reduce
-   (fn [r m]
-     (let [l (last r)]
-       (if (and l (= (:chr l) (:chr m)) (&lt;= (:start m) (:end l)) (&lt;= (:start l) (:end m)))
-         (update r (dec (count r)) (fn [n m] (-&gt; n (assoc :end (:end m)) (update-some :name str &quot;+&quot; (:name m)))) m)
-         (conj r m))))
-   []
-   (sort-fields xs)))</pre></td></tr><tr><td class="docs"><p>Write sequence of BED fields to writer without converting :start and :thick-start values.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn write-raw-fields
-  [^BEDWriter wtr xs]
-  (let [w ^BufferedWriter (.writer wtr)]
-    (-&gt;&gt; xs
-         (map serialize-bed)
-         (interpose &quot;\n&quot;)
-         ^String (apply str)
-         (.write w))))</pre></td></tr><tr><td class="docs"><p>Write sequence of BED fields to writer.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn write-fields
-  [^BEDWriter wtr xs]
-  (let [w ^BufferedWriter (.writer wtr)]
-    (-&gt;&gt; xs
-         (map (comp serialize-bed denormalize))
-         (interpose &quot;\n&quot;)
-         ^String (apply str)
-         (.write w))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.util.whole-genome" name="cljam.util.whole-genome"><h1 class="project-name">cljam.util.whole-genome</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utilities for conversions between chromosomal positions and whole-genome
+  positions.</p>
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.util.whole-genome)</pre></td></tr><tr><td class="docs"><p>Creates a map of [chromosome-name offset&amp;length] from refs.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn chr-to-whole-genome-index
+  [refs]
+  (-&gt;&gt; refs
+       (map :len)
+       (reductions + 0)
+       (map (fn [r offset] [(:name r) {:offset offset, :len (:len r)}]) refs)
+       (into {})))</pre></td></tr><tr><td class="docs"><p>Transforms a position in a chromosome into a whole-genome position.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn -&gt;whole-genome-coord
+  [chr-&gt;offset chr ^long pos]
+  (when-let [{:keys [^long offset ^long len]} (chr-&gt;offset chr)]
+    (when (&lt;= 1 pos len)
+      (inc (+ offset (dec pos))))))</pre></td></tr><tr><td class="docs"><p>Creates a sorted-map of [offset chromosome-name&amp;length] from refs.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn whole-genome-to-chr-index
+  [refs]
+  (into (sorted-map)
+        (map vector
+         (-&gt;&gt; refs
+              (map :len)
+              (reductions + 0))
+         refs)))</pre></td></tr><tr><td class="docs"><p>Transforms a whole-genome position to a vector of a chromosome name and a
+  position in the chromosome.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn -&gt;chr-and-pos
+  [offset-&gt;ref ^long wg-pos]
+  (when-let [[^long offset {:keys [name len]}]
+             (first (rsubseq offset-&gt;ref &lt;= (dec wg-pos)))]
+    (when (&lt;= 1 (- wg-pos offset) len)
+      [name (- wg-pos offset)])))</pre></td></tr><tr><td class="docs"><p>Transforms a region in whole-genome coordinate into a sequence of chromosomal
+  regions.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn -&gt;regions
+  [offset-&gt;ref ^long start ^long end]
+  (let [wg-len (let [[o r] (first (rsubseq offset-&gt;ref &gt;= 0))] (+ o (:len r)))]
+    (when (and (&lt;= start end)
+               (or (pos? start) (pos? end))
+               (or (&lt;= start wg-len) (&lt;= end wg-len)))
+      (let [start' (min (max 1 start) wg-len)
+            end' (min (max 1 end) wg-len)
+            [s-offset] (first (rsubseq offset-&gt;ref &lt;= (dec start')))
+            [e-offset] (first (rsubseq offset-&gt;ref &lt;= (dec end')))
+            regs (mapv
+                  (fn [[_ r]] {:chr (:name r), :start 1, :end (:len r)})
+                  (subseq offset-&gt;ref &gt;= s-offset &lt;= e-offset))]
+        (-&gt; regs
+            (assoc-in [0 :start] (- start' s-offset))
+            (update-in [(dec (count regs)) :end] min (- end' e-offset)))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

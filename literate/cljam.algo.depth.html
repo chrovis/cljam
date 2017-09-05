@@ -2868,10 +2868,12 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.algo.depth" name="cljam.algo.depth"><h1 class="project-name">cljam.algo.depth</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Provides algorithms for calculating simple depth of coverage.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.algo.depth
   (:require [com.climate.claypoole :as cp]
+            [com.climate.claypoole.lazy :as lazy]
             [cljam.common :as common]
             [cljam.util :as util]
             [cljam.io.sam :as sam]
-            [cljam.io.sam.util :as sam-util]))</pre></td></tr><tr><td class="docs">
+            [cljam.io.sam.util :as sam-util])
+  (:import [cljam.io.protocols SAMRegionBlock]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:const default-step 1000000)</pre></td></tr><tr><td class="docs"><h2>lazy</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Piles the alignments up and counts them in the positions, returning it as a seq.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- count-for-positions
@@ -2879,7 +2881,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [pile (long-array (inc (- end beg)))]
     (doseq [aln alns]
       (let [left (max (:pos aln) beg)
-            right (min (sam-util/get-end aln) end)
+            right (min (:end aln) end)
             left-index (- left beg)]
         (dotimes [i (inc (- right left))]
           (aset-long pile (+ i left-index) (inc (aget pile (+ i left-index)))))))
@@ -2888,15 +2890,15 @@ net.brehaut.ClojureTools = (function (SH) {
   [rdr rname start end step]
   (let [n-threads (common/get-exec-n-threads)
         read-fn (fn [r start end]
-                  (sam/read-alignments r {:chr rname :start start :end end :depth :shallow}))
+                  (sam/read-blocks r {:chr rname :start start :end end} {:mode :region}))
         count-fn (fn [xs]
                    (if (= n-threads 1)
                      (map (fn [[start end]]
                             (count-for-positions (read-fn rdr start end) start end)) xs)
-                     (cp/pmap (dec n-threads)
-                              (fn [[start end]]
-                                (with-open [r (sam/clone-bam-reader rdr)]
-                                  (count-for-positions (read-fn r start end) start end))) xs)))]
+                     (lazy/pmap (dec n-threads)
+                                (fn [[start end]]
+                                  (with-open [r (sam/clone-bam-reader rdr)]
+                                    (count-for-positions (read-fn r start end) start end))) xs)))]
     (-&gt;&gt; (util/divide-region start end step)
          count-fn
          (apply concat))))</pre></td></tr><tr><td class="docs"><p>Calculate depth of coverage lazily. Returns a lazy seq of depth for range [start, end].
@@ -2916,9 +2918,9 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [beg (int beg)
         end (int end)
         offset (int offset)]
-    (doseq [aln alns]
-      (let [left (Math/max ^int (:pos aln) (unchecked-int beg))
-            right (unchecked-inc-int (or (:end aln) (sam-util/get-end aln)))
+    (doseq [^SAMRegionBlock aln alns]
+      (let [left (Math/max ^int (.pos aln) beg)
+            right (unchecked-inc-int (.end aln))
             left-index (unchecked-add-int (unchecked-subtract-int left beg) offset)
             right-index (unchecked-add-int (unchecked-subtract-int right beg) offset)]
         (aset-int pile left-index (unchecked-inc-int (aget pile left-index)))
@@ -2953,12 +2955,12 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [pile (int-array (inc (- end start)))
         f (if unchecked? unchecked-aset-depth-in-region! aset-depth-in-region!)]
     (if (= n-threads 1)
-      (f (sam/read-alignments rdr region {:depth :shallow}) start end 0 pile)
+      (f (sam/read-blocks rdr region {:mode :region}) start end 0 pile)
       (cp/pdoseq
        n-threads
        [[s e] (util/divide-region start end step)]
        (with-open [r (sam/clone-bam-reader rdr)]
-         (-&gt; (sam/read-alignments r {:chr chr, :start s, :end e} {:depth :shallow})
+         (-&gt; (sam/read-blocks r {:chr chr, :start s, :end e} {:mode :region})
              (f s e (- s start) pile)))))
     pile))</pre></td></tr><tr><td class="docs"><p>Calculate depth of coverage eagerly. Returns a seq of depth for range [start, end].
   Requires a <code>cljam.io.bam.reader.BAMReader</code> instance and region.

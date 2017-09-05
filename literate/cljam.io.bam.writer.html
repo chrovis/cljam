@@ -2865,19 +2865,14 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bam.writer" name="cljam.io.bam.writer"><h1 class="project-name">cljam.io.bam.writer</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bam.writer" name="cljam.io.bam.writer"><h1 class="project-name">cljam.io.bam.writer</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Writer of BAM file format.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bam.writer
-  (:require [clojure.string :refer [split]]
-            [cljam.util :refer [ubyte]]
-            [cljam.io.protocols :as protocols]
-            [cljam.io.sam.util :refer [reg-&gt;bin normalize-bases fastq-&gt;phred
-                                       str-&gt;compressed-bases make-refs ref-id
-                                       stringify-header]]
-            [cljam.io.bam.common :refer [bam-magic fixed-block-size]]
-            [cljam.io.util.cigar :as cgr]
-            [cljam.io.util.lsb :as lsb])
-  (:import [java.io DataOutputStream Closeable IOException EOFException]
-           [bgzf4j BGZFOutputStream]))</pre></td></tr><tr><td class="docs">
+  (:require [cljam.io.protocols :as protocols]
+            [cljam.io.sam.util :as sam-util]
+            [cljam.io.util.lsb :as lsb]
+            [cljam.io.bam.common :as common]
+            [cljam.io.bam.encoder :as encoder])
+  (:import [java.io Closeable]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare write-header* write-refs* write-alignments* write-blocks*)</pre></td></tr><tr><td class="docs"><p>BAMWriter</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype BAMWriter [f writer]
@@ -2897,168 +2892,31 @@ net.brehaut.ClojureTools = (function (SH) {
   (write-blocks [this blocks]
     (write-blocks* this blocks)))</pre></td></tr><tr><td class="docs"><p>write</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private fixed-tag-size 3)
-(def ^:private fixed-binary-array-tag-size 5)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-pos [aln]
-  (dec (:pos aln)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-end [aln]
-  (dec
-   (+ (:pos aln)
-      (cgr/count-ref (:cigar aln)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-l-seq [sam-alignment]
-  (count (:seq sam-alignment)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-next-ref-id [sa refs]
-  (condp = (:rnext sa)
-    &quot;*&quot; -1
-    &quot;=&quot; (if-let [id (ref-id refs (:rname sa))] id -1)
-    (if-let [id (ref-id refs (:rnext sa))] id -1)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-ref-id [aln refs]
-  (if-let [id (ref-id refs (:rname aln))] id -1))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-next-pos [sam-alignment]
-  (dec (:pnext sam-alignment)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-tlen [sam-alignment]
-  (:tlen sam-alignment))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-read-name [sam-alignment]
-  (:qname sam-alignment))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- encode-cigar-op [op]
-  (case op
-    \M (byte 0)
-    \I (byte 1)
-    \D (byte 2)
-    \N (byte 3)
-    \S (byte 4)
-    \H (byte 5)
-    \P (byte 6)
-    \= (byte 7)
-    \X (byte 8)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- encode-cigar [cigar]
-  (map #(bit-or (bit-shift-left (first %) 4)
-                (encode-cigar-op (second %)))
-       (cgr/parse cigar)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-cigar [aln]
-  (encode-cigar (:cigar aln)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-seq [sam-alignment]
-  (str-&gt;compressed-bases (:seq sam-alignment)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-options-size [sam-alignment]
-  (-&gt;&gt; (map
-        (fn [op]
-          (let [[tag value] (first (seq op))]
-            (+ fixed-tag-size
-               (case (first (:type value))
-                 \A 1
-                 \i 4
-                 \f 4
-                 \Z (inc (count (:value value)))
-                 \B (let [[array-type &amp; array] (split (:value value) #&quot;,&quot;)]
-                      (+ fixed-binary-array-tag-size
-                         (* (count array)
-                            (case (first array-type)
-                              \c 1
-                              \C 1
-                              \s 2
-                              \S 2
-                              \i 4
-                              \I 4
-                              \f 4
-                              0))))))))
-        (:options sam-alignment))
-       (reduce +)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-block-size [aln]
-  (let [read-length (count (:seq aln))
-        cigar-length (cgr/count-op (:cigar aln))]
-    (+ fixed-block-size (count (:qname aln)) 1
-       (* cigar-length 4)
-       (int (/ (inc read-length) 2))
-       read-length
-       (get-options-size aln))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- encode-qual [sam-alignment]
-  (if (= (:qual sam-alignment) &quot;*&quot;)
-    (byte-array (count (:seq sam-alignment)) (ubyte 0xff))
-    (fastq-&gt;phred (:qual sam-alignment))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- write-tag-value [writer val-type value]
-  (case val-type
-    \A (lsb/write-char writer (char value))
-    \i (lsb/write-int    writer (int value))
-    \f (lsb/write-float  writer (float value))
-    \Z (do (lsb/write-string writer value)
-           (lsb/write-char writer (char 0)))
-    ;; \H nil
-    \B (let [[array-type &amp; array] (split value #&quot;,&quot;)]
-         (case (first array-type)
-           \c nil
-           \C nil
-           \s nil
-           \S (do
-                (lsb/write-bytes writer (byte-array 1 (byte \S)))
-                (lsb/write-int writer (count array))
-                (doseq [v array]
-                 (lsb/write-short writer (Short/parseShort v))))
-           \i nil
-           \I nil
-           \f nil))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-header* [^BAMWriter wtr header]
   (let [w (.writer wtr)
-        header-string (str (stringify-header header) \newline)]
-    (lsb/write-bytes w (.getBytes ^String bam-magic)) ; magic
+        header-string (str (sam-util/stringify-header header) \newline)]
+    (lsb/write-bytes w (.getBytes ^String common/bam-magic)) ; magic
     (lsb/write-int w (count header-string))
     (lsb/write-string w header-string)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-refs* [^BAMWriter wtr header]
   (let [w (.writer wtr)
-        refs (make-refs header)]
+        refs (sam-util/make-refs header)]
     (lsb/write-int w (count refs))
     (doseq [ref refs]
       (lsb/write-int w (inc (count (:name ref))))
       (lsb/write-string w (:name ref))
       (lsb/write-bytes w (byte-array 1 (byte 0)))
       (lsb/write-int w (:len ref)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- write-alignment [wrtr aln refs]
-  ;; block_size
-  (lsb/write-int wrtr (get-block-size aln))
-  ;; refID
-  (lsb/write-int wrtr (get-ref-id aln refs))
-  ;; pos
-  (lsb/write-int wrtr (get-pos aln))
-  ;; bin_mq_nl
-  (lsb/write-ubyte wrtr (short (inc (count (:qname aln)))))
-  (lsb/write-ubyte wrtr (short (:mapq aln)))
-  (lsb/write-ushort wrtr (reg-&gt;bin (:pos aln) (get-end aln)))
-  ;; flag_nc
-  (lsb/write-ushort wrtr (cgr/count-op (:cigar aln)))
-  (lsb/write-ushort wrtr (:flag aln))
-  ;; l_seq
-  (lsb/write-int wrtr (get-l-seq aln))
-  ;; next_refID
-  (lsb/write-int wrtr (get-next-ref-id aln refs))
-  ;; next_pos
-  (lsb/write-int wrtr (get-next-pos aln))
-  ;; tlen
-  (lsb/write-int wrtr (get-tlen aln))
-  ;; read_name
-  (lsb/write-string wrtr (get-read-name aln))
-  (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
-  ;; cigar
-  (doseq [cigar (get-cigar aln)]
-    (lsb/write-int wrtr cigar))
-  ;; seq
-  (lsb/write-bytes wrtr (get-seq aln))
-  ;; qual
-  (lsb/write-bytes wrtr (encode-qual aln))
-  ;; options
-  (doseq [op (:options aln)]
-    (let [[tag value] (first (seq op))]
-      (lsb/write-short wrtr (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
-                                           (byte (first (name tag))))))
-      (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
-      (write-tag-value wrtr (first (:type value)) (:value value)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-alignments* [^BAMWriter wtr alns header]
   (let [w (.writer wtr)
-        refs (make-refs header)]
+        refs (sam-util/make-refs header)]
     (doseq [a alns]
-      (write-alignment w a refs))))</pre></td></tr><tr><td class="docs">
+      (lsb/write-int w (encoder/get-block-size a))
+      (encoder/encode-alignment w a refs))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-blocks* [^BAMWriter wtr blocks]
   (let [w (.writer wtr)]
     (doseq [b blocks]
-      (lsb/write-int w (:size b))
+      (lsb/write-int w (alength ^bytes (:data b)))
       (lsb/write-bytes w (:data b)))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 

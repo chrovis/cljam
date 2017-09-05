@@ -2879,23 +2879,28 @@ net.brehaut.ClojureTools = (function (SH) {
            cljam.io.fasta.writer.FASTAWriter
            cljam.io.twobit.reader.TwoBitReader
            cljam.io.twobit.writer.TwoBitWriter))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.fasta.reader.FASTAReader of f with options:
-    :ignore-index - returns reader without index, default false.
-  Should be used inside with-open to ensure the reader is properly closed.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.fasta.reader.FASTAReader of f. Should be used inside
+  with-open to ensure the reader is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader fasta-reader
-  [f &amp; options]
-  (fa-core/reader f options))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.twobit.reader.TwoBitReader of f. Should be used
+  [f]
+  (fa-core/reader f))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.twobit.reader.TwoBitReader of f. Should be used
   inside with-open to ensure the reader is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^TwoBitReader twobit-reader
   [f]
-  (tb-reader/reader f))</pre></td></tr><tr><td class="docs"><p>Selects suitable reader from f's extension, returning the open reader. This
+  (tb-reader/reader f))</pre></td></tr><tr><td class="docs"><p>Selects suitable reader from f's extension, returning the open reader. Opens
+  a new reader if given a path, clones the reader if given a reader. This
   function supports FASTA and TwoBit formats.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^Closeable reader
-  [f &amp; options]
-  (case (io-util/file-type f)
-    :fasta (apply fasta-reader f options)
-    :2bit (twobit-reader f)
-    (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Reads sequence in region of FASTA/TwoBit file.</p>
+  [f]
+  (if (string? f)
+    (case (io-util/file-type f)
+      :fasta (fasta-reader f)
+      :2bit (twobit-reader f)
+      (throw (IllegalArgumentException. &quot;Invalid file type&quot;)))
+    (cond
+      (io-util/fasta-reader? f) (fa-core/clone-reader f)
+      (io-util/twobit-reader? f) (tb-reader/clone-reader f)
+      :else (throw (IllegalArgumentException. &quot;Invalid reader type&quot;)))))</pre></td></tr><tr><td class="docs"><p>Reads sequence in region of FASTA/TwoBit file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-sequence
   ([rdr region] (protocols/read-sequence rdr region))
   ([rdr region option] (protocols/read-sequence rdr region option)))</pre></td></tr><tr><td class="docs"><p>Reads all sequences of FASTA/TwoBit file.</p>

@@ -2914,26 +2914,39 @@ net.brehaut.ClojureTools = (function (SH) {
        (map first)
        (reduce +)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private count-ref-str
-  (memoize count-ref-str*))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private bases-op-bytes
-  #{(byte 0)
-    (byte 2)
-    (byte 3)
-    (byte 7)
-    (byte 8)})</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- count-ref-bytes
+  (memoize count-ref-str*))</pre></td></tr><tr><td class="docs"><p>Count covering length in reference from encoded CIGAR byte-array.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn count-ref-bytes
   [cigar-bytes]
   (let [buf (ByteBuffer/wrap cigar-bytes)]
     (.order buf ByteOrder/LITTLE_ENDIAN)
-    (loop [len 0]
+    (loop [ref-length 0]
       (if (.hasRemaining buf)
         (let [b (.getInt buf)
               op (bit-and b 0xF)
               n (bit-shift-right b 4)]
-          (if (bases-op-bytes op)
-            (recur (+ len n))
-            (recur len)))
-        len))))</pre></td></tr><tr><td class="docs"><p>Returns length of reference bases.</p>
+          (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
+        ref-length))))</pre></td></tr><tr><td class="docs"><p>Decode CIGAR string and length of alignment in reference.
+  Returns a vector of [cigar, ref-length].</p>
+</td><td class="codes"><pre class="brush: clojure">(defn decode-cigar-and-ref-length
+  [cigar-bytes]
+  (let [buf (ByteBuffer/wrap cigar-bytes)
+        sb (StringBuilder.)]
+    (.order buf ByteOrder/LITTLE_ENDIAN)
+    (loop [ref-length 0]
+      (if (.hasRemaining buf)
+        (let [b (.getInt buf)
+              op (bit-and b 0xF)
+              n  (bit-shift-right b 4)]
+          (doto sb
+            (.append n)
+            (.append (case op 0 \M 1 \I 2 \D 3 \N 4 \S 5 \H 6 \P 7 \= 8 \X)))
+          (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
+        [(.toString sb) ref-length]))))</pre></td></tr><tr><td class="docs"><p>Encodes CIGAR string into a sequence of longs.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn encode-cigar
+  [cigar]
+  (mapv #(bit-or (bit-shift-left (first %) 4)
+                 (case (second %) \M 0 \I 1 \D 2 \N 3 \S 4 \H 5 \P 6 \= 7 \X 8))
+        (parse cigar)))</pre></td></tr><tr><td class="docs"><p>Returns length of reference bases.</p>
 </td><td class="codes"><pre class="brush: clojure">(defmulti count-ref
   class)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmethod count-ref String

@@ -2871,7 +2871,8 @@ net.brehaut.ClojureTools = (function (SH) {
             [clojure.tools.logging :as logging]
             [cljam.io.sam.util :as sam-util]
             [cljam.io.protocols :as protocols])
-  (:import [java.io BufferedReader Closeable]))</pre></td></tr><tr><td class="docs">
+  (:import [java.io BufferedReader Closeable]
+           [cljam.io.protocols SAMCoordinateBlock SAMQuerynameBlock]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare read-alignments* read-blocks* read-alignments-in-region*)</pre></td></tr><tr><td class="docs"><p>reader</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype SAMReader [f header reader]
@@ -2883,8 +2884,8 @@ net.brehaut.ClojureTools = (function (SH) {
     (.f this))
   (read [this]
     (protocols/read this {}))
-  (read [this option]
-    (read-alignments* this))
+  (read [this region]
+    (protocols/read-alignments this region))
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
@@ -2896,12 +2897,10 @@ net.brehaut.ClojureTools = (function (SH) {
   (read-refs [this]
     (vec (sam-util/make-refs (.header this))))
   (read-alignments [this]
-    (protocols/read-alignments this {} {}))
-  (read-alignments [this region]
-    (protocols/read-alignments this region {}))
-  (read-alignments [this {:keys [chr start end] :as region} option]
+    (protocols/read-alignments this {}))
+  (read-alignments [this {:keys [chr start end] :as region}]
     (if (or chr start end)
-      (read-alignments-in-region* this region option)
+      (read-alignments-in-region* this region)
       (read-alignments* this)))
   (read-blocks [this]
     (protocols/read-blocks this {}))
@@ -2911,20 +2910,22 @@ net.brehaut.ClojureTools = (function (SH) {
     (read-blocks* this option)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-alignments*
   [^SAMReader sam-reader]
-  (when-let [line (.readLine ^BufferedReader (.reader sam-reader))]
-    (if-not (= (first line) \@)
-      (cons (sam-util/parse-alignment line) (lazy-seq (read-alignments* sam-reader)))
-      (lazy-seq (read-alignments* sam-reader)))))</pre></td></tr><tr><td class="docs">
+  (eduction
+   (comp
+    (drop-while (fn [[f]] (= f \@)))
+    (map sam-util/parse-alignment))
+   (line-seq (.reader sam-reader))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-alignments-in-region*
-  [^SAMReader sam-reader {:keys [chr start end]} option]
+  [^SAMReader sam-reader {:keys [chr start end]}]
   (logging/warn &quot;May cause degradation of performance.&quot;)
-  (filter
-   (fn [a] (and (if chr (= (:rname a) chr) true)
-                (if start (&lt;= start (sam-util/get-end a)) true)
-                (if end (&lt;= (:pos a) end) true)))
+  (eduction
+   (filter
+    (fn [a] (and (if chr (= (:rname a) chr) true)
+                 (if start (&lt;= start (sam-util/get-end a)) true)
+                 (if end (&lt;= (:pos a) end) true))))
    (read-alignments* sam-reader)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-coordinate
-  [^String line]
+  [rname-&gt;ref-id ^String line]
   (let [t0 (.indexOf line (int \tab) 0)
         t1 (.indexOf line (int \tab) (unchecked-inc t0))
         t2 (.indexOf line (int \tab) (unchecked-inc t1))
@@ -2932,32 +2933,30 @@ net.brehaut.ClojureTools = (function (SH) {
         flag (Integer/parseInt (.substring line (unchecked-inc t0) t1))
         rname (.substring line (unchecked-inc t1) t2)
         pos (Integer/parseInt (.substring line (unchecked-inc t2) t3))]
-    {:data line
-     :rname rname
-     :pos pos
-     :flag flag}))</pre></td></tr><tr><td class="docs">
+    (SAMCoordinateBlock. line (rname-&gt;ref-id rname 0) pos flag)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-qname
   [^String line]
   (let [t0 (.indexOf line (int \tab) 0)
         t1 (.indexOf line (int \tab) (unchecked-inc t0))
         qname (.substring line 0 t0)
         flag (Integer/parseInt (.substring line (unchecked-inc t0) t1))]
-    {:data line
-     :qname qname
-     :flag flag}))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-blocks**
-  [parse-fn ^BufferedReader rdr]
-  (when-let [line (.readLine rdr)]
-    (if-not (= (first line) \@)
-      (cons (parse-fn line) (lazy-seq (read-blocks** parse-fn rdr)))
-      (lazy-seq (read-blocks** parse-fn rdr)))))</pre></td></tr><tr><td class="docs">
+    (SAMQuerynameBlock. line qname flag)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-blocks*
   [^SAMReader sam-reader {:keys [mode] :or {mode :normal}}]
-  (let [parse-fn (case mode
-                   :normal (fn [line] {:data line})
-                   :coordinate parse-coordinate
-                   :queryname parse-qname)]
-    (read-blocks** parse-fn (.reader sam-reader))))</pre></td></tr><tr><td class="docs">
+  (let [parse-fn (if (fn? mode)
+                   mode
+                   (case mode
+                     :normal (fn [line] {:data line})
+                     :coordinate (-&gt;&gt; (.header sam-reader)
+                                      :SQ
+                                      (into {&quot;*&quot; -1} (map-indexed (fn [i {:keys [SN]}] [SN i])))
+                                      (partial parse-coordinate))
+                     :queryname parse-qname))]
+    (eduction
+     (comp
+      (drop-while (fn [[f]] (= f \@)))
+      (map parse-fn))
+     (line-seq (.reader sam-reader)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-header* [^BufferedReader rdr]
   (-&gt;&gt; (line-seq rdr)
        (transduce

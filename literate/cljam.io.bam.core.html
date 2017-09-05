@@ -2868,32 +2868,36 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bam.core" name="cljam.io.bam.core"><h1 class="project-name">cljam.io.bam.core</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>The core of BAM features.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bam.core
   (:require [clojure.java.io :as cio]
-            [cljam.io.bam [common :refer [bam-magic]]
+            [clojure.string :as cstr]
+            [cljam.io.bam [common :as common]
                           [reader :as reader]
                           [writer :as writer]]
             [cljam.io.bam-index :as bai]
             [cljam.io.util.lsb :as lsb])
   (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException]
+           [java.io DataInputStream DataOutputStream IOException FileNotFoundException]
            [bgzf4j BGZFInputStream BGZFOutputStream]
            cljam.io.bam.reader.BAMReader
            cljam.io.bam.writer.BAMWriter))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- bam-index [f &amp; {:keys [ignore]
-                       :or {ignore false}}]
-  (if-not ignore
-    (let [bai-f (str f &quot;.bai&quot;)]
-      (if (.isFile (cio/file bai-f))
-        (bai/bam-index bai-f)
-        (throw (IOException. &quot;Could not find BAM Index file&quot;))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn ^BAMReader reader [f {:keys [ignore-index]
-                            :or {ignore-index false}}]
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Load an index file (BAI) for the given BAM file.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- bam-index
+  [bam-path]
+  (if-let [bai-path (-&gt;&gt; [&quot;$1.bai&quot; &quot;.bai&quot; &quot;$1.BAI&quot; &quot;.BAI&quot;]
+                         (eduction
+                          (comp
+                           (map #(cstr/replace bam-path #&quot;(?i)(\.bam)$&quot; %))
+                           (filter #(.isFile (cio/file %)))))
+                         first)]
+    (bai/bam-index bai-path)
+    (throw (FileNotFoundException. (str &quot;Could not find BAM Index file for &quot; bam-path)))))</pre></td></tr><tr><td class="docs"><p>Creates a <code>cljam.io.bam.BAMReader</code> instance for the given path.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn ^BAMReader reader
+  [f]
   (let [rdr (BGZFInputStream. (cio/file f))
         data-rdr (DataInputStream. rdr)]
-    (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes ^String bam-magic))
+    (when-not (Arrays/equals ^bytes (lsb/read-bytes data-rdr 4) (.getBytes ^String common/bam-magic))
       (throw (IOException. &quot;Invalid BAM file&quot;)))
     (let [{:keys [header refs]} (reader/load-headers data-rdr)
-          index-delay (delay (bam-index f :ignore ignore-index))]
+          index-delay (delay (bam-index f))]
       (BAMReader. (.getAbsolutePath (cio/file f))
                   header refs rdr data-rdr index-delay (.getFilePointer rdr)))))</pre></td></tr><tr><td class="docs"><p>Clones bam reader sharing persistent objects.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^BAMReader clone-reader

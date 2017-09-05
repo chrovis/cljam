@@ -2872,10 +2872,8 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.bam-index [common :refer :all]
                                 [chunk :as chunk]
                                 [reader :as reader]
-                                [writer :as writer]]
-            [cljam.io.sam.util :refer [ref-id]])
-  (:import java.util.BitSet
-           [java.io DataOutputStream FileOutputStream]
+                                [writer :as writer]])
+  (:import [java.io DataOutputStream FileOutputStream]
            cljam.io.bam_index.reader.BAIReader
            cljam.io.bam_index.writer.BAIWriter))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype BAMIndex [f bidx lidx])</pre></td></tr><tr><td class="docs">
@@ -2890,39 +2888,42 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn linear-index
   [f ref-idx]
   (with-open [r ^BAIReader (reader/reader f)]
-    (reader/read-linear-index! r ref-idx)))</pre></td></tr><tr><td class="docs"><p>Returns candidate bins for the specified region as java.util.BitSet.</p>
+    (reader/read-linear-index! r ref-idx)))</pre></td></tr><tr><td class="docs"><p>Returns candidate bins for the specified region as a vector.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- reg-&gt;bins*
-  [beg end]
+  [^long beg ^long end]
   (let [max-pos 0x1FFFFFFF
         beg (if (&lt;= beg 0) 0 (bit-and (dec beg) max-pos))
         end (if (&lt;= end 0) max-pos (bit-and (dec end) max-pos))]
     (if (&lt;= beg end)
-      (let [bit-set (transient [])]
-        (conj! bit-set 0)
-        (doseq [[ini shift] [[1 26] [9 23] [73 20] [585 17] [4681 14]]]
+      (loop [bins (transient [0])
+             xs [[1 26] [9 23] [73 20] [585 17] [4681 14]]]
+        (if-let [[^long ini shift] (first xs)]
           (let [ini* (+ ini (bit-shift-right beg shift))
                 end* (+ ini (bit-shift-right end shift))]
-           (loop [k ini*]
-             (when (&lt;= k end*)
-               (conj! bit-set k)
-               (recur (inc k))))))
-        (persistent! bit-set)))))</pre></td></tr><tr><td class="docs">
+            (recur
+             (loop [b bins k ini*]
+               (if (&lt;= k end*)
+                 (recur (conj! b k) (inc k))
+                 b))
+             (next xs)))
+          (persistent! bins))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private reg-&gt;bins (memoize reg-&gt;bins*))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn get-spans
-  [^BAMIndex bai ref-idx beg end]
+  [^BAMIndex bai ^long ref-idx ^long beg ^long end]
   (let [bins (reg-&gt;bins beg end)
         bidx (get (.bidx bai) ref-idx)
         lidx (get (.lidx bai) ref-idx)
-        chunks (flatten (filter (complement nil?) (map #(get bidx %) bins)))
-        min-offset (or (first lidx) 0)]
+        chunks (into [] (comp (map bidx) cat) bins)
+        lin-beg (writer/pos-&gt;lidx-offset beg)
+        min-offset (get lidx lin-beg 0)]
     (-&gt;&gt; (chunk/optimize-chunks chunks min-offset)
          (map vals))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn get-unplaced-spans
   [^BAMIndex bai]
   (if-let [begin (some-&gt;&gt;
-                  (for [[ref-id bins] (.bidx bai)
-                        [bin chunks] bins
-                        {:keys [beg end]} chunks]
+                  (for [[_ bins] (.bidx bai)
+                        [_ chunks] bins
+                        {:keys [end]} chunks]
                     end)
                   seq
                   (reduce max))]

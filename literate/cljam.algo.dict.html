@@ -2875,7 +2875,7 @@ net.brehaut.ClojureTools = (function (SH) {
   file. The unfinished file will be deleted when failing.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn create-dict
   [fasta out-dict]
-  (with-open [r (cseq/fasta-reader fasta :ignore-index true)]
+  (with-open [r (cseq/fasta-reader fasta)]
     (dict-core/create-dict out-dict
                            (fa-core/read-headers r)
                            (fa-core/read-sequences r)

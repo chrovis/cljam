@@ -2869,44 +2869,54 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.fasta.core
   (:refer-clojure :exclude [read])
   (:require [clojure.java.io :as cio]
+            [clojure.string :as cstr]
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]
-            [cljam.io.fasta-index.core :as fasta-index]
+            [cljam.io.fasta-index.core :as fai]
             [cljam.io.fasta.reader :as reader])
-  (:import [java.io RandomAccessFile]
+  (:import [java.io FileNotFoundException RandomAccessFile]
            [cljam.io.fasta.reader FASTAReader]))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- fasta-index
+  [fasta-path]
+  (if-let [fai-path (-&gt;&gt; [&quot;$1.fai&quot; &quot;.fai&quot; &quot;$1.FAI&quot; &quot;.FAI&quot;]
+                         (eduction
+                          (comp
+                           (map #(cstr/replace fasta-path #&quot;(?i)(\.fa(sta)?)$&quot; %))
+                           (filter #(.isFile (cio/file %)))))
+                         first)]
+    (fai/reader fai-path)
+    (throw (FileNotFoundException.
+            (str &quot;Could not find FASTA Index file for &quot; fasta-path)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader reader
-  [^String f {:keys [ignore-index]
-              :or {ignore-index false}}]
-  (let [f (.getAbsolutePath (cio/file f))
-        index-f (str f &quot;.fai&quot;)
-        index (if-not ignore-index
-                (if (.exists (cio/file index-f))
-                  (fasta-index/reader index-f)
-                  (throw (java.io.FileNotFoundException.
-                          (str index-f &quot; (No such FASTA index)&quot;)))))]
+  [f]
+  (let [f (.getAbsolutePath (cio/file f))]
     (FASTAReader. (RandomAccessFile. f &quot;r&quot;)
                   f
-                  index)))</pre></td></tr><tr><td class="docs">
+                  (delay (fasta-index f)))))</pre></td></tr><tr><td class="docs"><p>Clones fasta reader sharing persistent objects.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader clone-reader
+  [^FASTAReader rdr]
+  (let [f (.f rdr)
+        raf (RandomAccessFile. ^String f &quot;r&quot;)]
+    (FASTAReader. raf f (.index-delay rdr))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-headers
   [^FASTAReader rdr]
-  (if (.index rdr)
-    (fasta-index/get-headers (.index rdr))
-    (reader/load-headers (.reader rdr))))</pre></td></tr><tr><td class="docs">
+  (try
+    (fai/get-headers @(.index-delay rdr))
+    (catch FileNotFoundException _
+      (reader/load-headers (.reader rdr)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-indices
   [^FASTAReader rdr]
-  (when (.index rdr)
-    (fasta-index/get-indices (.index rdr))))</pre></td></tr><tr><td class="docs"><p>Reads sequences by line, returning the line-separated sequences
+  (fai/get-indices @(.index-delay rdr)))</pre></td></tr><tr><td class="docs"><p>Reads sequences by line, returning the line-separated sequences
   as lazy sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-sequences
   [rdr]
   (reader/read-sequences rdr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-sequence
-  [rdr {:keys [chr start end]}]
+  [rdr {:keys [chr start end]} opts]
   (if (and (nil? start) (nil? end))
-    (reader/read-whole-sequence rdr chr)
-    (reader/read-sequence rdr chr start end)))</pre></td></tr><tr><td class="docs">
+    (reader/read-whole-sequence rdr chr opts)
+    (reader/read-sequence rdr chr start end opts)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read
   [rdr]
   (reader/read rdr))</pre></td></tr><tr><td class="docs">
@@ -2914,9 +2924,11 @@ net.brehaut.ClojureTools = (function (SH) {
   [rdr]
   (reader/reset rdr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn sequential-read
-  [f]
-  (with-open [stream (util/compressor-input-stream f)]
-    (reader/sequential-read-string stream (* 1024 1024 10) 536870912)))</pre></td></tr><tr><td class="docs">
+  ([f]
+   (sequential-read f {}))
+  ([f opts]
+   (with-open [stream (util/compressor-input-stream f)]
+     (reader/sequential-read-string stream (* 1024 1024 10) 536870912 opts))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(extend-type FASTAReader
   protocols/IReader
   (reader-path [this] (.f this))
@@ -2932,13 +2944,13 @@ net.brehaut.ClojureTools = (function (SH) {
   protocols/ISequenceReader
   (read-all-sequences
     ([this] (protocols/read-all-sequences this {}))
-    ([this option]
-     (sequential-read (.f this))))
+    ([this opts]
+     (sequential-read (.f this) opts)))
   (read-sequence
     ([this region]
      (protocols/read-sequence this region {}))
-    ([this region option]
-     (read-sequence this region))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+    ([this region opts]
+     (read-sequence this region opts))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

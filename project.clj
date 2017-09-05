@@ -40,7 +40,7 @@
   :aliases {"docs" ["do" "codox" ["marg" "-d" "target/literate" "-m"]]}
   :bin {:name "cljam"
         :bootclasspath true}
-  :codox {:namespaces [#"^cljam\.(?!tools)\w+(\.\w+)?$"]
+  :codox {:namespaces [#"^cljam\.(?!tools)[\w\-]+(\.[\w\-]+)?$"]
           :output-path "target/docs"
           :source-uri "https://github.com/chrovis/cljam/blob/{version}/{filepath}#L{line}"}
   :repl-options {:init-ns user}

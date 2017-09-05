@@ -5,6 +5,7 @@
             [cljam.test-common :refer :all]
             [cljam.io.fasta.core :as fa-core]
             [cljam.io.sequence :as cseq]
+            [cljam.io.protocols :as protocols]
             [cljam.util :as util]))
 
 (deftest reader-test
@@ -58,7 +59,14 @@
     (is (= (cseq/read-sequence rdr {:chr "ref2"} {:mask? false})
            "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
     (is (= (cseq/read-sequence rdr {:chr "ref2"} {:mask? true})
-           "aggttttataaaacaattaagtctacagagcaactacgcg"))))
+           "aggttttataaaacaattaagtctacagagcaactacgcg")))
+  (with-open [rdr (cseq/fasta-reader test-fa-file)]
+    (is (= (protocols/read-in-region rdr {:chr "ref2" :start 1 :end 16})
+           "AGGTTTTATAAAACAA"))
+    (is (= (protocols/read-in-region rdr {:chr "ref2" :start 1 :end 16} {:mask? false})
+           "AGGTTTTATAAAACAA"))
+    (is (= (protocols/read-in-region rdr {:chr "ref2" :start 1 :end 16} {:mask? true})
+           "aggttttataaaacaa"))))
 
 (deftest read-sequence-twobit-test
   (testing "reference test"
@@ -80,7 +88,10 @@
       (is (= (for [i (range 1 45) j (range i 46)]
                (cseq/read-sequence r {:chr "ref" :start i :end j}))
              (for [i (range 1 45) j (range i 46)]
-               (subs "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT" (dec i) j))))))
+               (subs "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT" (dec i) j))))
+      (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40}) "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
+      (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40} {:mask? false}) "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
+      (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40} {:mask? true}) "aggttttataaaacaattaagtctacagagcaactacgcg"))))
   (testing "reference test with N"
     (with-open [r (cseq/twobit-reader test-twobit-n-file)
                 c (cseq/reader r)]

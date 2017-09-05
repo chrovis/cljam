@@ -3,6 +3,7 @@
             [clojure.java.io :as cio]
             [cljam.test-common :refer :all]
             [cljam.io.sam :as sam]
+            [cljam.io.protocols :as protocols]
             [cljam.util :as util]))
 
 (def temp-sam-file (str temp-dir "/test.sam"))
@@ -141,7 +142,22 @@
         (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
           (is (= (map #(dissoc % :pos :qname :rname :flag :ref-id)
                       (data->clj (sam/read-blocks rdr {:chr "ref2" :start 4 :end 12} {:mode mode})))
-                 (take 5 (drop 6 test-sorted-bam-data)))))))))
+                 (take 5 (drop 6 test-sorted-bam-data)))))))
+    (testing "read-in-region"
+      (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+        (is (= (protocols/read-in-region rdr {:chr "ref2"})
+               (drop 6 (:alignments test-sam-sorted-by-pos))))
+        (is (= (protocols/read-in-region rdr {:chr "ref2", :start 21})
+               (drop 7 (:alignments test-sam-sorted-by-pos))))
+        (is (= (protocols/read-in-region rdr {:chr "ref2", :start 10, :end 12})
+               (take 5 (drop 6 (:alignments test-sam-sorted-by-pos))))))
+      (with-open [rdr (sam/bam-reader test-sorted-bam-file)]
+        (is (= (protocols/read-in-region rdr {:chr "ref2"} {})
+               (drop 6 (:alignments test-sam-sorted-by-pos))))
+        (is (= (protocols/read-in-region rdr {:chr "ref2", :start 21} {})
+               (drop 7 (:alignments test-sam-sorted-by-pos))))
+        (is (= (protocols/read-in-region rdr {:chr "ref2", :start 10, :end 12} {})
+               (take 5 (drop 6 (:alignments test-sam-sorted-by-pos)))))))))
 
 (deftest bam-reader-invalid-test
   (with-before-after {:before (prepare-cache!)

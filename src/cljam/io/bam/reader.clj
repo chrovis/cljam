@@ -64,7 +64,7 @@
         (read-blocks-randomly* this chr start end decoder))))
   protocols/IRegionReader
   (read-in-region [this region]
-    (protocols/read-in-region this region))
+    (protocols/read-in-region this region {}))
   (read-in-region [this region _]
     (protocols/read-alignments this region)))
 

@@ -89,6 +89,8 @@
     ([this region option]
      (protocols/read-sequence this region option)))
   protocols/ISequenceReader
+  (read-indices
+    [this] (read-indices this))
   (read-all-sequences
     ([this] (protocols/read-all-sequences this {}))
     ([this opts]

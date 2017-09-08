@@ -16,7 +16,7 @@
             [cljam.algo.pileup :as plp]
             [cljam.algo.convert :as convert]
             [cljam.algo.level :as level]
-            [cljam.util :as util])
+            [cljam.util.region :as region])
   (:import [java.io Closeable BufferedWriter OutputStreamWriter]))
 
 ;; CLI functions
@@ -267,7 +267,7 @@
         (when-not (sorter/sorted-by? r)
           (exit 1 "Not sorted"))
         (if (:region options)
-          (if-let [region (util/parse-region (:region options))]
+          (if-let [region (region/parse-region (:region options))]
             (cond
               (:simple options) (pileup-simple r (:thread options) region)
               (:ref options) (pileup-with-ref r (:ref options) region)

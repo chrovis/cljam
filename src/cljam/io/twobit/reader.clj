@@ -127,6 +127,14 @@
    (for [{:keys [name offset]} (.file-index rdr)]
      {:name name :sequence (read-sequence rdr {:chr name} option)})))
 
+(defn read-indices
+  "Reads metadata of indexed sequences."
+  [^TwoBitReader rdr]
+  (mapv
+   (fn [fi si] (merge fi @si))
+   (.file-index rdr)
+   (.seq-index rdr)))
+
 (extend-type TwoBitReader
   protocols/IReader
   (reader-path [this] (.f this))
@@ -134,6 +142,8 @@
     ([this] (protocols/read this {}))
     ([this option] (protocols/read-all-sequences this option)))
   protocols/ISequenceReader
+  (read-indices
+    [this] (read-indices this))
   (read-all-sequences
     ([this] (protocols/read-all-sequences this {}))
     ([this option]

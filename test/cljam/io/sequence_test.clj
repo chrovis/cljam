@@ -25,6 +25,18 @@
       test-fai-file
       (Object.))))
 
+(deftest read-indices-test
+  (testing "fasta"
+    (with-open [rdr (cseq/reader test-fa-file)]
+      (is (= (cseq/read-indices rdr)
+             [{:name "ref", :len 45, :offset 5, :line-blen 45, :line-len 46}
+              {:name "ref2", :len 40, :offset 57, :line-blen 40, :line-len 41}]))))
+  (testing "twobit"
+    (with-open [rdr (cseq/reader test-twobit-file)]
+      (is (= (cseq/read-indices rdr)
+             [{:name "ref", :len 45, :offset 33, :ambs [], :masks [], :header-offset 16}
+              {:name "ref2", :len 40, :offset 61, :ambs [], :masks [[1 40]], :header-offset 24}])))))
+
 (deftest read-sequence-fasta-test
   (with-open [rdr (cseq/fasta-reader test-fa-file)]
     (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10}) "TGTTAG"))

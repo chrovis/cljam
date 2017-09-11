@@ -3,7 +3,7 @@
   (:require [com.climate.claypoole :as cp]
             [com.climate.claypoole.lazy :as lazy]
             [cljam.common :as common]
-            [cljam.util :as util]
+            [cljam.util.region :as region]
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util])
   (:import [cljam.io.protocols SAMRegionBlock]))
@@ -39,7 +39,7 @@
                                 (fn [[start end]]
                                   (with-open [r (sam/clone-bam-reader rdr)]
                                     (count-for-positions (read-fn r start end) start end))) xs)))]
-    (->> (util/divide-region start end step)
+    (->> (region/divide-region start end step)
          count-fn
          (apply concat))))
 
@@ -108,7 +108,7 @@
       (f (sam/read-blocks rdr region {:mode :region}) start end 0 pile)
       (cp/pdoseq
        n-threads
-       [[s e] (util/divide-region start end step)]
+       [[s e] (region/divide-region start end step)]
        (with-open [r (sam/clone-bam-reader rdr)]
          (-> (sam/read-blocks r {:chr chr, :start s, :end e} {:mode :region})
              (f s e (- s start) pile)))))

@@ -1,5 +1,17 @@
 # Change Log
 
+## [Unreleased]
+
+### Added
+
+* Set up benchmarks. [#108](https://github.com/chrovis/cljam/pull/108)
+* Add `read-indices` to `ISequenceReader` protocol. [#109](https://github.com/chrovis/cljam/pull/109)
+* Extract region utils to `cljam.util.region` and add some functions. [#110](https://github.com/chrovis/cljam/pull/110)
+
+### Fixed
+
+* Fix StackOverflowError in `cljam.io.protocols/read-in-region`. [#107](https://github.com/chrovis/cljam/pull/107)
+
 ## [0.5.0] - 2017-09-05
 
 ### BREAKING

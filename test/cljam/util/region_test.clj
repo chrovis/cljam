@@ -210,6 +210,7 @@
     "chr1:1" {:chr "chr1", :start 1}
     "chr1:1-" {:chr "chr1:1-"}
     "chr1:1-2" {:chr "chr1", :start 1, :end 2}
+    "chr1:1,000-2,000" {:chr "chr1", :start 1000, :end 2000}
     "chr1:-2" {:chr "chr1", :end 2}
     "chr1:001-200" {:chr "chr1", :start 1, :end 200}
     "chr1:100-2" {:chr "chr1", :start 100, :end 2}
@@ -237,6 +238,7 @@
     "chr1:1" nil
     "chr1:1-" nil
     "chr1:1-2" {:chr "chr1", :start 1, :end 2}
+    "chr1:1,000-2,000" {:chr "chr1", :start 1000, :end 2000}
     "chr1:-2" nil
     "chr1:001-200" {:chr "chr1", :start 1, :end 200}
     "chr1:100-2" nil
@@ -269,4 +271,3 @@
     {:chr "chr1", :end 10} nil
     {:start 1} nil
     {:end 10} nil))
-

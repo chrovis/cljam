@@ -127,7 +127,7 @@
   "Parse a region string into a map."
   [region-str]
   (when region-str
-    (let [pattern #"([!-)+-<>-~][!-~]*?)(:(\d+)?(-(\d+))?)?"
+    (let [pattern #"([!-)+-<>-~][!-~]*?)(:([\d,]+)?(-([\d,]+))?)?"
           [_ chr _ start _ end] (re-matches pattern region-str)
           start' (proton/as-long start)
           end' (proton/as-long end)]

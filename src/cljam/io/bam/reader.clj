@@ -27,6 +27,12 @@
     (protocols/read this {}))
   (read [this region]
     (protocols/read-alignments this region))
+  (indexed? [this]
+    (try
+      @(.index-delay this)
+      true
+      (catch FileNotFoundException _
+        false)))
   protocols/IAlignmentReader
   (read-header [this]
     (.header this))

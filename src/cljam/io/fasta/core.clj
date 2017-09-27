@@ -82,6 +82,12 @@
   (read
     ([this] (protocols/read this {}))
     ([this option] (protocols/read-all-sequences this option)))
+  (indexed? [this]
+    (try
+      @(.index-delay this)
+      true
+      (catch FileNotFoundException _
+        false)))
   protocols/IRegionReader
   (read-in-region
     ([this region]

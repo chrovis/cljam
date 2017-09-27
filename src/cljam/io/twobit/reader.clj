@@ -141,6 +141,7 @@
   (read
     ([this] (protocols/read this {}))
     ([this option] (protocols/read-all-sequences this option)))
+  (indexed? [_] true)
   protocols/ISequenceReader
   (read-indices
     [this] (read-indices this))

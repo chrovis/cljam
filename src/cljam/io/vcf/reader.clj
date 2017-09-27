@@ -23,6 +23,7 @@
   (reader-path [this] (.f this))
   (read [this] (read-variants this))
   (read [this option] (read-variants this option))
+  (indexed? [_] false)
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))

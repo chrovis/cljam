@@ -68,6 +68,12 @@
   ([rdr region] (protocols/read-blocks rdr region))
   ([rdr region option] (protocols/read-blocks rdr region option)))
 
+(defn indexed?
+  "Returns true if the reader can be randomly accessed, false if not. Note this
+  function immediately realizes a delayed index."
+  [rdr]
+  (protocols/indexed? rdr))
+
 ;; Writing
 ;; -------
 

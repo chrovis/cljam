@@ -12,7 +12,9 @@
   (reader-path [this]
     "Returns the file's absolute path.")
   (read [this] [this option]
-    "Sequentially reads contents of the file."))
+    "Sequentially reads contents of the file.")
+  (indexed? [this]
+    "Returns true if the reader can be randomly accessed, false if not."))
 
 (defprotocol IWriter
   (writer-path [this]

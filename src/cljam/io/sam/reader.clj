@@ -21,6 +21,7 @@
     (protocols/read this {}))
   (read [this region]
     (protocols/read-alignments this region))
+  (indexed? [_] false)
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))

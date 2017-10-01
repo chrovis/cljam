@@ -44,12 +44,13 @@
   [[nil "--header" "Include header"]
    ["-f" "--format FORMAT" "Input file format <auto|sam|bam>"
     :default "auto"]
+   ["-r" "--region REGION" "Only print in region (e.g. chr6:1000-2000)"]
    ["-h" "--help" "Print help"]])
 
 (defn- view-usage [options-summary]
   (->> ["Extract/print all or sub alignments in SAM or BAM format."
         ""
-        "Usage: cljam view [--header] [-f FORMAT] <in.bam|sam>"
+        "Usage: cljam view [--header] [-f FORMAT] [-r REGION] <in.bam|sam>"
         ""
         "Options:"
         options-summary]
@@ -68,7 +69,13 @@
                                  "bam"  (sam/bam-reader f))]
         (when (:header options)
           (println (sam-util/stringify-header (sam/read-header r))))
-        (doseq [aln (sam/read-alignments r)]
+        (doseq [aln (if (:region options)
+                      (if-let [region (region/parse-region (:region options))]
+                        (if (sam/indexed? r)
+                          (sam/read-alignments r region)
+                          (exit 1 "Random alignment retrieval only works for indexed BAM."))
+                        (exit 1 "Invalid region format"))
+                      (sam/read-alignments r))]
           (println (sam-util/stringify-alignment aln))))))
   nil)
 

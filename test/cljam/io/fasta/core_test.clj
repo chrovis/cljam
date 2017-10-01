@@ -1,10 +1,14 @@
 (ns cljam.io.fasta.core-test
   (:require [clojure.test :refer :all]
+            [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [cljam.test-common :refer :all]
             [cljam.io.fasta.core :as fa-core]))
 
 (def illegal-fasta-file test-tabix-file)
+
+(def temp-test-fa-file (str temp-dir "/test.fa"))
+(def temp-medium-fa-file (str temp-dir "/medium.fa"))
 
 (deftest read-headers-test
   (with-open [rdr (fa-core/reader test-fa-file)]

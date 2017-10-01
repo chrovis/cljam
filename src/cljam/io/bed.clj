@@ -20,6 +20,7 @@
   (reader-path [this] (.f this))
   (read [this] (protocols/read this {}))
   (read [this option] (read-fields this))
+  (indexed? [_] false)
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))

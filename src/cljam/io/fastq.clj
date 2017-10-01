@@ -15,7 +15,8 @@
   protocols/IReader
   (reader-path [this] (.f this))
   (read [this] (read-sequences this))
-  (read [this opts] (read-sequences this opts)))
+  (read [this opts] (read-sequences this opts))
+  (indexed? [_] false))
 
 (deftype FASTQWriter [writer f]
   Closeable

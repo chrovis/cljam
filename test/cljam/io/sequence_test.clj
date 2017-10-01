@@ -8,6 +8,9 @@
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]))
 
+(def temp-test-fa-file (str temp-dir "/test.fa"))
+(def temp-medium-fa-file (str temp-dir "/medium.fa"))
+
 (deftest reader-test
   (testing "fasta"
     (with-open [rdr (cseq/reader test-fa-file)
@@ -131,6 +134,24 @@
     (with-open [r (cseq/twobit-reader test-twobit-be-n-file)]
       (is (= (cseq/read-sequence r {:chr "ref"})
              "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT")))))
+
+(deftest indexed?-test
+  (testing "fasta"
+    (are [f] (with-open [rdr (cseq/reader f)]
+               (true? (cseq/indexed? rdr)))
+      test-fa-file
+      medium-fa-file)
+    (with-before-after {:before (do (prepare-cache!)
+                                    (cio/copy (cio/file test-fa-file) (cio/file temp-test-fa-file))
+                                    (cio/copy (cio/file medium-fa-file) (cio/file temp-medium-fa-file)))
+                        :after (clean-cache!)}
+      (are [f] (with-open [rdr (cseq/reader f)]
+                 (false? (cseq/indexed? rdr)))
+        temp-test-fa-file
+        temp-medium-fa-file)))
+  (testing "twobit"
+    (with-open [rdr (cseq/reader test-twobit-file)]
+      (true? (cseq/indexed? rdr)))))
 
 (deftest writer-test
   (testing "fasta"

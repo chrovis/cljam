@@ -9,6 +9,8 @@
 (def temp-sam-file (str temp-dir "/test.sam"))
 (def temp-bam-file (str temp-dir "/test.bam"))
 (def temp-bam-file-sorted (str temp-dir "/test.sorted.bam"))
+(def temp-small-bam-file (str temp-dir "/small.bam"))
+(def temp-medium-bam-file (str temp-dir "/medium.bam"))
 (def not-found-bam-file (str temp-dir "/not-found.bam"))
 (def invalid-bam-file-1 test-fa-file)
 (def invalid-bam-file-2 test-tabix-file)
@@ -204,6 +206,27 @@
       "./test-resources/bam/foo.bam"
       test-bai-file
       "./test-resources/bam/foo.baam")))
+
+(deftest indexed?-test
+  (testing "sam"
+    (with-open [rdr (sam/reader test-sam-file)]
+      (true? (sam/indexed? rdr))))
+  (testing "bam"
+    (are [f] (with-open [rdr (sam/reader f)]
+               (true? (sam/indexed? rdr)))
+      test-sorted-bam-file
+      small-bam-file
+      medium-bam-file)
+    (with-before-after {:before (do (prepare-cache!)
+                                    (cio/copy (cio/file test-sorted-bam-file) (cio/file temp-bam-file-sorted))
+                                    (cio/copy (cio/file small-bam-file) (cio/file temp-small-bam-file))
+                                    (cio/copy (cio/file medium-bam-file) (cio/file temp-medium-bam-file)))
+                        :after (clean-cache!)}
+      (are [f] (with-open [rdr (sam/reader f)]
+                 (false? (sam/indexed? rdr)))
+        temp-bam-file-sorted
+        temp-small-bam-file
+        temp-medium-bam-file))))
 
 (deftest sam-writer-test
   (with-before-after {:before (prepare-cache!)

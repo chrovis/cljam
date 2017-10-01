@@ -29,11 +29,14 @@
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
     ;; NB: "view" output format may change in future
-    (is (not-throw? (with-out-file temp-out (cli/view [test-sam-file]))))
-    (is (not-throw? (with-out-file temp-out (cli/view ["-f" "sam" test-sam-file]))))
-    (is (not-throw? (with-out-file temp-out (cli/view [test-bam-file]))))
-    (is (not-throw? (with-out-file temp-out (cli/view ["-f" "bam" test-bam-file]))))
-    (is (not-throw? (with-out-file temp-out (cli/view ["--header" test-bam-file]))))))
+    (are [args] (not-throw? (with-out-file temp-out (cli/view args)))
+      [test-sam-file]
+      ["-f" "sam" test-sam-file]
+      [test-bam-file]
+      ["-f" "bam" test-bam-file]
+      ["--header" test-bam-file]
+      ["-r" "ref2" test-sorted-bam-file]
+      ["-r" "ref2:10-200" test-sorted-bam-file])))
 
 (deftest about-convert
   (with-before-after {:before (prepare-cache!)

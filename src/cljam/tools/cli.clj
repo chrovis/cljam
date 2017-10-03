@@ -86,12 +86,15 @@
     :default "auto"]
    ["-of" "--output-format FORMAT" "Output file format <auto|sam|bam>"
     :default "auto"]
+   ["-t" "--thread THREAD" "Number of threads (0 is auto)"
+    :default 0
+    :parse-fn #(Integer/parseInt %)]
    ["-h" "--help" "Print help"]])
 
 (defn- convert-usage [options-summary]
   (->> ["Convert SAM to BAM or BAM to SAM."
         ""
-        "Usage: cljam convert [-if FORMAT] [-of FORMAT] <in.bam|sam> <out.bam|sam>"
+        "Usage: cljam convert [-if FORMAT] [-of FORMAT] [-t THREAD] <in.bam|sam> <out.bam|sam>"
         ""
         "Options:"
         options-summary]
@@ -104,7 +107,7 @@
      (not= (count arguments) 2) (exit 1 (convert-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (convert/convert in out)))
+      (convert/convert in out :n-threads (:thread options))))
   nil)
 
 ;; ### normalize command

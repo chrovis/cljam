@@ -103,6 +103,7 @@
 ;; ### SAM files
 
 (def test-sam-file "test-resources/sam/test.sam")
+(def medium-sam-file "test-resources/sam/medium.sam")
 
 (def normalize-before-sam-file "test-resources/sam/normalize_before.sam")
 (def normalize-after-sam-file "test-resources/sam/normalize_after.sam")

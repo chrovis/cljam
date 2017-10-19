@@ -13,7 +13,7 @@
                  [camel-snake-kebab "0.4.0"]
                  [proton "0.1.2"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.8.0"]
-                                  [cavia "0.4.1"]
+                                  [cavia "0.4.2-SNAPSHOT"]
                                   [criterium "0.4.4"]
                                   [net.totakke/libra "0.1.0"]]
                    :plugins [[lein-binplus "0.6.2" :exclusions [org.clojure/clojure]]

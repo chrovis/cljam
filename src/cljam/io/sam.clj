@@ -2,6 +2,7 @@
   "Functions to read and write the SAM (Sequence Alignment/Map) format and BAM
   (its binary equivalent). See https://samtools.github.io/hts-specs/ for the
   detail SAM/BAM specifications."
+  (:refer-clojure :exclude [indexed?])
   (:require [cljam.io.sam.reader :as sam-reader]
             [cljam.io.sam.writer :as sam-writer]
             [cljam.io.bam.core :as bam-core]

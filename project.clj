@@ -11,15 +11,16 @@
                  [bgzf4j "0.1.0"]
                  [com.climate/claypoole "1.1.4"]
                  [camel-snake-kebab "0.4.0"]
-                 [proton "0.1.2"]]
+                 [proton "0.1.3"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.8.0"]
-                                  [cavia "0.4.1"]
+                                  [cavia "0.4.2"]
                                   [criterium "0.4.4"]
-                                  [net.totakke/libra "0.1.0"]]
+                                  [net.totakke/libra "0.1.0"]
+                                  [org.tcrawley/dynapath "0.2.5"]]
                    :plugins [[lein-binplus "0.6.2" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.3"]
                              [lein-marginalia "0.9.0" :exclusions [org.clojure/clojure]]
-                             [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure]]
+                             [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure org.tcrawley/dynapath]]
                              [net.totakke/lein-libra "0.1.0"]]
                    :test-selectors {:default #(not-any? % [:slow :remote])
                                     :slow :slow ; Slow tests with local resources
@@ -29,10 +30,10 @@
                    :global-vars {*warn-on-reflection* true}}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
-             :1.9 {:dependencies [[org.clojure/clojure "1.9.0-alpha19"]]}
+             :1.9 {:dependencies [[org.clojure/clojure "1.9.0-beta2"]]}
              :uberjar {:dependencies [[org.clojure/clojure "1.8.0"]
-                                      [org.apache.logging.log4j/log4j-api "2.9.0"]
-                                      [org.apache.logging.log4j/log4j-core "2.9.0"]]
+                                      [org.apache.logging.log4j/log4j-api "2.9.1"]
+                                      [org.apache.logging.log4j/log4j-core "2.9.1"]]
                        :resource-paths ["bin-resources"]
                        :main cljam.tools.main
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]

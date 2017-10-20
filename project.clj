@@ -13,7 +13,7 @@
                  [camel-snake-kebab "0.4.0"]
                  [proton "0.1.3"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.8.0"]
-                                  [cavia "0.4.2-SNAPSHOT"]
+                                  [cavia "0.4.2"]
                                   [criterium "0.4.4"]
                                   [net.totakke/libra "0.1.0"]
                                   [org.tcrawley/dynapath "0.2.5"]]

@@ -1,6 +1,6 @@
 (ns cljam.io.protocols
   "Protocols of reader/writer for various file formats."
-  (:refer-clojure :exclude [read]))
+  (:refer-clojure :exclude [read indexed?]))
 
 (defrecord SAMAlignment
   [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])

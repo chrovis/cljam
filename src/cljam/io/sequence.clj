@@ -1,6 +1,7 @@
 (ns cljam.io.sequence
   "Functions to read and write formats representing sequences such as FASTA and
   TwoBit."
+  (:refer-clojure :exclude [indexed?])
   (:require [cljam.io.fasta.core :as fa-core]
             [cljam.io.fasta.writer :as fa-writer]
             [cljam.io.protocols :as protocols]

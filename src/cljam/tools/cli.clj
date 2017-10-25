@@ -82,19 +82,15 @@
 ;; ### convert command
 
 (def ^:private convert-cli-options
-  [["-if" "--input-format FORMAT" "Input file format <auto|sam|bam>"
-    :default "auto"]
-   ["-of" "--output-format FORMAT" "Output file format <auto|sam|bam>"
-    :default "auto"]
-   ["-t" "--thread THREAD" "Number of threads (0 is auto)"
+  [["-t" "--thread THREAD" "Number of threads (0 is auto)"
     :default 0
     :parse-fn #(Integer/parseInt %)]
    ["-h" "--help" "Print help"]])
 
 (defn- convert-usage [options-summary]
-  (->> ["Convert SAM to BAM or BAM to SAM."
+  (->> ["Convert file format based on the file extension."
         ""
-        "Usage: cljam convert [-if FORMAT] [-of FORMAT] [-t THREAD] <in.bam|sam> <out.bam|sam>"
+        "Usage: cljam convert [-t THREAD] <in-file> <out-file>"
         ""
         "Options:"
         options-summary]
@@ -381,7 +377,7 @@
                      "Usage: cljam {view,convert,normalize,sort,index,pileup,faidx,dict,level,version} ..."
                      :options  [["-h" "--help" "Show help" :default false :flag true]]
                      :commands [["view"    "Extract/print all or sub alignments in SAM or BAM format."]
-                                ["convert" "Convert SAM to BAM or BAM to SAM."]
+                                ["convert" "Convert file format based on the file extension."]
                                 ["normalize" "Normalize references of alignments."]
                                 ["sort"    "Sort alignments by leftmost coordinates."]
                                 ["index"   "Index sorted alignment for fast random access."]

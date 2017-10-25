@@ -24,6 +24,8 @@
 (def temp-out (str temp-dir "/out"))
 (def temp-bam (str temp-dir "/out.bam"))
 (def temp-sam (str temp-dir "/out.sam"))
+(def temp-fasta (str temp-dir "/out.fa"))
+(def temp-twobit (str temp-dir "/out.2bit"))
 
 (deftest about-view
   (with-before-after {:before (prepare-cache!)
@@ -41,16 +43,24 @@
 (deftest about-convert
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    ;; sam => bam
-    (is (not-throw? (cli/convert [test-sam-file temp-bam])))
-    (is (= (slurp-bam-for-test temp-bam) (slurp-sam-for-test test-sam-file)))
-    (is (= (slurp-bam-for-test temp-bam) (slurp-bam-for-test test-bam-file)))
-    ;; bam => sam
-    (is (not-throw? (cli/convert [test-bam-file temp-sam])))
-    (is (= (slurp-sam-for-test temp-sam) (slurp-bam-for-test test-bam-file)))
-    (is (= (slurp-sam-for-test temp-sam) (slurp-sam-for-test test-sam-file)))
-    ;; error
-    (is (thrown? IllegalArgumentException (cli/convert [test-bam-file (str temp-dir "/test.unknown")])))))
+    (testing "SAM -> BAM"
+      (is (not-throw? (cli/convert [test-sam-file temp-bam])))
+      (is (= (slurp-bam-for-test temp-bam) (slurp-sam-for-test test-sam-file)))
+      (is (= (slurp-bam-for-test temp-bam) (slurp-bam-for-test test-bam-file))))
+    (testing "BAM -> SAM"
+      (is (not-throw? (cli/convert [test-bam-file temp-sam])))
+      (is (= (slurp-sam-for-test temp-sam) (slurp-bam-for-test test-bam-file)))
+      (is (= (slurp-sam-for-test temp-sam) (slurp-sam-for-test test-sam-file))))
+    (testing "FASTA -> TwoBit"
+      (is (not-throw? (cli/convert [test-fa-file temp-twobit])))
+      (is (same-sequence-contents? test-fa-file temp-twobit)))
+    (testing "TwoBit -> FASTA"
+      (is (not-throw? (cli/convert [test-twobit-file temp-fasta])))
+      (is (same-sequence-contents? test-twobit-file temp-fasta)))
+    (testing "error"
+      (are [in out] (thrown? Exception (cli/convert [in out]))
+        test-bam-file (str temp-dir "/test.unknown")
+        test-bam-file temp-twobit))))
 
 (deftest about-normalize
   (with-before-after {:before (prepare-cache!)

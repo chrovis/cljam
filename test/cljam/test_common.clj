@@ -5,6 +5,7 @@
             [clojure.tools.logging.impl :refer [disabled-logger-factory]]
             [cljam.io.protocols :as protocols]
             [cljam.io.sam :as sam]
+            [cljam.io.sequence :as cseq]
             [cavia.core :as cavia :refer [defprofile with-profile]]))
 
 (defn- _in-cloverage? []
@@ -477,7 +478,8 @@
   (= (digest/sha1 (file f1)) (digest/sha1 (file f2))))
 
 (defn same-sam-contents?
-  "Returns true if the contents of two SAM/BAM files are equivalent, false if not."
+  "Returns true if the contents of two SAM/BAM files are equivalent, false if
+  not."
   [f1 f2]
   (with-open [r1 (sam/reader f1)
               r2 (sam/reader f2)]
@@ -485,6 +487,15 @@
             (sam/read-header r2))
          (= (seq (sam/read-alignments r1))
             (seq (sam/read-alignments r2))))))
+
+(defn same-sequence-contents?
+  "Returns true if the contents of two FASTA/TwoBit files are equivalent, false
+  if not."
+  [f1 f2]
+  (with-open [r1 (cseq/reader f1)
+              r2 (cseq/reader f2)]
+    (= (cseq/read-all-sequences r1)
+       (cseq/read-all-sequences r2))))
 
 ;;;; FASTA
 

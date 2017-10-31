@@ -119,13 +119,21 @@
        (.rewind cb)
        (.toString cb)))))
 
+(defn- read-all-sequences*
+  [rdr chrs option]
+  (when (seq chrs)
+    (let [[{:keys [name]} & nxt] chrs]
+      (lazy-seq
+       (cons {:name name
+              :sequence (read-sequence rdr {:chr name} option)}
+             (read-all-sequences* rdr nxt option))))))
+
 (defn read-all-sequences
   "Reads all sequences in file."
   ([rdr]
    (read-all-sequences rdr {}))
   ([^TwoBitReader rdr option]
-   (for [{:keys [name offset]} (.file-index rdr)]
-     {:name name :sequence (read-sequence rdr {:chr name} option)})))
+   (read-all-sequences* rdr (.file-index rdr) option)))
 
 (defn read-indices
   "Reads metadata of indexed sequences."

@@ -59,7 +59,9 @@
   "Converts file format between FASTA and TwoBit based on the file extension."
   [in out]
   (with-open [rdr (cseq/reader in)
-              wtr (cseq/writer out)]
+              wtr (cseq/writer out {:index (if (cseq/indexed? rdr)
+                                             (cseq/read-indices rdr)
+                                             (logging/warn "Non-indexed sequence may use stupendous memory."))})]
     (cseq/write-sequences wtr (cseq/read-all-sequences rdr {:mask? true}))))
 
 ;;; General converter

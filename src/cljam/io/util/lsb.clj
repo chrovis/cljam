@@ -265,3 +265,42 @@
   (write-string [w s]
     (let [data-bytes (string->bytes s)]
       (.write w data-bytes 0 (alength data-bytes)))))
+
+(extend-type java.nio.channels.FileChannel
+  LSBWritable
+  (write-ubyte [w b]
+    (let [bb (gen-byte-buffer 1)]
+      (.. bb (put (unchecked-byte b)) clear)
+      (.write w bb)))
+  (write-char [w b]
+    (let [bb (gen-byte-buffer 1)]
+      (.. bb (putChar b) clear)
+      (.write w bb)))
+  (write-short [w n]
+    (let [bb (gen-byte-buffer 2)]
+      (.. bb (putShort n) clear)
+      (.write w bb)))
+  (write-ushort [w n]
+    (let [bb (gen-byte-buffer 2)]
+      (.. bb (putShort (unchecked-short n)) clear)
+      (.write w bb)))
+  (write-int [w n]
+    (let [bb (gen-byte-buffer 4)]
+      (.. bb (putInt n) clear)
+      (.write w bb)))
+  (write-uint [w n]
+    (let [bb (gen-byte-buffer 4)]
+      (.. bb (putInt (unchecked-int n)) clear)
+      (.write w bb)))
+  (write-long [w n]
+    (let [bb (gen-byte-buffer 8)]
+      (.. bb (putLong n) clear)
+      (.write w bb)))
+  (write-float [w n]
+    (let [bb (gen-byte-buffer 4)]
+      (.. bb (putFloat n) clear)
+      (.write w bb)))
+  (write-bytes [w ^bytes b]
+    (.write w (ByteBuffer/wrap b)))
+  (write-string [w s]
+    (.write w (ByteBuffer/wrap (string->bytes s)))))

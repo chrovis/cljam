@@ -80,10 +80,14 @@
    (fa-writer/writer f options)))
 
 (defn ^TwoBitWriter twobit-writer
-  "Returns an open cljam.io.twobit.writer.TwoBitWriter of f. Should be used
-  inside with-open to ensure the writer is properly closed."
-  [f]
-  (tb-writer/writer f))
+  "Returns an open cljam.io.twobit.writer.TwoBitWriter of f with options:
+    :index - metadata of indexed sequences. The amount of memory usage can be
+      reduced if index is supplied.
+  Should be used inside with-open to ensure the writer is properly closed."
+  ([f]
+   (twobit-writer f {}))
+  ([f options]
+   (tb-writer/writer f options)))
 
 (defn ^Closeable writer
   "Selects suitable writer from f's extension, returning the open writer. This
@@ -91,7 +95,7 @@
   [f & options]
   (case (io-util/file-type f)
     :fasta (apply fasta-writer f options)
-    :2bit (twobit-writer f)
+    :2bit (apply twobit-writer f options)
     (throw (IllegalArgumentException. "Invalid file type"))))
 
 (defn write-sequences

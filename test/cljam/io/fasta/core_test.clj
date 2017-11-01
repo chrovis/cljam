@@ -55,9 +55,9 @@
            test-fa-sequences)))
   (with-open [rdr (fa-core/reader medium-fa-file)]
     (let [fa (fa-core/sequential-read rdr)]
-      (is (= (map :name fa) '("chr1")))
-      (is (= (map (comp count :sequence) fa) '(100000)))))
+      (is (= (map :name fa) '("chr1" "chr2" "chr3" "chr4" "chr5" "chr6" "chr7" "chr8" "chr9")))
+      (is (= (map (comp count :sequence) fa) (repeat 9 50000)))))
   (with-open [rdr (fa-core/reader medium-fa-gz-file)]
     (let [fa (fa-core/sequential-read rdr)]
-      (is (= (map :name fa) '("chr1")))
-      (is (= (map (comp count :sequence) fa) '(100000))))))
+      (is (= (map :name fa) '("chr1" "chr2" "chr3" "chr4" "chr5" "chr6" "chr7" "chr8" "chr9")))
+      (is (= (map (comp count :sequence) fa) (repeat 9 50000))))))

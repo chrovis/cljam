@@ -150,6 +150,7 @@
 (def test-twobit-n-file "test-resources/twobit/test-n.2bit")
 (def test-twobit-be-file "test-resources/twobit/be-test.2bit")
 (def test-twobit-be-n-file "test-resources/twobit/be-test-n.2bit")
+(def medium-twobit-file "test-resources/twobit/medium.2bit")
 
 ;; ### FASTQ files
 

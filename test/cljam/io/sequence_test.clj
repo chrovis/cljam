@@ -192,7 +192,7 @@
 
     (let [f (str temp-dir "/medium.fa")]
       (with-open [r (cseq/fasta-reader medium-fa-file)
-                  w (cseq/fasta-writer f {:cols 60})]
+                  w (cseq/fasta-writer f {:cols 50})]
         (cseq/write-sequences w (fa-core/read r)))
       (is (same-sequence-contents? f medium-fa-file))
       (is (same-file? f medium-fa-file))

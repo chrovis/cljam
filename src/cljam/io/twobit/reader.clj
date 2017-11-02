@@ -114,8 +114,8 @@
            (if (<= 1 ref-pos len)
              (.put cb (.charAt ^String (twobit-to-str (+ (aget ba ba-pos) 128)) bit-pos))
              (.put cb \N))))
-       (when mask? (mask! cb masks start' end'))
        (replace-ambs! cb ambs start' end')
+       (when mask? (mask! cb masks start' end'))
        (.rewind cb)
        (.toString cb)))))
 

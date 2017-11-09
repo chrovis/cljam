@@ -83,6 +83,16 @@
     (is (= (protocols/read-in-region rdr {:chr "ref2" :start 1 :end 16} {:mask? true})
            "aggttttataaaacaa"))))
 
+(deftest read-sequence-medium-fasta-test
+  (let [expect (str "tgaatcaCATCAATTAAGAACTTTCTTCACCACCCCTTCGCTGTCATC"
+                    "CTTTTCTCTCCACTATTCACCCAACATCATCCGGGACCAGAACTAATGTC"
+                    "AGCAAAGC")
+        u-expect (cstr/upper-case expect)]
+    (with-open [rdr (cseq/fasta-reader medium-fa-file)]
+      (is (= (cseq/read-sequence rdr {:chr "chr3" :start 2053 :end 2158}) u-expect))
+      (is (= (cseq/read-sequence rdr {:chr "chr3" :start 2053 :end 2158} {:mask? false}) u-expect))
+      (is (= (cseq/read-sequence rdr {:chr "chr3" :start 2053 :end 2158} {:mask? true}) expect)))))
+
 (deftest read-sequence-twobit-test
   (testing "reference test"
     (with-open [r (cseq/twobit-reader test-twobit-file)

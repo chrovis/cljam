@@ -4,15 +4,17 @@
             [cljam.util :refer [graph?]]
             [cljam.io.fasta.util :refer [header-line? parse-header-line]]
             [cljam.io.fasta-index.core :as fasta-index])
-  (:import [java.io RandomAccessFile InputStream]))
+  (:import [java.io RandomAccessFile InputStream]
+           [java.nio ByteBuffer]))
 
 ;; FASTAReader
 ;; -----------
 
-(deftype FASTAReader [reader f index-delay]
+(deftype FASTAReader [reader stream f index-delay]
   java.io.Closeable
   (close [this]
-    (.close ^java.io.Closeable (.reader this))))
+    (.close ^java.io.Closeable (.reader this))
+    (.close ^java.io.Closeable (.stream this))))
 
 ;; Reading
 ;; -------
@@ -111,7 +113,7 @@
   (let [r ^RandomAccessFile (.reader rdr)]
     (.seek r 0)))
 
-(definline create-ba [^java.nio.ByteBuffer buffer]
+(definline create-ba [^ByteBuffer buffer]
   `(when (pos? (.position ~buffer))
        (let [ba# (byte-array (.position ~buffer))]
          (.clear ~buffer)
@@ -122,57 +124,76 @@
 (def ^:private ^:const gt-byte (byte \>))
 (def ^:private ^:const newline-byte (byte \newline))
 
-(defn- sequqntial-read*
-  "Core function to read FASTA sequentially.
-   Function f is called every time a single sequence finishes reading.
-   When finished reading entire file, f is called with nil."
-  [^InputStream stream page-size seq-buf-size ^bytes byte-map f]
+(defn- read-buffer!
+  [^bytes buf ^long size buffers ^bytes byte-map]
+  (let [{:keys [^ByteBuffer name-buf ^ByteBuffer seq-buf ^ByteBuffer rest-buf]} buffers]
+    (loop [i 0, name-line? false]
+      (if (< i size)
+        (let [b (aget buf i)]
+          (cond
+            (= b gt-byte) (if (pos? (.position seq-buf))
+                            (do (.put rest-buf buf i (- size i))
+                                true)
+                            (recur (inc i) true))
+            (= b newline-byte) (if name-line?
+                                 (recur (inc i) false)
+                                 (recur (inc i) name-line?))
+            :else (do (if name-line?
+                        (.put name-buf b)
+                        (.put seq-buf (aget byte-map b)))
+                      (recur (inc i) name-line?))))
+        false))))
+
+(defn- sequential-read1!
+  [^InputStream stream buf buffers byte-map loaded-bytes]
+  (let [{:keys [^ByteBuffer name-buf ^ByteBuffer seq-buf ^ByteBuffer rest-buf]} buffers
+        read-preload? (atom (some? (seq loaded-bytes)))]
+    (loop [new-ref? false]
+      (if-not new-ref?
+        (if @read-preload?
+          (let [new-ref*? (read-buffer! loaded-bytes (count loaded-bytes) buffers byte-map)]
+            (reset! read-preload? false)
+            (recur new-ref*?))
+          (let [n (.read stream buf)]
+            (if (pos? n)
+              (recur (read-buffer! buf n buffers byte-map))
+              {:name (create-ba name-buf) :sequence (create-ba seq-buf) :rest-bytes (create-ba rest-buf) :eof? true})))
+        {:name (create-ba name-buf) :sequence (create-ba seq-buf) :rest-bytes (create-ba rest-buf) :eof? false}))))
+
+(defn- sequential-read!
+  [stream buf buffers byte-map loaded-bytes eof?]
+  (when (or (not eof?) (seq loaded-bytes))
+    (lazy-seq
+     (let [m (sequential-read1! stream buf buffers byte-map loaded-bytes)]
+       (cons (select-keys m [:name :sequence])
+             (sequential-read! stream buf buffers byte-map (:rest-bytes m) (:eof? m)))))))
+
+(defn- sequential-read
+  [stream page-size seq-buf-size byte-map]
   (let [buf (byte-array page-size)
-        n-buf (java.nio.ByteBuffer/allocate 1024)
-        s-buf (java.nio.ByteBuffer/allocate seq-buf-size)]
-    (loop [rname* nil]
-      (let [bytes (.read stream buf)]
-        (if (pos? bytes)
-          (recur
-           (loop [i 0 name-line? false rname rname*]
-             (if (< i bytes)
-               (let [b (aget buf i)]
-                 (if (= b gt-byte)
-                   (do (when-let [s (create-ba s-buf)] (f {:name rname :sequence s}))
-                       (recur (inc i) true rname))
-                   (if (= b newline-byte)
-                     (if name-line?
-                       (recur (inc i) false (create-ba n-buf))
-                       (recur (inc i) name-line? rname))
-                     (do (if name-line?
-                           (.put n-buf b)
-                           (.put s-buf (aget byte-map b)))
-                         (recur (inc i) name-line? rname)))))
-               rname)))
-          (f {:name rname* :sequence (create-ba s-buf)}))))
-    (f nil)))
+        name-buf (ByteBuffer/allocate 1024)
+        seq-buf (ByteBuffer/allocate seq-buf-size)
+        rest-buf (ByteBuffer/allocate page-size)]
+    (sequential-read! stream buf
+                      {:name-buf name-buf :seq-buf seq-buf :rest-buf rest-buf}
+                      byte-map (byte-array 0) false)))
 
 (defn sequential-read-byte-array
-  "Returns list of maps containing sequence as byte-array.
-   Bases ACGTN are encoded as 1~5"
-  [^InputStream stream page-size seq-buf-size]
-  (let [s (atom [])
-        byte-map (byte-array (range 128))]
+  "Returns list of maps containing sequence as byte-array. Bases ACGTN are
+  encoded as 1-5."
+  [stream page-size seq-buf-size]
+  (let [byte-map (byte-array (range 128))]
     (doseq [[i v] [[\a 1] [\A 1] [\c 2] [\C 2] [\g 3] [\G 3] [\t 4] [\T 4] [\n 5] [\N 5]]]
       (aset-byte byte-map (byte i) (byte v)))
-    (sequqntial-read* stream page-size seq-buf-size byte-map #(when % (swap! s conj %)))
-    @s))
+    (sequential-read stream page-size seq-buf-size byte-map)))
 
 (defn sequential-read-string
   "Returns list of maps containing sequence as upper-case string."
-  [^InputStream stream page-size seq-buf-size {:keys [mask?]}]
-  (let [s (atom [])
-        byte-map (byte-array (range 128))
-        handler (fn [{:keys [name sequence]}]
-                  (when (and name sequence)
-                    (swap! s conj {:name (String. ^bytes name) :sequence (String. ^bytes sequence)})))]
+  [stream page-size seq-buf-size {:keys [mask?]}]
+  (let [byte-map (byte-array (range 128))]
     (when-not mask?
       (doseq [[i v] [[\a \A] [\c \C] [\g \G] [\t \T] [\n \N]]]
         (aset-byte byte-map (byte i) (byte v))))
-    (sequqntial-read* stream page-size seq-buf-size byte-map handler)
-    @s))
+    (map (fn [{:keys [^bytes name ^bytes sequence]}]
+           {:name (String. name) :sequence (String. sequence)})
+         (sequential-read stream page-size seq-buf-size byte-map))))

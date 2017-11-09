@@ -172,9 +172,7 @@
       (with-open [r (cseq/fasta-reader test-fa-file)
                   w (cseq/fasta-writer f)]
         (cseq/write-sequences w (fa-core/read r)))
-      (is (= (fa-core/sequential-read f)
-             (fa-core/sequential-read test-fa-file)))
-
+      (is (same-sequence-contents? f test-fa-file))
       (is (same-file? f test-fa-file))
       (is (same-file? (str f ".fai") test-fai-file))
 
@@ -194,11 +192,9 @@
 
     (let [f (str temp-dir "/medium.fa")]
       (with-open [r (cseq/fasta-reader medium-fa-file)
-                  w (cseq/fasta-writer f {:cols 60})]
+                  w (cseq/fasta-writer f {:cols 50})]
         (cseq/write-sequences w (fa-core/read r)))
-      (is (= (fa-core/sequential-read f)
-             (fa-core/sequential-read medium-fa-file)))
-
+      (is (same-sequence-contents? f medium-fa-file))
       (is (same-file? f medium-fa-file))
       (is (same-file? (str f ".fai") medium-fai-file))
 
@@ -211,21 +207,19 @@
       (with-open [r (cseq/fasta-reader test-fa-file)
                   w (cseq/fasta-writer f)]
         (cseq/write-sequences w (fa-core/read r)))
-      (is (= (fa-core/sequential-read f)
-             (fa-core/sequential-read test-fa-file))))
+      (is (same-sequence-contents? f test-fa-file)))
 
     (let [f (str temp-dir "/test.fa.bz2")]
       (with-open [r (cseq/fasta-reader test-fa-file)
                   w (cseq/fasta-writer f)]
         (cseq/write-sequences w (fa-core/read r)))
-      (is (= (fa-core/sequential-read f)
-             (fa-core/sequential-read test-fa-file))))
+      (is (same-sequence-contents? f test-fa-file)))
 
     (let [f (str temp-dir "/test3.fa")]
-      (with-open [w (cseq/fasta-writer f)]
-        (cseq/write-sequences w (fa-core/sequential-read test-fa-file)))
-      (is (= (fa-core/sequential-read f)
-             (fa-core/sequential-read test-fa-file)))
+      (with-open [r (cseq/fasta-reader test-fa-file)
+                  w (cseq/fasta-writer f)]
+        (cseq/write-sequences w (fa-core/sequential-read r)))
+      (is (same-sequence-contents? f test-fa-file))
       (with-open [r1 (cseq/fasta-reader f)
                   r2 (cseq/fasta-reader test-fa-file)]
         (is (= (map (juxt :rname (comp cstr/upper-case :seq)) (fa-core/read r1))

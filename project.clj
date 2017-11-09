@@ -20,7 +20,7 @@
                    :plugins [[lein-binplus "0.6.2" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.3"]
                              [lein-marginalia "0.9.0" :exclusions [org.clojure/clojure]]
-                             [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure org.tcrawley/dynapath]]
+                             [lein-cloverage "1.0.10" :exclusions [org.clojure/clojure org.tcrawley/dynapath]]
                              [net.totakke/lein-libra "0.1.0"]]
                    :test-selectors {:default #(not-any? % [:slow :remote])
                                     :slow :slow ; Slow tests with local resources

@@ -5,7 +5,7 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
   :dependencies [[org.clojure/tools.logging "0.4.0"]
                  [org.clojure/tools.cli "0.3.5"]
-                 [org.apache.commons/commons-compress "1.14"]
+                 [org.apache.commons/commons-compress "1.15"]
                  [clj-sub-command "0.3.0"]
                  [digest "1.4.6"]
                  [bgzf4j "0.1.0"]

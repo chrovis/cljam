@@ -125,47 +125,48 @@
 (def ^:private ^:const newline-byte (byte \newline))
 
 (defn- read-buffer!
-  [^bytes buf size ^bytes byte-map ^ByteBuffer name-buf ^ByteBuffer seq-buf ^ByteBuffer rest-buf]
-  (loop [i 0, name-line? false]
-    (if (< i size)
-      (let [b (aget buf i)]
-        (cond
-          (= b gt-byte) (if (pos? (.position seq-buf))
-                          (do (.put rest-buf buf i (- size i))
-                              true)
-                          (recur (inc i) true))
-          (= b newline-byte) (if name-line?
-                               (recur (inc i) false)
-                               (recur (inc i) name-line?))
-          :else (do (if name-line?
-                      (.put name-buf b)
-                      (.put seq-buf (aget byte-map b)))
-                    (recur (inc i) name-line?))))
-      false)))
+  [^bytes buf ^long size buffers ^bytes byte-map]
+  (let [{:keys [^ByteBuffer name-buf ^ByteBuffer seq-buf ^ByteBuffer rest-buf]} buffers]
+    (loop [i 0, name-line? false]
+      (if (< i size)
+        (let [b (aget buf i)]
+          (cond
+            (= b gt-byte) (if (pos? (.position seq-buf))
+                            (do (.put rest-buf buf i (- size i))
+                                true)
+                            (recur (inc i) true))
+            (= b newline-byte) (if name-line?
+                                 (recur (inc i) false)
+                                 (recur (inc i) name-line?))
+            :else (do (if name-line?
+                        (.put name-buf b)
+                        (.put seq-buf (aget byte-map b)))
+                      (recur (inc i) name-line?))))
+        false))))
 
 (defn- sequential-read1!
-  [^InputStream stream buffers byte-map loaded-bytes]
-  (let [{:keys [buf ^ByteBuffer name-buf ^ByteBuffer seq-buf ^ByteBuffer rest-buf]} buffers
+  [^InputStream stream buf buffers byte-map loaded-bytes]
+  (let [{:keys [^ByteBuffer name-buf ^ByteBuffer seq-buf ^ByteBuffer rest-buf]} buffers
         read-preload? (atom (some? (seq loaded-bytes)))]
     (loop [new-ref? false]
       (if-not new-ref?
         (if @read-preload?
-          (let [new-ref*? (read-buffer! loaded-bytes (count loaded-bytes) byte-map name-buf seq-buf rest-buf)]
+          (let [new-ref*? (read-buffer! loaded-bytes (count loaded-bytes) buffers byte-map)]
             (reset! read-preload? false)
             (recur new-ref*?))
           (let [n (.read stream buf)]
             (if (pos? n)
-              (recur (read-buffer! buf n byte-map name-buf seq-buf rest-buf))
+              (recur (read-buffer! buf n buffers byte-map))
               {:name (create-ba name-buf) :sequence (create-ba seq-buf) :rest-bytes (create-ba rest-buf) :eof? true})))
         {:name (create-ba name-buf) :sequence (create-ba seq-buf) :rest-bytes (create-ba rest-buf) :eof? false}))))
 
 (defn- sequential-read!
-  [stream buffers byte-map loaded-bytes eof?]
+  [stream buf buffers byte-map loaded-bytes eof?]
   (when (or (not eof?) (seq loaded-bytes))
     (lazy-seq
-     (let [m (sequential-read1! stream buffers byte-map loaded-bytes)]
+     (let [m (sequential-read1! stream buf buffers byte-map loaded-bytes)]
        (cons (select-keys m [:name :sequence])
-             (sequential-read! stream buffers byte-map (:rest-bytes m) (:eof? m)))))))
+             (sequential-read! stream buf buffers byte-map (:rest-bytes m) (:eof? m)))))))
 
 (defn- sequential-read
   [stream page-size seq-buf-size byte-map]
@@ -173,8 +174,8 @@
         name-buf (ByteBuffer/allocate 1024)
         seq-buf (ByteBuffer/allocate seq-buf-size)
         rest-buf (ByteBuffer/allocate page-size)]
-    (sequential-read! stream
-                      {:buf buf :name-buf name-buf :seq-buf seq-buf :rest-buf rest-buf}
+    (sequential-read! stream buf
+                      {:name-buf name-buf :seq-buf seq-buf :rest-buf rest-buf}
                       byte-map (byte-array 0) false)))
 
 (defn sequential-read-byte-array

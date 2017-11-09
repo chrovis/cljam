@@ -16,7 +16,7 @@
                                   [cavia "0.4.2"]
                                   [criterium "0.4.4"]
                                   [net.totakke/libra "0.1.0"]
-                                  [org.tcrawley/dynapath "0.2.5"]]
+                                  [org.tcrawley/dynapath "1.0.0"]]
                    :plugins [[lein-binplus "0.6.2" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.3"]
                              [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]

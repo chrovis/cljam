@@ -17,7 +17,7 @@ cljam is available as a Maven artifact from [Clojars](https://clojars.org/cljam)
 To use with Leiningen/Boot, add the following dependency.
 
 ```clojure
-[cljam "0.5.0"]
+[cljam "0.5.1"]
 ```
 
 To use with Maven, add the following dependency.
@@ -26,7 +26,7 @@ To use with Maven, add the following dependency.
 <dependency>
   <groupId>cljam</groupId>
   <artifactId>cljam</artifactId>
-  <version>0.5.0</version>
+  <version>0.5.1</version>
 </dependency>
 ```
 

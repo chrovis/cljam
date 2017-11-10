@@ -8,18 +8,22 @@
 * Add `read-indices` to `ISequenceReader` protocol. [#109](https://github.com/chrovis/cljam/pull/109)
 * Extract region utils to `cljam.util.region` and add some functions. [#110](https://github.com/chrovis/cljam/pull/110)
 * Add region option to view command. [#112](https://github.com/chrovis/cljam/pull/112)
+* Add FASTA-TwoBit converter. [#117](https://github.com/chrovis/cljam/pull/117)
 
 ### Changed
 
 * Make convert parallelism controllable. [#113](https://github.com/chrovis/cljam/pull/113)
 * Java 9 compatibility. [#114](https://github.com/chrovis/cljam/pull/114)
 * Move coverage phase to build stages. [#116](https://github.com/chrovis/cljam/pull/116)
+* Low-memory sequence I/O. [#118](https://github.com/chrovis/cljam/pull/118)
+* Improve performance of FASTA random reading. [#120](https://github.com/chrovis/cljam/pull/120)
 
 ### Fixed
 
 * Fix StackOverflowError in `cljam.io.protocols/read-in-region`. [#107](https://github.com/chrovis/cljam/pull/107)
 * Fix parsing comma-separated number in region. [#111](https://github.com/chrovis/cljam/pull/111)
 * Don't refer `clojure.core/indexed?` in `cljam.io`. [#115](https://github.com/chrovis/cljam/pull/115)
+* Fix a bug that 2bit reader incorrectly reads small n. [#119](https://github.com/chrovis/cljam/pull/119)
 
 ## [0.5.0] - 2017-09-05
 

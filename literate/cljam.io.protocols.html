@@ -2867,7 +2867,7 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.protocols" name="cljam.io.protocols"><h1 class="project-name">cljam.io.protocols</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Protocols of reader/writer for various file formats.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.protocols
-  (:refer-clojure :exclude [read]))</pre></td></tr><tr><td class="docs">
+  (:refer-clojure :exclude [read indexed?]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord SAMAlignment
   [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])
 (defrecord SAMRegionBlock [data ^int ref-id ^int pos ^int end])
@@ -2877,7 +2877,9 @@ net.brehaut.ClojureTools = (function (SH) {
   (reader-path [this]
     &quot;Returns the file's absolute path.&quot;)
   (read [this] [this option]
-    &quot;Sequentially reads contents of the file.&quot;))</pre></td></tr><tr><td class="docs">
+    &quot;Sequentially reads contents of the file.&quot;)
+  (indexed? [this]
+    &quot;Returns true if the reader can be randomly accessed, false if not.&quot;))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defprotocol IWriter
   (writer-path [this]
     &quot;Returns the file's absolute path.&quot;))</pre></td></tr><tr><td class="docs">
@@ -2913,6 +2915,8 @@ net.brehaut.ClojureTools = (function (SH) {
   (write-variants [this variants]
     &quot;Writes variants to thee VCF/BCF file.&quot;))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defprotocol ISequenceReader
+  (read-indices [this]
+    &quot;Reads metadata of indexed sequences in FASTA/2BIT file.&quot;)
   (read-all-sequences [this] [this option]
     &quot;Reads all sequences of FASTA/2BIT file.&quot;)
   (read-sequence [this region] [this region option]

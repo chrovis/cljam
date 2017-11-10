@@ -2870,7 +2870,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (:require [com.climate.claypoole :as cp]
             [com.climate.claypoole.lazy :as lazy]
             [cljam.common :as common]
-            [cljam.util :as util]
+            [cljam.util.region :as region]
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util])
   (:import [cljam.io.protocols SAMRegionBlock]))</pre></td></tr><tr><td class="docs">
@@ -2899,7 +2899,7 @@ net.brehaut.ClojureTools = (function (SH) {
                                 (fn [[start end]]
                                   (with-open [r (sam/clone-bam-reader rdr)]
                                     (count-for-positions (read-fn r start end) start end))) xs)))]
-    (-&gt;&gt; (util/divide-region start end step)
+    (-&gt;&gt; (region/divide-region start end step)
          count-fn
          (apply concat))))</pre></td></tr><tr><td class="docs"><p>Calculate depth of coverage lazily. Returns a lazy seq of depth for range [start, end].
   Requires a <code>cljam.io.bam.reader.BAMReader</code> instance and region.
@@ -2958,7 +2958,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (f (sam/read-blocks rdr region {:mode :region}) start end 0 pile)
       (cp/pdoseq
        n-threads
-       [[s e] (util/divide-region start end step)]
+       [[s e] (region/divide-region start end step)]
        (with-open [r (sam/clone-bam-reader rdr)]
          (-&gt; (sam/read-blocks r {:chr chr, :start s, :end e} {:mode :region})
              (f s e (- s start) pile)))))

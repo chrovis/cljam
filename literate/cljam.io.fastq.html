@@ -2880,7 +2880,8 @@ net.brehaut.ClojureTools = (function (SH) {
   protocols/IReader
   (reader-path [this] (.f this))
   (read [this] (read-sequences this))
-  (read [this opts] (read-sequences this opts)))</pre></td></tr><tr><td class="docs">
+  (read [this opts] (read-sequences this opts))
+  (indexed? [_] false))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype FASTQWriter [writer f]
   Closeable
   (close [this]

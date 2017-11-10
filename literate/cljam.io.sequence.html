@@ -2868,6 +2868,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sequence" name="cljam.io.sequence"><h1 class="project-name">cljam.io.sequence</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to read and write formats representing sequences such as FASTA and
   TwoBit.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sequence
+  (:refer-clojure :exclude [indexed?])
   (:require [cljam.io.fasta.core :as fa-core]
             [cljam.io.fasta.writer :as fa-writer]
             [cljam.io.protocols :as protocols]
@@ -2906,7 +2907,15 @@ net.brehaut.ClojureTools = (function (SH) {
   ([rdr region option] (protocols/read-sequence rdr region option)))</pre></td></tr><tr><td class="docs"><p>Reads all sequences of FASTA/TwoBit file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-all-sequences
   ([rdr] (protocols/read-all-sequences rdr))
-  ([rdr option] (protocols/read-all-sequences rdr option)))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
+  ([rdr option] (protocols/read-all-sequences rdr option)))</pre></td></tr><tr><td class="docs"><p>Reads metadata of indexed sequences. Returns a vector of maps containing
+  :name, :len and other format-specific keys.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-indices
+  [rdr]
+  (protocols/read-indices rdr))</pre></td></tr><tr><td class="docs"><p>Returns true if the reader can be randomly accessed, false if not. Note this
+  function immediately realizes a delayed index.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn indexed?
+  [rdr]
+  (protocols/indexed? rdr))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.fasta.writer.FASTAWriter of f with options:
     :cols - Maximum number of characters written in one row.
     :create-index? - If true, .fai will be created simultaneously.
@@ -2915,17 +2924,21 @@ net.brehaut.ClojureTools = (function (SH) {
   ([f]
    (fasta-writer f {}))
   ([f options]
-   (fa-writer/writer f options)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.twobit.writer.TwoBitWriter of f. Should be used
-  inside with-open to ensure the writer is properly closed.</p>
+   (fa-writer/writer f options)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.twobit.writer.TwoBitWriter of f with options:
+    :index - metadata of indexed sequences. The amount of memory usage can be
+      reduced if index is supplied.
+  Should be used inside with-open to ensure the writer is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^TwoBitWriter twobit-writer
-  [f]
-  (tb-writer/writer f))</pre></td></tr><tr><td class="docs"><p>Selects suitable writer from f's extension, returning the open writer. This
+  ([f]
+   (twobit-writer f {}))
+  ([f options]
+   (tb-writer/writer f options)))</pre></td></tr><tr><td class="docs"><p>Selects suitable writer from f's extension, returning the open writer. This
   function supports FASTA and TwoBit format.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^Closeable writer
   [f &amp; options]
   (case (io-util/file-type f)
     :fasta (apply fasta-writer f options)
-    :2bit (twobit-writer f)
+    :2bit (apply twobit-writer f options)
     (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Writes all sequences to FASTA/TwoBit file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-sequences
   [wtr seqs]

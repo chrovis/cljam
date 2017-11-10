@@ -2869,6 +2869,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (its binary equivalent). See https://samtools.github.io/hts-specs/ for the
   detail SAM/BAM specifications.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam
+  (:refer-clojure :exclude [indexed?])
   (:require [cljam.io.sam.reader :as sam-reader]
             [cljam.io.sam.writer :as sam-writer]
             [cljam.io.bam.core :as bam-core]
@@ -2915,7 +2916,11 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn read-blocks
   ([rdr] (protocols/read-blocks rdr))
   ([rdr region] (protocols/read-blocks rdr region))
-  ([rdr region option] (protocols/read-blocks rdr region option)))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
+  ([rdr region option] (protocols/read-blocks rdr region option)))</pre></td></tr><tr><td class="docs"><p>Returns true if the reader can be randomly accessed, false if not. Note this
+  function immediately realizes a delayed index.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn indexed?
+  [rdr]
+  (protocols/indexed? rdr))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.sam.writer.SAMWriter of f. Should be used inside
   with-open to ensure the writer is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^SAMWriter sam-writer

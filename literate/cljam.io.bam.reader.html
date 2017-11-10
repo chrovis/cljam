@@ -2890,6 +2890,12 @@ net.brehaut.ClojureTools = (function (SH) {
     (protocols/read this {}))
   (read [this region]
     (protocols/read-alignments this region))
+  (indexed? [this]
+    (try
+      @(.index-delay this)
+      true
+      (catch FileNotFoundException _
+        false)))
   protocols/IAlignmentReader
   (read-header [this]
     (.header this))
@@ -2927,7 +2933,7 @@ net.brehaut.ClojureTools = (function (SH) {
         (read-blocks-randomly* this chr start end decoder))))
   protocols/IRegionReader
   (read-in-region [this region]
-    (protocols/read-in-region this region))
+    (protocols/read-in-region this region {}))
   (read-in-region [this region _]
     (protocols/read-alignments this region)))</pre></td></tr><tr><td class="docs"><p>Reads a single alignment block from a reader.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- ^&quot;[B&quot; read-a-block!

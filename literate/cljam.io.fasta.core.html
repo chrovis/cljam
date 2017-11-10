@@ -2892,13 +2892,15 @@ net.brehaut.ClojureTools = (function (SH) {
   [f]
   (let [f (.getAbsolutePath (cio/file f))]
     (FASTAReader. (RandomAccessFile. f &quot;r&quot;)
+                  (util/compressor-input-stream f)
                   f
                   (delay (fasta-index f)))))</pre></td></tr><tr><td class="docs"><p>Clones fasta reader sharing persistent objects.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader clone-reader
   [^FASTAReader rdr]
   (let [f (.f rdr)
-        raf (RandomAccessFile. ^String f &quot;r&quot;)]
-    (FASTAReader. raf f (.index-delay rdr))))</pre></td></tr><tr><td class="docs">
+        raf (RandomAccessFile. ^String f &quot;r&quot;)
+        stream (util/compressor-input-stream f)]
+    (FASTAReader. raf stream f (.index-delay rdr))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-headers
   [^FASTAReader rdr]
   (try
@@ -2924,17 +2926,22 @@ net.brehaut.ClojureTools = (function (SH) {
   [rdr]
   (reader/reset rdr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn sequential-read
-  ([f]
-   (sequential-read f {}))
-  ([f opts]
-   (with-open [stream (util/compressor-input-stream f)]
-     (reader/sequential-read-string stream (* 1024 1024 10) 536870912 opts))))</pre></td></tr><tr><td class="docs">
+  ([rdr]
+   (sequential-read rdr {}))
+  ([^FASTAReader rdr opts]
+   (reader/sequential-read-string (.stream rdr) (* 1024 1024 10) 536870912 opts)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(extend-type FASTAReader
   protocols/IReader
   (reader-path [this] (.f this))
   (read
     ([this] (protocols/read this {}))
     ([this option] (protocols/read-all-sequences this option)))
+  (indexed? [this]
+    (try
+      @(.index-delay this)
+      true
+      (catch FileNotFoundException _
+        false)))
   protocols/IRegionReader
   (read-in-region
     ([this region]
@@ -2942,10 +2949,12 @@ net.brehaut.ClojureTools = (function (SH) {
     ([this region option]
      (protocols/read-sequence this region option)))
   protocols/ISequenceReader
+  (read-indices
+    [this] (read-indices this))
   (read-all-sequences
     ([this] (protocols/read-all-sequences this {}))
     ([this opts]
-     (sequential-read (.f this) opts)))
+     (sequential-read this opts)))
   (read-sequence
     ([this region]
      (protocols/read-sequence this region {}))

@@ -2873,7 +2873,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (:import [java.io Closeable OutputStream DataOutputStream BufferedOutputStream FileOutputStream]
            [java.nio ByteBuffer]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare write-sequences)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype TwoBitWriter [f writer]
+</td><td class="codes"><pre class="brush: clojure">(deftype TwoBitWriter [f writer file-output-stream index]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
@@ -2884,12 +2884,12 @@ net.brehaut.ClojureTools = (function (SH) {
   (write-sequences [this seqs]
     (write-sequences this seqs)))</pre></td></tr><tr><td class="docs"><p>Returns a 2bit writer of f.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn writer
-  [f]
+  [f {:keys [index]}]
   (let [abs-f (.getAbsolutePath (cio/file f))
         fos (FileOutputStream. abs-f)
         bos (BufferedOutputStream. fos)
         dos (DataOutputStream. bos)]
-    (TwoBitWriter. abs-f dos)))</pre></td></tr><tr><td class="docs"><p>Writes a 2bit file header. Supports little-endian only.</p>
+    (TwoBitWriter. abs-f dos fos index)))</pre></td></tr><tr><td class="docs"><p>Writes a 2bit file header. Supports little-endian only.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- write-file-header!
   [w nseq]
   (lsb/write-int w 0x1A412743)
@@ -2937,17 +2937,21 @@ net.brehaut.ClojureTools = (function (SH) {
   (-&gt; (fn [{:keys [name]}]
         (+ 1 (count name) 4))
       map
-      (transduce + 0 seqs)))</pre></td></tr><tr><td class="docs"><p>Writes index section to writer.</p>
+      (transduce + 0 seqs)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-index!
-  [w seqs]
-  (loop [offset (+ (* 4 4) (index-size seqs)) xs seqs]
-    (when-let [{:keys [name sequence masks ambs]} (first xs)]
-      (let [header-size (+ 4 4 (* 2 4 (count ambs)) 4 (* 2 4 (count masks)) 4)
-            seq-size (quot (dec (+ (count sequence) 4)) 4)]
-        (lsb/write-ubyte w (count name))
-        (lsb/write-string w name)
-        (lsb/write-int w offset)
-        (recur (+ offset header-size seq-size) (next xs))))))</pre></td></tr><tr><td class="docs">
+  [w idx]
+  (loop [offset (+ (* 4 4) (reduce + (map #(+ 1 (count (:name %)) 4) idx)))
+         idx idx]
+    (when-let [{:keys [name len]} (first idx)]
+      (lsb/write-ubyte w (count name))
+      (lsb/write-string w name)
+      (lsb/write-int w offset)
+      (recur (+ offset
+                (if-let [{:keys [ambs masks]} (first idx)]
+                  (+ 4 4 (* 2 4 (count ambs)) 4 (* 2 4 (count masks)) 4)
+                  0) ; dummy
+                (quot (dec (+ len 4)) 4))
+             (next idx)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private
   char-&gt;twobit
   (doto (byte-array 128)
@@ -2976,9 +2980,11 @@ net.brehaut.ClojureTools = (function (SH) {
           (recur (bit-or b (bit-shift-left (aget table (.get bb)) (* 2 (- 4 i)))) (dec i))
           (.write o (unchecked-int b)))))))</pre></td></tr><tr><td class="docs"><p>Writes a single sequence entry to writer.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- write-sequence!
-  [w {:keys [sequence masks ambs]}]
-  (let []
-    (lsb/write-int w (count sequence))
+  [w sequence idx]
+  (let [name (or (:name sequence) (:rname sequence))
+        seq-data (or (:seq sequence) (:sequence sequence))
+        {:keys [len ambs masks]} (first (filter #(= (:name %) name) idx))]
+    (lsb/write-int w len)
     (lsb/write-int w (count ambs))
     (doseq [[s _] ambs]
       (lsb/write-int w s))
@@ -2990,22 +2996,43 @@ net.brehaut.ClojureTools = (function (SH) {
     (doseq [[_ l] masks]
       (lsb/write-int w l))
     (lsb/write-int w 0)
-    (write-twobit! w sequence)))</pre></td></tr><tr><td class="docs"><p>Write all sequences to wtr.
-  Input sequences must be a sequence of maps.</p>
+    (write-twobit! w seq-data)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- write-sequences-without-index
+  [^TwoBitWriter wtr xs]
+  (let [idx (map (fn [{:keys [name rname seq sequence]}]
+                   (let [seq-data (or seq sequence)]
+                     {:name (or name rname)
+                      :len (count seq-data)
+                      :masks (mask-regions seq-data)
+                      :ambs (amb-regions seq-data)}))
+                 xs)]
+    (write-file-header! (.writer wtr) (count xs))
+    (write-index! (.writer wtr) idx)
+    (doseq [sequence xs]
+      (write-sequence! (.writer wtr) sequence idx))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- write-sequences-with-index
+  [^TwoBitWriter wtr idx xs]
+  (let [idx-atom (atom idx)]
+    (write-file-header! (.writer wtr) (count @idx-atom))
+    (write-index! (.writer wtr) @idx-atom)
+    (doseq [sequence xs]
+      (let [name (or (:name sequence) (:rname sequence))
+            seq-data (or (:seq sequence) (:sequence sequence))
+            masks (mask-regions seq-data)
+            ambs (amb-regions seq-data)
+            i (first (keep-indexed #(if (= (:name %2) name) %1) @idx-atom))]
+        (swap! idx-atom update i assoc :masks masks :ambs ambs))
+      (write-sequence! (.writer wtr) sequence @idx-atom))
+    ;; finalize
+    (.flush ^DataOutputStream (.writer wtr))
+    (let [ch (.getChannel ^FileOutputStream (.file-output-stream wtr))]
+      (.position ch 16)
+      (write-index! ch @idx-atom))))</pre></td></tr><tr><td class="docs"><p>Writes all sequences to wtr. Input sequences must be a sequence of maps.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-sequences
   [^TwoBitWriter wtr xs]
-  (let [seqs (map (fn [{:keys [name rname seq sequence]}]
-                    (let [chr-name (or name rname)
-                          seq-data (or seq sequence)]
-                      {:name chr-name
-                       :sequence seq-data
-                       :masks (mask-regions seq-data)
-                       :ambs (amb-regions seq-data)}))
-                  xs)]
-    (write-file-header! (.writer wtr) (count xs))
-    (write-index! (.writer wtr) seqs)
-    (doseq [s seqs]
-      (write-sequence! (.writer wtr) s))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (if (nil? (.index wtr))
+    (write-sequences-without-index wtr xs)
+    (write-sequences-with-index wtr (.index wtr) xs)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

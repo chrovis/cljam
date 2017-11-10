@@ -2865,106 +2865,132 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.vcf" name="cljam.io.vcf"><h1 class="project-name">cljam.io.vcf</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to read and write the VCF (Variant Call Format) format and BCF (its
-  binary equivalent). See https://samtools.github.io/hts-specs/ for the detail
-  VCF/BCF specifications.</p>
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.vcf
-  (:require [clojure.java.io :as cio]
-            [cljam.util :as util]
-            [cljam.io.protocols :as protocols]
-            [cljam.io.util :as io-util]
-            [cljam.io.vcf.reader :as vcf-reader]
-            [cljam.io.vcf.writer :as vcf-writer]
-            [cljam.io.bcf.reader :as bcf-reader]
-            [cljam.io.bcf.writer :as bcf-writer])
-  (:import java.io.Closeable
-           cljam.io.vcf.reader.VCFReader
-           cljam.io.vcf.writer.VCFWriter
-           cljam.io.bcf.reader.BCFReader
-           cljam.io.bcf.writer.BCFWriter))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.vcf.reader.VCFReader of f. Should be used inside
-  with-open to ensure the reader is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^VCFReader vcf-reader
-  [f]
-  (let [meta-info (with-open [r (cio/reader (util/compressor-input-stream f))]
-                    (vcf-reader/load-meta-info r))
-        header (with-open [r (cio/reader (util/compressor-input-stream f))]
-                 (vcf-reader/load-header r))]
-    (VCFReader. (.getAbsolutePath (cio/file f)) meta-info header
-                (cio/reader (util/compressor-input-stream f)))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bcf.reader.BCFReader of f. Should be used inside
-  with-open to ensure the reader is properly closed. Throws IOException if
-  failed to parse BCF file format.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BCFReader bcf-reader
-  [f]
-  (bcf-reader/reader f))</pre></td></tr><tr><td class="docs"><p>Selects suitable reader from f's extension, returning the open reader. This
-  function supports VCF and BCF formats.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^Closeable reader
-  [f]
-  (case (io-util/file-type f)
-    :vcf (vcf-reader f)
-    :bcf (bcf-reader f)
-    (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Returns meta-info section of VCF/BCF file as a map.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn meta-info
-  [rdr]
-  (protocols/meta-info rdr))</pre></td></tr><tr><td class="docs"><p>Returns header of VCF/BCF file as a sequence of strings.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn header
-  [rdr]
-  (protocols/header rdr))</pre></td></tr><tr><td class="docs"><p>Reads variants of the VCF/BCF file, returning them as a lazy sequence. rdr
-  must implement cljam.io.protocols/IVariantReader. Can take a option :depth to
-  specify parsing level, default :deep. &lt;:deep|:vcf|:bcf|:shallow|:raw>
-    :deep - Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
-    :vcf - VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.
-    :bcf - BCF-style map. CHROM, FILTER, INFO and :genotype contains indices to meta-info.
-    :shallow - Only CHROM, POS and ref-length are parsed.
-    :raw - Raw map of ByteBufers.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn read-variants
-  ([rdr] (protocols/read-variants rdr))
-  ([rdr option] (protocols/read-variants rdr option)))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.vcf.writer.VCFWriter of f. Meta-information lines
-  and a header line will be written in this function. Should be used inside
-  with-open to ensure the writer is properly closed. e.g.</p>
-
-<pre><code>(with-open [wtr (vcf-writer "out.vcf"
-                            {:file-date "20090805", :source "myImpu..." ...}
-                            ["CHROM" "POS" "ID" "REF" "ALT" ...])]
-  (WRITING-VCF))
-</code></pre>
-</td><td class="codes"><pre class="brush: clojure">(defn ^VCFWriter vcf-writer
-  [f meta-info header]
-  (doto (VCFWriter. (.getAbsolutePath (cio/file f))
-                    (cio/writer (util/compressor-output-stream f))
-                    meta-info
-                    header)
-    (vcf-writer/write-meta-info meta-info)
-    (vcf-writer/write-header header)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bcf.writer.BCFWriter of f. Meta-information lines
-  and a header line will be written in this function. Should be used inside
-  with-open to ensure the writer is properly closed. e.g.</p>
-
-<pre><code> (with-open [wtr (bcf-writer "out.bcf"
-                             {:file-date "20090805", :source "myImpu..." ...}
-                             ["CHROM" "POS" "ID" "REF" "ALT" ...])]
-   (WRITING-BCF))
-</code></pre>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BCFWriter bcf-writer
-  [f meta-info header]
-  (bcf-writer/writer f meta-info header))</pre></td></tr><tr><td class="docs"><p>Selects suitable writer from f's extension, returning the open writer. This
-  function supports VCF and BCF formats.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^Closeable writer
-  [f meta-info header]
-  (case (io-util/file-type f)
-    :vcf (vcf-writer f meta-info header)
-    :bcf (bcf-writer f meta-info header)
-    (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Writes variants to the VCF/BCF file. wtr must implement
-  cljam.io.protocols/IVariantWriter. variants must be a sequence of parsed or
-  VCF-style maps. e.g.</p>
-
-<pre><code>(write-variants [{:chr "19", :pos 111, :id nil, :ref "A",
-                  :alt ["C"], :qual 9.6, :filter [:PASS], :info {:DP 4},
-                  :FORMAT [:GT :HQ] ...} ...])
-</code></pre>
-</td><td class="codes"><pre class="brush: clojure">(defn write-variants
-  [wtr variants]
-  (protocols/write-variants wtr variants))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.util.region" name="cljam.util.region"><h1 class="project-name">cljam.util.region</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utility functions for manipulating chromosomal regions.</p>
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.util.region
+  (:require [clojure.string :as cstr]
+            [proton.core :as proton]))</pre></td></tr><tr><td class="docs"><h2>region conversion</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Returns a lazy sequence of merged regions. Input regions must be sorted.
+  Neighboring regions apart less than or equal to 'max-gap' will be merged
+  with 'merge-fn'. Returns a stateful transducer when no input 'regions' is
+  provided.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn merge-regions-with
+  ([merge-fn]
+   (merge-regions-with merge-fn 0))
+  ([merge-fn ^long max-gap]
+   (fn merge-regions-transducer [rf]
+     (let [last-reg (volatile! nil)]
+       (fn merge-regions-rf
+         ([] (rf))
+         ([r] (rf (if-let [l @last-reg] (rf r l) r)))
+         ([r x] (if-let [l @last-reg]
+                  (if (and (= (:chr l) (:chr x))
+                           (&lt;= (- (dec (:start x)) (:end l)) max-gap))
+                    (do (vswap! last-reg merge-fn x) r)
+                    (do (vreset! last-reg x) (rf r l)))
+                  (do (vreset! last-reg x) r)))))))
+  ([merge-fn ^long max-gap regs]
+   (if-let [f (first regs)]
+     (if-let [s (second regs)]
+       (if (and (= (:chr f) (:chr s))
+                (&lt;= (- (dec (:start s)) (:end f)) max-gap))
+         (let [next-regs (cons (merge-fn f s) (nnext regs))]
+           (lazy-seq (merge-regions-with merge-fn max-gap next-regs)))
+         (cons f (lazy-seq (merge-regions-with merge-fn max-gap (next regs)))))
+       [f])
+     [])))</pre></td></tr><tr><td class="docs"><p>Default function to merge two regions.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- merge-two-regions
+  [x y]
+  (update x :end max (:end y)))</pre></td></tr><tr><td class="docs"><p>Same as 'merge-regions-with' except for 'merge-two-regions' is
+  partially applied as merge-fn.</p>
+</td><td class="codes"><pre class="brush: clojure">(def
+  ^{:doc 
+    :arglists '([] [max-gap] [max-gap regions])}
+  merge-regions
+  (partial merge-regions-with merge-two-regions))</pre></td></tr><tr><td class="docs"><p>Subtract a region from another one.
+  Returns a vector of regions.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn subtract-region
+  [lhs-reg rhs-reg]
+  (if (= (:chr lhs-reg) (:chr rhs-reg))
+    (filterv
+     #(&lt;= (:start %) (:end %))
+     [(update lhs-reg :end min (dec (:start rhs-reg)))
+      (update lhs-reg :start max (inc (:end rhs-reg)))])
+    [lhs-reg]))</pre></td></tr><tr><td class="docs"><p>Returns a sequence of regions complement to in-regions.
+  in-regions must be sorted.
+  Returns a stateful transducer when no regions provided.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn complement-regions
+  ([base-region]
+   (fn [rf]
+     (let [last-reg (volatile! base-region)]
+       (fn
+         ([] (rf))
+         ([r] (rf (if-let [l @last-reg] (rf r l) r)))
+         ([r x]
+          (if-let [l @last-reg]
+            (let [[a b] (subtract-region l x)]
+              (vreset! last-reg (or b a))
+              (if b (rf r a) r))
+            r))))))
+  ([base-region in-regions]
+   (if-let [reg (first in-regions)]
+     (if-let [[a b] (seq (subtract-region base-region reg))]
+       (if b
+         (cons a (lazy-seq (complement-regions b (next in-regions))))
+         (lazy-seq (complement-regions a (next in-regions))))
+       [])
+     [base-region])))</pre></td></tr><tr><td class="docs"><p>Divides a region [start end] into several chunks with maximum length 'step'.
+  Returns a lazy sequence of vector.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn divide-region
+  [start end step]
+  (-&gt;&gt; [(inc end)]
+       (concat (range start (inc end) step))
+       (partition 2 1)
+       (map (fn [[s e]] [s (dec e)]))))</pre></td></tr><tr><td class="docs"><p>Divides refs into several chunks with maximum length 'step'.
+  Returns a lazy sequence of map containing {:chr :start :end}.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn divide-refs
+  [refs step]
+  (mapcat
+   (fn [{:keys [name len]}]
+     (map (fn [[s e]] {:chr name :start s :end e})
+          (divide-region 1 len step)))
+   refs))</pre></td></tr><tr><td class="docs"><h2>validation</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Checks if the given rname conforms to the spec of sam.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn valid-rname?
+  [rname]
+  (and rname (string? rname) (re-matches #&quot;[!-)+-&lt;&gt;-~][!-~]*&quot; rname)))</pre></td></tr><tr><td class="docs"><p>Checks if the given region map is a valid 1-based closed range.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn valid-region?
+  [{:keys [chr start end]}]
+  (and start end
+       (valid-rname? chr)
+       (number? start) (pos? start)
+       (number? end) (pos? end)
+       (&lt;= start end)))</pre></td></tr><tr><td class="docs"><h2>region <=> string</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Parse a region string into a map.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn parse-region
+  [region-str]
+  (when region-str
+    (let [pattern #&quot;([!-)+-&lt;&gt;-~][!-~]*?)(:([\d,]+)?(-([\d,]+))?)?&quot;
+          [_ chr _ start _ end] (re-matches pattern region-str)
+          start' (proton/as-long start)
+          end' (proton/as-long end)]
+      (when chr
+        (cond-&gt; {:chr chr}
+          start' (assoc :start start')
+          end' (assoc :end end'))))))</pre></td></tr><tr><td class="docs"><p>Parse a region string into a map strictly.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn parse-region-strict
+  [region-str]
+  (let [region-map (parse-region region-str)]
+    (when (valid-region? region-map) region-map)))</pre></td></tr><tr><td class="docs"><p>Format a region map into a string.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn format-region
+  [{:keys [chr start end]}]
+  (let [result (-&gt;&gt; [chr start end]
+                    (take-while some?)
+                    (interleave [nil \: \-])
+                    (apply str))]
+    (when-not (cstr/blank? result) result)))</pre></td></tr><tr><td class="docs"><p>Format a region map into a string strictly.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn format-region-strict
+  [region-map]
+  (when (valid-region? region-map) (format-region region-map)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

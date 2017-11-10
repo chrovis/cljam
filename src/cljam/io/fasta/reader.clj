@@ -1,7 +1,6 @@
 (ns cljam.io.fasta.reader
   (:refer-clojure :exclude [read])
-  (:require [clojure.string :as cstr]
-            [cljam.util :refer [graph?]]
+  (:require [cljam.util :refer [graph?]]
             [cljam.io.fasta.util :refer [header-line? parse-header-line]]
             [cljam.io.fasta-index.core :as fasta-index])
   (:import [java.io RandomAccessFile InputStream]

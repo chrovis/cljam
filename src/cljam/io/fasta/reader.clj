@@ -1,11 +1,11 @@
 (ns cljam.io.fasta.reader
   (:refer-clojure :exclude [read])
-  (:require [clojure.string :as cstr]
-            [cljam.util :refer [graph?]]
+  (:require [cljam.util :refer [graph?]]
             [cljam.io.fasta.util :refer [header-line? parse-header-line]]
             [cljam.io.fasta-index.core :as fasta-index])
   (:import [java.io RandomAccessFile InputStream]
-           [java.nio ByteBuffer]))
+           [java.nio ByteBuffer CharBuffer]
+           [java.nio.channels FileChannel$MapMode]))
 
 ;; FASTAReader
 ;; -----------
@@ -73,34 +73,35 @@
                      (map? s) (cons s (lazy-seq (read-fn* rdr name))))))]
     (read-fn rdr nil)))
 
-(defn- read-sequence-with-offset
-  [^FASTAReader rdr offset-start offset-end {:keys [mask?]}]
-  (let [len (- offset-end offset-start)
-        ba (byte-array len)
+(defn read-sequence
+  [^FASTAReader rdr name start end {:keys [mask?]}]
+  (let [fai @(.index-delay rdr)
+        {:keys [len]} (fasta-index/get-header fai name)
+        buf (CharBuffer/allocate (inc (- end start)))
         r ^RandomAccessFile (.reader rdr)]
-    (doto r
-      (.seek offset-start)
-      (.read ba 0 len))
-    (-> (String. ba)
-        (cstr/replace #"\n" "")
-        ((if mask? identity cstr/upper-case)))))
+    (when-let [[s e] (fasta-index/get-span fai name (dec start) end)]
+      (dotimes [_ (- 1 start)]
+        (.put buf \N))
+      (let [mbb (.. r getChannel (map FileChannel$MapMode/READ_ONLY s (- e s)))]
+        (if mask?
+          (while (.hasRemaining mbb)
+            (let [c (unchecked-char (.get mbb))]
+              (when-not (or (= \newline c) (= \return c))
+                (.put buf c))))
+          (while (.hasRemaining mbb)
+            (let [c (unchecked-long (.get mbb))]
+              (when-not (or (= 10 c) (= 13 c))
+                ;; toUpperCase works only for ASCII chars.
+                (.put buf (unchecked-char (bit-and c 0x5f))))))))
+      (dotimes [_ (- end len)]
+        (.put buf \N))
+      (.flip buf)
+      (.toString buf))))
 
 (defn read-whole-sequence
   [^FASTAReader rdr name opts]
-  (let [fai @(.index-delay rdr)
-        header (fasta-index/get-header fai name)
-        [offset-start offset-end] (fasta-index/get-span fai name 0 (:len header))]
-    (read-sequence-with-offset rdr offset-start offset-end opts)))
-
-(defn read-sequence
-  [^FASTAReader rdr name start end opts]
-  (let [fai @(.index-delay rdr)
-        header (fasta-index/get-header fai name)]
-    (when-let [[offset-start offset-end] (fasta-index/get-span fai name (dec start) end)]
-      (->> (concat (repeat (max 0 (- 1 start)) \N)
-                   (read-sequence-with-offset rdr offset-start offset-end opts)
-                   (repeat (max 0 (- end (:len header))) \N))
-           (apply str)))))
+  (let [{:keys [len]} (fasta-index/get-header @(.index-delay rdr) name)]
+    (read-sequence rdr name 1 len opts)))
 
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."

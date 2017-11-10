@@ -1,6 +1,5 @@
 (ns cljam.io.fasta.core-test
   (:require [clojure.test :refer :all]
-            [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [cljam.test-common :refer :all]
             [cljam.io.fasta.core :as fa-core]))

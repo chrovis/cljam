@@ -5,7 +5,7 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
   :dependencies [[org.clojure/tools.logging "0.4.0"]
                  [org.clojure/tools.cli "0.3.5"]
-                 [org.apache.commons/commons-compress "1.14"]
+                 [org.apache.commons/commons-compress "1.15"]
                  [clj-sub-command "0.3.0"]
                  [digest "1.4.6"]
                  [bgzf4j "0.1.0"]
@@ -16,11 +16,11 @@
                                   [cavia "0.4.2"]
                                   [criterium "0.4.4"]
                                   [net.totakke/libra "0.1.0"]
-                                  [org.tcrawley/dynapath "0.2.5"]]
+                                  [org.tcrawley/dynapath "1.0.0"]]
                    :plugins [[lein-binplus "0.6.2" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.3"]
-                             [lein-marginalia "0.9.0" :exclusions [org.clojure/clojure]]
-                             [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure org.tcrawley/dynapath]]
+                             [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]
+                             [lein-cloverage "1.0.10" :exclusions [org.clojure/clojure org.tcrawley/dynapath]]
                              [net.totakke/lein-libra "0.1.0"]]
                    :test-selectors {:default #(not-any? % [:slow :remote])
                                     :slow :slow ; Slow tests with local resources
@@ -30,7 +30,7 @@
                    :global-vars {*warn-on-reflection* true}}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
-             :1.9 {:dependencies [[org.clojure/clojure "1.9.0-beta2"]]}
+             :1.9 {:dependencies [[org.clojure/clojure "1.9.0-RC1"]]}
              :uberjar {:dependencies [[org.clojure/clojure "1.8.0"]
                                       [org.apache.logging.log4j/log4j-api "2.9.1"]
                                       [org.apache.logging.log4j/log4j-core "2.9.1"]]

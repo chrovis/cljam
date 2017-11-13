@@ -66,8 +66,8 @@
 (defn- long-list->str
   "Inverse function of str->long-list."
   [xs]
-  (when-not (nil? xs)
-    (apply str (interpose "," xs))))
+  (when (seq xs)
+    (cstr/join "," xs)))
 
 (defn- update-some
   "Same as update if map 'm' contains key 'k'. Otherwise returns the original map 'm'."
@@ -138,8 +138,7 @@
            (update-some :block-starts long-list->str))
        ((apply juxt bed-columns))
        (take-while identity)
-       (interpose " ")
-       (apply str)))
+       (cstr/join \tab)))
 
 (defn- header-or-comment?
   "Checks if given string is neither a header nor a comment line."
@@ -215,8 +214,7 @@
   (let [w ^BufferedWriter (.writer wtr)]
     (->> xs
          (map serialize-bed)
-         (interpose "\n")
-         ^String (apply str)
+         (cstr/join \newline)
          (.write w))))
 
 (defn write-fields
@@ -225,6 +223,5 @@
   (let [w ^BufferedWriter (.writer wtr)]
     (->> xs
          (map (comp serialize-bed denormalize))
-         (interpose "\n")
-         ^String (apply str)
+         (cstr/join \newline)
          (.write w))))

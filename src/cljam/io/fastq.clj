@@ -4,7 +4,8 @@
             [clojure.string :as string]
             [cljam.io.protocols :as protocols]
             [cljam.util :as util])
-  (:import [java.io Closeable]))
+  (:import [java.io Closeable]
+           [java.nio CharBuffer]))
 
 (declare read-sequences write-sequences)
 
@@ -87,7 +88,7 @@
 
 (defn- ^String serialize-fastq
   "Serialize a FASTQRead to FASTQ format string."
-  [^FASTQRead {:keys [name sequence quality]}
+  [^FASTQRead {:keys [^String name ^String sequence quality]}
    {:keys [encode-quality] :or {encode-quality :phred33}}]
   {:pre [(not-empty name)
          (not-empty sequence)
@@ -97,16 +98,24 @@
                     :phred33 (<= 0 % 93)
                     :phred64 (<= 0 % 62)
                     true) quality)]}
-  (-> [(str "@" name)
-       sequence
-       "+"
-       (apply str (map #(case encode-quality
-                          :phred33 (char (+ % 33))
-                          :phred64 (char (+ % 64))
-                          %)
-                       quality))]
-      (interleave (repeat \newline))
-      (as-> x (apply str x))))
+  (let [cb (CharBuffer/allocate (+ 6 (.length name) (.length sequence) (.length sequence)))]
+    (.put cb \@)
+    (.put cb name)
+    (.put cb \newline)
+    (.put cb sequence)
+    (.put cb \newline)
+    (.put cb \+)
+    (.put cb \newline)
+    (if (string? quality)
+      (.put cb ^String quality)
+      (doseq [q quality]
+        (.put cb (char (case encode-quality
+                         :phred33 (+ q 33)
+                         :phred64 (+ q 64)
+                         q)))))
+    (.put cb \newline)
+    (.flip cb)
+    (.toString cb)))
 
 (defn write-sequences
   "Write given sequence of reads to a FASTQ file."

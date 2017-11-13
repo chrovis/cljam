@@ -58,8 +58,7 @@
          (:species m) (conj (str "species=\"" (:species m) "\""))
          (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m)))
          (:idx m) (conj (str "idx=" (:idx m))))
-       (interpose ",")
-       (apply str)))
+       (cstr/join \,)))
 
 (defn- stringify-meta-info-info
   [m]
@@ -70,16 +69,14 @@
          (:source m) (conj (str "Source=" (:source m)))
          (:version m) (conj (str "Version=" (:version m)))
          (:idx m) (conj (str "idx=" (:idx m))))
-       (interpose ",")
-       (apply str)))
+       (cstr/join \,)))
 
 (defn- stringify-meta-info-filter
   [m]
   (->> (cond-> [(str "ID=" (:id m))
                 (str "Description=\"" (:description m) "\"")]
          (:idx m) (conj (str "idx=" (:idx m))))
-       (interpose ",")
-       (apply str)))
+       (cstr/join \,)))
 
 (defn- stringify-meta-info-format
   [m]
@@ -88,15 +85,13 @@
                 (str "Type=" (nil->dot (:type m)))
                 (str "Description=\"" (:description m) "\"")]
          (:idx m) (conj (str "idx=" (:idx m))))
-       (interpose ",")
-       (apply str)))
+       (cstr/join \,)))
 
 (defn- stringify-meta-info-alt
   [m]
   (->> [(str "ID=" (:id m))
         (str "Description=\"" (:description m) "\"")]
-       (interpose ",")
-       (apply str)))
+       (cstr/join \,)))
 
 (defn- stringify-meta-info-sample
   [m]
@@ -104,16 +99,14 @@
         (str "Genomes=" (:genomes m))
         (str "Mixture=" (:mixture m))
         (str "Description=\"" (:description m) "\"")]
-       (interpose ",")
-       (apply str)))
+       (cstr/join \,)))
 
 (defn- stringify-meta-info-pedigree
   [m]
   (->> (range (count m))
        (map (fn [i]
               (str "Name_" i "=" (get m (keyword (str "name-" i))))))
-       (interpose ",")
-       (apply str)))
+       (cstr/join \,)))
 
 (defn stringify-structured-line
   [k m]
@@ -152,7 +145,7 @@
 
 (defn ^String stringify-header
   [header]
-  (str header-prefix (apply str (interpose "\t" header))))
+  (str header-prefix (cstr/join \tab header)))
 
 (defn write-header
   [^VCFWriter wtr header]
@@ -163,7 +156,8 @@
 
 (defn- stringify-data-line-alt
   [v]
-  (if v (apply str (interpose "," v))))
+  (if v
+    (cstr/join \, v)))
 
 (defn- stringify-data-line-qual
   [x]
@@ -181,8 +175,7 @@
                  (map keyword (drop 8 header)))
          (map #(get m* %))
          (map nil->dot)
-         (interpose "\t")
-         (apply str))))
+         (cstr/join \tab))))
 
 (defn write-variants
   [^VCFWriter wtr variants]

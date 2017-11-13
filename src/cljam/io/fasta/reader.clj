@@ -75,33 +75,27 @@
 
 (defn read-sequence
   [^FASTAReader rdr name start end {:keys [mask?]}]
-  (let [fai @(.index-delay rdr)
-        {:keys [len]} (fasta-index/get-header fai name)
-        buf (CharBuffer/allocate (inc (- end start)))
-        r ^RandomAccessFile (.reader rdr)]
-    (when-let [[s e] (fasta-index/get-span fai name (dec start) end)]
-      (dotimes [_ (- 1 start)]
-        (.put buf \N))
-      (let [mbb (.. r getChannel (map FileChannel$MapMode/READ_ONLY s (- e s)))]
-        (if mask?
-          (while (.hasRemaining mbb)
-            (let [c (unchecked-char (.get mbb))]
-              (when-not (or (= \newline c) (= \return c))
-                (.put buf c))))
-          (while (.hasRemaining mbb)
-            (let [c (unchecked-long (.get mbb))]
-              (when-not (or (= 10 c) (= 13 c))
-                ;; toUpperCase works only for ASCII chars.
-                (.put buf (unchecked-char (bit-and c 0x5f))))))))
-      (dotimes [_ (- end len)]
-        (.put buf \N))
-      (.flip buf)
-      (.toString buf))))
-
-(defn read-whole-sequence
-  [^FASTAReader rdr name opts]
-  (let [{:keys [len]} (fasta-index/get-header @(.index-delay rdr) name)]
-    (read-sequence rdr name 1 len opts)))
+  (let [fai @(.index-delay rdr)]
+    (when-let [len (:len (fasta-index/get-header fai name))]
+      (let [start' (max 1 (or start 1))
+            end' (min len (or end len))]
+        (when (<= start' end')
+          (let [buf (CharBuffer/allocate (inc (- end' start')))
+                r ^RandomAccessFile (.reader rdr)]
+            (when-let [[s e] (fasta-index/get-span fai name (dec start') end')]
+              (let [mbb (.. r getChannel (map FileChannel$MapMode/READ_ONLY s (- e s)))]
+                (if mask?
+                  (while (.hasRemaining mbb)
+                    (let [c (unchecked-char (.get mbb))]
+                      (when-not (or (= \newline c) (= \return c))
+                        (.put buf c))))
+                  (while (.hasRemaining mbb)
+                    (let [c (unchecked-long (.get mbb))]
+                      (when-not (or (= 10 c) (= 13 c))
+                        ;; toUpperCase works only for ASCII chars.
+                        (.put buf (unchecked-char (bit-and c 0x5f))))))))
+              (.flip buf)
+              (.toString buf))))))))
 
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."

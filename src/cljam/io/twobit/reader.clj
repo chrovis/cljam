@@ -99,25 +99,25 @@
    (when-let [[n {:keys [offset]}]
               (first (filter (fn [[i {:keys [name]}]] (= name chr)) (map vector (range) (.file-index rdr))))]
      (let [{:keys [len ambs masks header-offset]} @(nth (.seq-index rdr) n) ;; Potential seek & read.
-           start' (or start 1)
-           end' (or end len)
-           start-offset (quot (dec (max 1 start')) 4)
-           end-offset (quot (dec (min len end')) 4)
-           ba (byte-array (- end-offset start-offset -1))
-           cb (CharBuffer/allocate (inc (- end' start')))]
-       (.seek ^RandomAccessFile (.reader rdr) (+ offset header-offset start-offset))
-       (.readFully ^RandomAccessFile (.reader rdr) ba)
-       (dotimes [out-pos (inc (- end' start'))]
-         (let [ref-pos (+ out-pos start')
-               ba-pos (- (quot (dec ref-pos) 4) start-offset)
-               bit-pos (mod (dec ref-pos) 4)]
-           (if (<= 1 ref-pos len)
-             (.put cb (.charAt ^String (twobit-to-str (+ (aget ba ba-pos) 128)) bit-pos))
-             (.put cb \N))))
-       (replace-ambs! cb ambs start' end')
-       (when mask? (mask! cb masks start' end'))
-       (.rewind cb)
-       (.toString cb)))))
+           start' (max 1 (or start 1))
+           end' (min len (or end len))]
+       (when (<= start' end')
+         (let [start-offset (quot (dec start') 4)
+               end-offset (quot (dec end') 4)
+               ba (byte-array (- end-offset start-offset -1))
+               cb (CharBuffer/allocate (inc (- end' start')))]
+           (.seek ^RandomAccessFile (.reader rdr) (+ offset header-offset start-offset))
+           (.readFully ^RandomAccessFile (.reader rdr) ba)
+           (dotimes [out-pos (inc (- end' start'))]
+             (let [ref-pos (+ out-pos start')
+                   ba-pos (- (quot (dec ref-pos) 4) start-offset)
+                   bit-pos (mod (dec ref-pos) 4)]
+               (when (<= 1 ref-pos len)
+                 (.put cb (.charAt ^String (twobit-to-str (+ (aget ba ba-pos) 128)) bit-pos)))))
+           (replace-ambs! cb ambs start' end')
+           (when mask? (mask! cb masks start' end'))
+           (.rewind cb)
+           (.toString cb)))))))
 
 (defn- read-all-sequences*
   [rdr chrs option]

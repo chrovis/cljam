@@ -40,47 +40,57 @@
              [{:name "ref", :len 45, :offset 33, :ambs [], :masks [], :header-offset 16}
               {:name "ref2", :len 40, :offset 61, :ambs [], :masks [[1 40]], :header-offset 24}])))))
 
-(deftest read-sequence-fasta-test
-  (with-open [rdr (cseq/fasta-reader test-fa-file)]
-    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10}) "TGTTAG"))
-    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10} {:mask? false})
-           "TGTTAG"))
-    (is (= (cseq/read-sequence rdr {:chr "ref" :start 5 :end 10} {:mask? true})
-           "TGTTAG")))
-  (with-open [rdr (cseq/fasta-reader test-fa-file)]
-    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 1 :end 16})
+(deftest read-sequence-test
+  (with-open [fa-rdr (cseq/reader test-fa-file)
+              tb-rdr (cseq/reader test-twobit-file)]
+    (are [?reg ?opts ?expect]
+        (= (cseq/read-sequence fa-rdr ?reg ?opts)
+           (cseq/read-sequence tb-rdr ?reg ?opts)
+           ?expect)
+      {} {} nil
+      {:chr "badref"} {} nil
+      {:chr "ref" :start -1 :end 0} {} nil
+      {:chr "ref" :start 0 :end 0} {} nil
+      {:chr "ref" :start -1 :end 1} {} "A"
+      {:chr "ref" :start 0 :end 1} {} "A"
+      {:chr "ref" :start 1 :end 2} {} "AG"
+      {:chr "ref" :start 44 :end 45} {} "AT"
+      {:chr "ref" :start 45 :end 45} {} "T"
+      {:chr "ref" :start 45 :end 46} {} "T"
+      {:chr "ref" :start 46 :end 46} {} nil
+      {:chr "ref" :start 46 :end 47} {} nil
+      {:chr "ref" :start 5 :end 10} {:mask? false} "TGTTAG"
+      {:chr "ref" :start 5 :end 10} {:mask? true} "TGTTAG"
+      {:chr "ref2" :start 1 :end 16} {:mask? false} "AGGTTTTATAAAACAA"
+      {:chr "ref2" :start 1 :end 16} {:mask? true} "aggttttataaaacaa"
+      {:chr "ref2" :start 1 :end 45} {:mask? false} "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"
+      {:chr "ref2" :start 10} {:mask? false} "AAAACAATTAAGTCTACAGAGCAACTACGCG"
+      {:chr "ref2" :end 10} {:mask? false} "AGGTTTTATA"
+      {:chr "ref"} {:mask? false} "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"
+      {:chr "ref"} {:mask? true} "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"
+      {:chr "ref2"} {:mask? false} "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"
+      {:chr "ref2"} {:mask? true} "aggttttataaaacaattaagtctacagagcaactacgcg"))
+  (with-open [fa-rdr (cseq/reader test-fa-file)
+              tb-rdr (cseq/reader test-twobit-file)]
+    (are [?reg ?expect]
+        (= (cseq/read-sequence fa-rdr ?reg)
+           (cseq/read-sequence tb-rdr ?reg)
+           ?expect)
+      {:chr "ref" :start 5 :end 10} "TGTTAG"
+      {:chr "ref2" :start 1 :end 16} "AGGTTTTATAAAACAA"
+      {:chr "ref2" :start 0 :end 45} "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"
+      {:chr "ref"} "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"
+      {:chr "ref2"} "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
+  (with-open [fa-rdr (cseq/reader test-fa-file)
+              tb-rdr (cseq/reader test-twobit-file)]
+    (is (= (protocols/read-in-region fa-rdr {:chr "ref2" :start 1 :end 16})
+           (protocols/read-in-region tb-rdr {:chr "ref2" :start 1 :end 16})
            "AGGTTTTATAAAACAA"))
-    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 1 :end 16} {:mask? false})
+    (is (= (protocols/read-in-region fa-rdr {:chr "ref2" :start 1 :end 16} {:mask? false})
+           (protocols/read-in-region tb-rdr {:chr "ref2" :start 1 :end 16} {:mask? false})
            "AGGTTTTATAAAACAA"))
-    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 1 :end 16} {:mask? true})
-           "aggttttataaaacaa")))
-  (with-open [rdr (cseq/fasta-reader test-fa-file)]
-    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 0 :end 45})
-           "NAGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCGNNNNN"))
-    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 0 :end 45} {:mask? false})
-           "NAGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCGNNNNN"))
-    (is (= (cseq/read-sequence rdr {:chr "ref2" :start 0 :end 45} {:mask? true})
-           "NaggttttataaaacaattaagtctacagagcaactacgcgNNNNN")))
-  (with-open [rdr (cseq/fasta-reader test-fa-file)]
-    (is (= (cseq/read-sequence rdr {:chr "ref"})
-           "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"))
-    (is (= (cseq/read-sequence rdr {:chr "ref"} {:mask? false})
-           "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"))
-    (is (= (cseq/read-sequence rdr {:chr "ref"} {:mask? true})
-           "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT")))
-  (with-open [rdr (cseq/fasta-reader test-fa-file)]
-    (is (= (cseq/read-sequence rdr {:chr "ref2"})
-           "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
-    (is (= (cseq/read-sequence rdr {:chr "ref2"} {:mask? false})
-           "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
-    (is (= (cseq/read-sequence rdr {:chr "ref2"} {:mask? true})
-           "aggttttataaaacaattaagtctacagagcaactacgcg")))
-  (with-open [rdr (cseq/fasta-reader test-fa-file)]
-    (is (= (protocols/read-in-region rdr {:chr "ref2" :start 1 :end 16})
-           "AGGTTTTATAAAACAA"))
-    (is (= (protocols/read-in-region rdr {:chr "ref2" :start 1 :end 16} {:mask? false})
-           "AGGTTTTATAAAACAA"))
-    (is (= (protocols/read-in-region rdr {:chr "ref2" :start 1 :end 16} {:mask? true})
+    (is (= (protocols/read-in-region fa-rdr {:chr "ref2" :start 1 :end 16} {:mask? true})
+           (protocols/read-in-region tb-rdr {:chr "ref2" :start 1 :end 16} {:mask? true})
            "aggttttataaaacaa"))))
 
 (deftest read-sequence-medium-fasta-test
@@ -97,38 +107,36 @@
   (testing "reference test"
     (with-open [r (cseq/twobit-reader test-twobit-file)
                 c (cseq/reader r)]
-      (are [?region ?opt ?result] (= (cseq/read-sequence r ?region ?opt)
-                                     (cseq/read-sequence c ?region ?opt)
-                                     ?result)
-        {:chr "ref"} {} "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"
-        {:chr "ref2"} {} "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"
-        {:chr "ref2"} {:mask? true} "aggttttataaaacaattaagtctacagagcaactacgcg"
-        {:chr "ref" :start 1 :end 4} {} "AGCA"
-        {:chr "ref" :start 0 :end 4} {} "NAGCA"
-        {:chr "ref" :start 41 :end 50} {} "GCCATNNNNN"
-        {:chr "ref" :start 1 :end 45} {} "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT"
-        {:chr "ref2" :start 1 :end 40} {} "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"
-        {:chr "ref2" :start 1 :end 40} {:mask? true} "aggttttataaaacaattaagtctacagagcaactacgcg"
-        {:chr "chr1" :start 1 :end 40} {} nil)
       (is (= (for [i (range 1 45) j (range i 46)]
                (cseq/read-sequence r {:chr "ref" :start i :end j}))
              (for [i (range 1 45) j (range i 46)]
                (subs "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT" (dec i) j))))
-      (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40}) "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
-      (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40} {:mask? false}) "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
-      (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40} {:mask? true}) "aggttttataaaacaattaagtctacagagcaactacgcg"))))
+      (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40})
+             "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
+      (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40} {:mask? false})
+             "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
+      (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40} {:mask? true})
+             "aggttttataaaacaattaagtctacagagcaactacgcg"))))
   (testing "reference test with N"
     (with-open [r (cseq/twobit-reader test-twobit-n-file)
                 c (cseq/reader r)]
       (are [?region ?opt ?result] (= (cseq/read-sequence r ?region ?opt)
                                      (cseq/read-sequence c ?region ?opt)
                                      ?result)
+        {} {} nil
+        {:chr "badref"} {} nil
         {:chr "ref"} {} "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"
         {:chr "ref2"} {} "AGNNNTTATAAAACAATTANNNCTACAGAGCAACTANNNN"
         {:chr "ref2"} {:mask? true} "agNNNttataaaacaattaNNNctacagagcaactaNNNN"
+        {:chr "ref" :start 10} {} "GATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"
+        {:chr "ref" :end 10} {} "NNNNNGTTAG"
+        {:chr "ref" :start -3 :end 0} {} nil
+        {:chr "ref" :start -3 :end 1} {} "N"
+        {:chr "ref" :start 46 :end 50} {} nil
+        {:chr "ref" :start 45 :end 50} {} "T"
         {:chr "ref" :start 1 :end 4} {} "NNNN"
-        {:chr "ref" :start 0 :end 4} {} "NNNNN"
-        {:chr "ref" :start 41 :end 50} {} "NCCATNNNNN"
+        {:chr "ref" :start 0 :end 4} {} "NNNN"
+        {:chr "ref" :start 41 :end 50} {} "NCCAT"
         {:chr "ref" :start 1 :end 45} {} "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"
         {:chr "ref2" :start 1 :end 40} {} "AGNNNTTATAAAACAATTANNNCTACAGAGCAACTANNNN"
         {:chr "ref2" :start 1 :end 40} {:mask? true} "agNNNttataaaacaattaNNNctacagagcaactaNNNN"

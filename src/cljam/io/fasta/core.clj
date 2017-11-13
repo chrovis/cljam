@@ -59,9 +59,7 @@
 
 (defn read-sequence
   [rdr {:keys [chr start end]} opts]
-  (if (and (nil? start) (nil? end))
-    (reader/read-whole-sequence rdr chr opts)
-    (reader/read-sequence rdr chr start end opts)))
+  (reader/read-sequence rdr chr start end opts))
 
 (defn read
   [rdr]

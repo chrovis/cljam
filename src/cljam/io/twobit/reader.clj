@@ -101,7 +101,7 @@
      (let [{:keys [len ambs masks header-offset]} @(nth (.seq-index rdr) n) ;; Potential seek & read.
            start' (max 1 (or start 1))
            end' (min len (or end len))]
-       (when (<= 1 start' end' len)
+       (when (<= start' end')
          (let [start-offset (quot (dec start') 4)
                end-offset (quot (dec end') 4)
                ba (byte-array (- end-offset start-offset -1))

@@ -79,7 +79,7 @@
     (when-let [len (:len (fasta-index/get-header fai name))]
       (let [start' (max 1 (or start 1))
             end' (min len (or end len))]
-        (when (<= 1 start' end' len)
+        (when (<= start' end')
           (let [buf (CharBuffer/allocate (inc (- end' start')))
                 r ^RandomAccessFile (.reader rdr)]
             (when-let [[s e] (fasta-index/get-span fai name (dec start') end')]

@@ -138,8 +138,7 @@
            (update-some :block-starts long-list->str))
        ((apply juxt bed-columns))
        (take-while identity)
-       (interpose " ")
-       (apply str)))
+       (cstr/join \tab)))
 
 (defn- header-or-comment?
   "Checks if given string is neither a header nor a comment line."

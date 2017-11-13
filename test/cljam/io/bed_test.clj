@@ -197,10 +197,10 @@
         "1 0 10\n1 10 20" ["TAACCCTAAC" "CCTAACCCTA"]))))
 
 (deftest bed-writer
-  (is (= (bed->raw-str (raw-str->bed "1 0 10")) "1 0 10"))
-  (is (= (bed->str (str->bed "1 0 1")) "chr1 0 1"))
-  (is (= (bed->str (str->bed "1 0 10")) "chr1 0 10"))
-  (is (= (bed->str (str->bed "1 0 1\n1 1 2")) "chr1 0 1\nchr1 1 2"))
+  (is (= (bed->raw-str (raw-str->bed "1 0 10")) "1\t0\t10"))
+  (is (= (bed->str (str->bed "1 0 1")) "chr1\t0\t1"))
+  (is (= (bed->str (str->bed "1 0 10")) "chr1\t0\t10"))
+  (is (= (bed->str (str->bed "1 0 1\n1 1 2")) "chr1\t0\t1\nchr1\t1\t2"))
   (is (= (with-open [r (bed/reader test-bed-file1)] (str->bed (bed->str (bed/read-fields r))))
          (with-open [r (bed/reader test-bed-file1)] (doall (bed/read-fields r)))))
   (is (= (with-open [r (bed/reader test-bed-file1-gz)] (str->bed (bed->str (bed/read-fields r))))

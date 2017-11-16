@@ -1,5 +1,15 @@
 # Change Log
 
+## [Unreleased]
+
+### Changed
+
+* Remove N padding for out-of-range bases in read-sequence. [#121](https://github.com/chrovis/cljam/pull/121)
+
+### Fixed
+
+* Fix some serialization functions. [#122](https://github.com/chrovis/cljam/pull/122)
+
 ## [0.5.1] - 2017-11-10
 
 ### Added

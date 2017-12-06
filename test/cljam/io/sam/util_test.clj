@@ -10,7 +10,12 @@
   (is (= (sam-util/parse-header "@HD	VN:1.3	SO:coordinate\n@SQ	SN:ref	LN:10\n@SQ	SN:ref2	LN:20\n@PG	ID:cljam	PN:cljam	VN:1.0	CL:java -jar cljam.jar")
          {:HD {:VN "1.3" :SO "coordinate"}
           :SQ [{:SN "ref" :LN 10} {:SN "ref2" :LN 20}]
-          :PG [{:ID "cljam" :PN "cljam" :VN "1.0" :CL "java -jar cljam.jar"}]})))
+          :PG [{:ID "cljam" :PN "cljam" :VN "1.0" :CL "java -jar cljam.jar"}]}))
+  (is (= (sam-util/parse-header "@HD\tVN:1.4\tSO:coordinate\n@SQ\tSN:FOO:BAR:10-100;BAZ|QUX,QUUX\tLN:1\n@PG\tID:cljam\tPN:cljam\tVN:1.0\tCL:cljam")
+         {:HD {:VN "1.4" :SO "coordinate"}
+          :SQ [{:SN "FOO:BAR:10-100;BAZ|QUX,QUUX"
+                :LN 1}]
+          :PG [{:ID "cljam" :PN "cljam" :VN "1.0" :CL "cljam"}]})))
 
 (def nibble-table "=ACMGRSVTWYHKDBN")
 

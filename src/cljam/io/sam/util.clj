@@ -16,7 +16,7 @@
   (into
    {}
    (map (fn [kv]
-          (let [[k v] (cstr/split kv #":")]
+          (let [[k v] (cstr/split kv #":" 2)]
             [(keyword k)
              (case k
                "LN" (Integer/parseInt v)

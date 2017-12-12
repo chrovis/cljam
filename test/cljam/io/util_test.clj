@@ -30,6 +30,14 @@
     "foo.FA.GZ" :fasta
     "foo.FASTA" :fasta
     "foo.FASTA.GZ" :fasta
+    "foo.fas" :fasta
+    "foo.fsa" :fasta
+    "foo.seq" :fasta
+    "foo.fna" :fasta
+    "foo.faa" :fasta
+    "foo.ffn" :fasta
+    "foo.frn" :fasta
+    "foo.mpfa" :fasta
     "foo.fai"  :fai
     "foo.fa.fai"  :fai
     "foo.2bit" :2bit

@@ -14,15 +14,16 @@
 
 (defn- fasta-index
   [fasta-path]
-  (if-let [fai-path (->> ["$1.fai" ".fai" "$1.FAI" ".FAI"]
-                         (eduction
-                          (comp
-                           (map #(cstr/replace fasta-path #"(?i)(\.fa(sta)?)$" %))
-                           (filter #(.isFile (cio/file %)))))
-                         first)]
-    (fai/reader fai-path)
-    (throw (FileNotFoundException.
-            (str "Could not find FASTA Index file for " fasta-path)))))
+  (let [fasta-exts #"(?i)(\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa)?)$"]
+    (if-let [fai-path (->> ["$1.fai" ".fai" "$1.FAI" ".FAI"]
+                           (eduction
+                            (comp
+                             (map #(cstr/replace fasta-path fasta-exts %))
+                             (filter #(.isFile (cio/file %)))))
+                           first)]
+      (fai/reader fai-path)
+      (throw (FileNotFoundException.
+              (str "Could not find FASTA Index file for " fasta-path))))))
 
 (defn ^FASTAReader reader
   [f]

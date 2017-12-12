@@ -136,7 +136,7 @@
     #"(?i)\.bam$" :bam
     #"(?i)\.f(ast)?q" :fastq
     #"(?i)\.fai$" :fai
-    #"(?i)\.fa(sta)?" :fasta
+    #"(?i)\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa)" :fasta
     #"(?i)\.2bit$" :2bit
     #"(?i)\.vcf" :vcf
     #"(?i)\.bcf$" :bcf

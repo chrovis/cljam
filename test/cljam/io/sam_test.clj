@@ -1,14 +1,19 @@
 (ns cljam.io.sam-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
+            [clojure.string :as cstr]
             [cljam.test-common :refer :all]
             [cljam.io.sam :as sam]
+            [cljam.io.bam.writer :as bam-writer]
+            [cljam.io.bam-index.core :as bai]
+            [cljam.io.bam-index.writer :as bai-writer]
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]))
 
 (def temp-sam-file (str temp-dir "/test.sam"))
 (def temp-bam-file (str temp-dir "/test.bam"))
 (def temp-bam-file-sorted (str temp-dir "/test.sorted.bam"))
+(def temp-bai-file-sorted (cstr/replace temp-bam-file-sorted #"(?i)(\.bam)$" "$1.bai"))
 (def temp-small-bam-file (str temp-dir "/small.bam"))
 (def temp-medium-bam-file (str temp-dir "/medium.bam"))
 (def not-found-bam-file (str temp-dir "/not-found.bam"))
@@ -288,3 +293,59 @@
      (= (with-open [r (sam/reader opts-bam-file)]
           (->> (sam/read-alignments r) (mapcat :options) (map bytes-to-seq) doall))
         test-options))))
+
+(deftest transduce-bam-test
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (testing "blocks rf"
+      (with-open [r (sam/reader test-sorted-bam-file)
+                  w (sam/writer temp-bam-file-sorted)]
+        (transduce
+         identity
+         (bam-writer/write-blocks-rf w (sam/read-header r))
+         (sam/read-blocks r)))
+      (is (same-sam-contents? test-sorted-bam-file temp-bam-file-sorted)))
+    (testing "blocks xf"
+      (with-open [r (sam/reader test-sorted-bam-file)
+                  w (sam/writer temp-bam-file-sorted)]
+        (transduce
+         (bam-writer/write-blocks-xf w (sam/read-header r))
+         (fn [& _])
+         (sam/read-blocks r)))
+      (is (same-sam-contents? test-sorted-bam-file temp-bam-file-sorted)))
+    (testing "alignments rf"
+      (with-open [r (sam/reader test-sorted-bam-file)
+                  w (sam/writer temp-bam-file-sorted)]
+        (transduce
+         identity
+         (bam-writer/write-alignments-rf w (sam/read-header r))
+         (sam/read-alignments r)))
+      (is (same-sam-contents? test-sorted-bam-file temp-bam-file-sorted)))
+    (testing "alignments xf"
+      (with-open [r (sam/reader test-sorted-bam-file)
+                  w (sam/writer temp-bam-file-sorted)]
+        (transduce
+         (bam-writer/write-alignments-xf w (sam/read-header r))
+         (fn [& _])
+         (sam/read-alignments r)))
+      (is (same-sam-contents? test-sorted-bam-file temp-bam-file-sorted)))))
+
+(deftest transduce-bai-test
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (testing "index rf"
+      (with-open [r (sam/reader test-sorted-bam-file)
+                  iw (bai/writer temp-bai-file-sorted (sam/read-refs r))]
+        (transduce
+         identity
+         (bai-writer/write-index-rf iw)
+         (sam/read-blocks r)))
+      (is (same-file? test-bai-file temp-bai-file-sorted)))
+    (testing "index xf"
+      (with-open [r (sam/reader test-sorted-bam-file)
+                  iw (bai/writer temp-bai-file-sorted (sam/read-refs r))]
+        (transduce
+         (bai-writer/write-index-xf iw)
+         (fn [& _])
+         (sam/read-blocks r)))
+      (is (same-file? test-bai-file temp-bai-file-sorted)))))

@@ -56,10 +56,60 @@
         refs (sam-util/make-refs header)]
     (doseq [a alns]
       (lsb/write-int w (encoder/get-block-size a))
-      (encoder/encode-alignment w a refs))))
+      (encoder/encode-alignment w refs a))))
 
 (defn write-blocks* [^BAMWriter wtr blocks]
   (let [w (.writer wtr)]
     (doseq [b blocks]
       (lsb/write-int w (alength ^bytes (:data b)))
       (lsb/write-bytes w (:data b)))))
+
+(defn write-blocks-rf
+  "Returns a reducing function which writes BAM blocks to the given writer."
+  [^BAMWriter writer header]
+  (let [w (.writer writer)]
+    (fn write-blocks-rf-rf
+      ([]
+       (write-header* writer header)
+       (write-refs* writer header))
+      ([_])
+      ([_ input]
+       (lsb/write-int w (alength ^bytes (:data input)))
+       (lsb/write-bytes w (:data input))))))
+
+(defn write-alignments-rf
+  "Returns a reducing function which writes alignments to the given BAM writer."
+  [writer header]
+  (let [refs (sam-util/make-refs header)]
+    ((map (partial encoder/encode-alignment refs))
+     (write-blocks-rf writer header))))
+
+(defn write-blocks-xf
+  "Returns a transducer which writes BAM blocks to the given writer as
+  side-effects. Note that this function immediately writes header and reference
+  info when invoked to prevent them being written multiple times."
+  [^BAMWriter writer header]
+  (let [w (.writer writer)]
+    (write-header* writer header)
+    (write-refs* writer header)
+    (fn write-blocks-xf-xf [rf]
+      (fn write-blocks-xf-xf-rf
+        ([]
+         (rf))
+        ([result]
+         (rf result))
+        ([result input]
+         (lsb/write-int w (alength ^bytes (:data input)))
+         (lsb/write-bytes w (:data input))
+         (rf result input))))))
+
+(defn write-alignments-xf
+  "Returns a stateful transducer which writes alignments to the given BAM
+  writer as side-effects. Note that this function immediately writes
+  header and reference info when invoked to prevent them being written multiple
+  times."
+  [writer header]
+  (let [refs (sam-util/make-refs header)]
+    (comp
+     (map (partial encoder/encode-alignment refs))
+     (write-blocks-xf writer header))))

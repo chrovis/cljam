@@ -6,6 +6,7 @@
   (:require [cljam.io.sam.reader :as sam-reader]
             [cljam.io.sam.writer :as sam-writer]
             [cljam.io.bam.core :as bam-core]
+            [cljam.io.bam.writer :as bam-writer]
             [cljam.io.protocols :as protocols]
             [cljam.io.util :as io-util])
   (:import java.io.Closeable
@@ -118,3 +119,44 @@
   "Writes alignment blocks of the SAM/BAM file."
   [wtr blocks]
   (protocols/write-blocks wtr blocks))
+
+(defn write-blocks-rf
+  "Returns a reducing function which writes alignment blocks to the given
+  writer."
+  [wtr header]
+  ((condp (fn [f & a] (apply f a)) wtr
+     io-util/sam-writer? sam-writer/write-blocks-rf
+     io-util/bam-writer? bam-writer/write-blocks-rf
+     (throw (IllegalArgumentException. (str "Invalid writer type: " wtr))))
+   wtr header))
+
+(defn write-alignments-rf
+  "Returns a reducing function which writes alignments to the given SAM writer."
+  [wtr header]
+  ((condp (fn [f & a] (apply f a)) wtr
+     io-util/sam-writer? sam-writer/write-alignments-rf
+     io-util/bam-writer? bam-writer/write-alignments-rf
+     (throw (IllegalArgumentException. (str "Invalid writer type: " wtr))))
+   wtr header))
+
+(defn write-blocks-xf
+  "Returns a transducer which writes alignment blocks to the given writer as
+  side-effects. Note that this function immediately writes header and reference
+  info when invoked to prevent them being written multiple times."
+  [wtr header]
+  ((condp (fn [f & a] (apply f a)) wtr
+     io-util/sam-writer? sam-writer/write-blocks-xf
+     io-util/bam-writer? bam-writer/write-blocks-xf
+     (throw (IllegalArgumentException. (str "Invalid writer type: " wtr))))
+   wtr header))
+
+(defn write-alignments-xf
+  "Returns a stateful transducer which writes alignments to the given writer as
+  side-effects. Note that this function immediately writes header and reference
+  info when invoked to prevent them being written multiple times."
+  [wtr header]
+  ((condp (fn [f & a] (apply f a)) wtr
+     io-util/sam-writer? sam-writer/write-alignments-xf
+     io-util/bam-writer? bam-writer/write-alignments-xf
+     (throw (IllegalArgumentException. (str "Invalid writer type: " wtr))))
+   wtr header))

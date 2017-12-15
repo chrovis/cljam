@@ -1,14 +1,19 @@
 (ns cljam.io.sam-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
+            [clojure.string :as cstr]
             [cljam.test-common :refer :all]
             [cljam.io.sam :as sam]
+            [cljam.io.bam.writer :as bam-writer]
+            [cljam.io.bam-index.core :as bai]
+            [cljam.io.bam-index.writer :as bai-writer]
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]))
 
 (def temp-sam-file (str temp-dir "/test.sam"))
 (def temp-bam-file (str temp-dir "/test.bam"))
 (def temp-bam-file-sorted (str temp-dir "/test.sorted.bam"))
+(def temp-bai-file-sorted (cstr/replace temp-bam-file-sorted #"(?i)(\.bam)$" "$1.bai"))
 (def temp-small-bam-file (str temp-dir "/small.bam"))
 (def temp-medium-bam-file (str temp-dir "/medium.bam"))
 (def not-found-bam-file (str temp-dir "/not-found.bam"))
@@ -288,3 +293,65 @@
      (= (with-open [r (sam/reader opts-bam-file)]
           (->> (sam/read-alignments r) (mapcat :options) (map bytes-to-seq) doall))
         test-options))))
+
+(deftest transduce-writer-test
+  (testing "invalid writers"
+    (is (thrown? IllegalArgumentException (sam/write-blocks-rf nil nil)))
+    (is (thrown? IllegalArgumentException (sam/write-blocks-xf nil nil)))
+    (is (thrown? IllegalArgumentException (sam/write-alignments-rf nil nil)))
+    (is (thrown? IllegalArgumentException (sam/write-alignments-xf nil nil))))
+  (testing "read/write regression"
+    (are [?in ?out]
+        (are [?xf ?rf ?rc]
+            (with-before-after {:before (prepare-cache!)
+                                :after (clean-cache!)}
+              (with-open [r (sam/reader ?in)
+                          w (sam/writer ?out)]
+                (transduce ?xf ?rf ?rc))
+              (same-sam-contents? ?in ?out))
+          identity (sam/write-blocks-rf w (sam/read-header r)) (sam/read-blocks r)
+          (sam/write-blocks-xf w (sam/read-header r)) (fn [& _]) (sam/read-blocks r)
+          identity (sam/write-alignments-rf w (sam/read-header r)) (sam/read-alignments r)
+          (sam/write-alignments-xf w (sam/read-header r)) (fn [& _]) (sam/read-alignments r))
+      test-sorted-bam-file temp-bam-file-sorted
+      test-sam-file temp-sam-file))
+  (testing "conversion"
+    (are [?in ?out ?ref]
+        (with-before-after {:before (prepare-cache!)
+                            :after (clean-cache!)}
+          (with-open [r (sam/reader ?in)
+                      w (sam/writer ?out)]
+            (transduce identity (sam/write-alignments-rf w (sam/read-header r)) (sam/read-alignments r)))
+          (same-sam-contents? ?ref ?out))
+      test-sam-file temp-bam-file test-bam-file
+      test-bam-file temp-sam-file test-sam-file))
+  (testing "reduced"
+    (are [?in ?out]
+        (are [?xf ?rf ?pred]
+            (with-before-after {:before (prepare-cache!)
+                                :after (clean-cache!)}
+              (with-open [r (sam/reader ?in)
+                          w (sam/writer ?out)]
+                (transduce
+                 ?xf
+                 ?rf
+                 (sam/read-blocks r)))
+              (?pred (same-sam-contents? ?in ?out)))
+          (take 11) (sam/write-blocks-rf w (sam/read-header r)) false?
+          (take 12) (sam/write-blocks-rf w (sam/read-header r)) true?
+          (comp (take 11) (sam/write-blocks-xf w (sam/read-header r))) (fn [& _]) false?
+          (comp (take 12) (sam/write-blocks-xf w (sam/read-header r))) (fn [& _]) true?
+          (sam/write-blocks-xf w (sam/read-header r)) (fn ([]) ([_]) ([_ x] (reduced x))) false?)
+      test-sorted-bam-file temp-bam-file-sorted)))
+
+(deftest transduce-bai-test
+  (testing "indexing"
+    (are [?xf ?rf]
+        (with-before-after {:before (prepare-cache!)
+                            :after (clean-cache!)}
+          (with-open [r (sam/reader test-sorted-bam-file)
+                      w (bai/writer temp-bai-file-sorted (sam/read-refs r))]
+            (transduce ?xf ?rf (sam/read-blocks r)))
+          (same-file? test-bai-file temp-bai-file-sorted))
+      identity (bai-writer/write-index-rf w)
+      (bai-writer/write-index-xf w) (fn [& _]))))

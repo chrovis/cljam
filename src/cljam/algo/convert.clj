@@ -25,12 +25,8 @@
   (let [refs (sam-util/make-refs hdr)
         n-threads (get-exec-n-threads)]
     (doseq [blocks (cp/pmap (if (= n-threads 1) :serial (dec n-threads))
-                            (fn [chunk]
-                              (mapv #(let [bb (ByteBuffer/allocate (encoder/get-block-size %))]
-                                       (encoder/encode-alignment bb % refs)
-                                       {:data (.array bb)})
-                                    chunk))
-                            (partition-all num-block (sam/read-alignments rdr {})))]
+                            #(mapv (partial encoder/encode-alignment refs) %)
+                            (partition-all num-block (sam/read-alignments rdr)))]
       (sam/write-blocks wtr blocks))))
 
 (defn- convert-sam*

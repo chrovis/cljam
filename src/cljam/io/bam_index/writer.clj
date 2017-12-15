@@ -256,31 +256,30 @@
   (lsb/write-long w (:unaligned-alns meta-data)))
 
 (defn- write-index*!
-  [wtr ^long nrefs alns]
+  [wtr ^long nrefs indices]
   ;; magic
   (lsb/write-bytes wtr (.getBytes ^String bai-magic))
   ;; n_ref
   (lsb/write-int wtr nrefs)
-  (let [indices (make-index-from-blocks nrefs alns)]
-    (dotimes [i nrefs]
-      (let [index (get indices i)
-            n-bin (count (:bin-index index))]
-        ;; bins
-        (if (zero? n-bin)
-          (lsb/write-int wtr 0)
-          (do
-            ;; # of bins
-            (lsb/write-int wtr (inc n-bin))
-            (doseq [bin (:bin-index index)]
-              (write-bin wtr (:bin bin) (:chunks bin)))
-            ;; meta data
-            (write-meta-data wtr (:meta-data index))))
-        ;; linear index
-        (lsb/write-int wtr (count (:linear-index index)))
-        (doseq [l (:linear-index index)]
-          (lsb/write-long wtr l))))
-    ;; no coordinate alignments
-    (lsb/write-long wtr (:no-coordinate-alns indices))))
+  (dotimes [i nrefs]
+    (let [index (get indices i)
+          n-bin (count (:bin-index index))]
+      ;; bins
+      (if (zero? n-bin)
+        (lsb/write-int wtr 0)
+        (do
+          ;; # of bins
+          (lsb/write-int wtr (inc n-bin))
+          (doseq [bin (:bin-index index)]
+            (write-bin wtr (:bin bin) (:chunks bin)))
+          ;; meta data
+          (write-meta-data wtr (:meta-data index))))
+      ;; linear index
+      (lsb/write-int wtr (count (:linear-index index)))
+      (doseq [l (:linear-index index)]
+        (lsb/write-long wtr l))))
+  ;; no coordinate alignments
+  (lsb/write-long wtr (:no-coordinate-alns indices)))
 
 ;; Public
 ;; ------
@@ -315,4 +314,51 @@
 (defn write-index!
   "Calculates a BAM index from alns, writing the index to a file."
   [^BAIWriter wtr alns]
-  (write-index*! (.writer wtr) (count (.refs wtr)) alns))
+  (let [nrefs (count (.refs wtr))]
+    (write-index*! (.writer wtr) nrefs (make-index-from-blocks nrefs alns))))
+
+(defn write-index-rf
+  "Returns a reducing function which constructs BAM index from raw BAM blocks
+  and writes to the given writer."
+  [^BAIWriter writer]
+  (let [nrefs (count (.refs writer))
+        update-index (fnil update-index-status (init-index-status))]
+    ((map bam-decoder/decode-pointer-block)
+     (fn write-index-rf-rf
+       ([]
+        {:no-coordinate-alns 0})
+       ([result]
+        (write-index*! (.writer writer) nrefs (finalize-index nrefs result)))
+       ([result input]
+        (-> result
+            (update :no-coordinate-alns #(if (zero? (:pos input)) (inc %) %))
+            (update (:ref-id input) update-index input)))))))
+
+(defn- rf->xf!
+  "Creates a new transducer which invokes a given reducing function as
+  side-effects and pass-through the original elements."
+  ([rf]
+   (rf->xf! rf (volatile! nil)))
+  ([rf volatile-state]
+   (vreset! volatile-state (rf))
+   (fn rf->xf!-xf [rf']
+     (fn rf-xf!-xf-rf
+       ([]
+        (rf'))
+       ([result]
+        (rf @volatile-state)
+        (rf' result))
+       ([result input]
+        (vswap!
+         volatile-state
+         (fn rf-xf!-xf-rf-2 [state]
+           (if (reduced? state)
+             state
+             (rf state input))))
+        (rf' result input))))))
+
+(defn write-index-xf
+  "Returns a transducer which constructs BAM index from raw BAM blocks
+  and writes to the given writer as side-effects."
+  [writer]
+  (rf->xf! (write-index-rf writer)))

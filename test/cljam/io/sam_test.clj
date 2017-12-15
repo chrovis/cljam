@@ -294,58 +294,64 @@
           (->> (sam/read-alignments r) (mapcat :options) (map bytes-to-seq) doall))
         test-options))))
 
-(deftest transduce-bam-test
-  (with-before-after {:before (prepare-cache!)
-                      :after (clean-cache!)}
-    (testing "blocks rf"
-      (with-open [r (sam/reader test-sorted-bam-file)
-                  w (sam/writer temp-bam-file-sorted)]
-        (transduce
-         identity
-         (bam-writer/write-blocks-rf w (sam/read-header r))
-         (sam/read-blocks r)))
-      (is (same-sam-contents? test-sorted-bam-file temp-bam-file-sorted)))
-    (testing "blocks xf"
-      (with-open [r (sam/reader test-sorted-bam-file)
-                  w (sam/writer temp-bam-file-sorted)]
-        (transduce
-         (bam-writer/write-blocks-xf w (sam/read-header r))
-         (fn [& _])
-         (sam/read-blocks r)))
-      (is (same-sam-contents? test-sorted-bam-file temp-bam-file-sorted)))
-    (testing "alignments rf"
-      (with-open [r (sam/reader test-sorted-bam-file)
-                  w (sam/writer temp-bam-file-sorted)]
-        (transduce
-         identity
-         (bam-writer/write-alignments-rf w (sam/read-header r))
-         (sam/read-alignments r)))
-      (is (same-sam-contents? test-sorted-bam-file temp-bam-file-sorted)))
-    (testing "alignments xf"
-      (with-open [r (sam/reader test-sorted-bam-file)
-                  w (sam/writer temp-bam-file-sorted)]
-        (transduce
-         (bam-writer/write-alignments-xf w (sam/read-header r))
-         (fn [& _])
-         (sam/read-alignments r)))
-      (is (same-sam-contents? test-sorted-bam-file temp-bam-file-sorted)))))
+(deftest transduce-writer-test
+  (testing "invalid writers"
+    (is (thrown? IllegalArgumentException (sam/write-blocks-rf nil nil)))
+    (is (thrown? IllegalArgumentException (sam/write-blocks-xf nil nil)))
+    (is (thrown? IllegalArgumentException (sam/write-alignments-rf nil nil)))
+    (is (thrown? IllegalArgumentException (sam/write-alignments-xf nil nil))))
+  (testing "read/write regression"
+    (are [?in ?out]
+        (are [?xf ?rf ?rc]
+            (with-before-after {:before (prepare-cache!)
+                                :after (clean-cache!)}
+              (with-open [r (sam/reader ?in)
+                          w (sam/writer ?out)]
+                (transduce ?xf ?rf ?rc))
+              (same-sam-contents? ?in ?out))
+          identity (sam/write-blocks-rf w (sam/read-header r)) (sam/read-blocks r)
+          (sam/write-blocks-xf w (sam/read-header r)) (fn [& _]) (sam/read-blocks r)
+          identity (sam/write-alignments-rf w (sam/read-header r)) (sam/read-alignments r)
+          (sam/write-alignments-xf w (sam/read-header r)) (fn [& _]) (sam/read-alignments r))
+      test-sorted-bam-file temp-bam-file-sorted
+      test-sam-file temp-sam-file))
+  (testing "conversion"
+    (are [?in ?out ?ref]
+        (with-before-after {:before (prepare-cache!)
+                            :after (clean-cache!)}
+          (with-open [r (sam/reader ?in)
+                      w (sam/writer ?out)]
+            (transduce identity (sam/write-alignments-rf w (sam/read-header r)) (sam/read-alignments r)))
+          (same-sam-contents? ?ref ?out))
+      test-sam-file temp-bam-file test-bam-file
+      test-bam-file temp-sam-file test-sam-file))
+  (testing "reduced"
+    (are [?in ?out]
+        (are [?xf ?rf ?pred]
+            (with-before-after {:before (prepare-cache!)
+                                :after (clean-cache!)}
+              (with-open [r (sam/reader ?in)
+                          w (sam/writer ?out)]
+                (transduce
+                 ?xf
+                 ?rf
+                 (sam/read-blocks r)))
+              (?pred (same-sam-contents? ?in ?out)))
+          (take 11) (sam/write-blocks-rf w (sam/read-header r)) false?
+          (take 12) (sam/write-blocks-rf w (sam/read-header r)) true?
+          (comp (take 11) (sam/write-blocks-xf w (sam/read-header r))) (fn [& _]) false?
+          (comp (take 12) (sam/write-blocks-xf w (sam/read-header r))) (fn [& _]) true?
+          (sam/write-blocks-xf w (sam/read-header r)) (fn ([]) ([_]) ([_ x] (reduced x))) false?)
+      test-sorted-bam-file temp-bam-file-sorted)))
 
 (deftest transduce-bai-test
-  (with-before-after {:before (prepare-cache!)
-                      :after (clean-cache!)}
-    (testing "index rf"
-      (with-open [r (sam/reader test-sorted-bam-file)
-                  iw (bai/writer temp-bai-file-sorted (sam/read-refs r))]
-        (transduce
-         identity
-         (bai-writer/write-index-rf iw)
-         (sam/read-blocks r)))
-      (is (same-file? test-bai-file temp-bai-file-sorted)))
-    (testing "index xf"
-      (with-open [r (sam/reader test-sorted-bam-file)
-                  iw (bai/writer temp-bai-file-sorted (sam/read-refs r))]
-        (transduce
-         (bai-writer/write-index-xf iw)
-         (fn [& _])
-         (sam/read-blocks r)))
-      (is (same-file? test-bai-file temp-bai-file-sorted)))))
+  (testing "indexing"
+    (are [?xf ?rf]
+        (with-before-after {:before (prepare-cache!)
+                            :after (clean-cache!)}
+          (with-open [r (sam/reader test-sorted-bam-file)
+                      w (bai/writer temp-bai-file-sorted (sam/read-refs r))]
+            (transduce ?xf ?rf (sam/read-blocks r)))
+          (same-file? test-bai-file temp-bai-file-sorted))
+      identity (bai-writer/write-index-rf w)
+      (bai-writer/write-index-xf w) (fn [& _]))))

@@ -127,9 +127,7 @@
      (not= (count arguments) 2) (exit 1 (normalize-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (with-open [r (sam/reader in)
-                  w (sam/writer out)]
-        (normal/normalize r w))))
+      (normal/normalize-file! in out)))
   nil)
 
 ;; ### sort command
@@ -158,11 +156,9 @@
      (not= (count arguments) 2) (exit 1 (sort-usage summary))
      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
-      (with-open [r (sam/reader in)
-                  w (sam/writer out)]
-        (condp = (:order options)
-          (name sorter/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
-          (name sorter/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
+      (condp = (:order options)
+        (name sorter/order-coordinate) (sorter/sort-by-pos in out {:chunk-size (:chunk options)})
+        (name sorter/order-queryname) (sorter/sort-by-qname in out {:chunk-size (:chunk options)}))))
   nil)
 
 ;; ### index command
@@ -355,7 +351,7 @@
       errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (with-open [r (sam/reader in)
-                  w (sam/writer out)]
+                  w (sam/writer out (sam/read-header r))]
         (level/add-level r w))))
   nil)
 

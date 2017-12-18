@@ -52,19 +52,15 @@
   [in out & {:keys [remove-dups] :or {remove-dups true}}]
   (cp/with-shutdown! [pool (cp/ncpus)]
     (let [[header refs] (with-open [r (sam/bam-reader in)] [(sam/read-header r) (sam/read-refs r)])]
-      (with-open [w (sam/bam-writer out)]
-        (sam/write-header w header)
-        (sam/write-refs w header)
-        (sam/write-alignments
-         w
-         (->> refs
-              refs->regions
-              (cp/pmap
-               pool
-               (fn [region]
-                 (with-open [r (sam/bam-reader in)]
-                   (->> (sam/read-alignments r region)
-                        (sequence (dedupe-xform :remove-dups remove-dups))
-                        doall))))
-              (sequence cat))
-         header)))))
+      (with-open [w (sam/bam-writer out header)]
+        (->> refs
+             refs->regions
+             (cp/pmap
+              pool
+              (fn [region]
+                (with-open [r (sam/bam-reader in)]
+                  (->> (sam/read-alignments r region)
+                       (sequence (dedupe-xform :remove-dups remove-dups))
+                       doall))))
+             (sequence cat)
+             (sam/write-alignments w))))))

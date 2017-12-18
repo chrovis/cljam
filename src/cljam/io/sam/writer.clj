@@ -7,12 +7,12 @@
             [cljam.io.protocols :as protocols])
   (:import [java.io BufferedWriter Closeable]))
 
-(declare write-header* write-alignments* write-blocks*)
+(declare write-alignments* write-blocks*)
 
 ;; SAMWriter
 ;; ---------
 
-(deftype SAMWriter [^BufferedWriter writer f]
+(deftype SAMWriter [^BufferedWriter writer f header]
   Closeable
   (close [this]
     (.close writer))
@@ -20,26 +20,23 @@
   (writer-path [this]
     (.f this))
   protocols/IAlignmentWriter
-  (write-header [this header]
-    (write-header* this header))
-  (write-refs [this refs]
-    (logging/debug "SAMWriter does not support write-refs"))
-  (write-alignments [this alignments refs]
-    (write-alignments* this alignments refs))
+  (write-alignments [this alignments]
+    (write-alignments* this alignments))
   (write-blocks [this blocks]
     (write-blocks* this blocks)))
 
 ;; Writing
 ;; -------
 
-(defn- write-header*
-  [^SAMWriter sam-writer header]
-  (let [wtr ^BufferedWriter (.writer sam-writer)]
+(defn- write-header
+  [^SAMWriter sam-writer]
+  (let [wtr ^BufferedWriter (.writer sam-writer)
+        header (.header sam-writer)]
     (.write wtr ^String (stringify-header header))
     (.newLine wtr)))
 
 (defn- write-alignments*
-  [^SAMWriter sam-writer alns refs]
+  [^SAMWriter sam-writer alns]
   (let [wtr ^BufferedWriter (.writer sam-writer)]
    (doseq [a alns]
      (.write wtr ^String (stringify-alignment a))
@@ -56,6 +53,6 @@
 ;; ------
 
 (defn ^SAMWriter writer
-  [f]
-  (->SAMWriter (cio/writer f)
-               (.getAbsolutePath (cio/file f))))
+  [f header]
+  (doto (->SAMWriter (cio/writer f) (.getAbsolutePath (cio/file f)) header)
+    (write-header)))

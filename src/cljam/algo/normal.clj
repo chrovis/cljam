@@ -18,19 +18,25 @@
     (sam/write-blocks wtr blks)))
 
 (defn- transfer-alignments
-  [rdr wtr hdr]
+  [rdr wtr]
   (doseq [alns (->> (sam/read-alignments rdr)
                     (map #(update % :rname normalize-chromosome-key))
                     (partition-all chunk-size))]
-    (sam/write-alignments wtr alns hdr)))
+    (sam/write-alignments wtr alns)))
 
 (defn normalize
   "Normalizes references of the SAM/BAM format. Be noted that performance may be
   degraded if either or both of rdr and wtr is one about the SAM format."
   [rdr wtr]
   (let [hdr (normalize-header (sam/read-header rdr))]
-    (sam/write-header wtr hdr)
-    (sam/write-refs wtr hdr)
     (if (and (io-util/bam-reader? rdr) (io-util/bam-writer? wtr))
       (transfer-blocks rdr wtr)
-      (transfer-alignments rdr wtr hdr))))
+      (transfer-alignments rdr wtr))))
+
+(defn normalize-file!
+  "Normalizes references of the SAM/BAM format. Be noted that performance may be
+  degraded if either or both of in-file and out-file are SAM."
+  [in out]
+  (with-open [rdr (sam/reader in)
+              wtr (sam/writer out (normalize-header (sam/read-header rdr)))]
+    (normalize rdr wtr)))

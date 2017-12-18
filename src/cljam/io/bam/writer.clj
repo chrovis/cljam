@@ -7,13 +7,13 @@
             [cljam.io.bam.encoder :as encoder])
   (:import [java.io Closeable]))
 
-(declare write-header* write-refs* write-alignments* write-blocks*)
+(declare write-alignments* write-blocks*)
 
 ;;
 ;; BAMWriter
 ;;
 
-(deftype BAMWriter [f writer]
+(deftype BAMWriter [f writer header]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
@@ -21,12 +21,8 @@
   (writer-path [this]
     (.f this))
   protocols/IAlignmentWriter
-  (write-header [this header]
-    (write-header* this header))
-  (write-refs [this header]
-    (write-refs* this header))
-  (write-alignments [this alignments header]
-    (write-alignments* this alignments header))
+  (write-alignments [this alignments]
+    (write-alignments* this alignments))
   (write-blocks [this blocks]
     (write-blocks* this blocks)))
 
@@ -34,16 +30,16 @@
 ;; write
 ;;
 
-(defn write-header* [^BAMWriter wtr header]
+(defn write-header [^BAMWriter wtr]
   (let [w (.writer wtr)
-        header-string (str (sam-util/stringify-header header) \newline)]
+        header-string (str (sam-util/stringify-header (.header wtr)) \newline)]
     (lsb/write-bytes w (.getBytes ^String common/bam-magic)) ; magic
     (lsb/write-int w (count header-string))
     (lsb/write-string w header-string)))
 
-(defn write-refs* [^BAMWriter wtr header]
+(defn write-refs [^BAMWriter wtr]
   (let [w (.writer wtr)
-        refs (sam-util/make-refs header)]
+        refs (sam-util/make-refs (.header wtr))]
     (lsb/write-int w (count refs))
     (doseq [ref refs]
       (lsb/write-int w (inc (count (:name ref))))
@@ -51,9 +47,9 @@
       (lsb/write-bytes w (byte-array 1 (byte 0)))
       (lsb/write-int w (:len ref)))))
 
-(defn write-alignments* [^BAMWriter wtr alns header]
+(defn write-alignments* [^BAMWriter wtr alns]
   (let [w (.writer wtr)
-        refs (sam-util/make-refs header)]
+        refs (sam-util/make-refs (.header wtr))]
     (doseq [a alns]
       (lsb/write-int w (encoder/get-block-size a))
       (encoder/encode-alignment w a refs))))

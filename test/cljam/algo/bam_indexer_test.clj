@@ -39,9 +39,7 @@
                                     ;; generate incomplete bam on the fly
                                     (spit-bam-for-test f test-sam-incomplete-alignments)
                                     ;; TODO: go independent from sorter
-                                    (with-open [rdr (sam/bam-reader f)
-                                                wtr (sam/bam-writer sorted-f)]
-                                      (sorter/sort-by-pos rdr wtr)))
+                                    (sorter/sort-by-pos f sorted-f))
                         :after (clean-cache!)}
       (is (not-throw? (bai/create-index sorted-f (str sorted-f ".bai"))))
       (is (.isFile (cio/file (str sorted-f ".bai"))))

@@ -81,38 +81,28 @@
 (defn ^SAMWriter sam-writer
   "Returns an open cljam.io.sam.writer.SAMWriter of f. Should be used inside
   with-open to ensure the writer is properly closed."
-  [f]
-  (sam-writer/writer f))
+  [f header]
+  (sam-writer/writer f header))
 
 (defn ^BAMWriter bam-writer
   "Returns an open cljam.io.bam.writer.BAMWriter of f. Should be used inside
   with-open to ensure the writer is properly closed."
-  [f]
-  (bam-core/writer f))
+  [f header]
+  (bam-core/writer f header))
 
 (defn ^Closeable writer
   "Selects suitable writer from f's extension, returning the writer. This
   function supports SAM and BAM format."
-  [f]
+  [f header]
   (case (io-util/file-type f)
-    :sam (sam-writer f)
-    :bam (bam-writer f)
+    :sam (sam-writer f header)
+    :bam (bam-writer f header)
     (throw (IllegalArgumentException. "Invalid file type"))))
-
-(defn write-header
-  "Writes header to the SAM/BAM file."
-  [wtr header]
-  (protocols/write-header wtr header))
-
-(defn write-refs
-  "Writes references to the SAM/BAM file."
-  [wtr header]
-  (protocols/write-refs wtr header))
 
 (defn write-alignments
   "Writes alignments to the SAM/BAM file."
-  [wtr alignments header]
-  (protocols/write-alignments wtr alignments header))
+  [wtr alignments]
+  (protocols/write-alignments wtr alignments))
 
 (defn write-blocks
   "Writes alignment blocks of the SAM/BAM file."

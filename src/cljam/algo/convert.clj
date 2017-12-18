@@ -15,14 +15,14 @@
 
 (def ^:private default-num-block 100000)
 
-(defn- sam-write-alignments [rdr wtr hdr num-block]
+(defn- sam-write-alignments [rdr wtr num-block]
   (when (and (pos? *n-threads*) (> (get-exec-n-threads) 1))
     (logging/warn "Concurrent SAM writing is not supported."))
   (doseq [alns (partition-all num-block (sam/read-alignments rdr {}))]
-    (sam/write-alignments wtr alns hdr)))
+    (sam/write-alignments wtr alns)))
 
-(defn- bam-write-alignments [rdr wtr hdr num-block]
-  (let [refs (sam-util/make-refs hdr)
+(defn- bam-write-alignments [rdr ^BAMWriter wtr num-block]
+  (let [refs (sam-util/make-refs (.header wtr))
         n-threads (get-exec-n-threads)]
     (doseq [blocks (cp/pmap (if (= n-threads 1) :serial (dec n-threads))
                             (fn [chunk]
@@ -33,23 +33,16 @@
                             (partition-all num-block (sam/read-alignments rdr {})))]
       (sam/write-blocks wtr blocks))))
 
-(defn- convert-sam*
-  [rdr wtr num-block write-alignments-fn]
-  (let [hdr (sam/read-header rdr)]
-    (sam/write-header wtr hdr)
-    (sam/write-refs wtr hdr)
-    (write-alignments-fn rdr wtr hdr num-block)))
-
 (defn convert-sam
   "Converts file format between SAM and BAM based on the file extension."
   [in out & {:keys [n-threads num-block]
              :or {n-threads 0, num-block default-num-block}}]
   (with-open [rdr (sam/reader in)
-              wtr (sam/writer out)]
+              wtr (sam/writer out (sam/read-header rdr))]
     (binding [*n-threads* n-threads]
       (cond
-        (io-util/sam-writer? wtr) (convert-sam* rdr wtr num-block sam-write-alignments)
-        (io-util/bam-writer? wtr) (convert-sam* rdr wtr num-block bam-write-alignments)
+        (io-util/sam-writer? wtr) (sam-write-alignments rdr wtr num-block)
+        (io-util/bam-writer? wtr) (bam-write-alignments rdr wtr num-block)
         :else (throw (ex-info (str "Unsupported output file format " out) {})))))
   nil)
 

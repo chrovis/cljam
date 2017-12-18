@@ -32,11 +32,9 @@
 
 (defn- with-reader
   [target-fn src-file & [dst-file]]
-  (let [src-rdr (sam/reader src-file)
-        dst-wtr (when dst-file (sam/writer dst-file))]
-    (if-not (nil? dst-wtr)
-      (with-open [src ^Closeable src-rdr
-                  dst ^Closeable dst-wtr] (target-fn src dst))
+  (let [src-rdr (sam/reader src-file)]
+    (if-not (nil? dst-file)
+      (target-fn src-file dst-file)
       (with-open [src ^Closeable src-rdr] (target-fn src)))))
 
 (deftest sort-test-files
@@ -128,33 +126,25 @@
                       :after (clean-cache!)}
     ;; coordinate
     (is (not-throw?
-         (with-open [r (sam/reader tmp-shuffled-bam-file)
-                     w (sam/writer tmp-coordinate-sorted-bam-bam-file)]
-           (sorter/sort-by-pos r w {:chunk-size 3}))))
+         (sorter/sort-by-pos tmp-shuffled-bam-file tmp-coordinate-sorted-bam-bam-file {:chunk-size 3})))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-bam-file))
     (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-bam-file))))
     (is (coord-sorted? tmp-coordinate-sorted-bam-bam-file))
 
     (is (not-throw?
-         (with-open [r (sam/reader tmp-shuffled-sam-file)
-                     w (sam/writer tmp-coordinate-sorted-sam-sam-file)]
-           (sorter/sort-by-pos r w {:chunk-size 3 :cache-fmt :sam}))))
+         (sorter/sort-by-pos tmp-shuffled-sam-file tmp-coordinate-sorted-sam-sam-file {:chunk-size 3 :cache-fmt :sam})))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-sam-file))
     (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-sam-file))))
     (is (coord-sorted? tmp-coordinate-sorted-sam-sam-file))
 
     ;; queryname
     (is (not-throw?
-         (with-open [r (sam/reader tmp-shuffled-bam-file)
-                     w (sam/writer tmp-queryname-sorted-bam-file-2)]
-           (sorter/sort-by-qname r w {:chunk-size 3}))))
+         (sorter/sort-by-qname tmp-shuffled-bam-file tmp-queryname-sorted-bam-file-2 {:chunk-size 3})))
     (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file-2)
     (is (qname-sorted? tmp-queryname-sorted-bam-file-2))
 
     (is (not-throw?
-         (with-open [r (sam/reader tmp-shuffled-bam-file)
-                     w (sam/writer tmp-queryname-sorted-sam-file-2)]
-           (sorter/sort-by-qname r w {:chunk-size 3 :cache-fmt :sam}))))
+         (sorter/sort-by-qname tmp-shuffled-bam-file tmp-queryname-sorted-sam-file-2 {:chunk-size 3 :cache-fmt :sam})))
     (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file-2)
     (is (qname-sorted? tmp-queryname-sorted-sam-file-2))))
 
@@ -187,16 +177,12 @@
   (with-before-after {:before (do (prepare-cavia!)
                                   (prepare-cache!))
                       :after (clean-cache!)}
+    ;; Use small chunk size to avoid OOM
     (is (not-throw?
-         (with-open [r (sam/reader large-bam-file)
-                     w (sam/writer tmp-coordinate-sorted-bam-file)]
-           ;; Use small chunk size to avoid OOM
-           (sorter/sort-by-pos r w {:chunk-size 100000}))))
+         (sorter/sort-by-pos large-bam-file tmp-coordinate-sorted-bam-file {:chunk-size 100000})))
+    ;; Use small chunk size to avoid OOM
     (is (not-throw?
-         (with-open [r (sam/reader large-bam-file)
-                     w (sam/writer tmp-queryname-sorted-bam-file)]
-           ;; Use small chunk size to avoid OOM
-           (sorter/sort-by-qname r w {:chunk-size 100000}))))
+         (sorter/sort-by-qname large-bam-file tmp-queryname-sorted-bam-file {:chunk-size 100000})))
     (is (with-reader sorter/sorted-by? large-bam-file))
     (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file))
     (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file))

@@ -176,10 +176,8 @@
             refs (sam/read-refs rdr)
             alns (sam/read-alignments rdr)]
         (is (= refs medium-sam-refs))
-        (with-open [w (sam/bam-writer temp-bam-file)]
-          (is (not-throw? (sam/write-header w header)))
-          (is (not-throw? (sam/write-refs w refs)))
-          (is (not-throw? (sam/write-alignments w alns header)))
+        (with-open [w (sam/bam-writer temp-bam-file header)]
+          (is (not-throw? (sam/write-alignments w alns)))
           (same-file? medium-bam-file temp-bam-file))))))
 
 (deftest-remote bam-reader-large-test
@@ -231,15 +229,13 @@
 (deftest sam-writer-test
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (with-open [w (sam/sam-writer temp-sam-file)]
-      (is (not-throw? (sam/write-header w (:header test-sam))))
-      (is (not-throw? (sam/write-alignments w (:alignments test-sam) nil))))
+    (with-open [w (sam/sam-writer temp-sam-file (:header test-sam))]
+      (is (not-throw? (sam/write-alignments w (:alignments test-sam)))))
     (with-open [r (sam/sam-reader temp-sam-file)]
       (is (= (sam/read-header r) (:header test-sam)))
       (is (= (sam/read-refs r) test-sam-refs))
       (is (= (sam/read-blocks r) test-sam-blocks)))
-    (with-open [w (sam/sam-writer temp-sam-file)]
-      (is (not-throw? (sam/write-header w (:header test-sam))))
+    (with-open [w (sam/sam-writer temp-sam-file (:header test-sam))]
       (is (not-throw? (sam/write-blocks w test-sam-blocks))))
     (with-open [r (sam/sam-reader temp-sam-file)]
       (is (= (sam/read-header r) (:header test-sam)))
@@ -248,13 +244,13 @@
 
 (deftest writer-test
   (testing "sam"
-    (with-open [wtr (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.sam")))]
+    (with-open [wtr (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.sam")) {})]
       (is (instance? cljam.io.sam.writer.SAMWriter wtr))))
   (testing "bam"
-    (with-open [wtr (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bam")))]
+    (with-open [wtr (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bam")) {})]
       (is (instance? cljam.io.bam.writer.BAMWriter wtr))))
   (testing "throws Exception"
-    (are [f] (thrown? Exception (sam/writer (.getAbsolutePath (cio/file util/temp-dir f))))
+    (are [f] (thrown? Exception (sam/writer (.getAbsolutePath (cio/file util/temp-dir f)) {}))
       "temp.baam"
       "temp.bai")))
 

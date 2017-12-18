@@ -51,20 +51,16 @@
   Level calculation process is multithreaded."
   [rdr wtr]
   (let [hdr (sam/read-header rdr)]
-    (sam/write-header wtr hdr)
-    (sam/write-refs wtr hdr)
     (cp/with-shutdown! [p (cp/threadpool (get-exec-n-threads))]
       ;; split and compute levels
       (let [xs (cp/pfor p [[i {:keys [name]}] (map vector (range) (sam/read-refs rdr))]
                  (let [cache (cache-path rdr i)]
                    (with-open [r (sam/reader rdr)
-                               w (sam/writer cache)]
-                     (sam/write-header w hdr)
-                     (sam/write-refs w hdr)
+                               w (sam/writer cache hdr)]
                      (->> {:chr name}
                           (sam/read-alignments r)
                           (map (partial add-level! (volatile! [])))
-                          (#(sam/write-alignments w % hdr))))
+                          (sam/write-alignments w)))
                    cache))]
         ;; merge
         (doseq [cache xs]

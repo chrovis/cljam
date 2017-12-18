@@ -51,6 +51,9 @@
 ;; Writing
 ;; -------
 
-(defn ^BAMWriter writer [f]
-  (BAMWriter. (.getAbsolutePath (cio/file f))
-              (DataOutputStream. (BGZFOutputStream. (cio/file f)))))
+(defn ^BAMWriter writer [f header]
+  (doto (BAMWriter. (.getAbsolutePath (cio/file f))
+                    (DataOutputStream. (BGZFOutputStream. (cio/file f)))
+                    header)
+    writer/write-header
+    writer/write-refs))

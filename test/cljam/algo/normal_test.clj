@@ -11,28 +11,20 @@
   (testing "sam -> sam"
     (with-before-after {:before (prepare-cache!)
                         :after (clean-cache!)}
-      (with-open [rdr (sam/reader normalize-before-sam-file)
-                  wtr (sam/writer temp-sam)]
-        (is (not-throw? (normalize rdr wtr))))
+      (is (not-throw? (normalize-file! normalize-before-sam-file temp-sam)))
       (is (same-sam-contents? temp-sam normalize-after-sam-file))))
   (testing "bam -> bam"
     (with-before-after {:before (prepare-cache!)
                         :after (clean-cache!)}
-      (with-open [rdr (sam/reader normalize-before-bam-file)
-                  wtr (sam/writer temp-bam)]
-        (is (not-throw? (normalize rdr wtr))))
+      (is (not-throw? (normalize-file! normalize-before-bam-file temp-bam)))
       (is (same-sam-contents? temp-bam normalize-after-bam-file))))
   (testing "sam -> bam"
     (with-before-after {:before (prepare-cache!)
                         :after (clean-cache!)}
-      (with-open [rdr (sam/reader normalize-before-sam-file)
-                  wtr (sam/writer temp-bam)]
-        (is (not-throw? (normalize rdr wtr))))
+      (is (not-throw? (normalize-file! normalize-before-sam-file temp-bam)))
       (is (same-sam-contents? temp-bam normalize-after-bam-file))))
   (testing "bam -> sam"
     (with-before-after {:before (prepare-cache!)
                         :after (clean-cache!)}
-      (with-open [rdr (sam/reader normalize-before-bam-file)
-                  wtr (sam/writer temp-sam)]
-        (is (not-throw? (normalize rdr wtr))))
+      (is (not-throw? (normalize-file! normalize-before-bam-file temp-sam)))
       (is (same-sam-contents? temp-sam normalize-after-sam-file)))))

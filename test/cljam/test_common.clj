@@ -88,15 +88,12 @@
 
 ;; spit (for test)
 (defn spit-sam-for-test [f sam]
-  (with-open [w (sam/sam-writer f)]
-    (sam/write-header w (:header sam))
-    (sam/write-alignments w (:alignments sam) nil)))
+  (with-open [w (sam/sam-writer f (:header sam))]
+    (sam/write-alignments w (:alignments sam))))
 
 (defn spit-bam-for-test [f sam]
-  (with-open [w (sam/bam-writer f)]
-    (sam/write-header w (:header sam))
-    (sam/write-refs w (:header sam))
-    (sam/write-alignments w (:alignments sam) (:header sam))))
+  (with-open [w (sam/bam-writer f (:header sam))]
+    (sam/write-alignments w (:alignments sam))))
 
 ;; Test resources
 ;; --------------

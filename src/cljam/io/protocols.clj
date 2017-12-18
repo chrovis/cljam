@@ -35,11 +35,7 @@
     "Reads alignment blocks of the SAM/BAM file, returning the blocks as an eduction."))
 
 (defprotocol IAlignmentWriter
-  (write-header [this header]
-    "Writes header to the SAM/BAM file.")
-  (write-refs [this header]
-    "Writes references to the SAM/BAM file.")
-  (write-alignments [this alignments header]
+  (write-alignments [this alignments]
     "Writes alignments to the SAM/BAM file.")
   (write-blocks [this blocks]
     "Writes alignment blocks of the SAM/BAM file."))

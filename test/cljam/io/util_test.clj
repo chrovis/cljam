@@ -188,7 +188,7 @@
 
 (deftest writer-predicates-test
   (testing "sam writer"
-    (with-open [r (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.sam")))]
+    (with-open [r (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.sam")) {})]
       (are [?pred ?expected] (= (?pred r) ?expected)
         io-util/alignment-writer? true
         io-util/sam-writer? true
@@ -202,7 +202,7 @@
         io-util/fastq-writer? false
         io-util/bed-writer? false)))
   (testing "bam writer"
-    (with-open [r (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bam")))]
+    (with-open [r (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bam")) {})]
       (are [?pred ?expected] (= (?pred r) ?expected)
         io-util/alignment-writer? true
         io-util/sam-writer? false

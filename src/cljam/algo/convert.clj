@@ -1,15 +1,19 @@
 (ns cljam.algo.convert
   "Converters between equivalent formats: SAM/BAM and FASTA/TwoBit."
   (:require [clojure.tools.logging :as logging]
+            [clojure.string :as cstr]
             [cljam.common :refer [*n-threads* get-exec-n-threads]]
             [cljam.io.sam :as sam]
             [cljam.io.bam.encoder :as encoder]
+            [cljam.io.sam.util.flag :as flag]
             [cljam.io.sam.util.refs :as refs]
+            [cljam.util.sequence :as util-seq]
             [cljam.io.sequence :as cseq]
+            [cljam.io.fastq :as fq]
             [cljam.io.util :as io-util]
             [com.climate.claypoole :as cp])
   (:import [java.nio ByteBuffer]
-           [cljam.io.bam.writer BAMWriter]))
+           [cljam.io.fastq FASTQRead]))
 
 ;;; SAM <-> BAM
 
@@ -57,23 +61,128 @@
 
 (defn convert-sequence
   "Converts file format between FASTA and TwoBit based on the file extension."
-  [in out]
-  (with-open [rdr (cseq/reader in)
-              wtr (cseq/writer out {:index (if (cseq/indexed? rdr)
-                                             (cseq/read-indices rdr)
-                                             (logging/warn "Non-indexed sequence may use stupendous memory."))})]
-    (cseq/write-sequences wtr (cseq/read-all-sequences rdr {:mask? true}))))
+  ([in out]
+   (convert-sequence identity in out))
+  ([xf in out]
+   (with-open [rdr (cseq/reader in)
+               wtr (cseq/writer out {:index (if (cseq/indexed? rdr)
+                                              (cseq/read-indices rdr)
+                                              (logging/warn "Non-indexed sequence may use stupendous memory."))})]
+     (cseq/write-sequences wtr (sequence xf (cseq/read-all-sequences rdr {:mask? true}))))))
+
+;;; FASTQ -> FASTA or TwoBit
+
+(defn fq->seq
+  "Converts a FASTQ file to a FASTA or TwoBit sequence file."
+  ([in out]
+   (fq->seq identity in out))
+  ([xf in out]
+   (with-open [rdr (fq/reader in)
+               wtr (cseq/writer out)]
+     (->> (fq/read-sequences rdr {:decode-quality nil})
+          (sequence xf)
+          (cseq/write-sequences wtr)))))
+
+;;; SAM -> FASTQ
+
+(defn- long-qname
+  "Append casava 1.8 style R1/R2 suffix to the query name."
+  [aln]
+  (let [f (long (:flag aln))]
+    (if (flag/multiple? f)
+      (update aln :qname str \space (flag/r1r2 f) ":N:0:1")
+      aln)))
+
+(defn- short-qname
+  "Append /1 or /2 to the query name."
+  [aln]
+  (let [f (long (:flag aln))]
+    (if (flag/multiple? f)
+      (update aln :qname str \/ (flag/r1r2 f))
+      aln)))
+
+(defn- null-or-star? [^String qual]
+  (or (nil? qual)
+      (and (= 1 (.length qual))
+           (= \* (.charAt qual 0)))))
+
+(defn aln->read
+  "Converts a SAM alignment record to a FASTQ read."
+  ([aln]
+   (aln->read short-qname aln))
+  ([rename-fn {:keys [flag ^String seq qual] :as aln}]
+   (let [reversed? (flag/reversed? flag)]
+     (FASTQRead.
+      (:qname (rename-fn aln))
+      (if reversed? (util-seq/revcomp seq) seq)
+      (if (null-or-star? qual)
+        (cstr/join (repeat (.length seq) \"))
+        (if reversed?
+          (cstr/reverse qual)
+          qual))))))
+
+(defn- sam->fq-rf
+  [w0 w1 w2 _ aln]
+  (when-let [w (case (int (flag/r1r2 (:flag aln))) 0 w0 1 w1 2 w2)]
+    (fq/write-sequences w [(aln->read long-qname aln)] {:encode-quality nil})))
+
+(defn sam->fq
+  "Converts a SAM/BAM to a FASTQ file."
+  ([xf in out]
+   (with-open [rdr (sam/reader in)
+               wtr (fq/writer out)]
+     (fq/write-sequences
+      wtr
+      (sequence
+       (comp
+        xf
+        (filter (comp flag/primary? :flag))
+        (map (partial aln->read short-qname)))
+       (sam/read-alignments rdr))
+      {:encode-quality nil})))
+  ([xf in out-r1 out-r2]
+   (with-open [rdr (sam/reader in)
+               wtr1 (fq/writer out-r1)
+               wtr2 (fq/writer out-r2)]
+     (->> (sam/read-alignments rdr)
+          (transduce
+           (comp
+            xf
+            (filter (comp flag/primary? :flag)))
+           (completing (partial sam->fq-rf nil wtr1 wtr2)) nil))))
+  ([xf in out-r0 out-r1 out-r2]
+   (with-open [rdr (sam/reader in)
+               wtr0 (fq/writer out-r0)
+               wtr1 (fq/writer out-r1)
+               wtr2 (fq/writer out-r2)]
+     (->> (sam/read-alignments rdr)
+          (transduce
+           (comp
+            xf
+            (filter (comp flag/primary? :flag)))
+           (completing (partial sam->fq-rf wtr0 wtr1 wtr2)) nil)))))
 
 ;;; General converter
 
-(def ^:private alignment-io? (every-pred (comp #{:sam :bam} io-util/file-type)))
+(defn- file-type [f] (when f (io-util/file-type f)))
 
-(def ^:private sequence-io? (every-pred (comp #{:fasta :2bit} io-util/file-type)))
+(def ^:private alignment-io? (every-pred (comp #{:sam :bam} file-type)))
+
+(def ^:private sequence-io? (every-pred (comp #{:fasta :2bit} file-type)))
+
+(def ^:private read-io? (every-pred (comp #{:fastq} file-type)))
 
 (defn convert
   "Converts file format from input file to output file by the file extension."
-  [in out & opts]
+  [in [o1 o2 o3 :as os] & opts]
   (cond
-    (alignment-io? in out) (apply convert-sam in out opts)
-    (sequence-io? in out) (convert-sequence in out)
-    :else (throw (ex-info (str "Unsupported I/O pair: " in " and " out) {}))))
+    (alignment-io? in o1) (apply convert-sam in o1 opts)
+    (sequence-io? in o1) (convert-sequence in o1)
+    (and (read-io? in) (sequence-io? o1)) (fq->seq in o1)
+    (and (alignment-io? in) (read-io? o1 o2 o3)) (apply sam->fq identity in os)
+    (and (alignment-io? in) (read-io? o1 o2)) (apply sam->fq identity in os)
+    (and (alignment-io? in) (read-io? o1)) (apply sam->fq identity in os)
+    :else (-> "Unsupported I/O pair: "
+              (str in " and " (cstr/join ", " (take-while some? os)))
+              (ex-info {})
+              throw)))

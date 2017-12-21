@@ -91,7 +91,7 @@
 (defn- convert-usage [options-summary]
   (->> ["Convert file format based on the file extension."
         ""
-        "Usage: cljam convert [-t THREAD] <in-file> <out-file>"
+        "Usage: cljam convert [-t THREAD] <in-file> <out-file> [<out-file-2> [<out-file-3>]]"
         ""
         "Options:"
         options-summary]
@@ -101,10 +101,10 @@
   (let [{:keys [options arguments errors summary]} (parse-opts args convert-cli-options)]
     (cond
      (:help options) (exit 0 (convert-usage summary))
-     (not= (count arguments) 2) (exit 1 (convert-usage summary))
+     (not (<= 2 (count arguments) 4)) (exit 1 (convert-usage summary))
      errors (exit 1 (error-msg errors)))
-    (let [[in out] arguments]
-      (convert/convert in out :n-threads (:thread options))))
+    (let [[in & outs] arguments]
+      (convert/convert in outs :n-threads (:thread options))))
   nil)
 
 ;; ### normalize command

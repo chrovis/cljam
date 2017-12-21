@@ -114,6 +114,7 @@
 ;; ### BAM files
 
 (def test-bam-file "test-resources/bam/test.bam")
+(def test-paired-bam-file "test-resources/bam/paired.bam")
 (def test-sorted-bam-file "test-resources/bam/test.sorted.bam")
 (def small-bam-file "test-resources/bam/small.bam")
 (def medium-bam-file "test-resources/bam/medium.bam")
@@ -157,6 +158,8 @@
 (def test-fq-file "test-resources/fastq/test.fq")
 (def test-fq-gz-file "test-resources/fastq/test.fq.gz")
 (def test-fq-bz2-file "test-resources/fastq/test.fq.bz2")
+(def test-fq-r1-file "test-resources/fastq/test_R1.fastq.gz")
+(def test-fq-r2-file "test-resources/fastq/test_R2.fastq.gz")
 
 ;; ### BED files
 

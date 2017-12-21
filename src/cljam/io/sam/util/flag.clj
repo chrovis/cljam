@@ -29,9 +29,60 @@
   [flag-set]
   (reduce + (map flags flag-set)))
 
+(defmacro encoded
+  "Macro to provide a encoded flag with set of keywords."
+  [flag-set-literal]
+  (let [f (encode flag-set-literal)]
+    f))
+
 (defn primary?
   "Returns true when an alignment with given flag is a primary line."
-  [f]
-  (cond
-    (integer? f) (zero? (bit-and f 0x900))
-    (set? f) (nil? (or (:secondary f) (:supplementary f)))))
+  [^long f]
+  (zero? (bit-and f 0x900)))
+
+(defn multiple?
+  "Tests if the template has multiple segments."
+  [^long f]
+  (bit-test f 0))
+
+(defn properly-aligned?
+  "Tests if the paired-end segments are properly aligned."
+  [^long f]
+  (bit-test f 1))
+
+(defn unmapped?
+  "Tests if the segment is unmapped."
+  [^long f]
+  (bit-test f 2))
+
+(defn both-unmapped?
+  "Tests if both the segment and its mate segment are unmapped."
+  [^long f]
+  (zero? (bit-xor (bit-and f 0xC) 0xC)))
+
+(defn reversed?
+  "Tests if the segment is reversed."
+  [^long f]
+  (bit-test f 4))
+
+(defn r1?
+  "Tests if the segment is the first in the template."
+  [^long f]
+  (bit-test f 6))
+
+(defn r2?
+  "Tests if the segment is the last in the template."
+  [^long f]
+  (bit-test f 7))
+
+(defn r1r2
+  "Returns 0 for single-end, 1 for R1 and 2 for R2."
+  [^long f]
+  (-> f
+      (bit-and 0xC0) ;; last-bit first-bit
+      (unsigned-bit-shift-right 6)))
+
+(defn secondary?
+  "Tests if the alignment is secondary."
+  [^long f]
+  (bit-test f 8))

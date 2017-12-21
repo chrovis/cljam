@@ -78,14 +78,10 @@
 
 (defn basic-mpileup-pred
   "Basic predicate function for filtering alignments for mpileup."
-  [a]
-  (and (:flag a)
-       (flag/primary? (:flag a)) ;; primary
-       (zero? (bit-and 0x4 (:flag a))) ;; mapped
-       (zero? (bit-and 0x200 (:flag a))) ;; QC pass
-       (zero? (bit-and 0x400 (:flag a))) ;; Not duplicated
-       (or (zero? (bit-and 0x1 (:flag a))) ;; single-end
-           (pos? (bit-and 0x2 (:flag a)))))) ;; properly-paired
+  [{:keys [flag]}]
+  (and flag
+       (zero? (bit-and (flag/encoded #{:unmapped :filtered-out :duplicated :supplementary :secondary}) flag))
+       (or (not (flag/multiple? flag)) (flag/properly-aligned? flag))))
 
 (defn- correct-qual
   "Correct quality of two overlapped mate reads by setting zero quality for one of the base."

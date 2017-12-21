@@ -123,9 +123,9 @@
            unchecked-int
            (.write o)))
     (when (pos? (mod len 4))
-      (loop [b 0 i (mod len 4)]
+      (loop [b 0 i (mod len 4) j 1]
         (if (pos? i)
-          (recur (bit-or b (bit-shift-left (aget table (.get bb)) (* 2 (- 4 i)))) (dec i))
+          (recur (bit-or b (bit-shift-left (aget table (.get bb)) (* 2 (- 4 j)))) (dec i) (inc j))
           (.write o (unchecked-int b)))))))
 
 (defn- write-sequence!

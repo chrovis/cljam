@@ -267,4 +267,13 @@
       (with-open [r (cseq/twobit-reader test-twobit-n-file)
                   w (cseq/twobit-writer f)]
         (cseq/write-sequences w (cseq/read-all-sequences r {:mask? true})))
-      (is (same-file? f test-twobit-n-file)))))
+      (is (same-file? f test-twobit-n-file)))
+
+    (let [f (str temp-dir "/test-2.2bit")
+          s [{:name "SEQ1" :sequence "AAAA"}
+             {:name "SEQ2" :sequence "AAAAG"}
+             {:name "SEQ3" :sequence "AAAAGC"}
+             {:name "SEQ4" :sequence "AAAAGCT"}
+             {:name "SEQ5" :sequence "AAAAGCTA"}]]
+      (with-open [w (cseq/writer f)] (cseq/write-sequences w s))
+      (with-open [r (cseq/reader f)] (is (= (cseq/read-all-sequences r) s))))))

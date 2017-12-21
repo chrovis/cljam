@@ -1,10 +1,16 @@
 (ns cljam.io.sam.util.refs
-  "Utility functions for SAM references.")
+  "Utility functions for SAM references."
+  (:require [clojure.set :as cset]))
+
 (defn make-refs
   "Return a reference sequence from the sam header."
   [hdr]
-  (for [sq (:SQ hdr)]
-    {:name (:SN sq), :len (:LN sq)}))
+  (map
+   #(cset/rename-keys
+     %
+     {:SN :name, :LN :len, :AH :alt, :AS :assembly,
+      :M5 :md5, :SP :species, :UR :uri})
+   (:SQ hdr)))
 
 (defn- ref-id*
   [refs name]

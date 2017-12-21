@@ -4,7 +4,7 @@
             [cljam.common :refer [*n-threads* get-exec-n-threads]]
             [cljam.io.sam :as sam]
             [cljam.io.bam.encoder :as encoder]
-            [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.refs :as refs]
             [cljam.io.sequence :as cseq]
             [cljam.io.util :as io-util]
             [com.climate.claypoole :as cp])
@@ -22,7 +22,7 @@
     (sam/write-alignments wtr alns hdr)))
 
 (defn- bam-write-alignments [rdr wtr hdr num-block]
-  (let [refs (sam-util/make-refs hdr)
+  (let [refs (refs/make-refs hdr)
         n-threads (get-exec-n-threads)]
     (doseq [blocks (cp/pmap (if (= n-threads 1) :serial (dec n-threads))
                             (fn [chunk]

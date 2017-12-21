@@ -1,12 +1,12 @@
-(ns cljam.io.util.cigar-test
+(ns cljam.io.sam.util.cigar-test
   (:require [clojure.test :refer :all]
-            [cljam.io.util.cigar :as cgr]))
+            [cljam.io.sam.util.cigar :as cigar]))
 
 (deftest about-parse
-  (is (= (cgr/parse  "1S2I6M1P11I") '([1 \S] [2 \I] [6 \M] [1 \P] [11 \I]))))
+  (is (= (cigar/parse  "1S2I6M1P11I") '([1 \S] [2 \I] [6 \M] [1 \P] [11 \I]))))
 
 (deftest cigar-to-index
-  (are [?cigar ?index] (= (map (fn [[op x :as xs]] (if (= op :m) x xs)) (cgr/to-index* ?cigar)) ?index)
+  (are [?cigar ?index] (= (map (fn [[op x :as xs]] (if (= op :m) x xs)) (cigar/to-index* ?cigar)) ?index)
     "4M"                 [0 1 2 3]
     "1M3I"               [[:i 0 [1 2 3]]]
     "1M3D"               [[:d 0 [1 2 3]] \* \* \*]

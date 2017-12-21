@@ -3,7 +3,7 @@
   (:refer-clojure :exclude [dedupe])
   (:require [com.climate.claypoole :as cp]
             [cljam.io.sam :as sam]
-            [cljam.io.sam.util :as sam-util]))
+            [cljam.io.sam.util.flag :as flag]))
 
 (defn- refs->regions [refs]
   (for [{:keys [name len]} refs]
@@ -15,10 +15,10 @@
       (reduce (fn [r x] (+ r (- (int x) 33))) 0 q))))
 
 (defn- paired? [{:keys [flag]}]
-  (pos? (bit-and flag (sam-util/flags :multiple))))
+  (pos? (bit-and flag (flag/flags :multiple))))
 
 (defn- mapped? [{:keys [flag]}]
-  (zero? (bit-and flag (bit-or (sam-util/flags :unmapped) (sam-util/flags :next-unmapped)))))
+  (zero? (bit-and flag (bit-or (flag/flags :unmapped) (flag/flags :next-unmapped)))))
 
 (defn dedupe-xform
   "Returns a transducer which removes PCR duplications."

@@ -6,6 +6,7 @@
             [clojure.tools.cli :refer [parse-opts]]
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.header :as header]
             [cljam.io.sequence :as cseq]
             [cljam.algo.bam-indexer :as bai]
             [cljam.algo.normal :as normal]
@@ -68,7 +69,7 @@
                                  "sam"  (sam/sam-reader f)
                                  "bam"  (sam/bam-reader f))]
         (when (:header options)
-          (println (sam-util/stringify-header (sam/read-header r))))
+          (println (header/stringify-header (sam/read-header r))))
         (doseq [aln (if (:region options)
                       (if-let [region (region/parse-region (:region options))]
                         (if (sam/indexed? r)

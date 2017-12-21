@@ -1,7 +1,8 @@
 (ns cljam.io.bam.reader
   "Reader of BAM file format."
   (:require [cljam.io.protocols :as protocols]
-            [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.refs :as refs]
+            [cljam.io.sam.util.header :as header]
             [cljam.io.bam-index.core :as bai]
             [cljam.io.bam.decoder :as decoder]
             [cljam.io.util.lsb :as lsb])
@@ -121,7 +122,7 @@
       (do (.seek ^BGZFInputStream (.reader rdr) (ffirst (bai/get-unplaced-spans bai)))
           (read-blocks-sequentially* rdr decoder))
       (let [refs (.refs rdr)]
-        (->> (bai/get-spans bai (sam-util/ref-id refs chr) start end)
+        (->> (bai/get-spans bai (refs/ref-id refs chr) start end)
              (eduction
               (comp
                (mapcat
@@ -132,7 +133,7 @@
 (defn load-headers
   "Reads header section of BAM file and returns it as a map."
   [rdr]
-  (let [header (sam-util/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
+  (let [header (header/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
         n-ref (lsb/read-int rdr)
         refs (loop [i n-ref, ret []]
                (if (zero? i)

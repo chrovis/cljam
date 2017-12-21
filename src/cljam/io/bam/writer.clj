@@ -1,7 +1,8 @@
 (ns cljam.io.bam.writer
   "Writer of BAM file format."
   (:require [cljam.io.protocols :as protocols]
-            [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.refs :as refs]
+            [cljam.io.sam.util.header :as header]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.bam.common :as common]
             [cljam.io.bam.encoder :as encoder])
@@ -36,14 +37,14 @@
 
 (defn write-header* [^BAMWriter wtr header]
   (let [w (.writer wtr)
-        header-string (str (sam-util/stringify-header header) \newline)]
+        header-string (str (header/stringify-header header) \newline)]
     (lsb/write-bytes w (.getBytes ^String common/bam-magic)) ; magic
     (lsb/write-int w (count header-string))
     (lsb/write-string w header-string)))
 
 (defn write-refs* [^BAMWriter wtr header]
   (let [w (.writer wtr)
-        refs (sam-util/make-refs header)]
+        refs (refs/make-refs header)]
     (lsb/write-int w (count refs))
     (doseq [ref refs]
       (lsb/write-int w (inc (count (:name ref))))
@@ -53,7 +54,7 @@
 
 (defn write-alignments* [^BAMWriter wtr alns header]
   (let [w (.writer wtr)
-        refs (sam-util/make-refs header)]
+        refs (refs/make-refs header)]
     (doseq [a alns]
       (lsb/write-int w (encoder/get-block-size a))
       (encoder/encode-alignment w a refs))))

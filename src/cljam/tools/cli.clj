@@ -162,8 +162,8 @@
       (with-open [r (sam/reader in)
                   w (sam/writer out)]
         (condp = (:order options)
-          (name sorter/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
-          (name sorter/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
+          (name header/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
+          (name header/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
   nil)
 
 ;; ### index command

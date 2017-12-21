@@ -1,6 +1,7 @@
 (ns cljam.io.sam.util.header
   "Utility functions for SAM header."
-  (:require [clojure.string :as cstr])
+  (:require [clojure.string :as cstr]
+            [cljam.io.sam.common :as sam-common])
   (:import clojure.lang.IEditableCollection))
 
 ;;; parse
@@ -89,3 +90,34 @@
                         (cstr/join \newline
                                    (map #(str \@ (name typ) \tab (stringify-header-keyvalues %)) kvs)))))
                   (seq hdr))))
+
+;;; @HD
+
+(defn update-version
+  "Overwrites format version in SAM header."
+  [header]
+  (assoc-in header [:HD :VN] sam-common/sam-version))
+
+(def ^:const order-unknown :unknown)
+(def ^:const order-unsorted :unsorted)
+(def ^:const order-coordinate :coordinate)
+(def ^:const order-queryname :queryname)
+
+(defn sorted-by
+  "Replaces the sorting order field in SAM header."
+  [order header]
+  (assoc-in header [:HD :SO] (name order)))
+
+(defn sort-order
+  "Returns sorting order of the sam as Keyword. Returning order is one of the
+  following: :queryname, :coordinate, :unsorted, :unknown."
+  [header]
+  (or (keyword (:SO (:HD header))) order-unknown))
+
+(defn sorted-by?
+  "Returns true if the sam is sorted, false if not. It is detected by
+  `@HD SO:***` tag in the header."
+  [header]
+  (let [so (:SO (:HD header))]
+    (or (= so (name order-queryname))
+        (= so (name order-coordinate)))))

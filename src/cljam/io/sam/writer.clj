@@ -2,8 +2,8 @@
   "Provides writing features."
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
-            [cljam.io.sam.util :refer [stringify-header
-                                       stringify-alignment]]
+            [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.header :as header]
             [cljam.io.protocols :as protocols])
   (:import [java.io BufferedWriter Closeable]))
 
@@ -35,14 +35,14 @@
 (defn- write-header*
   [^SAMWriter sam-writer header]
   (let [wtr ^BufferedWriter (.writer sam-writer)]
-    (.write wtr ^String (stringify-header header))
+    (.write wtr ^String (header/stringify-header header))
     (.newLine wtr)))
 
 (defn- write-alignments*
-  [^SAMWriter sam-writer alns refs]
+  [^SAMWriter sam-writer alns _]
   (let [wtr ^BufferedWriter (.writer sam-writer)]
    (doseq [a alns]
-     (.write wtr ^String (stringify-alignment a))
+     (.write wtr ^String (sam-util/stringify-alignment a))
      (.newLine wtr))))
 
 (defn- write-blocks*

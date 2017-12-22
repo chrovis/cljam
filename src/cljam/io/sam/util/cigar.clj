@@ -1,4 +1,4 @@
-(ns cljam.io.util.cigar
+(ns cljam.io.sam.util.cigar
   "Parser of CIGAR strings."
   (:import [java.nio ByteBuffer ByteOrder]))
 

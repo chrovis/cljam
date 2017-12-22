@@ -3,7 +3,10 @@
   (:require [clojure.string :as cstr]
             [cljam.util :as util]
             [cljam.io.sam.util :as sam-util]
-            [cljam.io.util.cigar :as cgr]
+            [cljam.io.sam.util.refs :as refs]
+            [cljam.io.sam.util.quality :as qual]
+            [cljam.io.sam.util.cigar :as cigar]
+            [cljam.io.sam.util.sequence :as seq]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.bam.common :as common]))
 
@@ -13,8 +16,8 @@
 (defn- get-next-ref-id [sa refs]
   (condp = (:rnext sa)
     "*" -1
-    "=" (if-let [id (sam-util/ref-id refs (:rname sa))] id -1)
-    (if-let [id (sam-util/ref-id refs (:rnext sa))] id -1)))
+    "=" (if-let [id (refs/ref-id refs (:rname sa))] id -1)
+    (if-let [id (refs/ref-id refs (:rnext sa))] id -1)))
 
 (defn- get-options-size [sam-alignment]
   (->> (map
@@ -44,7 +47,7 @@
 (defn- encode-qual [sam-alignment]
   (if (= (:qual sam-alignment) "*")
     (byte-array (.length ^String (:seq sam-alignment)) (util/ubyte 0xff))
-    (sam-util/fastq->phred (:qual sam-alignment))))
+    (qual/fastq->phred (:qual sam-alignment))))
 
 (defn- encode-tag-value [writer val-type value]
   (case val-type
@@ -70,7 +73,7 @@
 
 (defn get-block-size [aln]
   (let [read-length (.length ^String (:seq aln))
-        cigar-length ^long (cgr/count-op (:cigar aln))]
+        cigar-length ^long (cigar/count-op (:cigar aln))]
     (+ ^long common/fixed-block-size
        (.length ^String (:qname aln))
        1 ;; null
@@ -81,7 +84,7 @@
 
 (defn encode-alignment [wrtr aln refs]
   ;; refID
-  (lsb/write-int wrtr (or (sam-util/ref-id refs (:rname aln)) -1))
+  (lsb/write-int wrtr (or (refs/ref-id refs (:rname aln)) -1))
   ;; pos
   (lsb/write-int wrtr (dec (:pos aln)))
   ;; bin_mq_nl
@@ -89,7 +92,7 @@
   (lsb/write-ubyte wrtr (short (:mapq aln)))
   (lsb/write-ushort wrtr (sam-util/compute-bin aln))
   ;; flag_nc
-  (lsb/write-ushort wrtr (cgr/count-op (:cigar aln)))
+  (lsb/write-ushort wrtr (cigar/count-op (:cigar aln)))
   (lsb/write-ushort wrtr (:flag aln))
   ;; l_seq
   (lsb/write-int wrtr (.length ^String (:seq aln)))
@@ -103,10 +106,10 @@
   (lsb/write-string wrtr (:qname aln))
   (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
   ;; cigar
-  (doseq [cigar (cgr/encode-cigar (:cigar aln))]
+  (doseq [cigar (cigar/encode-cigar (:cigar aln))]
     (lsb/write-int wrtr cigar))
   ;; seq
-  (lsb/write-bytes wrtr (sam-util/str->compressed-bases (:seq aln)))
+  (lsb/write-bytes wrtr (seq/str->compressed-bases (:seq aln)))
   ;; qual
   (lsb/write-bytes wrtr (encode-qual aln))
   ;; options

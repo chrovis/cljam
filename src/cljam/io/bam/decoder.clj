@@ -3,10 +3,12 @@
   (:require [clojure.string :as cstr]
             [proton.core :as proton]
             [cljam.util :as util]
-            [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.quality :as qual]
+            [cljam.io.sam.util.sequence :as sam-seq]
+            [cljam.io.sam.util.refs :as refs]
+            [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.bam.common :as common]
-            [cljam.io.util.lsb :as lsb]
-            [cljam.io.util.cigar :as cigar])
+            [cljam.io.util.lsb :as lsb])
   (:import [java.util Arrays]
            [java.nio ByteBuffer ByteOrder CharBuffer]
            [cljam.io.protocols SAMAlignment SAMRegionBlock SAMCoordinateBlock SAMQuerynameBlock]))
@@ -84,17 +86,17 @@
 (defn decode-qual [^bytes b]
   (if (Arrays/equals b (byte-array (alength b) (util/ubyte 0xff)))
     "*"
-    (sam-util/phred-bytes->fastq b)))
+    (qual/phred-bytes->fastq b)))
 
 (defn decode-seq [seq-bytes length]
-  (sam-util/compressed-bases->str length seq-bytes 0))
+  (sam-seq/compressed-bases->str length seq-bytes 0))
 
 (defn decode-next-ref-id [refs ^long ref-id ^long next-ref-id]
   (if (= next-ref-id -1)
     "*"
     (if (= ref-id next-ref-id)
       "="
-      (sam-util/ref-name refs next-ref-id))))
+      (refs/ref-name refs next-ref-id))))
 
 (defrecord BAMRawBlock [data ^long pointer-beg ^long pointer-end])
 
@@ -105,7 +107,7 @@
   ([refs block]
    (let [buffer      (ByteBuffer/wrap (:data block))
          ref-id      ^int (lsb/read-int buffer)
-         rname       (or (sam-util/ref-name refs ref-id) "*")
+         rname       (or (refs/ref-name refs ref-id) "*")
          pos         (inc ^int (lsb/read-int buffer))
          l-read-name (int ^long (lsb/read-ubyte buffer))
          mapq        ^long (lsb/read-ubyte buffer)
@@ -152,7 +154,7 @@
            (let [seq     (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
                  qual    (decode-qual (lsb/read-bytes buffer l-seq))
                  rest    (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
-                 rname   (or (sam-util/ref-name refs ref-id) "*")
+                 rname   (or (refs/ref-name refs ref-id) "*")
                  options (decode-options rest)]
              (SAMAlignment. qname (int flag) rname (int pos) ref-end (int mapq)
                             cigar rnext (int pnext) (int tlen) seq qual options))))))))

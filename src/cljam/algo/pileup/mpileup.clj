@@ -3,9 +3,10 @@
             [clojure.string :as cstr]
             [clojure.tools.logging :as logging]
             [cljam.io.sam :as sam]
-            [cljam.io.sam.util :as sam-util]
-            [cljam.io.sequence :as cseq]
-            [cljam.io.util.cigar :as cig]))
+            [cljam.io.sam.util.cigar :as cigar]
+            [cljam.io.sam.util.flag :as flag]
+            [cljam.io.sam.util.refs :as refs]
+            [cljam.io.sequence :as cseq]))
 
 (defn to-mpileup
   "Stringify mpileup sequence."
@@ -67,7 +68,7 @@
        (map
         (fn [alns]
           (->> alns
-               (map (fn [a] (assoc a :cig-index (cig/to-index (:cigar a)))))
+               (map (fn [a] (assoc a :cig-index (cigar/to-index (:cigar a)))))
                (pileup-seq start end))))
        (apply map
               (fn [index refs & plps]
@@ -77,14 +78,10 @@
 
 (defn basic-mpileup-pred
   "Basic predicate function for filtering alignments for mpileup."
-  [a]
-  (and (:flag a)
-       (sam-util/primary? (:flag a)) ;; primary
-       (zero? (bit-and 0x4 (:flag a))) ;; mapped
-       (zero? (bit-and 0x200 (:flag a))) ;; QC pass
-       (zero? (bit-and 0x400 (:flag a))) ;; Not duplicated
-       (or (zero? (bit-and 0x1 (:flag a))) ;; single-end
-           (pos? (bit-and 0x2 (:flag a)))))) ;; properly-paired
+  [{:keys [flag]}]
+  (and flag
+       (zero? (bit-and (flag/encoded #{:unmapped :filtered-out :duplicated :supplementary :secondary}) flag))
+       (or (not (flag/multiple? flag)) (flag/properly-aligned? flag))))
 
 (defn- correct-qual
   "Correct quality of two overlapped mate reads by setting zero quality for one of the base."
@@ -130,7 +127,7 @@
    (pileup nil bam-reader region))
   ([ref-reader bam-reader {:keys [chr start end] :or {start -1 end -1}}]
    (try
-     (if-let [r (sam-util/ref-by-name (sam/read-refs bam-reader) chr)]
+     (if-let [r (refs/ref-by-name (sam/read-refs bam-reader) chr)]
        (let [s (if (neg? start) 1 start)
              e (if (neg? end) (:len r) end)
              refseq (if ref-reader

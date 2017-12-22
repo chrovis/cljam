@@ -2,6 +2,8 @@
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.refs :as refs]
+            [cljam.io.sam.util.header :as header]
             [cljam.io.protocols :as protocols])
   (:import [java.io BufferedReader Closeable]
            [cljam.io.protocols SAMCoordinateBlock SAMQuerynameBlock]))
@@ -31,7 +33,7 @@
   (read-header [this]
     (.header this))
   (read-refs [this]
-    (vec (sam-util/make-refs (.header this))))
+    (vec (refs/make-refs (.header this))))
   (read-alignments [this]
     (protocols/read-alignments this {}))
   (read-alignments [this {:keys [chr start end] :as region}]
@@ -104,8 +106,8 @@
        (transduce
         (comp
          (take-while (fn [line] (= (first line) \@)))
-         (map sam-util/parse-header-line))
-        sam-util/into-header)))
+         (map header/parse-header-line))
+        header/into-header)))
 
 (defn reader [f]
   (let [header (with-open [r (cio/reader f)]

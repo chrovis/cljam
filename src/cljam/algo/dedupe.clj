@@ -3,7 +3,7 @@
   (:refer-clojure :exclude [dedupe])
   (:require [com.climate.claypoole :as cp]
             [cljam.io.sam :as sam]
-            [cljam.io.sam.util :as sam-util]))
+            [cljam.io.sam.util.flag :as flag]))
 
 (defn- refs->regions [refs]
   (for [{:keys [name len]} refs]
@@ -14,12 +14,6 @@
     (when-not (and (= (.length q) 1) (= \* (.charAt q 0)))
       (reduce (fn [r x] (+ r (- (int x) 33))) 0 q))))
 
-(defn- paired? [{:keys [flag]}]
-  (pos? (bit-and flag (sam-util/flags :multiple))))
-
-(defn- mapped? [{:keys [flag]}]
-  (zero? (bit-and flag (bit-or (sam-util/flags :unmapped) (sam-util/flags :next-unmapped)))))
-
 (defn dedupe-xform
   "Returns a transducer which removes PCR duplications."
   [& {:keys [remove-dups] :or {remove-dups true}}]
@@ -29,10 +23,12 @@
      (partition-by (juxt :rname :pos))
      (mapcat
       (fn [alns]
-        (loop [[{:keys [pos tlen qname] :as x} :as xs] alns heads {} tails [] dups []]
+        (loop [[{:keys [pos tlen qname flag] :as x} :as xs] alns heads {} tails [] dups []]
           (if x
             (cond
-              (not (and (paired? x) (mapped? x) (= (:rnext x) "="))) (recur (next xs) heads (conj tails x) dups)
+              (not (and (flag/multiple? flag)
+                        (not (flag/both-unmapped? flag))
+                        (= (:rnext x) "="))) (recur (next xs) heads (conj tails x) dups)
               (pos? tlen) (let [k [pos tlen]]
                             (if-let [v (get heads k)]
                               (let [[good bad] (if (pos? (compare (cp v) (cp x))) [v x] [x v])]

@@ -5,7 +5,8 @@
             [cljam.common :as common]
             [cljam.util.region :as region]
             [cljam.io.sam :as sam]
-            [cljam.io.sam.util :as sam-util])
+            [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.refs :as refs])
   (:import [cljam.io.protocols SAMRegionBlock]))
 
 (def ^:const default-step 1000000)
@@ -51,7 +52,7 @@
   [bam-reader {:keys [chr start end] :or {start 1 end Long/MAX_VALUE}}
    & [{:keys [step n-threads] :or {step default-step n-threads 1}}]]
   {:pre [chr start end (pos? start) (pos? end) (<= start end)]}
-  (when-let [{:keys [len]} (sam-util/ref-by-name (sam/read-refs bam-reader) chr)]
+  (when-let [{:keys [len]} (refs/ref-by-name (sam/read-refs bam-reader) chr)]
     (binding [common/*n-threads* n-threads]
       (lazy-depth* bam-reader chr (min len start) (min len end) step))))
 
@@ -122,7 +123,7 @@
   [bam-reader {:keys [chr start end] :or {start 1 end Long/MAX_VALUE}}
    & [{:keys [step unchecked? n-threads] :or {step default-step unchecked? false n-threads 1}}]]
   {:pre [chr start end (pos? start) (pos? end) (<= start end)]}
-  (when-let [{:keys [len]} (sam-util/ref-by-name (sam/read-refs bam-reader) chr)]
+  (when-let [{:keys [len]} (refs/ref-by-name (sam/read-refs bam-reader) chr)]
     (seq
      (depth*
       bam-reader

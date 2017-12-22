@@ -6,6 +6,7 @@
             [clojure.tools.cli :refer [parse-opts]]
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.header :as header]
             [cljam.io.sequence :as cseq]
             [cljam.algo.bam-indexer :as bai]
             [cljam.algo.normal :as normal]
@@ -68,7 +69,7 @@
                                  "sam"  (sam/sam-reader f)
                                  "bam"  (sam/bam-reader f))]
         (when (:header options)
-          (println (sam-util/stringify-header (sam/read-header r))))
+          (println (header/stringify-header (sam/read-header r))))
         (doseq [aln (if (:region options)
                       (if-let [region (region/parse-region (:region options))]
                         (if (sam/indexed? r)
@@ -161,8 +162,8 @@
       (with-open [r (sam/reader in)
                   w (sam/writer out)]
         (condp = (:order options)
-          (name sorter/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
-          (name sorter/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
+          (name header/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
+          (name header/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
   nil)
 
 ;; ### index command
@@ -270,7 +271,7 @@
       (with-open [r (sam/reader f)]
         (when (= (type r) cljam.io.sam.reader.SAMReader)
           (exit 1 "Not support SAM file"))
-        (when-not (sorter/sorted-by? r)
+        (when-not (sorter/sorted? r)
           (exit 1 "Not sorted"))
         (if (:region options)
           (if-let [region (region/parse-region (:region options))]

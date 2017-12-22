@@ -1,5 +1,6 @@
 (ns cljam.algo.sorter
   "Sorter of the SAM/BAM format alignments."
+  (:refer-clojure :exclude [sorted?])
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [com.climate.claypoole :as cp]
@@ -7,19 +8,11 @@
             [cljam.io.sam :as sam]
             [cljam.io.util :as io-util]
             [cljam.util :as util]
-            [cljam.io.sam.common :refer [sam-version]])
+            [cljam.io.sam.util.header :as header])
   (:import [java.io Closeable File]
            [java.util PriorityQueue]))
 
 (def ^:const default-chunk-size 1500000)
-(def ^:const order-unknown :unknown)
-(def ^:const order-coordinate :coordinate)
-(def ^:const order-queryname :queryname)
-
-(defn- replace-header
-  "Replaces version number and sorting info of the header."
-  [hdr vn so]
-  (assoc hdr :HD {:VN vn, :SO so}))
 
 (defn- refmap
   [refs]
@@ -60,8 +53,8 @@
   "Splits SAM/BAM file into multiple files each containing alignments up to chunk-size.
   name-fn must be a function taking a int value i and returning a path string for i-th output.
   read-fn must produce a sequence of alignments and write-fn must consume the splitted sequence."
-  [rdr chunk-size name-fn read-fn write-fn]
-  (let [hdr (replace-header (sam/read-header rdr) sam-version (name order-coordinate))]
+  [rdr mode chunk-size name-fn read-fn write-fn]
+  (let [hdr (header/sorted-by mode (header/update-version (sam/read-header rdr)))]
     (logging/info "Splitting...")
     (cp/with-shutdown! [p (cp/threadpool (cp/ncpus))]
       (->> (read-fn rdr)
@@ -90,7 +83,7 @@
         write-fn (if block?
                    (fn [w xs _] (sam/write-blocks w (sort-fn xs)))
                    (fn [w xs hdr] (sam/write-alignments w (sort-fn xs) hdr)))]
-    (split** rdr chunk-size name-fn read-fn write-fn)))
+    (split** rdr mode chunk-size name-fn read-fn write-fn)))
 
 (defn- head-pq
   "Take a smallest element from sequences in priority queue."
@@ -161,11 +154,10 @@
                      protocols/reader-path
                      util/basename
                      (partial gen-cache-filename (name cache-fmt)))
-        key-fn (case mode
-                 :coordinate (partial coordinate-key (refmap (sam/read-refs rdr)))
-                 :queryname queryname-key)
+        key-fn ({header/order-coordinate (partial coordinate-key (refmap (sam/read-refs rdr)))
+                 header/order-queryname queryname-key} mode)
         splitted-files (split* rdr chunk-size name-fn mode #(sort-by-index key-fn %))
-        hdr (replace-header (sam/read-header rdr) sam-version (name mode))]
+        hdr (header/sorted-by mode (header/update-version (sam/read-header rdr)))]
     (logging/info (str "Merging from " (count splitted-files) " files..."))
     (merge* wtr hdr splitted-files mode key-fn)
     (logging/info "Deleting cache files...")
@@ -174,25 +166,21 @@
 (defn sort-by-pos
   "Sorts alignments by chromosomal position."
   [rdr wtr & [option]]
-  (sort! rdr wtr (into (or option {}) {:mode :coordinate})))
+  (sort! rdr wtr (into (or option {}) {:mode header/order-coordinate})))
 
 (defn sort-by-qname
   "Sort alignments by query name."
   [rdr wtr & [option]]
-  (sort! rdr wtr (into (or option {}) {:mode :queryname})))
+  (sort! rdr wtr (into (or option {}) {:mode header/order-queryname})))
 
-(defn sorted-by?
+(defn sorted?
   "Returns true if the sam is sorted, false if not. It is detected by
   `@HD SO:***` tag in the header."
   [rdr]
-  (let [so (:SO (:HD (sam/read-header rdr)))]
-    (or (= so (name order-queryname))
-        (= so (name order-coordinate)))))
+  (header/sorted? (sam/read-header rdr)))
 
 (defn sort-order
   "Returns sorting order of the sam as Keyword. Returning order is one of the
   following: :queryname, :coordinate, :unsorted, :unknown."
   [rdr]
-  (if-let [so (:SO (:HD (sam/read-header rdr)))]
-    (keyword so)
-    order-unknown))
+  (header/sort-order (sam/read-header rdr)))

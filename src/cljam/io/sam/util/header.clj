@@ -1,5 +1,6 @@
 (ns cljam.io.sam.util.header
   "Utility functions for SAM header."
+  (:refer-clojure :exclude [sorted?])
   (:require [clojure.string :as cstr]
             [cljam.io.sam.common :as sam-common])
   (:import clojure.lang.IEditableCollection))
@@ -114,7 +115,7 @@
   [header]
   (or (keyword (:SO (:HD header))) order-unknown))
 
-(defn sorted-by?
+(defn sorted?
   "Returns true if the sam is sorted, false if not. It is detected by
   `@HD SO:***` tag in the header."
   [header]

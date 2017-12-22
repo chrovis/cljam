@@ -1,5 +1,6 @@
 (ns cljam.algo.sorter
   "Sorter of the SAM/BAM format alignments."
+  (:refer-clojure :exclude [sorted?])
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [com.climate.claypoole :as cp]
@@ -172,11 +173,11 @@
   [rdr wtr & [option]]
   (sort! rdr wtr (into (or option {}) {:mode header/order-queryname})))
 
-(defn sorted-by?
+(defn sorted?
   "Returns true if the sam is sorted, false if not. It is detected by
   `@HD SO:***` tag in the header."
   [rdr]
-  (header/sorted-by? (sam/read-header rdr)))
+  (header/sorted? (sam/read-header rdr)))
 
 (defn sort-order
   "Returns sorting order of the sam as Keyword. Returning order is one of the

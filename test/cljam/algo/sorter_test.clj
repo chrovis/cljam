@@ -48,12 +48,12 @@
     (is (not-throw? (with-reader sorter/sort-by-pos test-bam-file tmp-coordinate-sorted-bam-file)))
     (is (not-throw? (with-reader sorter/sort-by-qname test-sam-file tmp-queryname-sorted-sam-file)))
     (is (not-throw? (with-reader sorter/sort-by-qname test-bam-file tmp-queryname-sorted-bam-file)))
-    (is (not (with-reader sorter/sorted-by? test-sam-file)))
-    (is (not (with-reader sorter/sorted-by? test-bam-file)))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file))
-    (is (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file))
-    (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file))
+    (is (not (with-reader sorter/sorted? test-sam-file)))
+    (is (not (with-reader sorter/sorted? test-bam-file)))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-sam-file))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-bam-file))
+    (is (with-reader sorter/sorted? tmp-queryname-sorted-sam-file))
+    (is (with-reader sorter/sorted? tmp-queryname-sorted-bam-file))
     (is (= (with-reader sorter/sort-order test-sam-file)
            header/order-unknown))
     (is (= (with-reader sorter/sort-order test-bam-file)
@@ -80,14 +80,14 @@
     (is (not-throw? (with-reader sorter/sort-by-pos tmp-shuffled-bam-file tmp-coordinate-sorted-bam-bam-file)))
     (is (not-throw? (with-reader sorter/sort-by-qname tmp-shuffled-sam-file tmp-queryname-sorted-sam-file-2)))
     (is (not-throw? (with-reader sorter/sort-by-qname tmp-shuffled-bam-file tmp-queryname-sorted-bam-file-2)))
-    (is (not (with-reader sorter/sorted-by? tmp-shuffled-sam-file)))
-    (is (not (with-reader sorter/sorted-by? tmp-shuffled-bam-file)))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-sam-file))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-bam-file))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-sam-file))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-bam-file))
-    (is (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file-2))
-    (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file-2))
+    (is (not (with-reader sorter/sorted? tmp-shuffled-sam-file)))
+    (is (not (with-reader sorter/sorted? tmp-shuffled-bam-file)))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-sam-sam-file))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-sam-bam-file))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-bam-sam-file))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-bam-bam-file))
+    (is (with-reader sorter/sorted? tmp-queryname-sorted-sam-file-2))
+    (is (with-reader sorter/sorted? tmp-queryname-sorted-bam-file-2))
     (is (get #{:queryname :coordinate :unsorted :unknown}
              (with-reader sorter/sort-order tmp-shuffled-sam-file)))
     (is (get #{:queryname :coordinate :unsorted :unknown}
@@ -132,7 +132,7 @@
          (with-open [r (sam/reader tmp-shuffled-bam-file)
                      w (sam/writer tmp-coordinate-sorted-bam-bam-file)]
            (sorter/sort-by-pos r w {:chunk-size 3}))))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-bam-file))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-bam-bam-file))
     (is (not-throw? (check-sort-order (slurp-bam-for-test tmp-coordinate-sorted-bam-bam-file))))
     (is (coord-sorted? tmp-coordinate-sorted-bam-bam-file))
 
@@ -140,7 +140,7 @@
          (with-open [r (sam/reader tmp-shuffled-sam-file)
                      w (sam/writer tmp-coordinate-sorted-sam-sam-file)]
            (sorter/sort-by-pos r w {:chunk-size 3 :cache-fmt :sam}))))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-sam-file))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-sam-sam-file))
     (is (not-throw? (check-sort-order (slurp-sam-for-test tmp-coordinate-sorted-sam-sam-file))))
     (is (coord-sorted? tmp-coordinate-sorted-sam-sam-file))
 
@@ -149,14 +149,14 @@
          (with-open [r (sam/reader tmp-shuffled-bam-file)
                      w (sam/writer tmp-queryname-sorted-bam-file-2)]
            (sorter/sort-by-qname r w {:chunk-size 3}))))
-    (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file-2)
+    (with-reader sorter/sorted? tmp-queryname-sorted-bam-file-2)
     (is (qname-sorted? tmp-queryname-sorted-bam-file-2))
 
     (is (not-throw?
          (with-open [r (sam/reader tmp-shuffled-bam-file)
                      w (sam/writer tmp-queryname-sorted-sam-file-2)]
            (sorter/sort-by-qname r w {:chunk-size 3 :cache-fmt :sam}))))
-    (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file-2)
+    (with-reader sorter/sorted? tmp-queryname-sorted-sam-file-2)
     (is (qname-sorted? tmp-queryname-sorted-sam-file-2))))
 
 (deftest-slow about-sorting-medium-file
@@ -166,11 +166,11 @@
     (is (not-throw? (with-reader sorter/sort-by-pos medium-bam-file tmp-coordinate-sorted-bam-file)))
     (is (not-throw? (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-sam-file)))
     (is (not-throw? (with-reader sorter/sort-by-qname medium-bam-file tmp-queryname-sorted-bam-file)))
-    (is (not (with-reader sorter/sorted-by? medium-bam-file)))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-sam-file))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file))
-    (is (with-reader sorter/sorted-by? tmp-queryname-sorted-sam-file))
-    (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file))
+    (is (not (with-reader sorter/sorted? medium-bam-file)))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-sam-file))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-bam-file))
+    (is (with-reader sorter/sorted? tmp-queryname-sorted-sam-file))
+    (is (with-reader sorter/sorted? tmp-queryname-sorted-bam-file))
     (is (= (with-reader sorter/sort-order medium-bam-file) header/order-unknown))
     (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-sam-file) header/order-coordinate))
     (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file) header/order-coordinate))
@@ -198,9 +198,9 @@
                      w (sam/writer tmp-queryname-sorted-bam-file)]
            ;; Use small chunk size to avoid OOM
            (sorter/sort-by-qname r w {:chunk-size 100000}))))
-    (is (with-reader sorter/sorted-by? large-bam-file))
-    (is (with-reader sorter/sorted-by? tmp-coordinate-sorted-bam-file))
-    (is (with-reader sorter/sorted-by? tmp-queryname-sorted-bam-file))
+    (is (with-reader sorter/sorted? large-bam-file))
+    (is (with-reader sorter/sorted? tmp-coordinate-sorted-bam-file))
+    (is (with-reader sorter/sorted? tmp-queryname-sorted-bam-file))
     (is (= (with-reader sorter/sort-order large-bam-file) header/order-coordinate))
     (is (= (with-reader sorter/sort-order tmp-coordinate-sorted-bam-file) header/order-coordinate))
     (is (= (with-reader sorter/sort-order tmp-queryname-sorted-bam-file) header/order-queryname))

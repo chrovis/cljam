@@ -271,7 +271,7 @@
       (with-open [r (sam/reader f)]
         (when (= (type r) cljam.io.sam.reader.SAMReader)
           (exit 1 "Not support SAM file"))
-        (when-not (sorter/sorted-by? r)
+        (when-not (sorter/sorted? r)
           (exit 1 "Not sorted"))
         (if (:region options)
           (if-let [region (region/parse-region (:region options))]

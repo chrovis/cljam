@@ -66,19 +66,3 @@
   (are [?src ?result] (= (vec (sam-seq/normalize-bases (byte-array (map byte ?src))))
                          (map byte ?result))
     [\a \b \c \. \d \e \n \N] [\A \B \C \N \D \E \N \N]))
-
-(deftest reverse-complement
-  (are [?forward ?reverse]
-      (and (= (sam-seq/reverse-complement ?forward) ?reverse)
-           (= (sam-seq/reverse-complement ?reverse) ?forward))
-    "A" "T"
-    "G" "C"
-    "N" "N"
-    "a" "t"
-    "g" "c"
-    "n" "n"
-    "AT" "AT"
-    "AAT" "ATT"
-    "ACGTGT" "ACACGT"
-    "GAANTGGN" "NCCANTTC"
-    "aacacacnnnnacacTTTAGAGCNNacacnttg" "caangtgtNNGCTCTAAAgtgtnnnngtgtgtt"))

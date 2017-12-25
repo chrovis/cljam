@@ -43,37 +43,37 @@
     (testing "SAM -> BAM"
       (let [in test-sam-file
             out (str temp-dir "/test.bam")]
-        (is (not-throw? (convert/convert in [out])))
+        (is (not-throw? (convert/convert in out)))
         (is (same-sam-contents? in out))))
     (testing "BAM -> SAM"
       (let [in test-bam-file
             out (str temp-dir "/test.sam")]
-        (is (not-throw? (convert/convert in [out])))
+        (is (not-throw? (convert/convert in out)))
         (is (same-sam-contents? in out))))
     (testing "FASTA -> TwoBit"
       (let [in test-fa-file
             out (str temp-dir "/test.2bit")]
-        (is (not-throw? (convert/convert in [out])))
+        (is (not-throw? (convert/convert in out)))
         (is (same-sequence-contents? in out))))
     (testing "TwoBit -> FASTA"
       (let [in test-twobit-file
             out (str temp-dir "/test.fa")]
-        (is (not-throw? (convert/convert in [out])))
+        (is (not-throw? (convert/convert in out)))
         (is (same-sequence-contents? in out))))
     (testing "FASTQ -> FASTA"
       (let [in test-fq-file
             out (str temp-dir "/test_fq.fa")]
-        (is (not-throw? (convert/convert in [out])))
+        (is (not-throw? (convert/convert in out)))
         (is (same-read-and-seq? in out))))
     (testing "FASTQ -> TwoBit"
       (let [in test-fq-file
             out (str temp-dir "/test_fq.2bit")]
-        (is (not-throw? (convert/convert in [out])))
+        (is (not-throw? (convert/convert in out)))
         (is (same-read-and-seq? in out))))
     (testing "SAM -> FASTQ"
       (let [in test-paired-bam-file
             out (str temp-dir "/test_paired.fq")]
-        (is (not-throw? (convert/convert in [out])))
+        (is (not-throw? (convert/convert in out)))
         (is (same-reads? test-fq-r1-file test-fq-r2-file out))))
     (testing "SAM -> FASTQ R1/R2"
       (let [in test-paired-bam-file

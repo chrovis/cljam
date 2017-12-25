@@ -180,15 +180,11 @@
 
 (defn convert
   "Converts file format from input file to output file by the file extension."
-  [in [o1 o2 o3 :as os] & opts]
+  [in out & opts]
   (cond
-    (alignment-io? in o1) (apply convert-sam in o1 opts)
-    (sequence-io? in o1) (convert-sequence in o1)
-    (and (read-io? in) (sequence-io? o1)) (fq->seq in o1)
-    (and (alignment-io? in) (read-io? o1 o2 o3)) (sam->fq (map short-qname) in o1 o2 o3)
-    (and (alignment-io? in) (read-io? o1 o2)) (sam->fq (map short-qname) in o1 o2)
-    (and (alignment-io? in) (read-io? o1)) (sam->fq (map short-qname) in o1)
-    :else (-> "Unsupported I/O pair: "
-              (str in " and " (cstr/join ", " (take-while some? os)))
-              (ex-info {})
-              throw)))
+    (and (alignment-io? in) (sequential? out) (apply read-io? out)) (apply sam->fq (map short-qname) in out)
+    (and (alignment-io? in) (not (sequential? out)) (read-io? out)) (sam->fq (map short-qname) in out)
+    (alignment-io? in out) (apply convert-sam in out opts)
+    (sequence-io? in out) (convert-sequence in out)
+    (and (read-io? in) (sequence-io? out)) (fq->seq in out)
+    :else (throw (ex-info (str "Unsupported I/O pair: " in " and " out) {}))))

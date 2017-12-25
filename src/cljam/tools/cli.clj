@@ -103,8 +103,8 @@
      (:help options) (exit 0 (convert-usage summary))
      (not (<= 2 (count arguments) 4)) (exit 1 (convert-usage summary))
      errors (exit 1 (error-msg errors)))
-    (let [[in & outs] arguments]
-      (convert/convert in outs :n-threads (:thread options))))
+    (let [[in & [out & more :as outs]] arguments]
+      (convert/convert in (if more outs out) :n-threads (:thread options))))
   nil)
 
 ;; ### normalize command

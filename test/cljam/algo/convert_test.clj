@@ -3,8 +3,6 @@
             [clojure.string :as cstr]
             [cljam.test-common :refer :all]
             [cljam.algo.convert :as convert]
-            [cljam.io.sam :as sam]
-            [cljam.io.sam.util.sequence :as sam-seq]
             [cljam.io.sequence :as cseq]
             [cljam.io.fastq :as fq]
             [clojure.java.io :as cio]))

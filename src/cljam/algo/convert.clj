@@ -85,21 +85,29 @@
 
 ;;; SAM -> FASTQ
 
-(defn- long-qname
+(defn long-qname
   "Append casava 1.8 style R1/R2 suffix to the query name."
   [aln]
-  (let [f (long (:flag aln))]
-    (if (flag/multiple? f)
-      (update aln :qname str \space (flag/r1r2 f) ":N:0:1")
-      aln)))
+  (let [r (flag/r1r2 (:flag aln))]
+    (if (zero? r)
+      aln
+      (update aln :qname str \space r ":N:0:1"))))
 
-(defn- short-qname
+(defn medium-qname
+  "Append _R1 or _R2 to the query name."
+  [aln]
+  (let [r (flag/r1r2 (:flag aln))]
+    (if (zero? r)
+      aln
+      (update aln :qname str "_R" r))))
+
+(defn short-qname
   "Append /1 or /2 to the query name."
   [aln]
-  (let [f (long (:flag aln))]
-    (if (flag/multiple? f)
-      (update aln :qname str \/ (flag/r1r2 f))
-      aln)))
+  (let [r (flag/r1r2 (:flag aln))]
+    (if (zero? r)
+      aln
+      (update aln :qname str \/ r))))
 
 (defn- null-or-star? [^String qual]
   (or (nil? qual)
@@ -108,23 +116,21 @@
 
 (defn aln->read
   "Converts a SAM alignment record to a FASTQ read."
-  ([aln]
-   (aln->read short-qname aln))
-  ([rename-fn {:keys [flag ^String seq qual] :as aln}]
-   (let [reversed? (flag/reversed? flag)]
-     (FASTQRead.
-      (:qname (rename-fn aln))
-      (if reversed? (util-seq/revcomp seq) seq)
-      (if (null-or-star? qual)
-        (cstr/join (repeat (.length seq) \"))
-        (if reversed?
-          (cstr/reverse qual)
-          qual))))))
+  [{:keys [flag ^String seq qual qname]}]
+  (let [reversed? (flag/reversed? flag)]
+    (FASTQRead.
+     qname
+     (if reversed? (util-seq/revcomp seq) seq)
+     (if (null-or-star? qual)
+       (cstr/join (repeat (.length seq) \"))
+       (if reversed?
+         (cstr/reverse qual)
+         qual)))))
 
 (defn- sam->fq-rf
   [w0 w1 w2 _ aln]
   (when-let [w (case (int (flag/r1r2 (:flag aln))) 0 w0 1 w1 2 w2)]
-    (fq/write-sequences w [(aln->read long-qname aln)] {:encode-quality nil})))
+    (fq/write-sequences w [(aln->read aln)] {:encode-quality nil})))
 
 (defn sam->fq
   "Converts a SAM/BAM to a FASTQ file."
@@ -137,7 +143,7 @@
        (comp
         xf
         (filter (comp flag/primary? :flag))
-        (map (partial aln->read short-qname)))
+        (map aln->read))
        (sam/read-alignments rdr))
       {:encode-quality nil})))
   ([xf in out-r1 out-r2]
@@ -179,9 +185,9 @@
     (alignment-io? in o1) (apply convert-sam in o1 opts)
     (sequence-io? in o1) (convert-sequence in o1)
     (and (read-io? in) (sequence-io? o1)) (fq->seq in o1)
-    (and (alignment-io? in) (read-io? o1 o2 o3)) (apply sam->fq identity in os)
-    (and (alignment-io? in) (read-io? o1 o2)) (apply sam->fq identity in os)
-    (and (alignment-io? in) (read-io? o1)) (apply sam->fq identity in os)
+    (and (alignment-io? in) (read-io? o1 o2 o3)) (sam->fq (map short-qname) in o1 o2 o3)
+    (and (alignment-io? in) (read-io? o1 o2)) (sam->fq (map short-qname) in o1 o2)
+    (and (alignment-io? in) (read-io? o1)) (sam->fq (map short-qname) in o1)
     :else (-> "Unsupported I/O pair: "
               (str in " and " (cstr/join ", " (take-while some? os)))
               (ex-info {})

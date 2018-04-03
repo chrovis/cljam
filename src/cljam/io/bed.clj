@@ -7,6 +7,7 @@
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]
             [cljam.util.chromosome :as chr]
+            [cljam.util.region :as region]
             [clojure.tools.logging :as logging])
   (:import [java.io BufferedReader BufferedWriter Closeable]))
 
@@ -199,13 +200,12 @@
   "Sort and merge overlapped regions.
   Currently, this function affects only :end and :name fields."
   [xs]
-  (reduce
-   (fn [r m]
-     (let [l (last r)]
-       (if (and l (= (:chr l) (:chr m)) (<= (:start m) (:end l)) (<= (:start l) (:end m)))
-         (update r (dec (count r)) (fn [n m] (-> n (assoc :end (:end m)) (update-some :name str "+" (:name m)))) m)
-         (conj r m))))
-   []
+  (region/merge-regions-with
+   (fn [x {:keys [name end]}]
+     (-> x
+         (update :end max end)
+         (update-some :name str "+" name)))
+   0
    (sort-fields xs)))
 
 (defn write-raw-fields

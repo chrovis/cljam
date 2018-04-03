@@ -15,7 +15,7 @@
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.8.0"]
                                   [cavia "0.5.0"]
                                   [criterium "0.4.4"]
-                                  [net.totakke/libra "0.1.0"]
+                                  [net.totakke/libra "0.1.1"]
                                   [org.tcrawley/dynapath "1.0.0"]]
                    :plugins [[lein-binplus "0.6.2" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.3"]

@@ -162,7 +162,13 @@
   (is (= (bed/merge-fields []) []))
   (is (= (bed/merge-fields [{:chr "chr2" :start 1 :end 10} {:chr "chr1" :start 1 :end 10} {:chr "chr1" :start 4 :end 13}
                             {:chr "chr1" :start 13 :end 15} {:chr "chr1" :start 16 :end 20}])
-         [{:chr "chr1" :start 1 :end 15} {:chr "chr1" :start 16 :end 20} {:chr "chr2" :start 1 :end 10}]))
+         [{:chr "chr1" :start 1 :end 20} {:chr "chr2" :start 1 :end 10}]))
+  (is (= (bed/merge-fields [{:chr "chr2" :start 1 :end 10} {:chr "chr1" :start 1 :end 10} {:chr "chr1" :start 4 :end 13}
+                            {:chr "chr1" :start 14 :end 15} {:chr "chr1" :start 16 :end 20}])
+         [{:chr "chr1" :start 1 :end 20} {:chr "chr2" :start 1 :end 10}]))
+  (is (= (bed/merge-fields [{:chr "chr2" :start 1 :end 10} {:chr "chr1" :start 1 :end 10} {:chr "chr1" :start 4 :end 13}
+                            {:chr "chr1" :start 15 :end 15} {:chr "chr1" :start 16 :end 20}])
+         [{:chr "chr1" :start 1 :end 13} {:chr "chr1" :start 15 :end 20} {:chr "chr2" :start 1 :end 10}]))
   (is (= (bed/merge-fields [{:chr "chr1" :start 1 :end 10 :name "chr1:1-10"} {:chr "chr1" :start 4 :end 13 :name "chr1:4-13"}])
          [{:chr "chr1" :start 1 :end 13 :name "chr1:1-10+chr1:4-13"}])))
 

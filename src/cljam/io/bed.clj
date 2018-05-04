@@ -152,7 +152,7 @@
 (defn- normalize
   "Normalize BED fields.
   BED fields are stored in format: 0-origin and inclusive-start / exclusive-end.
-  This function converts the coordinate into cljam style: 1-origin and inclusice-start / inclusive-end."
+  This function converts the coordinate into cljam style: 1-origin and inclusive-start / inclusive-end."
   [m]
   (-> m
       (update :chr chr/normalize-chromosome-key)

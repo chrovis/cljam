@@ -172,6 +172,89 @@
   (is (= (bed/merge-fields [{:chr "chr1" :start 1 :end 10 :name "chr1:1-10"} {:chr "chr1" :start 4 :end 13 :name "chr1:4-13"}])
          [{:chr "chr1" :start 1 :end 13 :name "chr1:1-10+chr1:4-13"}])))
 
+(deftest bed-intersect
+  (are [?xs ?ys ?result] (= ?result (bed/intersect-fields ?xs ?ys))
+    []
+    []
+    []
+
+    [{:chr "chr1" :start 10 :end 40}]
+    []
+    []
+
+    []
+    [{:chr "chr1" :start 10 :end 40}]
+    []
+
+    [{:chr "chr1" :start 10 :end 40}]
+    [{:chr "chr1" :start 50 :end 60}]
+    []
+
+    [{:chr "chr1" :start 10 :end 40} {:chr "chr1" :start 50 :end 80}]
+    [{:chr "chr1" :start 5 :end 20}]
+    [{:chr "chr1" :start 10 :end 20}]
+
+    [{:chr "chr1" :start 10 :end 40} {:chr "chr1" :start 50 :end 80}]
+    [{:chr "chr1" :start 20 :end 30}]
+    [{:chr "chr1" :start 20 :end 30}]
+
+    [{:chr "chr1" :start 10 :end 40} {:chr "chr1" :start 50 :end 80}]
+    [{:chr "chr1" :start 30 :end 60} {:chr "chr1" :start 70 :end 90}]
+    [{:chr "chr1" :start 30 :end 40} {:chr "chr1" :start 50 :end 60} {:chr "chr1" :start 70 :end 80}]
+
+    [{:chr "chr1" :start 10 :end 40} {:chr "chr1" :start 50 :end 80} {:chr "chr2" :start 10 :end 40}]
+    [{:chr "chr1" :start 10 :end 20} {:chr "chr2" :start 30 :end 40}]
+    [{:chr "chr1" :start 10 :end 20} {:chr "chr2" :start 30 :end 40}]))
+
+(deftest bed-subtract
+  (are [?xs ?ys ?result] (= ?result (bed/subtract-fields ?xs ?ys))
+    []
+    []
+    []
+
+    [{:chr "chr1" :start 10 :end 40}]
+    []
+    [{:chr "chr1" :start 10 :end 40}]
+
+    []
+    [{:chr "chr1" :start 10 :end 40}]
+    []
+
+    [{:chr "chr1" :start 10 :end 40}]
+    [{:chr "chr1" :start 50 :end 60}]
+    [{:chr "chr1" :start 10 :end 40}]
+
+    [{:chr "chr1" :start 10 :end 40} {:chr "chr1" :start 50 :end 80}]
+    [{:chr "chr1" :start 5 :end 20}]
+    [{:chr "chr1" :start 21 :end 40} {:chr "chr1" :start 50 :end 80}]
+
+    [{:chr "chr1" :start 10 :end 40} {:chr "chr1" :start 50 :end 80}]
+    [{:chr "chr1" :start 20 :end 30}]
+    [{:chr "chr1" :start 10 :end 19} {:chr "chr1" :start 31 :end 40} {:chr "chr1" :start 50 :end 80}]
+
+    [{:chr "chr1" :start 10 :end 40} {:chr "chr1" :start 50 :end 80}]
+    [{:chr "chr1" :start 30 :end 60} {:chr "chr1" :start 70 :end 90}]
+    [{:chr "chr1" :start 10 :end 29} {:chr "chr1" :start 61 :end 69}]
+
+    [{:chr "chr1" :start 10 :end 40} {:chr "chr1" :start 50 :end 80} {:chr "chr2" :start 10 :end 40}]
+    [{:chr "chr1" :start 10 :end 20} {:chr "chr2" :start 5 :end 30}]
+    [{:chr "chr1" :start 21 :end 40} {:chr "chr1" :start 50 :end 80} {:chr "chr2" :start 31 :end 40}]))
+
+(deftest bed-complement
+  (are [?xs ?result]
+      (= ?result (bed/complement-fields {"chr1" 1000, "chr2" 800} ?xs))
+    []
+    [{:chr "chr1" :start 0 :end 1000} {:chr "chr2" :start 0 :end 800}]
+
+    [{:chr "chr1" :start 0 :end 300}]
+    [{:chr "chr1" :start 300 :end 1000} {:chr "chr2" :start 0 :end 800}]
+
+    [{:chr "chr1" :start 0 :end 300} {:chr "chr1" :start 900 :end 1000} {:chr "chr2" :start 0 :end 300}]
+    [{:chr "chr1" :start 300 :end 900} {:chr "chr2" :start 300 :end 800}])
+
+  (is (thrown? IllegalArgumentException
+               (bed/complement-fields {"chr1" 1000} [{:chr "chr2" :start 0 :end 100}]))))
+
 (deftest bed-reader-and-bam-reader
   (with-open [bam (sam/bam-reader test-sorted-bam-file)]
     (letfn [(ref-pos-end [m] {:rname (:rname m) :pos (:pos m) :end (sam-util/get-end m)})

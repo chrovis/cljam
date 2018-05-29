@@ -275,10 +275,10 @@
                  (let [len (get chrom-lengths chr)
                        x (first xs)]
                    (if (and x (= (:chr x) chr))
-                     (cond->> (complement (next xs) chrs (:end x))
+                     (cond->> (complement (next xs) chrs (inc (:end x)))
                        (< pos (:start x))
-                       (cons {:chr chr :start pos :end (:start x)}))
-                     (cond->> (complement xs (next chrs) 0)
+                       (cons {:chr chr :start pos :end (dec (:start x))}))
+                     (cond->> (complement xs (next chrs) 1)
                        (< pos len)
                        (cons {:chr chr :start pos :end len}))))
                  (when (seq xs)
@@ -286,7 +286,7 @@
                                   (:chr (first xs))
                                   " not specified")]
                      (throw (IllegalArgumentException. msg)))))))]
-      (complement (sort-fields xs) chrs 0))))
+      (complement (sort-fields xs) chrs 1))))
 
 (defn write-raw-fields
   "Write sequence of BED fields to writer without converting :start and :thick-start values."

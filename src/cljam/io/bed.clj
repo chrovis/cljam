@@ -219,7 +219,11 @@
   "Returns a lazy sequence that is the intersection of the two BED sequences.
 
   The input sequences will first be sorted with sort-fields, which may cause
-  an extensive memory use for ones with a large number of elements."
+  an extensive memory use for ones with a large number of elements.
+  Note also that this function assumes the input sequences contain only valid
+  regions, and thus :start <= :end holds for each region. Make sure yourself
+  the input sequences meet the condition, or the function may return a wrong
+  result."
   [xs ys]
   (letfn [(intersect [xs ys]
             (lazy-seq
@@ -241,7 +245,11 @@
   in the sequence ys from the sequence xs.
 
   The input sequences will first be sorted with sort-fields, which may cause
-  an extensive memory use for ones with a large number of elements."
+  an extensive memory use for ones with a large number of elements.
+  Note also that this function assumes the input sequences contain only valid
+  regions, and thus :start <= :end holds for each region. Make sure yourself
+  the input sequences meet the condition, or the function may return a wrong
+  result."
   [xs ys]
   (letfn [(subtract [xs ys]
             (lazy-seq
@@ -267,7 +275,11 @@
   and returns a lazy sequence that is the complement of the BED sequence.
 
   The input sequence will first be sorted with sort-fields, which may cause
-  an extensive memory use for ones with a large number of elements."
+  an extensive memory use for ones with a large number of elements.
+  Note also that this function assumes the BED sequence contains only valid
+  regions, and thus :start <= :end holds for each region. Make sure yourself
+  the BED sequence meets the condition, or the function may return a wrong
+  result."
   [refs xs]
   (let [chr->len (into {} (map (juxt :name :len)) refs)
         chrs (sort-by chr/chromosome-order-key (map :name refs))]

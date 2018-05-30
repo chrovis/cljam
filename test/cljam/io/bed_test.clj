@@ -256,8 +256,8 @@
     [{:chr "chr1" :start 301 :end 899} {:chr "chr2" :start 301 :end 800}])
 
   (is (thrown? IllegalArgumentException
-               (doall (bed/complement-fields [{:name "chr1" :len 1000}]
-                                             [{:chr "chr2" :start 1 :end 100}])))))
+               (bed/complement-fields [{:name "chr1" :len 1000}]
+                                      [{:chr "chr2" :start 1 :end 100}]))))
 
 (deftest bed-reader-and-bam-reader
   (with-open [bam (sam/bam-reader test-sorted-bam-file)]

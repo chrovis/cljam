@@ -271,9 +271,12 @@
   [refs xs]
   (let [chr->len (into {} (map (juxt :name :len)) refs)
         chrs (sort-by chr/chromosome-order-key (map :name refs))]
+    (when-first [{:keys [chr]} (filter #(not (chr->len (:chr %))) xs)]
+      (let [msg (str "Length of chromosome " chr " not specified")]
+        (throw (IllegalArgumentException. msg))))
     (letfn [(complement [xs chrs pos]
               (lazy-seq
-               (if-let [chr (first chrs)]
+               (when-let [chr (first chrs)]
                  (let [len (get chr->len chr)
                        x (first xs)]
                    (if (and x (= (:chr x) chr))
@@ -282,12 +285,7 @@
                        (cons {:chr chr :start pos :end (dec (:start x))}))
                      (cond->> (complement xs (next chrs) 1)
                        (< pos len)
-                       (cons {:chr chr :start pos :end len}))))
-                 (when (seq xs)
-                   (let [msg (str "Length of chromosome "
-                                  (:chr (first xs))
-                                  " not specified")]
-                     (throw (IllegalArgumentException. msg)))))))]
+                       (cons {:chr chr :start pos :end len})))))))]
       (complement (sort-fields xs) chrs 1))))
 
 (defn write-raw-fields

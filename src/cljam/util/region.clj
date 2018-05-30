@@ -7,7 +7,7 @@
 ;;; ----------
 
 (defn overlapped-regions?
-  "Returns true iff two regions are overlapped with each other."
+  "Returns true if two regions are overlapped with each other."
   [x y]
   (and (= (:chr x) (:chr y))
        (<= (:start y) (:end x))

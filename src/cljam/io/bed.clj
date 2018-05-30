@@ -262,17 +262,19 @@
     (subtract (sort-fields xs) (sort-fields ys))))
 
 (defn complement-fields
-  "Takes a map of chromosome name to its length and a sequence of BED fields,
-  and returns a lazy sequence that is the complement of the sequence.
+  "Takes a sequence of maps containing :name and :len keys (representing
+  chromosome's name and length, resp.) and a sequence of BED fields,
+  and returns a lazy sequence that is the complement of the BED sequence.
 
   The input sequence will first be sorted with sort-fields, which may cause
   an extensive memory use for ones with a large number of elements."
-  [chrom-lengths xs]
-  (let [chrs (sort-by chr/chromosome-order-key (keys chrom-lengths))]
+  [refs xs]
+  (let [chr->len (into {} (map (juxt :name :len)) refs)
+        chrs (sort-by chr/chromosome-order-key (map :name refs))]
     (letfn [(complement [xs chrs pos]
               (lazy-seq
                (if-let [chr (first chrs)]
-                 (let [len (get chrom-lengths chr)
+                 (let [len (get chr->len chr)
                        x (first xs)]
                    (if (and x (= (:chr x) chr))
                      (cond->> (complement (next xs) chrs (inc (:end x)))

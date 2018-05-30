@@ -242,7 +242,10 @@
 
 (deftest bed-complement
   (are [?xs ?result]
-      (= ?result (bed/complement-fields {"chr1" 1000, "chr2" 800} ?xs))
+      (= ?result
+         (bed/complement-fields [{:name "chr1" :len 1000}
+                                 {:name "chr2" :len 800}]
+                                ?xs))
     []
     [{:chr "chr1" :start 1 :end 1000} {:chr "chr2" :start 1 :end 800}]
 
@@ -253,7 +256,8 @@
     [{:chr "chr1" :start 301 :end 899} {:chr "chr2" :start 301 :end 800}])
 
   (is (thrown? IllegalArgumentException
-               (doall (bed/complement-fields {"chr1" 1000} [{:chr "chr2" :start 1 :end 100}])))))
+               (doall (bed/complement-fields [{:name "chr1" :len 1000}]
+                                             [{:chr "chr2" :start 1 :end 100}])))))
 
 (deftest bed-reader-and-bam-reader
   (with-open [bam (sam/bam-reader test-sorted-bam-file)]

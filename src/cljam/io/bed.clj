@@ -262,9 +262,7 @@
                        (if (fields-<= r1 y)
                          (cons r1 (subtract (next xs) ys))
                          (subtract (cons r1 (next xs)) (next ys)))
-                       (if (fields-<= x y)
-                         (subtract (next xs) ys)
-                         (subtract xs (next ys))))))
+                       (subtract (next xs) ys))))
                  xs)
                [])))]
     (subtract (sort-fields xs) (merge-fields ys))))

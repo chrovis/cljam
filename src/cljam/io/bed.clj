@@ -208,12 +208,12 @@
    0
    (sort-fields xs)))
 
-(defn- fields-<
+(defn- fields-<=
   "Compare two BED fields on the basis of :chr and :end fields."
   [x y]
-  (< (compare [(chr/chromosome-order-key (:chr x)) (:end x)]
-              [(chr/chromosome-order-key (:chr y)) (:end y)])
-     0))
+  (<= (compare [(chr/chromosome-order-key (:chr x)) (:end x)]
+               [(chr/chromosome-order-key (:chr y)) (:end y)])
+      0))
 
 (defn intersect-fields
   "Returns a lazy sequence that is the intersection of the two BED sequences.
@@ -229,7 +229,7 @@
             (lazy-seq
              (if-let [x (first xs)]
                (if-let [y (first ys)]
-                 (cond->> (if (fields-< x y)
+                 (cond->> (if (fields-<= x y)
                             (intersect (next xs) ys)
                             (intersect xs (next ys)))
                    (region/overlapped-regions? x y)
@@ -238,7 +238,7 @@
                              (update :end min (:end y)))))
                  [])
                [])))]
-    (intersect (sort-fields xs) (sort-fields ys))))
+    (intersect (sort-fields xs) (merge-fields ys))))
 
 (defn subtract-fields
   "Returns a lazy sequence that is the result of subtracting the BED fields
@@ -259,15 +259,15 @@
                    (if r2
                      (cons r1 (subtract (cons r2 (next xs)) (next ys)))
                      (if r1
-                       (if (fields-< r1 y)
+                       (if (fields-<= r1 y)
                          (cons r1 (subtract (next xs) ys))
                          (subtract (cons r1 (next xs)) (next ys)))
-                       (if (fields-< x y)
+                       (if (fields-<= x y)
                          (subtract (next xs) ys)
                          (subtract xs (next ys))))))
                  xs)
                [])))]
-    (subtract (sort-fields xs) (sort-fields ys))))
+    (subtract (sort-fields xs) (merge-fields ys))))
 
 (defn complement-fields
   "Takes a sequence of maps containing :name and :len keys (representing
@@ -298,7 +298,7 @@
                      (cond->> (complement xs (next chrs) 1)
                        (< pos len)
                        (cons {:chr chr :start pos :end len})))))))]
-      (complement (sort-fields xs) chrs 1))))
+      (complement (merge-fields xs) chrs 1))))
 
 (defn write-raw-fields
   "Write sequence of BED fields to writer without converting :start and :thick-start values."

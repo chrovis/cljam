@@ -3,6 +3,16 @@
   (:require [clojure.string :as cstr]
             [proton.core :as proton]))
 
+;;; region predicates
+;;; ----------
+
+(defn overlapped-regions?
+  "Returns true if two regions are overlapped with each other."
+  [x y]
+  (and (= (:chr x) (:chr y))
+       (<= (:start y) (:end x))
+       (<= (:start x) (:end y))))
+
 ;;; region conversion
 ;;; ----------
 

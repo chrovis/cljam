@@ -208,6 +208,96 @@
    0
    (sort-fields xs)))
 
+(defn- fields-<=
+  "Compare two BED fields on the basis of :chr and :end fields."
+  [x y]
+  (<= (compare [(chr/chromosome-order-key (:chr x)) (:end x)]
+               [(chr/chromosome-order-key (:chr y)) (:end y)])
+      0))
+
+(defn intersect-fields
+  "Returns a lazy sequence that is the intersection of the two BED sequences.
+
+  The input sequences will first be sorted with sort-fields, which may cause
+  an extensive memory use for ones with a large number of elements.
+  Note also that this function assumes the input sequences contain only valid
+  regions, and thus :start <= :end holds for each region. Make sure yourself
+  the input sequences meet the condition, or the function may return a wrong
+  result."
+  [xs ys]
+  (letfn [(intersect [xs ys]
+            (lazy-seq
+             (if-let [x (first xs)]
+               (if-let [y (first ys)]
+                 (cond->> (if (fields-<= x y)
+                            (intersect (next xs) ys)
+                            (intersect xs (next ys)))
+                   (region/overlapped-regions? x y)
+                   (cons (-> x
+                             (update :start max (:start y))
+                             (update :end min (:end y)))))
+                 [])
+               [])))]
+    (intersect (sort-fields xs) (merge-fields ys))))
+
+(defn subtract-fields
+  "Returns a lazy sequence that is the result of subtracting the BED fields
+  in the sequence ys from the sequence xs.
+
+  The input sequences will first be sorted with sort-fields, which may cause
+  an extensive memory use for ones with a large number of elements.
+  Note also that this function assumes the input sequences contain only valid
+  regions, and thus :start <= :end holds for each region. Make sure yourself
+  the input sequences meet the condition, or the function may return a wrong
+  result."
+  [xs ys]
+  (letfn [(subtract [xs ys]
+            (lazy-seq
+             (if-let [x (first xs)]
+               (if-let [y (first ys)]
+                 (let [[r1 r2] (region/subtract-region x y)]
+                   (if r2
+                     (cons r1 (subtract (cons r2 (next xs)) (next ys)))
+                     (if r1
+                       (if (fields-<= r1 y)
+                         (cons r1 (subtract (next xs) ys))
+                         (subtract (cons r1 (next xs)) (next ys)))
+                       (subtract (next xs) ys))))
+                 xs)
+               [])))]
+    (subtract (sort-fields xs) (merge-fields ys))))
+
+(defn complement-fields
+  "Takes a sequence of maps containing :name and :len keys (representing
+  chromosome's name and length, resp.) and a sequence of BED fields,
+  and returns a lazy sequence that is the complement of the BED sequence.
+
+  The input sequence will first be sorted with sort-fields, which may cause
+  an extensive memory use for ones with a large number of elements.
+  Note also that this function assumes the BED sequence contains only valid
+  regions, and thus :start <= :end holds for each region. Make sure yourself
+  the BED sequence meets the condition, or the function may return a wrong
+  result."
+  [refs xs]
+  (let [chr->len (into {} (map (juxt :name :len)) refs)
+        chrs (sort-by chr/chromosome-order-key (map :name refs))]
+    (when-first [{:keys [chr]} (filter #(not (chr->len (:chr %))) xs)]
+      (let [msg (str "Length of chromosome " chr " not specified")]
+        (throw (IllegalArgumentException. msg))))
+    (letfn [(complement [xs chrs pos]
+              (lazy-seq
+               (when-let [chr (first chrs)]
+                 (let [len (get chr->len chr)
+                       x (first xs)]
+                   (if (and x (= (:chr x) chr))
+                     (cond->> (complement (next xs) chrs (inc (:end x)))
+                       (< pos (:start x))
+                       (cons {:chr chr :start pos :end (dec (:start x))}))
+                     (cond->> (complement xs (next chrs) 1)
+                       (< pos len)
+                       (cons {:chr chr :start pos :end len})))))))]
+      (complement (merge-fields xs) chrs 1))))
+
 (defn write-raw-fields
   "Write sequence of BED fields to writer without converting :start and :thick-start values."
   [^BEDWriter wtr xs]

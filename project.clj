@@ -18,7 +18,7 @@
                                   [net.totakke/libra "0.1.1"]
                                   [org.tcrawley/dynapath "1.0.0"]
                                   [se.haleby/stub-http "0.2.5"]]
-                   :plugins [[lein-binplus "0.6.2" :exclusions [org.clojure/clojure]]
+                   :plugins [[lein-binplus "0.6.4" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.3"]
                              [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]
                              [lein-cloverage "1.0.10" :exclusions [org.clojure/clojure org.tcrawley/dynapath]]

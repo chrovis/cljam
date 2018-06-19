@@ -30,16 +30,16 @@
   (let [f (.getAbsolutePath (cio/file f))]
     (FASTAReader. (RandomAccessFile. f "r")
                   (util/compressor-input-stream f)
-                  f
+                  (util/as-url f)
                   (delay (fasta-index f)))))
 
 (defn ^FASTAReader clone-reader
   "Clones fasta reader sharing persistent objects."
   [^FASTAReader rdr]
-  (let [f (.f rdr)
-        raf (RandomAccessFile. ^String f "r")
-        stream (util/compressor-input-stream f)]
-    (FASTAReader. raf stream f (.index-delay rdr))))
+  (let [url (.url rdr)
+        raf (RandomAccessFile. (cio/as-file url) "r")
+        stream (util/compressor-input-stream url)]
+    (FASTAReader. raf stream url (.index-delay rdr))))
 
 (defn read-headers
   [^FASTAReader rdr]
@@ -78,7 +78,7 @@
 
 (extend-type FASTAReader
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read
     ([this] (protocols/read this {}))
     ([this option] (protocols/read-all-sequences this option)))

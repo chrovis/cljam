@@ -1,11 +1,13 @@
 (ns cljam.io.twobit.reader
   (:require [clojure.java.io :as cio]
             [cljam.io.protocols :as protocols]
-            [cljam.io.util.lsb :as lsb])
+            [cljam.io.util.lsb :as lsb]
+            [cljam.util :as util])
   (:import [java.io Closeable DataInput RandomAccessFile]
+           [java.net URL]
            [java.nio CharBuffer]))
 
-(defrecord TwoBitReader [^RandomAccessFile reader ^String f endian file-index seq-index]
+(defrecord TwoBitReader [^RandomAccessFile reader ^URL url endian file-index seq-index]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this))))
@@ -145,7 +147,7 @@
 
 (extend-type TwoBitReader
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read
     ([this] (protocols/read this {}))
     ([this option] (protocols/read-all-sequences this option)))
@@ -183,11 +185,11 @@
                                    (.seek raf offset)
                                    (read-sequence-header! raf endian))))
                               indices)]
-        (TwoBitReader. rdr abs-f endian indices seq-indices)))))
+        (TwoBitReader. rdr (util/as-url abs-f) endian indices seq-indices)))))
 
 (defn ^TwoBitReader clone-reader
   "Clones .2bit reader sharing persistent objects."
   [^TwoBitReader rdr]
-  (let [f (.f rdr)
-        raf (RandomAccessFile. ^String f "r")]
-    (TwoBitReader. raf f (.endian rdr) (.file-index rdr) (.seq-index rdr))))
+  (let [url (.url rdr)
+        raf (RandomAccessFile. (cio/as-file url) "r")]
+    (TwoBitReader. raf url (.endian rdr) (.file-index rdr) (.seq-index rdr))))

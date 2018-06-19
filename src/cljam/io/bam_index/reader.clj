@@ -2,12 +2,13 @@
   (:require [clojure.java.io :as cio]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.bam-index.common :refer [bai-magic]]
-            [cljam.io.bam-index.chunk :as chunk])
+            [cljam.io.bam-index.chunk :as chunk]
+            [cljam.util :as util])
   (:import java.util.Arrays
            [java.io DataInputStream FileInputStream Closeable IOException]
            [cljam.io.bam_index.chunk Chunk]))
 
-(deftype BAIReader [f reader]
+(deftype BAIReader [url reader]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this))))
@@ -116,4 +117,4 @@
   (let [r (DataInputStream. (FileInputStream. (cio/file f)))]
     (when-not (Arrays/equals ^bytes (lsb/read-bytes r 4) (.getBytes ^String bai-magic))
       (throw (IOException. "Invalid BAI file")))
-    (->BAIReader f r)))
+    (->BAIReader (util/as-url f) r)))

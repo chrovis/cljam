@@ -9,16 +9,17 @@
             [cljam.util.chromosome :as chr]
             [cljam.util.region :as region]
             [clojure.tools.logging :as logging])
-  (:import [java.io BufferedReader BufferedWriter Closeable]))
+  (:import [java.net URL]
+           [java.io BufferedReader BufferedWriter Closeable]))
 
 (declare read-fields write-fields)
 
-(defrecord BEDReader [^BufferedReader reader ^String f]
+(defrecord BEDReader [^BufferedReader reader ^URL url]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read [this] (protocols/read this {}))
   (read [this option] (read-fields this))
   (indexed? [_] false)
@@ -32,26 +33,26 @@
                          (or (not end) (<= (:end m) end))))
             (read-fields this))))
 
-(defrecord BEDWriter [^BufferedWriter writer ^String f]
+(defrecord BEDWriter [^BufferedWriter writer ^URL url]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this] (.getAbsolutePath (cio/file (.f this)))))
+  (writer-url [this] (.url this)))
 
 (defn ^BEDReader reader
   "Returns an open cljam.io.bed.BEDReader of f. Should be used inside with-open
   to ensure the reader is properly closed."
   [f]
   (let [abs (.getAbsolutePath (cio/file f))]
-    (BEDReader. (cio/reader (util/compressor-input-stream abs)) abs)))
+    (BEDReader. (cio/reader (util/compressor-input-stream abs)) (util/as-url abs))))
 
 (defn ^BEDWriter writer
   "Returns an open cljam.io.bed.BEDWriter of f. Should be used inside with-open
   to ensure the writer is properly closed."
   [f]
   (let [abs (.getAbsolutePath (cio/file f))]
-  (BEDWriter. (cio/writer (util/compressor-output-stream abs)) abs)))
+  (BEDWriter. (cio/writer (util/compressor-output-stream abs)) (util/as-url abs))))
 
 (def ^:const bed-columns
   [:chr :start :end :name :score :strand :thick-start :thick-end :item-rgb :block-count :block-sizes :block-starts])

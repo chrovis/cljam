@@ -7,15 +7,15 @@
 
 (declare write-sequences)
 
-(deftype FASTAWriter [f ^int cols writer index-writer curr-offset]
+(deftype FASTAWriter [url ^int cols writer index-writer curr-offset]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this))
     (when-let [iw (.index-writer this)]
       (.close ^Closeable iw)))
   protocols/IWriter
-  (writer-path [this]
-    (.f this))
+  (writer-url [this]
+    (.url this))
   protocols/ISequenceWriter
   (write-sequences [this seqs]
     (write-sequences this seqs)))
@@ -25,7 +25,7 @@
   (let [abs-f (.getAbsolutePath (cio/file f))
         writer (cio/writer (util/compressor-output-stream abs-f))
         index-writer (when create-index? (cio/writer (str abs-f ".fai")))]
-    (FASTAWriter. abs-f cols writer index-writer (volatile! 0))))
+    (FASTAWriter. (util/as-url abs-f) cols writer index-writer (volatile! 0))))
 
 (defn- write-name
   [^FASTAWriter w ^String n]

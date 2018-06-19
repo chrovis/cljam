@@ -9,16 +9,16 @@
 (defrecord SAMQuerynameBlock [data qname ^int flag])
 
 (defprotocol IReader
-  (reader-path [this]
-    "Returns the file's absolute path.")
+  (reader-url [this]
+    "Returns the file's URL.")
   (read [this] [this option]
     "Sequentially reads contents of the file.")
   (indexed? [this]
     "Returns true if the reader can be randomly accessed, false if not."))
 
 (defprotocol IWriter
-  (writer-path [this]
-    "Returns the file's absolute path."))
+  (writer-url [this]
+    "Returns the source's URL."))
 
 (defprotocol IRegionReader
   (read-in-region [this region] [this region option]

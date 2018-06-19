@@ -6,7 +6,7 @@
 
 ;;;; FAIWriter
 
-(deftype FAIWriter [writer f]
+(deftype FAIWriter [writer url]
   java.io.Closeable
   (close [this]
     (.close ^java.io.Closeable (.writer this))))

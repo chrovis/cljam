@@ -17,7 +17,7 @@
 ;; BAIWriter
 ;; ---------
 
-(deftype BAIWriter [^DataOutputStream writer refs f]
+(deftype BAIWriter [^DataOutputStream writer refs url]
   Closeable
   (close [this]
     (.close writer)))

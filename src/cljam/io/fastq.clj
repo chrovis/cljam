@@ -9,22 +9,22 @@
 
 (declare read-sequences write-sequences)
 
-(deftype FASTQReader [reader f]
+(deftype FASTQReader [reader url]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read [this] (read-sequences this))
   (read [this opts] (read-sequences this opts))
   (indexed? [_] false))
 
-(deftype FASTQWriter [writer f]
+(deftype FASTQWriter [writer url]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this] (.f this)))
+  (writer-url [this] (.url this)))
 
 (defn ^FASTQReader reader
   "Returns an open cljam.io.fastq.FASTQReader of f. Should be used inside
@@ -34,7 +34,7 @@
         path (.getAbsolutePath file)]
     (-> (util/compressor-input-stream path)
         cio/reader
-        (FASTQReader. path))))
+        (FASTQReader. (util/as-url path)))))
 
 (defn ^FASTQWriter writer
   "Returns an open cljam.io.fastq.FASTQWriter of f. Should be used inside
@@ -44,7 +44,7 @@
         path (.getAbsolutePath file)]
     (-> (util/compressor-output-stream path)
         cio/writer
-        (FASTQWriter. path))))
+        (FASTQWriter. (util/as-url path)))))
 
 (defrecord FASTQRead [^String name ^String sequence quality])
 

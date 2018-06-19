@@ -8,7 +8,7 @@
 ;; DICTWriter
 ;; ----------
 
-(deftype DICTWriter [^java.io.BufferedWriter writer f]
+(deftype DICTWriter [^java.io.BufferedWriter writer url]
   java.io.Closeable
   (close [this]
     (.close writer)))

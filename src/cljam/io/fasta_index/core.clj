@@ -14,7 +14,7 @@
   [f]
   (FAIWriter.
    (cio/writer f)
-   (.getAbsolutePath (cio/file f))))
+   (util/as-url f)))
 
 (defn create-index
   "Creates a FASTA index file from the sequences."
@@ -24,7 +24,7 @@
     (try
       (writer/write-index! r w)
       (catch Exception e (do
-                           (cio/delete-file (.f w))
+                           (cio/delete-file (.url w))
                            (logging/error "Failed to create FASTA index")
                            (throw e))))))
 
@@ -35,7 +35,7 @@
   (FAIReader.
    (with-open [rdr (cio/reader f)]
      (reader/parse-fai rdr))
-   (.getAbsolutePath (cio/file f))))
+   (util/as-url f)))
 
 (defn get-header
   [^FAIReader fai name]

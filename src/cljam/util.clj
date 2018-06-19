@@ -1,9 +1,8 @@
 (ns cljam.util
   "General utilities."
-  (:require [clojure.java.io :refer [file] :as cio]
-            [clojure.string :as cstr]
-            [proton.core :as proton])
-  (:import [org.apache.commons.compress.compressors
+  (:require [clojure.java.io :refer [file] :as cio])
+  (:import [java.net MalformedURLException URL]
+           [org.apache.commons.compress.compressors
             CompressorStreamFactory CompressorException]))
 
 ;; Disk cache
@@ -48,10 +47,17 @@
 ;; file utils
 ;; ---------
 
+(defn ^URL as-url
+  [x]
+  (try
+    (cio/as-url x)
+    (catch MalformedURLException _
+      (cio/as-url (cio/file x)))))
+
 (defn basename
-  [path]
-  (let [filename (.getName (file path))]
-    (first (cstr/split filename #"\.(?=[^\.]+$)"))))
+  [x]
+  (when-let [url (as-url x)]
+    (second (re-find #"([^/]+)\.(?=[^\./]+$)" (.getPath url)))))
 
 (def ^:private compressor-map
   {:gzip CompressorStreamFactory/GZIP

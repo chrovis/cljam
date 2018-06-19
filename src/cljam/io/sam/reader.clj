@@ -4,7 +4,8 @@
             [cljam.io.sam.util :as sam-util]
             [cljam.io.sam.util.refs :as refs]
             [cljam.io.sam.util.header :as header]
-            [cljam.io.protocols :as protocols])
+            [cljam.io.protocols :as protocols]
+            [cljam.util :as util])
   (:import [java.io BufferedReader Closeable]
            [cljam.io.protocols SAMCoordinateBlock SAMQuerynameBlock]))
 
@@ -12,13 +13,13 @@
 
 ;;; reader
 
-(deftype SAMReader [f header reader]
+(deftype SAMReader [url header reader]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this]
-    (.f this))
+  (reader-url [this]
+    (.url this))
   (read [this]
     (protocols/read this {}))
   (read [this region]
@@ -112,5 +113,5 @@
 (defn reader [f]
   (let [header (with-open [r (cio/reader f)]
                  (read-header* r))]
-    (->SAMReader (.getAbsolutePath (cio/file f))
+    (->SAMReader (util/as-url f)
                  header (cio/reader f))))

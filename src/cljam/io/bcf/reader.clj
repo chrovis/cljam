@@ -6,19 +6,21 @@
             [cljam.io.protocols :as protocols]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.vcf.reader :as vcf-reader]
-            [cljam.io.vcf.util :as vcf-util])
+            [cljam.io.vcf.util :as vcf-util]
+            [cljam.util :as util])
   (:import [java.io Closeable IOException]
+           [java.net URL]
            [java.nio ByteBuffer]
            [bgzf4j BGZFInputStream]))
 
 (declare read-variants meta-info)
 
-(deftype BCFReader [^String f meta-info header ^BGZFInputStream reader ^long start-pos]
+(deftype BCFReader [^URL url meta-info header ^BGZFInputStream reader ^long start-pos]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read [this] (protocols/read this {}))
   (read [this option] (read-variants this option))
   (indexed? [_] false)
@@ -73,7 +75,7 @@
           (let [{:keys [header meta]} (->> (String. ^bytes header-buf 0 (int (dec hlen)))
                                            cstr/split-lines
                                            parse-meta-and-header)]
-            (BCFReader. (.getAbsolutePath (cio/file f)) meta header rdr (.getFilePointer rdr)))
+            (BCFReader. (util/as-url f) meta header rdr (.getFilePointer rdr)))
           (do
             (.close rdr)
             (throw (IOException. (str "Invalid file format. BCF header must be NULL-terminated."))))))

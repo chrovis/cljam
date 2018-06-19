@@ -10,9 +10,9 @@ jdk:
   - openjdk7
 env:
   matrix:
-    - VERSION='1.7'
     - VERSION='1.8'
     - VERSION='1.9'
+    - VERSION='1.10'
 script: lein with-profile dev,$VERSION test
 jobs:
   include:

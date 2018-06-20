@@ -212,13 +212,11 @@
 
 (defn- read-data-lines
   "Reads data from BCF file and returns them as a lazy-sequence of maps."
-  [^BGZFInputStream rdr read-fn pos]
-  (.seek rdr pos)
+  [^BGZFInputStream rdr read-fn]
   (when (pos? (.available rdr))
-    (let [data (read-fn rdr)
-          next-pos (.getFilePointer rdr)]
+    (let [data (read-fn rdr)]
       (cons data
-            (lazy-seq (read-data-lines rdr read-fn next-pos))))))
+            (lazy-seq (read-data-lines rdr read-fn))))))
 
 (defn- meta->map
   "Creates a map for searching meta-info with indices."
@@ -263,5 +261,4 @@
                     :shallow (partial parse-data-line-shallow contigs)
                     :raw identity)]
      (read-data-lines (.reader rdr)
-                      (fn [rdr] (parse-fn (read-data-line-buffer rdr)))
-                      (.start-pos rdr)))))
+                      (fn [rdr] (parse-fn (read-data-line-buffer rdr)))))))

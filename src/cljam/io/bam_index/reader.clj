@@ -5,7 +5,7 @@
             [cljam.io.bam-index.chunk :as chunk]
             [cljam.util :as util])
   (:import java.util.Arrays
-           [java.io DataInputStream FileInputStream Closeable IOException]
+           [java.io FileInputStream Closeable IOException]
            [cljam.io.bam_index.chunk Chunk]))
 
 (deftype BAIReader [url reader]
@@ -14,7 +14,7 @@
     (.close ^Closeable (.reader this))))
 
 (defn- skip-chunks!
-  [^DataInputStream rdr]
+  [rdr]
   (let [n-chunks (lsb/read-int rdr)]
     (loop [i 0]
       (when (< i n-chunks)
@@ -22,7 +22,7 @@
         (recur (inc i))))))
 
 (defn- skip-bin-index!
-  [^DataInputStream rdr]
+  [rdr]
   (let [n-bidx (lsb/read-int rdr)]
     (loop [i 0]
       (when (< i n-bidx)
@@ -31,7 +31,7 @@
         (recur (inc i))))))
 
 (defn- skip-linear-index!
-  [^DataInputStream rdr]
+  [rdr]
   (let [n-lidx (lsb/read-int rdr)]
     (loop [i 0]
       (when (< i n-lidx)
@@ -39,7 +39,7 @@
         (recur (inc i))))))
 
 (defn- skip-index!
-  [^DataInputStream rdr n]
+  [rdr n]
   (loop [i 0]
     (when (< i n)
       (skip-bin-index! rdr)
@@ -47,7 +47,7 @@
       (recur (inc i)))))
 
 (defn- read-chunks!
-  [^DataInputStream rdr]
+  [rdr]
   (let [n (lsb/read-int rdr)]
    (loop [i 0, chunks []]
      (if (< i n)
@@ -55,7 +55,7 @@
        chunks))))
 
 (defn- read-bin-index**!
-  [^DataInputStream rdr]
+  [rdr]
   (let [n (lsb/read-int rdr)]
     (loop [i 0, bidx []]
       (if (< i n)
@@ -65,7 +65,7 @@
         bidx))))
 
 (defn- read-bin-index*!
-  [^DataInputStream rdr ref-idx]
+  [rdr ref-idx]
   (let [n-ref (lsb/read-int rdr)]
     (when (>= ref-idx n-ref)
       (throw (IndexOutOfBoundsException. "The reference index number is invalid")))
@@ -73,7 +73,7 @@
     (read-bin-index**! rdr)))
 
 (defn- read-linear-index**!
-  [^DataInputStream rdr]
+  [rdr]
   (let [n (lsb/read-int rdr)]
     (loop [i 0, lidx []]
       (if (< i n)
@@ -81,7 +81,7 @@
         lidx))))
 
 (defn- read-linear-index*!
-  [^DataInputStream rdr ref-idx]
+  [rdr ref-idx]
   (let [n-ref (lsb/read-int rdr)]
     (when (>= ref-idx n-ref)
       (throw (IndexOutOfBoundsException. "The reference index number is invalid")))
@@ -114,7 +114,10 @@
      :lidx lidx}))
 
 (defn reader [f]
-  (let [r (DataInputStream. (FileInputStream. (cio/file f)))]
+  (let [url (util/as-url f)
+        r (if (= (.getProtocol url) "file")
+            (FileInputStream. (cio/file url))
+            (.openStream url))]
     (when-not (Arrays/equals ^bytes (lsb/read-bytes r 4) (.getBytes ^String bai-magic))
       (throw (IOException. "Invalid BAI file")))
-    (->BAIReader (util/as-url f) r)))
+    (->BAIReader url r)))

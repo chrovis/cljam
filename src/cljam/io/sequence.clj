@@ -31,18 +31,17 @@
 
 (defn ^Closeable reader
   "Selects suitable reader from f's extension, returning the open reader. Opens
-  a new reader if given a path, clones the reader if given a reader. This
-  function supports FASTA and TwoBit formats."
+  a new reader if the arg represents a file such as String path, java.io.File,
+  or java.net.URL. If a reader is given, clones the reader. This function
+  supports FASTA and TwoBit formats."
   [f]
-  (if (string? f)
-    (case (io-util/file-type f)
-      :fasta (fasta-reader f)
-      :2bit (twobit-reader f)
-      (throw (IllegalArgumentException. "Invalid file type")))
-    (cond
-      (io-util/fasta-reader? f) (fa-core/clone-reader f)
-      (io-util/twobit-reader? f) (tb-reader/clone-reader f)
-      :else (throw (IllegalArgumentException. "Invalid reader type")))))
+  (cond
+    (io-util/fasta-reader? f) (fa-core/clone-reader f)
+    (io-util/twobit-reader? f) (tb-reader/clone-reader f)
+    :else (case (io-util/file-type f)
+            :fasta (fasta-reader f)
+            :2bit (twobit-reader f)
+            (throw (IllegalArgumentException. "Invalid file type")))))
 
 (defn read-sequence
   "Reads sequence in region of FASTA/TwoBit file."

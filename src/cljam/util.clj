@@ -83,7 +83,7 @@
   compressor type is not known. Should be used inside with-open to ensure the
   OutputStream is properly closed."
   ([f]
-   (compressor-output-stream f (condp re-find (.getName (file f))
+   (compressor-output-stream f (condp re-find (.getPath (as-url f))
                                  #"(?i)\.(gz|gzip)$" :gzip
                                  #"(?i)\.(bz2|bzip2)$" :bzip2
                                  nil)))

@@ -1,14 +1,14 @@
 (ns cljam.io.bcf.writer
   (:require [clojure.string :as cstr]
             [cljam.io.protocols :as protocols]
+            [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.vcf.writer :as vw]
             [cljam.io.vcf.util :as vcf-util]
             [cljam.util :as util])
   (:import [java.io Closeable IOException DataOutputStream]
            [java.net URL]
-           [java.nio ByteBuffer ByteOrder]
-           [bgzf4j BGZFOutputStream]))
+           [java.nio ByteBuffer ByteOrder]))
 
 (declare write-variants)
 
@@ -63,8 +63,8 @@
                              {:file-date \"20090805\", :source \"myImpu...\" ...}
                              [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
        (WRITING-BCF))"
-  [^String f meta-info header]
-  (let [bos (BGZFOutputStream. f)
+  [f meta-info header]
+  (let [bos (bgzf/bgzf-output-stream f)
         dos (DataOutputStream. bos)
         indexed-meta (-> meta-info
                          (update :contig (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))

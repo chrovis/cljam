@@ -29,22 +29,18 @@
 (defn ^FASTQReader reader
   "Returns an open cljam.io.fastq.FASTQReader of f. Should be used inside
   with-open to ensure the reader is properly closed."
-  [^String f]
-  (let [file (cio/file f)
-        path (.getAbsolutePath file)]
-    (-> (util/compressor-input-stream path)
-        cio/reader
-        (FASTQReader. (util/as-url path)))))
+  [f]
+  (-> (util/compressor-input-stream f)
+      cio/reader
+      (FASTQReader. (util/as-url f))))
 
 (defn ^FASTQWriter writer
   "Returns an open cljam.io.fastq.FASTQWriter of f. Should be used inside
   with-open to ensure the writer is properly closed."
-  [^String f]
-  (let [file (cio/file f)
-        path (.getAbsolutePath file)]
-    (-> (util/compressor-output-stream path)
-        cio/writer
-        (FASTQWriter. (util/as-url path)))))
+  [f]
+  (-> (util/compressor-output-stream f)
+      cio/writer
+      (FASTQWriter. (util/as-url f))))
 
 (defrecord FASTQRead [^String name ^String sequence quality])
 

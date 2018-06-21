@@ -44,15 +44,13 @@
   "Returns an open cljam.io.bed.BEDReader of f. Should be used inside with-open
   to ensure the reader is properly closed."
   [f]
-  (let [abs (.getAbsolutePath (cio/file f))]
-    (BEDReader. (cio/reader (util/compressor-input-stream abs)) (util/as-url abs))))
+  (BEDReader. (cio/reader (util/compressor-input-stream f)) (util/as-url f)))
 
 (defn ^BEDWriter writer
   "Returns an open cljam.io.bed.BEDWriter of f. Should be used inside with-open
   to ensure the writer is properly closed."
   [f]
-  (let [abs (.getAbsolutePath (cio/file f))]
-  (BEDWriter. (cio/writer (util/compressor-output-stream abs)) (util/as-url abs))))
+  (BEDWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))
 
 (def ^:const bed-columns
   [:chr :start :end :name :score :strand :thick-start :thick-end :item-rgb :block-count :block-sizes :block-starts])

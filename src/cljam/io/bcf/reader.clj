@@ -1,9 +1,9 @@
 (ns cljam.io.bcf.reader
   (:refer-clojure :exclude [read])
-  (:require [clojure.java.io :as cio]
-            [clojure.string :as cstr]
+  (:require [clojure.string :as cstr]
             [clojure.tools.logging :as logging]
             [cljam.io.protocols :as protocols]
+            [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.vcf.reader :as vcf-reader]
             [cljam.io.vcf.util :as vcf-util]
@@ -66,7 +66,7 @@
   ensure the Reader is properly closed.
    Throws IOException if failed to parse BCF file format."
   [f]
-  (let [rdr (BGZFInputStream. (cio/file f))
+  (let [rdr (bgzf/bgzf-input-stream f)
         magic (lsb/read-bytes rdr 5)]
     (if (= (seq magic) (map byte "BCF\2\2"))
       (let [hlen (lsb/read-int rdr)

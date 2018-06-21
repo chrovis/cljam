@@ -1,11 +1,10 @@
 (ns cljam.io.tabix
   "Alpha - subject to change.
   Reader of a TABIX format file."
-  (:require [clojure.java.io :as cio]
+  (:require [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb])
   (:import java.util.Arrays
-           [java.io DataInputStream IOException]
-           bgzf4j.BGZFInputStream))
+           [java.io DataInputStream IOException]))
 
 (def tabix-magic "TBI\1")
 
@@ -64,5 +63,5 @@
 
 (defn read-index
   [f]
-  (with-open [r (DataInputStream. (BGZFInputStream. (cio/file f)))]
+  (with-open [r (DataInputStream. (bgzf/bgzf-input-stream f))]
     (read-index* r)))

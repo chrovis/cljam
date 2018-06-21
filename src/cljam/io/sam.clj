@@ -36,17 +36,16 @@
 
 (defn ^Closeable reader
   "Selects suitable reader from f's extension, returning the reader. Opens a new
-  reader if given a path, clones the reader if given a reader. This function
-  supports SAM and BAM formats."
+  reader if the arg represents a file such as String path, java.io.File, or
+  java.net.URL. If a reader is given, clones the reader. This function supports
+  SAM and BAM formats."
   [f]
-  (if (string? f)
+  (if (io-util/bam-reader? f)
+    (clone-bam-reader f)
     (case (io-util/file-type f)
       :sam (sam-reader f)
       :bam (bam-reader f)
-      (throw (IllegalArgumentException. "Invalid file type")))
-    (cond
-      (io-util/bam-reader? f) (clone-bam-reader f)
-      :else (throw (IllegalArgumentException. "Invalid reader type")))))
+      (throw (IllegalArgumentException. "Invalid source type")))))
 
 (defn read-header
   "Returns header of the SAM/BAM file."

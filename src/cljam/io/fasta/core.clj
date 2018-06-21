@@ -13,17 +13,17 @@
 ;; -------
 
 (defn- fasta-index
-  [fasta-path]
+  [fasta-url]
   (let [fasta-exts #"(?i)(\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa)?)$"]
-    (if-let [fai-path (->> ["$1.fai" ".fai" "$1.FAI" ".FAI"]
-                           (eduction
-                            (comp
-                             (map #(cstr/replace fasta-path fasta-exts %))
-                             (filter #(.isFile (cio/file %)))))
-                           first)]
-      (fai/reader fai-path)
-      (throw (FileNotFoundException.
-              (str "Could not find FASTA Index file for " fasta-path))))))
+    (or (->> ["$1.fai" ".fai" "$1.FAI" ".FAI"]
+             (eduction
+              (comp
+               (map #(cstr/replace (str fasta-url) fasta-exts %))
+               (map util/as-url)
+               (map #(try (fai/reader %) (catch FileNotFoundException _)))))
+             first)
+        (throw (FileNotFoundException.
+                (str "Could not find FASTA Index file for " fasta-url))))))
 
 (defn ^FASTAReader reader
   [f]
@@ -31,7 +31,7 @@
     (FASTAReader. (RandomAccessFile. f "r")
                   (util/compressor-input-stream f)
                   (util/as-url f)
-                  (delay (fasta-index f)))))
+                  (delay (fasta-index (util/as-url f))))))
 
 (defn ^FASTAReader clone-reader
   "Clones fasta reader sharing persistent objects."

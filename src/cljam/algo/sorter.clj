@@ -76,7 +76,7 @@
 (defn- split*
   "Splits SAM/BAM files with appropriate reader/writer functions."
   [rdr chunk-size name-fn mode sort-fn]
-  (let [block? (same-type? (protocols/reader-path rdr) (name-fn 0))
+  (let [block? (same-type? (protocols/reader-url rdr) (name-fn 0))
         read-fn (if block?
                   (fn [r] (sam/read-blocks r {} {:mode mode}))
                   sam/read-alignments)
@@ -122,7 +122,7 @@
 (defn- merge*
   "Merges multiple SAM/BAM files with appropriate reader/writer functions."
   [wtr hdr files mode key-fn]
-  (let [block? (apply same-type? (protocols/writer-path wtr) files)
+  (let [block? (apply same-type? (protocols/writer-url wtr) files)
         read-fn (if block?
                   (fn [r] (sam/read-blocks r {} {:mode mode}))
                   sam/read-alignments)
@@ -151,7 +151,7 @@
   :coordinate and :queryname are available for mode."
   [rdr wtr {:keys [mode chunk-size cache-fmt] :or {cache-fmt :bam}}]
   (let [name-fn (->> rdr
-                     protocols/reader-path
+                     protocols/reader-url
                      util/basename
                      (partial gen-cache-filename (name cache-fmt)))
         key-fn ({header/order-coordinate (partial coordinate-key (refmap (sam/read-refs rdr)))

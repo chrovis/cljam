@@ -12,12 +12,12 @@
 ;; VCFWriter
 ;; ---------
 
-(deftype VCFWriter [f writer meta-info header]
+(deftype VCFWriter [url writer meta-info header]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this] (.f this))
+  (writer-url [this] (.url this))
   protocols/IVariantWriter
   (write-variants [this variants]
     (write-variants this variants)))

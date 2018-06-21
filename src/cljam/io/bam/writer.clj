@@ -14,13 +14,13 @@
 ;; BAMWriter
 ;;
 
-(deftype BAMWriter [f writer]
+(deftype BAMWriter [url writer]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this]
-    (.f this))
+  (writer-url [this]
+    (.url this))
   protocols/IAlignmentWriter
   (write-header [this header]
     (write-header* this header))

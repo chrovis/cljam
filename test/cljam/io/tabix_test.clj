@@ -1,5 +1,6 @@
 (ns cljam.io.tabix-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.io :as cio]
+            [clojure.test :refer :all]
             [cljam.test-common :refer :all]
             [cljam.io.tabix :as tbi]))
 
@@ -25,3 +26,11 @@
 (deftest-remote large-file
   (with-before-after {:before (prepare-cavia!)}
     (is (not-throw? (tbi/read-index test-large-tabix-file)))))
+
+(deftest source-type-test
+  (with-open [server (http-server)]
+    (are [x] (map? (tbi/read-index x))
+      test-tabix-file
+      (cio/file test-tabix-file)
+      (cio/as-url (cio/file test-tabix-file))
+      (cio/as-url (str (:uri server) "/tabix/test.gtf.gz.tbi")))))

@@ -5,16 +5,17 @@
             [cljam.io.bam-index [common :refer :all]
                                 [chunk :as chunk]
                                 [reader :as reader]
-                                [writer :as writer]])
+                                [writer :as writer]]
+            [cljam.util :as util])
   (:import [java.io DataOutputStream FileOutputStream]
            cljam.io.bam_index.reader.BAIReader
            cljam.io.bam_index.writer.BAIWriter))
 
-(deftype BAMIndex [f bidx lidx])
+(deftype BAMIndex [url bidx lidx])
 
 (defn bam-index [f]
   (let [{:keys [bidx lidx]} (with-open [r ^BAIReader (reader/reader f)] (reader/read-all-index! r))]
-    (->BAMIndex f bidx lidx)))
+    (->BAMIndex (util/as-url f) bidx lidx)))
 
 ;; ## Reading
 
@@ -79,7 +80,7 @@
   [f refs]
   (BAIWriter. (DataOutputStream. (FileOutputStream. (cio/file f)))
               refs
-              (.getAbsolutePath (cio/file f))))
+              (util/as-url f)))
 
 (defn create-index
   "Creates a BAM index file from the alignments and references data."
@@ -88,6 +89,6 @@
     (try
       (writer/write-index! w alns)
       (catch Exception e (do
-                           (cio/delete-file (.f w))
+                           (cio/delete-file (.url w))
                            (logging/error "Failed to create BAM index")
                            (throw e))))))

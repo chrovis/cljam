@@ -1,6 +1,7 @@
 (ns cljam.io.bam-index-test
   "Tests for cljam.io.bam-index."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.io :as cio]
+            [clojure.test :refer :all]
             [cljam.test-common :refer :all]
             [cljam.io.bam-index :as bai]))
 
@@ -54,3 +55,13 @@
 (deftest-remote linear-index-is-done-without-errors-with-a-large-file
   (with-before-after {:before (prepare-cavia!)}
     (is (not-throw? (bai/linear-index test-large-bai-file 0)))))
+
+(deftest source-type-test
+  (with-open [server (http-server)]
+    (are [x] (and (vector? (bai/bin-index x 0))
+                  (vector? (bai/linear-index x 0))
+                  (= (bai/get-spans (bai/bam-index x) 0 0 100) '((97 555))))
+      test-bai-file
+      (cio/file test-bai-file)
+      (cio/as-url (cio/file test-bai-file))
+      (cio/as-url (str (:uri server) "/bam/test.sorted.bam.bai")))))

@@ -42,7 +42,7 @@
   "Create a path to the cache file."
   [rdr i]
   (->> i
-       (format "%s_%06d.bam" (util/basename (protocols/reader-path rdr)))
+       (format "%s_%06d.bam" (util/basename (protocols/reader-url rdr)))
        (cio/file util/temp-dir)
        (.getCanonicalPath)))
 

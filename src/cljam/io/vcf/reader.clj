@@ -15,12 +15,12 @@
 
 (declare read-variants)
 
-(deftype VCFReader [f meta-info header reader]
+(deftype VCFReader [url meta-info header reader]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read [this] (read-variants this))
   (read [this option] (read-variants this option))
   (indexed? [_] false)

@@ -27,7 +27,7 @@
                     (vcf-reader/load-meta-info r))
         header (with-open [r (cio/reader (util/compressor-input-stream f))]
                  (vcf-reader/load-header r))]
-    (VCFReader. (.getAbsolutePath (cio/file f)) meta-info header
+    (VCFReader. (util/as-url f) meta-info header
                 (cio/reader (util/compressor-input-stream f)))))
 
 (defn ^BCFReader bcf-reader
@@ -81,7 +81,7 @@
                                 [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
       (WRITING-VCF))"
   [f meta-info header]
-  (doto (VCFWriter. (.getAbsolutePath (cio/file f))
+  (doto (VCFWriter. (util/as-url f)
                     (cio/writer (util/compressor-output-stream f))
                     meta-info
                     header)

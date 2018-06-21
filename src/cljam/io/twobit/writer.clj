@@ -1,19 +1,20 @@
 (ns cljam.io.twobit.writer
   (:require [clojure.java.io :as cio]
             [cljam.io.protocols :as protocols]
-            [cljam.io.util.lsb :as lsb])
+            [cljam.io.util.lsb :as lsb]
+            [cljam.util :as util])
   (:import [java.io Closeable OutputStream DataOutputStream BufferedOutputStream FileOutputStream]
            [java.nio ByteBuffer]))
 
 (declare write-sequences)
 
-(deftype TwoBitWriter [f writer file-output-stream index]
+(deftype TwoBitWriter [url writer file-output-stream index]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this]
-    (.f this))
+  (writer-url [this]
+    (.url this))
   protocols/ISequenceWriter
   (write-sequences [this seqs]
     (write-sequences this seqs)))
@@ -25,7 +26,7 @@
         fos (FileOutputStream. abs-f)
         bos (BufferedOutputStream. fos)
         dos (DataOutputStream. bos)]
-    (TwoBitWriter. abs-f dos fos index)))
+    (TwoBitWriter. (util/as-url abs-f) dos fos index)))
 
 (defn- write-file-header!
   "Writes a 2bit file header. Supports little-endian only."

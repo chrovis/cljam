@@ -1,22 +1,23 @@
 (ns cljam.io.bcf.writer
-  (:require [clojure.java.io :as cio]
-            [clojure.string :as cstr]
+  (:require [clojure.string :as cstr]
             [cljam.io.protocols :as protocols]
+            [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.vcf.writer :as vw]
-            [cljam.io.vcf.util :as vcf-util])
+            [cljam.io.vcf.util :as vcf-util]
+            [cljam.util :as util])
   (:import [java.io Closeable IOException DataOutputStream]
-           [java.nio ByteBuffer ByteOrder]
-           [bgzf4j BGZFOutputStream]))
+           [java.net URL]
+           [java.nio ByteBuffer ByteOrder]))
 
 (declare write-variants)
 
-(deftype BCFWriter [^String f meta-info header ^DataOutputStream writer]
+(deftype BCFWriter [^URL url meta-info header ^DataOutputStream writer]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this] (.f this))
+  (writer-url [this] (.url this))
   protocols/IVariantWriter
   (write-variants [this variants]
     (write-variants this variants)))
@@ -62,8 +63,8 @@
                              {:file-date \"20090805\", :source \"myImpu...\" ...}
                              [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
        (WRITING-BCF))"
-  [^String f meta-info header]
-  (let [bos (BGZFOutputStream. f)
+  [f meta-info header]
+  (let [bos (bgzf/bgzf-output-stream f)
         dos (DataOutputStream. bos)
         indexed-meta (-> meta-info
                          (update :contig (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
@@ -74,7 +75,7 @@
                                                      (map-indexed (fn [i m] (assoc m :idx (str (inc i)))) others)))))
                          (update :info (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
                          (update :format (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs))))
-        w (BCFWriter. (.getAbsolutePath (cio/file f)) indexed-meta header dos)]
+        w (BCFWriter. (util/as-url f) indexed-meta header dos)]
     (write-file-header w)
     w))
 

@@ -1,24 +1,26 @@
 (ns cljam.io.bcf.reader
   (:refer-clojure :exclude [read])
-  (:require [clojure.java.io :as cio]
-            [clojure.string :as cstr]
+  (:require [clojure.string :as cstr]
             [clojure.tools.logging :as logging]
             [cljam.io.protocols :as protocols]
+            [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.vcf.reader :as vcf-reader]
-            [cljam.io.vcf.util :as vcf-util])
+            [cljam.io.vcf.util :as vcf-util]
+            [cljam.util :as util])
   (:import [java.io Closeable IOException]
+           [java.net URL]
            [java.nio ByteBuffer]
            [bgzf4j BGZFInputStream]))
 
 (declare read-variants meta-info)
 
-(deftype BCFReader [^String f meta-info header ^BGZFInputStream reader ^long start-pos]
+(deftype BCFReader [^URL url meta-info header ^BGZFInputStream reader ^long start-pos]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read [this] (protocols/read this {}))
   (read [this option] (read-variants this option))
   (indexed? [_] false)
@@ -64,7 +66,7 @@
   ensure the Reader is properly closed.
    Throws IOException if failed to parse BCF file format."
   [f]
-  (let [rdr (BGZFInputStream. (cio/file f))
+  (let [rdr (bgzf/bgzf-input-stream f)
         magic (lsb/read-bytes rdr 5)]
     (if (= (seq magic) (map byte "BCF\2\2"))
       (let [hlen (lsb/read-int rdr)
@@ -73,7 +75,7 @@
           (let [{:keys [header meta]} (->> (String. ^bytes header-buf 0 (int (dec hlen)))
                                            cstr/split-lines
                                            parse-meta-and-header)]
-            (BCFReader. (.getAbsolutePath (cio/file f)) meta header rdr (.getFilePointer rdr)))
+            (BCFReader. (util/as-url f) meta header rdr (.getFilePointer rdr)))
           (do
             (.close rdr)
             (throw (IOException. (str "Invalid file format. BCF header must be NULL-terminated."))))))
@@ -210,13 +212,11 @@
 
 (defn- read-data-lines
   "Reads data from BCF file and returns them as a lazy-sequence of maps."
-  [^BGZFInputStream rdr read-fn pos]
-  (.seek rdr pos)
+  [^BGZFInputStream rdr read-fn]
   (when (pos? (.available rdr))
-    (let [data (read-fn rdr)
-          next-pos (.getFilePointer rdr)]
+    (let [data (read-fn rdr)]
       (cons data
-            (lazy-seq (read-data-lines rdr read-fn next-pos))))))
+            (lazy-seq (read-data-lines rdr read-fn))))))
 
 (defn- meta->map
   "Creates a map for searching meta-info with indices."
@@ -261,5 +261,4 @@
                     :shallow (partial parse-data-line-shallow contigs)
                     :raw identity)]
      (read-data-lines (.reader rdr)
-                      (fn [rdr] (parse-fn (read-data-line-buffer rdr)))
-                      (.start-pos rdr)))))
+                      (fn [rdr] (parse-fn (read-data-line-buffer rdr)))))))

@@ -13,33 +13,33 @@
 ;; -------
 
 (defn- fasta-index
-  [fasta-path]
+  [fasta-url]
   (let [fasta-exts #"(?i)(\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa)?)$"]
-    (if-let [fai-path (->> ["$1.fai" ".fai" "$1.FAI" ".FAI"]
-                           (eduction
-                            (comp
-                             (map #(cstr/replace fasta-path fasta-exts %))
-                             (filter #(.isFile (cio/file %)))))
-                           first)]
-      (fai/reader fai-path)
-      (throw (FileNotFoundException.
-              (str "Could not find FASTA Index file for " fasta-path))))))
+    (or (->> ["$1.fai" ".fai" "$1.FAI" ".FAI"]
+             (eduction
+              (comp
+               (map #(cstr/replace (str fasta-url) fasta-exts %))
+               (map util/as-url)
+               (keep #(try (fai/reader %) (catch FileNotFoundException _)))))
+             first)
+        (throw (FileNotFoundException.
+                (str "Could not find FASTA Index file for " fasta-url))))))
 
 (defn ^FASTAReader reader
   [f]
   (let [f (.getAbsolutePath (cio/file f))]
     (FASTAReader. (RandomAccessFile. f "r")
                   (util/compressor-input-stream f)
-                  f
-                  (delay (fasta-index f)))))
+                  (util/as-url f)
+                  (delay (fasta-index (util/as-url f))))))
 
 (defn ^FASTAReader clone-reader
   "Clones fasta reader sharing persistent objects."
   [^FASTAReader rdr]
-  (let [f (.f rdr)
-        raf (RandomAccessFile. ^String f "r")
-        stream (util/compressor-input-stream f)]
-    (FASTAReader. raf stream f (.index-delay rdr))))
+  (let [url (.url rdr)
+        raf (RandomAccessFile. (cio/as-file url) "r")
+        stream (util/compressor-input-stream url)]
+    (FASTAReader. raf stream url (.index-delay rdr))))
 
 (defn read-headers
   [^FASTAReader rdr]
@@ -78,7 +78,7 @@
 
 (extend-type FASTAReader
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read
     ([this] (protocols/read this {}))
     ([this option] (protocols/read-all-sequences this option)))

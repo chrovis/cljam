@@ -1,5 +1,6 @@
 (ns cljam.io.bed-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.io :as cio]
+            [clojure.test :refer :all]
             [cljam.test-common :refer :all]
             [cljam.io.bed :as bed]
             [cljam.io.sam :as sam]
@@ -337,3 +338,28 @@
                (bed/read-fields rdr2)))
         (is (= xs
                (bed/read-fields rdr3)))))))
+
+(deftest source-type-test
+  (testing "reader"
+    (with-open [server (http-server)]
+      (are [x] (with-open [rdr (bed/reader x)]
+                 (= (bed/read-fields rdr)
+                    [{:chr "chr22" :start 1001 :end 5000 :name "cloneA" :score 960 :strand :plus :thick-start 1001
+                      :thick-end 5000 :item-rgb "0" :block-count 2 :block-sizes [567 488] :block-starts [0 3512]}
+                     {:chr "chr22" :start 2001 :end 6000 :name "cloneB" :score 900 :strand :minus :thick-start 2001
+                      :thick-end 6000 :item-rgb "0" :block-count 2 :block-sizes [433 399] :block-starts [0 3601]}]))
+        test-bed-file1
+        (cio/file test-bed-file1)
+        (cio/as-url (cio/file test-bed-file1))
+        (cio/as-url (str (:uri server) "/bed/test1.bed")))))
+
+  (testing "writer"
+    (let [temp-file (str temp-dir "/test1.bed")]
+      (are [x] (with-before-after {:before (prepare-cache!)
+                                   :after (clean-cache!)}
+                 (with-open [rdr (bed/reader test-bed-file1)
+                             wtr (bed/writer temp-file)]
+                   (not-throw? (bed/write-fields wtr (bed/read-fields rdr)))))
+        temp-file
+        (cio/file temp-file)
+        (cio/as-url (cio/file temp-file))))))

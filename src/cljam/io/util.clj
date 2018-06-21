@@ -14,7 +14,8 @@
             cljam.io.twobit.reader
             cljam.io.twobit.writer
             cljam.io.fastq
-            cljam.io.bed))
+            cljam.io.bed
+            [cljam.util :as util]))
 
 (defn alignment-reader?
   "Checks if given object implements protocol IAlignmentReader."
@@ -127,10 +128,10 @@
   (instance? cljam.io.bed.BEDWriter wtr))
 
 (defn file-type
-  "Detects a file format from path string f, returning a keyword representing
-  the format. Throws an exception if an unsupported file is supplied."
+  "Detects a file format from a path of f, returning a keyword representing the
+  format. Throws an exception if an unsupported file is supplied."
   [f]
-  (condp re-find f
+  (condp re-find (.getPath (util/as-url f))
     #"(?i)\.sam$" :sam
     #"(?i)\.bai$" :bai
     #"(?i)\.bam$" :bam

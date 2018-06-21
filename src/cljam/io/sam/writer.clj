@@ -4,7 +4,8 @@
             [clojure.tools.logging :as logging]
             [cljam.io.sam.util :as sam-util]
             [cljam.io.sam.util.header :as header]
-            [cljam.io.protocols :as protocols])
+            [cljam.io.protocols :as protocols]
+            [cljam.util :as util])
   (:import [java.io BufferedWriter Closeable]))
 
 (declare write-header* write-alignments* write-blocks*)
@@ -12,13 +13,13 @@
 ;; SAMWriter
 ;; ---------
 
-(deftype SAMWriter [^BufferedWriter writer f]
+(deftype SAMWriter [^BufferedWriter writer url]
   Closeable
   (close [this]
     (.close writer))
   protocols/IWriter
-  (writer-path [this]
-    (.f this))
+  (writer-url [this]
+    (.url this))
   protocols/IAlignmentWriter
   (write-header [this header]
     (write-header* this header))
@@ -58,4 +59,4 @@
 (defn ^SAMWriter writer
   [f]
   (->SAMWriter (cio/writer f)
-               (.getAbsolutePath (cio/file f))))
+               (util/as-url f)))

@@ -4,7 +4,7 @@
 
 ;;;; FAIReader
 
-(deftype FAIReader [indices f])
+(deftype FAIReader [indices url])
 
 ;;;; Reader
 

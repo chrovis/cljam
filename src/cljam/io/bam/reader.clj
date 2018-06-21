@@ -17,13 +17,13 @@
 ;; BAMReader
 ;; ---------
 
-(deftype BAMReader [f header refs reader data-reader index-delay start-pos]
+(deftype BAMReader [url header refs reader data-reader index-delay start-pos]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this]
-    (.f this))
+  (reader-url [this]
+    (.url this))
   (read [this]
     (protocols/read this {}))
   (read [this region]

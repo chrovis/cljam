@@ -1,5 +1,54 @@
 (ns cljam.io.util.bgzf
-  (:refer-clojure :exclude [compare]))
+  (:refer-clojure :exclude [compare])
+  (:require [clojure.java.io :as cio])
+  (:import [java.io File]
+           [java.net MalformedURLException URI URL]
+           [bgzf4j BGZFInputStream BGZFOutputStream]))
+
+(defprotocol BGZFIOFactory
+  (make-bgzf-input-stream [x])
+  (make-bgzf-output-stream [x]))
+
+(extend-protocol BGZFIOFactory
+  File
+  (make-bgzf-input-stream [^File x]
+    (BGZFInputStream. x))
+  (make-bgzf-output-stream [^File x]
+    (BGZFOutputStream. x))
+
+  URL
+  (make-bgzf-input-stream [^URL x]
+    (if (= (.getProtocol x) "file")
+      (make-bgzf-input-stream (cio/as-file x))
+      (BGZFInputStream. x)))
+  (make-bgzf-output-stream [^URL x]
+    (if (= (.getProtocol x) "file")
+      (make-bgzf-output-stream (cio/as-file x))
+      (throw (IllegalArgumentException. (str "Can not write to non-file URL <" x ">")))))
+
+  URI
+  (make-bgzf-input-stream [^URI x]
+    (make-bgzf-input-stream (.toURL x)))
+  (make-bgzf-output-stream [^URI x]
+    (make-bgzf-output-stream (.toURL x)))
+
+  String
+  (make-bgzf-input-stream [x]
+    (try
+      (make-bgzf-input-stream (URL. x))
+      (catch MalformedURLException _
+        (make-bgzf-input-stream (cio/as-file x)))))
+  (make-bgzf-output-stream [x]
+    (try
+      (make-bgzf-output-stream (URL. x))
+      (catch MalformedURLException _
+        (make-bgzf-output-stream (cio/as-file x))))))
+
+(defn ^BGZFInputStream bgzf-input-stream [x]
+  (make-bgzf-input-stream x))
+
+(defn ^BGZFOutputStream bgzf-output-stream [x]
+  (make-bgzf-output-stream x))
 
 (def ^:private ^:const shift-amount 16)
 

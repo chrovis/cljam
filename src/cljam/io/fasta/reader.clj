@@ -10,7 +10,7 @@
 ;; FASTAReader
 ;; -----------
 
-(deftype FASTAReader [reader stream f index-delay]
+(deftype FASTAReader [reader stream url index-delay]
   java.io.Closeable
   (close [this]
     (.close ^java.io.Closeable (.reader this))

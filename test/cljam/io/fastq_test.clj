@@ -124,3 +124,23 @@
   (is (nil? (fq/deserialize-name "@EAS139:136:FC706VJ:2:2104:15343:197393_1:Y:18:ATCACG")))
 
   (is (nil? (fq/deserialize-name "@HWUSI-EAS100R:6:73:941:1973#N/1"))))
+
+(deftest source-type-test
+  (testing "reader"
+    (with-open [server (http-server)]
+      (are [x] (with-open [rdr (fq/reader x)]
+                 (= (map (partial into {}) (fq/read-sequences rdr)) test-fq-sequences))
+        test-fq-file
+        (cio/file test-fq-file)
+        (cio/as-url (cio/file test-fq-file))
+        (cio/as-url (str (:uri server) "/fastq/test.fq")))))
+
+  (testing "writer"
+    (let [temp-file (str temp-dir "test.fq")]
+      (are [x] (with-before-after {:before (prepare-cache!)
+                                   :after (clean-cache!)}
+                 (with-open [wtr (fq/writer x)]
+                   (not-throw? (fq/write-sequences wtr test-fq-sequences))))
+        temp-file
+        (cio/file temp-file)
+        (cio/as-url (cio/file temp-file))))))

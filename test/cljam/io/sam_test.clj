@@ -288,3 +288,33 @@
      (= (with-open [r (sam/reader opts-bam-file)]
           (->> (sam/read-alignments r) (mapcat :options) (map bytes-to-seq) doall))
         test-options))))
+
+(deftest source-type-test
+  (testing "reader"
+    (with-open [server (http-server)]
+      (are [x] (with-open [rdr (sam/reader x)]
+                 (and (= (sam/read-refs rdr) test-sam-refs)
+                      (= (sam/read-alignments rdr) (:alignments test-sam))))
+        test-sam-file
+        (cio/file test-sam-file)
+        (cio/as-url (cio/file test-sam-file))
+        (cio/as-url (str (:uri server) "/sam/test.sam"))
+
+        test-bam-file
+        (cio/file test-bam-file)
+        (cio/as-url (cio/file test-bam-file))
+        (cio/as-url (str (:uri server) "/bam/test.bam")))))
+
+  (testing "writer"
+    (are [x] (with-before-after {:before (prepare-cache!)
+                                 :after (clean-cache!)}
+               (with-open [wtr (sam/writer x)]
+                 (and (not-throw? (sam/write-header wtr (:header test-sam)))
+                      (not-throw? (sam/write-alignments wtr (:alignments test-sam) nil)))))
+      temp-sam-file
+      (cio/file temp-sam-file)
+      (cio/as-url (cio/file temp-sam-file))
+
+      temp-bam-file
+      (cio/file temp-bam-file)
+      (cio/as-url (cio/file temp-bam-file)))))

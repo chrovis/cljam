@@ -7,6 +7,7 @@
   (:import bgzf4j.BGZFException))
 
 (def ^:private temp-file (str temp-dir "/test.vcf"))
+(def ^:private temp-bcf-file (str temp-dir "/test.bcf"))
 
 (defn- slurp-vcf-for-test
   [f & [depth]]
@@ -195,3 +196,34 @@
         (is (= (vcf/meta-info r2) (vcf/meta-info r1)))
         (doseq [[x2 x1] (map vector (vcf/read-variants r2) (vcf/read-variants r1))]
           (is (= x2 x1)))))))
+
+(deftest source-type-test
+  (testing "reader"
+    (with-open [server (http-server)]
+      (are [x] (with-open [rdr (vcf/reader x)]
+                 (and (= (vcf/meta-info rdr) test-vcf-v4_3-meta-info)
+                      (= (vcf/header rdr) test-vcf-v4_3-header)
+                      (= (vcf/read-variants rdr) test-vcf-v4_3-variants-deep)))
+        test-vcf-v4_3-file
+        (cio/file test-vcf-v4_3-file)
+        (cio/as-url (cio/file test-vcf-v4_3-file))
+        (cio/as-url (str (:uri server) "/vcf/test-v4_3.vcf"))
+
+        test-bcf-v4_3-file
+        (cio/file test-bcf-v4_3-file)
+        (cio/as-url (cio/file test-bcf-v4_3-file))
+        (cio/as-url (str (:uri server) "/bcf/test-v4_3.bcf")))))
+  (testing "writer"
+    (are [x] (with-before-after {:before (prepare-cache!)
+                                 :after (clean-cache!)}
+               (not-throw? (spit-vcf-for-test x
+                                              test-vcf-v4_3-meta-info
+                                              test-vcf-v4_3-header
+                                              test-vcf-v4_3-variants-deep)))
+      temp-file
+      (cio/file temp-file)
+      (cio/as-url (cio/file temp-file))
+
+      temp-bcf-file
+      (cio/file temp-bcf-file)
+      (cio/as-url (cio/file temp-bcf-file)))))

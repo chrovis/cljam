@@ -1,12 +1,15 @@
 (ns cljam.test-common
   (:require [digest]
-            [clojure.java.io :refer [file]]
+            [clojure.java.io :refer [file] :as cio]
             [clojure.tools.logging :refer [*logger-factory*]]
             [clojure.tools.logging.impl :refer [disabled-logger-factory]]
+            [stub-http.core :as http]
             [cljam.io.protocols :as protocols]
             [cljam.io.sam :as sam]
             [cljam.io.sequence :as cseq]
-            [cavia.core :as cavia :refer [defprofile with-profile]]))
+            [cavia.core :as cavia :refer [defprofile with-profile]])
+  (:import java.io.File
+           stub_http.core.NanoFakeServer))
 
 (defn- _in-cloverage? []
   (try
@@ -669,3 +672,27 @@
      :FORMAT [:GT :GQ :DP :HQ], :NA00001 {:GT "0|0", :GQ 54, :DP 7, :HQ [56 60]}, :NA00002 {:GT "0|0", :GQ 48, :DP 4, :HQ [51 51]}, :NA00003 {:GT "0/0", :GQ 61, :DP 2}}
     {:chr "20", :pos 1234567, :id "microsat1", :ref "GTC", :alt ["G" "GTCT"], :qual 50.0, :filter [:PASS], :info {:NS 3, :DP 9, :AA "G"},
      :FORMAT [:GT :GQ :DP], :NA00001 {:GT "0/1", :GQ 35, :DP 4}, :NA00002 {:GT "0/2", :GQ 17, :DP 2}, :NA00003 {:GT "1/1", :GQ 40, :DP 3}}))
+
+;; http server
+
+(defn- slurp-bytes [x]
+  (with-open [in (cio/input-stream x)
+              out (java.io.ByteArrayOutputStream.)]
+    (cio/copy in out)
+    (.toByteArray out)))
+
+(defn ^NanoFakeServer http-server []
+  (let [gen-route? (fn [^File f]
+                     (< (.length f) (* 1024 1024)))
+        gen-route (fn [^File f]
+                    (when (.isFile f)
+                      (let [[_ path] (re-matches #"test-resources(/.+)" (.getPath f))]
+                        [path {:status 200
+                               :content-type "application/octet-stream;charset=ISO-8859-1"
+                               :body (String. ^bytes (slurp-bytes f) "ISO-8859-1")}])))
+        routes (->> (file "test-resources")
+                    file-seq
+                    (filter gen-route?)
+                    (keep gen-route)
+                    (into {}))]
+    (http/start! routes)))

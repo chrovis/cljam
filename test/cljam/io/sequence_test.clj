@@ -277,3 +277,38 @@
              {:name "SEQ5" :sequence "AAAAGCTA"}]]
       (with-open [w (cseq/writer f)] (cseq/write-sequences w s))
       (with-open [r (cseq/reader f)] (is (= (cseq/read-all-sequences r) s))))))
+
+(deftest source-type-test
+  (testing "reader"
+    (are [x] (with-open [rdr (cseq/reader x)]
+               (= (cseq/read-sequence rdr {:chr "ref" :start 44 :end 45} {}) "AT"))
+      test-fa-file
+      (cio/file test-fa-file)
+      (cio/as-url (cio/file test-fa-file))
+
+      test-twobit-file
+      (cio/file test-twobit-file)
+      (cio/as-url (cio/file test-twobit-file))))
+
+  (testing "reader (non-file URL is not supported)"
+    (with-open [server (http-server)]
+      (are [x] (thrown? Exception
+                        (with-open [rdr (cseq/reader x)]
+                          (cseq/read-sequence rdr {:chr "ref" :start 44 :end 45} {})))
+        (cio/as-url (str (:uri server) "/fasta/test.fa"))
+        (cio/as-url (str (:uri server) "/twobit/test.2bit")))))
+
+  (testing "writer"
+    (let [temp-test-twobit-file (str temp-dir "test.2bit")]
+      (are [x] (with-before-after {:before (prepare-cache!)
+                                   :after (clean-cache!)}
+                 (with-open [rdr (cseq/reader test-fa-file)
+                             wtr (cseq/writer x)]
+                   (not-throw? (cseq/write-sequences wtr (cseq/read-all-sequences rdr)))))
+        temp-test-fa-file
+        (cio/file temp-test-fa-file)
+        (cio/as-url (cio/file temp-test-fa-file))
+
+        temp-test-twobit-file
+        (cio/file temp-test-twobit-file)
+        (cio/as-url (cio/file temp-test-twobit-file))))))

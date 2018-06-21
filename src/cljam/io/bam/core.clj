@@ -24,7 +24,7 @@
             (comp
              (map #(cstr/replace (str bam-url) #"(?i)(\.bam)$" %))
              (map util/as-url)
-             (map #(try (bai/bam-index %) (catch FileNotFoundException _)))))
+             (keep #(try (bai/bam-index %) (catch FileNotFoundException _)))))
            first)
       (throw (FileNotFoundException.
               (str "Could not find BAM Index file for " bam-url)))))

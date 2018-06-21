@@ -20,7 +20,7 @@
               (comp
                (map #(cstr/replace (str fasta-url) fasta-exts %))
                (map util/as-url)
-               (map #(try (fai/reader %) (catch FileNotFoundException _)))))
+               (keep #(try (fai/reader %) (catch FileNotFoundException _)))))
              first)
         (throw (FileNotFoundException.
                 (str "Could not find FASTA Index file for " fasta-url))))))

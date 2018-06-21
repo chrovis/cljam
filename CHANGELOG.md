@@ -7,6 +7,8 @@
 * Add some extensions for FASTA format. [#124](https://github.com/chrovis/cljam/pull/124)
 * Add many util functions for SAM/BAM files & split cljam.io.sam.util. [#128](https://github.com/chrovis/cljam/pull/128)
 * Add FASTQ=>FASTA, SAM=>FASTQ conversions. [#129](https://github.com/chrovis/cljam/pull/129)
+* Add some BED manipulation APIs. [#131](https://github.com/chrovis/cljam/pull/131)
+* Support more source types. [#132](https://github.com/chrovis/cljam/pull/132)
 
 ### Changed
 
@@ -17,6 +19,7 @@
 * Fix some serialization functions. [#122](https://github.com/chrovis/cljam/pull/122)
 * Fix parsing SAM header values containing ':'. [#123](https://github.com/chrovis/cljam/pull/123)
 * Fix wrong padding of last bases in 2bit writer. [#127](https://github.com/chrovis/cljam/pull/127)
+* Fix a bug in merging bed regions. [#130](https://github.com/chrovis/cljam/pull/130)
 
 ## [0.5.1] - 2017-11-10
 

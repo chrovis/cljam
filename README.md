@@ -15,7 +15,7 @@ cljam is available as a Maven artifact from [Clojars](https://clojars.org/cljam)
 To use with Leiningen/Boot, add the following dependency.
 
 ```clojure
-[cljam "0.5.1"]
+[cljam "0.6.0"]
 ```
 
 To use with Maven, add the following dependency.
@@ -24,15 +24,14 @@ To use with Maven, add the following dependency.
 <dependency>
   <groupId>cljam</groupId>
   <artifactId>cljam</artifactId>
-  <version>0.5.1</version>
+  <version>0.6.0</version>
 </dependency>
 ```
 
-## Breaking changes in 0.5.0
+## Breaking changes in 0.6.0
 
-* `:ignore-index` option of `cljam.io.sam/bam-reader` and `cljam.io.sequence/fasta-reader` is removed.
-* `:depth` option of `cljam.io.sam/read-alignments` is removed. It returns `SAMAlignment` only.
-* SAM/BAM reading functions return `Eduction` instances instead of lazy sequences.
+* N padding for out-of-range bases is **not** appended. See [#120 comment](https://github.com/chrovis/cljam/pull/120#issuecomment-343369370) and [#121](https://github.com/chrovis/cljam/pull/121) for more information.
+* `cljam.io.protocols/{reader,writer}-path` were renamed to `cljam.io.protocols/{reader,writer}-url`. Their return values are `java.net.URL`.
 
 ## Getting started
 

@@ -156,6 +156,7 @@ Sorted by first commit.
 - Takashi Aoki ([@federkasten](https://github.com/federkasten))
 - Atsuo Yamada ([@ayamada](https://github.com/ayamada))
 - Jun Imura ([@alumi](https://github.com/alumi))
+- Shogo Ohta ([@athos](https://github.com/athos))
 
 ## License
 

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### BREAKING
+
+* N padding for out-of-range bases is **not** appended. See [#120 comment](https://github.com/chrovis/cljam/pull/120#issuecomment-343369370) and [#121](https://github.com/chrovis/cljam/pull/121) for more information.
+* `cljam.io.protocols/{reader,writer}-path` were renamed to `cljam.io.protocols/{reader,writer}-url`. Their return values are `java.net.URL`.
+
 ### Added
 
 * Add some extensions for FASTA format. [#124](https://github.com/chrovis/cljam/pull/124)
@@ -13,6 +18,7 @@
 ### Changed
 
 * Remove N padding for out-of-range bases in read-sequence. [#121](https://github.com/chrovis/cljam/pull/121)
+* Upgrade dependencies. [#134](https://github.com/chrovis/cljam/pull/134)
 
 ### Fixed
 
@@ -20,6 +26,7 @@
 * Fix parsing SAM header values containing ':'. [#123](https://github.com/chrovis/cljam/pull/123)
 * Fix wrong padding of last bases in 2bit writer. [#127](https://github.com/chrovis/cljam/pull/127)
 * Fix a bug in merging bed regions. [#130](https://github.com/chrovis/cljam/pull/130)
+* Fix exec binary on Java 9+. [#133](https://github.com/chrovis/cljam/pull/133)
 
 ## [0.5.1] - 2017-11-10
 

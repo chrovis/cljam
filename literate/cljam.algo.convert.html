@@ -2868,15 +2868,19 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.algo.convert" name="cljam.algo.convert"><h1 class="project-name">cljam.algo.convert</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Converters between equivalent formats: SAM/BAM and FASTA/TwoBit.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.algo.convert
   (:require [clojure.tools.logging :as logging]
+            [clojure.string :as cstr]
             [cljam.common :refer [*n-threads* get-exec-n-threads]]
             [cljam.io.sam :as sam]
             [cljam.io.bam.encoder :as encoder]
-            [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.flag :as flag]
+            [cljam.io.sam.util.refs :as refs]
+            [cljam.util.sequence :as util-seq]
             [cljam.io.sequence :as cseq]
+            [cljam.io.fastq :as fq]
             [cljam.io.util :as io-util]
             [com.climate.claypoole :as cp])
   (:import [java.nio ByteBuffer]
-           [cljam.io.bam.writer BAMWriter]))</pre></td></tr><tr><td class="docs"><p>SAM &lt;-> BAM</p>
+           [cljam.io.fastq FASTQRead]))</pre></td></tr><tr><td class="docs"><p>SAM &lt;-> BAM</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private default-num-block 100000)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- sam-write-alignments [rdr wtr hdr num-block]
@@ -2885,7 +2889,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (doseq [alns (partition-all num-block (sam/read-alignments rdr {}))]
     (sam/write-alignments wtr alns hdr)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- bam-write-alignments [rdr wtr hdr num-block]
-  (let [refs (sam-util/make-refs hdr)
+  (let [refs (refs/make-refs hdr)
         n-threads (get-exec-n-threads)]
     (doseq [blocks (cp/pmap (if (= n-threads 1) :serial (dec n-threads))
                             (fn [chunk]
@@ -2914,20 +2918,109 @@ net.brehaut.ClojureTools = (function (SH) {
   nil)</pre></td></tr><tr><td class="docs"><p>FASTA &lt;-> TwoBit</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Converts file format between FASTA and TwoBit based on the file extension.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn convert-sequence
-  [in out]
-  (with-open [rdr (cseq/reader in)
-              wtr (cseq/writer out {:index (if (cseq/indexed? rdr)
-                                             (cseq/read-indices rdr)
-                                             (logging/warn &quot;Non-indexed sequence may use stupendous memory.&quot;))})]
-    (cseq/write-sequences wtr (cseq/read-all-sequences rdr {:mask? true}))))</pre></td></tr><tr><td class="docs"><p>General converter</p>
+  ([in out]
+   (convert-sequence identity in out))
+  ([xf in out]
+   (with-open [rdr (cseq/reader in)
+               wtr (cseq/writer out {:index (if (cseq/indexed? rdr)
+                                              (cseq/read-indices rdr)
+                                              (logging/warn &quot;Non-indexed sequence may use stupendous memory.&quot;))})]
+     (cseq/write-sequences wtr (sequence xf (cseq/read-all-sequences rdr {:mask? true}))))))</pre></td></tr><tr><td class="docs"><p>FASTQ -> FASTA or TwoBit</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Converts a FASTQ file to a FASTA or TwoBit sequence file.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn fq-&gt;seq
+  ([in out]
+   (fq-&gt;seq identity in out))
+  ([xf in out]
+   (with-open [rdr (fq/reader in)
+               wtr (cseq/writer out)]
+     (-&gt;&gt; (fq/read-sequences rdr {:decode-quality nil})
+          (sequence xf)
+          (cseq/write-sequences wtr)))))</pre></td></tr><tr><td class="docs"><p>SAM -> FASTQ</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Append casava 1.8 style R1/R2 suffix to the query name.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn long-qname
+  [aln]
+  (let [r (flag/r1r2 (:flag aln))]
+    (if (zero? r)
+      aln
+      (update aln :qname str \space r &quot;:N:0:1&quot;))))</pre></td></tr><tr><td class="docs"><p>Append _R1 or _R2 to the query name.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn medium-qname
+  [aln]
+  (let [r (flag/r1r2 (:flag aln))]
+    (if (zero? r)
+      aln
+      (update aln :qname str &quot;_R&quot; r))))</pre></td></tr><tr><td class="docs"><p>Append /1 or /2 to the query name.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn short-qname
+  [aln]
+  (let [r (flag/r1r2 (:flag aln))]
+    (if (zero? r)
+      aln
+      (update aln :qname str \/ r))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- null-or-star? [^String qual]
+  (or (nil? qual)
+      (and (= 1 (.length qual))
+           (= \* (.charAt qual 0)))))</pre></td></tr><tr><td class="docs"><p>Converts a SAM alignment record to a FASTQ read.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn aln-&gt;read
+  [{:keys [flag ^String seq qual qname]}]
+  (let [reversed? (flag/reversed? flag)]
+    (FASTQRead.
+     qname
+     (if reversed? (util-seq/revcomp seq) seq)
+     (if (null-or-star? qual)
+       (cstr/join (repeat (.length seq) \&quot;))
+       (if reversed?
+         (cstr/reverse qual)
+         qual)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- sam-&gt;fq-rf
+  [w0 w1 w2 _ aln]
+  (when-let [w (case (int (flag/r1r2 (:flag aln))) 0 w0 1 w1 2 w2)]
+    (fq/write-sequences w [(aln-&gt;read aln)] {:encode-quality nil})))</pre></td></tr><tr><td class="docs"><p>Converts a SAM/BAM to a FASTQ file.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn sam-&gt;fq
+  ([xf in out]
+   (with-open [rdr (sam/reader in)
+               wtr (fq/writer out)]
+     (fq/write-sequences
+      wtr
+      (sequence
+       (comp
+        xf
+        (filter (comp flag/primary? :flag))
+        (map aln-&gt;read))
+       (sam/read-alignments rdr))
+      {:encode-quality nil})))
+  ([xf in out-r1 out-r2]
+   (with-open [rdr (sam/reader in)
+               wtr1 (fq/writer out-r1)
+               wtr2 (fq/writer out-r2)]
+     (-&gt;&gt; (sam/read-alignments rdr)
+          (transduce
+           (comp
+            xf
+            (filter (comp flag/primary? :flag)))
+           (completing (partial sam-&gt;fq-rf nil wtr1 wtr2)) nil))))
+  ([xf in out-r0 out-r1 out-r2]
+   (with-open [rdr (sam/reader in)
+               wtr0 (fq/writer out-r0)
+               wtr1 (fq/writer out-r1)
+               wtr2 (fq/writer out-r2)]
+     (-&gt;&gt; (sam/read-alignments rdr)
+          (transduce
+           (comp
+            xf
+            (filter (comp flag/primary? :flag)))
+           (completing (partial sam-&gt;fq-rf wtr0 wtr1 wtr2)) nil)))))</pre></td></tr><tr><td class="docs"><p>General converter</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private alignment-io? (every-pred (comp #{:sam :bam} io-util/file-type)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private sequence-io? (every-pred (comp #{:fasta :2bit} io-util/file-type)))</pre></td></tr><tr><td class="docs"><p>Converts file format from input file to output file by the file extension.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- file-type [f] (when f (io-util/file-type f)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private alignment-io? (every-pred (comp #{:sam :bam} file-type)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private sequence-io? (every-pred (comp #{:fasta :2bit} file-type)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private read-io? (every-pred (comp #{:fastq} file-type)))</pre></td></tr><tr><td class="docs"><p>Converts file format from input file to output file by the file extension.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn convert
   [in out &amp; opts]
   (cond
+    (and (alignment-io? in) (sequential? out) (apply read-io? out)) (apply sam-&gt;fq (map short-qname) in out)
+    (and (alignment-io? in) (not (sequential? out)) (read-io? out)) (sam-&gt;fq (map short-qname) in out)
     (alignment-io? in out) (apply convert-sam in out opts)
     (sequence-io? in out) (convert-sequence in out)
+    (and (read-io? in) (sequence-io? out)) (fq-&gt;seq in out)
     :else (throw (ex-info (str &quot;Unsupported I/O pair: &quot; in &quot; and &quot; out) {}))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 

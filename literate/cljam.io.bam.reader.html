@@ -2868,7 +2868,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bam.reader" name="cljam.io.bam.reader"><h1 class="project-name">cljam.io.bam.reader</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Reader of BAM file format.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bam.reader
   (:require [cljam.io.protocols :as protocols]
-            [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.refs :as refs]
+            [cljam.io.sam.util.header :as header]
             [cljam.io.bam-index.core :as bai]
             [cljam.io.bam.decoder :as decoder]
             [cljam.io.util.lsb :as lsb])
@@ -2879,13 +2880,13 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(declare read-blocks-sequentially*
          read-blocks-randomly*)</pre></td></tr><tr><td class="docs"><h2>BAMReader</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype BAMReader [f header refs reader data-reader index-delay start-pos]
+</td><td class="codes"><pre class="brush: clojure">(deftype BAMReader [url header refs reader data-reader index-delay start-pos]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this]
-    (.f this))
+  (reader-url [this]
+    (.url this))
   (read [this]
     (protocols/read this {}))
   (read [this region]
@@ -2976,7 +2977,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (do (.seek ^BGZFInputStream (.reader rdr) (ffirst (bai/get-unplaced-spans bai)))
           (read-blocks-sequentially* rdr decoder))
       (let [refs (.refs rdr)]
-        (-&gt;&gt; (bai/get-spans bai (sam-util/ref-id refs chr) start end)
+        (-&gt;&gt; (bai/get-spans bai (refs/ref-id refs chr) start end)
              (eduction
               (comp
                (mapcat
@@ -2985,7 +2986,7 @@ net.brehaut.ClojureTools = (function (SH) {
                (keep #(decoder % start end)))))))))</pre></td></tr><tr><td class="docs"><p>Reads header section of BAM file and returns it as a map.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn load-headers
   [rdr]
-  (let [header (sam-util/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
+  (let [header (header/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
         n-ref (lsb/read-int rdr)
         refs (loop [i n-ref, ret []]
                (if (zero? i)

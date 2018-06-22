@@ -2879,7 +2879,7 @@ net.brehaut.ClojureTools = (function (SH) {
   [f]
   (FAIWriter.
    (cio/writer f)
-   (.getAbsolutePath (cio/file f))))</pre></td></tr><tr><td class="docs"><p>Creates a FASTA index file from the sequences.</p>
+   (util/as-url f)))</pre></td></tr><tr><td class="docs"><p>Creates a FASTA index file from the sequences.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn create-index
   [in-fa out-fai]
   (with-open [r (cio/reader (util/compressor-input-stream in-fa))
@@ -2887,7 +2887,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (try
       (writer/write-index! r w)
       (catch Exception e (do
-                           (cio/delete-file (.f w))
+                           (cio/delete-file (.url w))
                            (logging/error &quot;Failed to create FASTA index&quot;)
                            (throw e))))))</pre></td></tr><tr><td class="docs"><p>Reading</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
@@ -2896,7 +2896,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (FAIReader.
    (with-open [rdr (cio/reader f)]
      (reader/parse-fai rdr))
-   (.getAbsolutePath (cio/file f))))</pre></td></tr><tr><td class="docs">
+   (util/as-url f)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn get-header
   [^FAIReader fai name]
   (merge {:name name}

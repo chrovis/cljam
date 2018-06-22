@@ -2867,10 +2867,9 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.util" name="cljam.util"><h1 class="project-name">cljam.util</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>General utilities.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.util
-  (:require [clojure.java.io :refer [file] :as cio]
-            [clojure.string :as cstr]
-            [proton.core :as proton])
-  (:import [org.apache.commons.compress.compressors
+  (:require [clojure.java.io :refer [file] :as cio])
+  (:import [java.net MalformedURLException URL]
+           [org.apache.commons.compress.compressors
             CompressorStreamFactory CompressorException]))</pre></td></tr><tr><td class="docs"><h2>Disk cache</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def temp-dir (let [system-tmp-dir-path (or (System/getenv &quot;TMPDIR&quot;)
@@ -2896,10 +2895,16 @@ net.brehaut.ClojureTools = (function (SH) {
   [c]
   (not (nil? (#{\space \tab \newline \formfeed \return (char 0x0b)} c))))</pre></td></tr><tr><td class="docs"><h2>file utils</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn ^URL as-url
+  [x]
+  (try
+    (cio/as-url x)
+    (catch MalformedURLException _
+      (cio/as-url (cio/file x)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn basename
-  [path]
-  (let [filename (.getName (file path))]
-    (first (cstr/split filename #&quot;\.(?=[^\.]+$)&quot;))))</pre></td></tr><tr><td class="docs">
+  [x]
+  (when-let [url (as-url x)]
+    (second (re-find #&quot;([^/]+)\.(?=[^\./]+$)&quot; (.getPath url)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private compressor-map
   {:gzip CompressorStreamFactory/GZIP
    :bzip2 CompressorStreamFactory/BZIP2})</pre></td></tr><tr><td class="docs"><p>Returns an compressor input stream from f, autodetecting the compressor type
@@ -2920,7 +2925,7 @@ net.brehaut.ClojureTools = (function (SH) {
   OutputStream is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^java.io.OutputStream compressor-output-stream
   ([f]
-   (compressor-output-stream f (condp re-find (.getName (file f))
+   (compressor-output-stream f (condp re-find (.getPath (as-url f))
                                  #&quot;(?i)\.(gz|gzip)$&quot; :gzip
                                  #&quot;(?i)\.(bz2|bzip2)$&quot; :bzip2
                                  nil)))

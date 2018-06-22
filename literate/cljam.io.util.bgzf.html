@@ -2867,7 +2867,52 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.util.bgzf" name="cljam.io.util.bgzf"><h1 class="project-name">cljam.io.util.bgzf</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.util.bgzf
-  (:refer-clojure :exclude [compare]))</pre></td></tr><tr><td class="docs">
+  (:refer-clojure :exclude [compare])
+  (:require [clojure.java.io :as cio])
+  (:import [java.io File]
+           [java.net MalformedURLException URI URL]
+           [bgzf4j BGZFInputStream BGZFOutputStream]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defprotocol BGZFIOFactory
+  (make-bgzf-input-stream [x])
+  (make-bgzf-output-stream [x]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(extend-protocol BGZFIOFactory
+  File
+  (make-bgzf-input-stream [^File x]
+    (BGZFInputStream. x))
+  (make-bgzf-output-stream [^File x]
+    (BGZFOutputStream. x))
+
+  URL
+  (make-bgzf-input-stream [^URL x]
+    (if (= (.getProtocol x) &quot;file&quot;)
+      (make-bgzf-input-stream (cio/as-file x))
+      (BGZFInputStream. x)))
+  (make-bgzf-output-stream [^URL x]
+    (if (= (.getProtocol x) &quot;file&quot;)
+      (make-bgzf-output-stream (cio/as-file x))
+      (throw (IllegalArgumentException. (str &quot;Can not write to non-file URL &lt;&quot; x &quot;&gt;&quot;)))))
+
+  URI
+  (make-bgzf-input-stream [^URI x]
+    (make-bgzf-input-stream (.toURL x)))
+  (make-bgzf-output-stream [^URI x]
+    (make-bgzf-output-stream (.toURL x)))
+
+  String
+  (make-bgzf-input-stream [x]
+    (try
+      (make-bgzf-input-stream (URL. x))
+      (catch MalformedURLException _
+        (make-bgzf-input-stream (cio/as-file x)))))
+  (make-bgzf-output-stream [x]
+    (try
+      (make-bgzf-output-stream (URL. x))
+      (catch MalformedURLException _
+        (make-bgzf-output-stream (cio/as-file x))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn ^BGZFInputStream bgzf-input-stream [x]
+  (make-bgzf-input-stream x))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn ^BGZFOutputStream bgzf-output-stream [x]
+  (make-bgzf-output-stream x))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const shift-amount 16)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const address-mask 0xFFFFFFFFFFFF)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const offset-mask 0xFFFF)</pre></td></tr><tr><td class="docs"><p>Negative if fp1 is earlier in file than fp2, positive if it is later, 0 if equal.</p>

@@ -2873,15 +2873,15 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.protocols :as protocols])
   (:import [java.io Closeable BufferedWriter]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare write-sequences)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype FASTAWriter [f ^int cols writer index-writer curr-offset]
+</td><td class="codes"><pre class="brush: clojure">(deftype FASTAWriter [url ^int cols writer index-writer curr-offset]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this))
     (when-let [iw (.index-writer this)]
       (.close ^Closeable iw)))
   protocols/IWriter
-  (writer-path [this]
-    (.f this))
+  (writer-url [this]
+    (.url this))
   protocols/ISequenceWriter
   (write-sequences [this seqs]
     (write-sequences this seqs)))</pre></td></tr><tr><td class="docs">
@@ -2890,7 +2890,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [abs-f (.getAbsolutePath (cio/file f))
         writer (cio/writer (util/compressor-output-stream abs-f))
         index-writer (when create-index? (cio/writer (str abs-f &quot;.fai&quot;)))]
-    (FASTAWriter. abs-f cols writer index-writer (volatile! 0))))</pre></td></tr><tr><td class="docs">
+    (FASTAWriter. (util/as-url abs-f) cols writer index-writer (volatile! 0))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-name
   [^FASTAWriter w ^String n]
   (let [wtr ^BufferedWriter (.writer w)]

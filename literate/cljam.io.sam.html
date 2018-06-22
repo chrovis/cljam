@@ -2892,18 +2892,17 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn ^BAMReader clone-bam-reader
   [r]
   (bam-core/clone-reader r))</pre></td></tr><tr><td class="docs"><p>Selects suitable reader from f's extension, returning the reader. Opens a new
-  reader if given a path, clones the reader if given a reader. This function
-  supports SAM and BAM formats.</p>
+  reader if the arg represents a file such as String path, java.io.File, or
+  java.net.URL. If a reader is given, clones the reader. This function supports
+  SAM and BAM formats.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^Closeable reader
   [f]
-  (if (string? f)
+  (if (io-util/bam-reader? f)
+    (clone-bam-reader f)
     (case (io-util/file-type f)
       :sam (sam-reader f)
       :bam (bam-reader f)
-      (throw (IllegalArgumentException. &quot;Invalid file type&quot;)))
-    (cond
-      (io-util/bam-reader? f) (clone-bam-reader f)
-      :else (throw (IllegalArgumentException. &quot;Invalid reader type&quot;)))))</pre></td></tr><tr><td class="docs"><p>Returns header of the SAM/BAM file.</p>
+      (throw (IllegalArgumentException. &quot;Invalid source type&quot;)))))</pre></td></tr><tr><td class="docs"><p>Returns header of the SAM/BAM file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-header
   [rdr]
   (protocols/read-header rdr))</pre></td></tr><tr><td class="docs"><p>Returns references of the SAM/BAM file.</p>

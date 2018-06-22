@@ -2878,29 +2878,30 @@ net.brehaut.ClojureTools = (function (SH) {
            [cljam.io.fasta.reader FASTAReader]))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- fasta-index
-  [fasta-path]
-  (if-let [fai-path (-&gt;&gt; [&quot;$1.fai&quot; &quot;.fai&quot; &quot;$1.FAI&quot; &quot;.FAI&quot;]
-                         (eduction
-                          (comp
-                           (map #(cstr/replace fasta-path #&quot;(?i)(\.fa(sta)?)$&quot; %))
-                           (filter #(.isFile (cio/file %)))))
-                         first)]
-    (fai/reader fai-path)
-    (throw (FileNotFoundException.
-            (str &quot;Could not find FASTA Index file for &quot; fasta-path)))))</pre></td></tr><tr><td class="docs">
+  [fasta-url]
+  (let [fasta-exts #&quot;(?i)(\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa)?)$&quot;]
+    (or (-&gt;&gt; [&quot;$1.fai&quot; &quot;.fai&quot; &quot;$1.FAI&quot; &quot;.FAI&quot;]
+             (eduction
+              (comp
+               (map #(cstr/replace (str fasta-url) fasta-exts %))
+               (map util/as-url)
+               (keep #(try (fai/reader %) (catch FileNotFoundException _)))))
+             first)
+        (throw (FileNotFoundException.
+                (str &quot;Could not find FASTA Index file for &quot; fasta-url))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader reader
   [f]
   (let [f (.getAbsolutePath (cio/file f))]
     (FASTAReader. (RandomAccessFile. f &quot;r&quot;)
                   (util/compressor-input-stream f)
-                  f
-                  (delay (fasta-index f)))))</pre></td></tr><tr><td class="docs"><p>Clones fasta reader sharing persistent objects.</p>
+                  (util/as-url f)
+                  (delay (fasta-index (util/as-url f))))))</pre></td></tr><tr><td class="docs"><p>Clones fasta reader sharing persistent objects.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader clone-reader
   [^FASTAReader rdr]
-  (let [f (.f rdr)
-        raf (RandomAccessFile. ^String f &quot;r&quot;)
-        stream (util/compressor-input-stream f)]
-    (FASTAReader. raf stream f (.index-delay rdr))))</pre></td></tr><tr><td class="docs">
+  (let [url (.url rdr)
+        raf (RandomAccessFile. (cio/as-file url) &quot;r&quot;)
+        stream (util/compressor-input-stream url)]
+    (FASTAReader. raf stream url (.index-delay rdr))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-headers
   [^FASTAReader rdr]
   (try
@@ -2916,9 +2917,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (reader/read-sequences rdr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-sequence
   [rdr {:keys [chr start end]} opts]
-  (if (and (nil? start) (nil? end))
-    (reader/read-whole-sequence rdr chr opts)
-    (reader/read-sequence rdr chr start end opts)))</pre></td></tr><tr><td class="docs">
+  (reader/read-sequence rdr chr start end opts))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read
   [rdr]
   (reader/read rdr))</pre></td></tr><tr><td class="docs">
@@ -2932,7 +2931,7 @@ net.brehaut.ClojureTools = (function (SH) {
    (reader/sequential-read-string (.stream rdr) (* 1024 1024 10) 536870912 opts)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(extend-type FASTAReader
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read
     ([this] (protocols/read this {}))
     ([this option] (protocols/read-all-sequences this option)))

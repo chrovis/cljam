@@ -2874,15 +2874,15 @@ net.brehaut.ClojureTools = (function (SH) {
 (defrecord SAMCoordinateBlock [data ^int ref-id ^int pos ^int flag])
 (defrecord SAMQuerynameBlock [data qname ^int flag])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defprotocol IReader
-  (reader-path [this]
-    &quot;Returns the file's absolute path.&quot;)
+  (reader-url [this]
+    &quot;Returns the file's URL.&quot;)
   (read [this] [this option]
     &quot;Sequentially reads contents of the file.&quot;)
   (indexed? [this]
     &quot;Returns true if the reader can be randomly accessed, false if not.&quot;))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defprotocol IWriter
-  (writer-path [this]
-    &quot;Returns the file's absolute path.&quot;))</pre></td></tr><tr><td class="docs">
+  (writer-url [this]
+    &quot;Returns the source's URL.&quot;))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defprotocol IRegionReader
   (read-in-region [this region] [this region option]
     &quot;Reads contents of the file in given region.&quot;))</pre></td></tr><tr><td class="docs">

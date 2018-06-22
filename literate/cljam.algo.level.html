@@ -2902,7 +2902,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- cache-path
   [rdr i]
   (-&gt;&gt; i
-       (format &quot;%s_%06d.bam&quot; (util/basename (protocols/reader-path rdr)))
+       (format &quot;%s_%06d.bam&quot; (util/basename (protocols/reader-url rdr)))
        (cio/file util/temp-dir)
        (.getCanonicalPath)))</pre></td></tr><tr><td class="docs"><p>Adds level information to alignments from rdr and write them to wtr.
   Level calculation process is multithreaded.</p>

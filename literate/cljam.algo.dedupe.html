@@ -2870,18 +2870,14 @@ net.brehaut.ClojureTools = (function (SH) {
   (:refer-clojure :exclude [dedupe])
   (:require [com.climate.claypoole :as cp]
             [cljam.io.sam :as sam]
-            [cljam.io.sam.util :as sam-util]))</pre></td></tr><tr><td class="docs">
+            [cljam.io.sam.util.flag :as flag]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- refs-&gt;regions [refs]
   (for [{:keys [name len]} refs]
     {:chr name :start 1 :end len}))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- sum-quals [a]
   (when-let [q ^String (:qual a)]
     (when-not (and (= (.length q) 1) (= \* (.charAt q 0)))
-      (reduce (fn [r x] (+ r (- (int x) 33))) 0 q))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- paired? [{:keys [flag]}]
-  (pos? (bit-and flag (sam-util/flags :multiple))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- mapped? [{:keys [flag]}]
-  (zero? (bit-and flag (bit-or (sam-util/flags :unmapped) (sam-util/flags :next-unmapped)))))</pre></td></tr><tr><td class="docs"><p>Returns a transducer which removes PCR duplications.</p>
+      (reduce (fn [r x] (+ r (- (int x) 33))) 0 q))))</pre></td></tr><tr><td class="docs"><p>Returns a transducer which removes PCR duplications.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn dedupe-xform
   [&amp; {:keys [remove-dups] :or {remove-dups true}}]
   (let [removed (atom #{})
@@ -2890,10 +2886,12 @@ net.brehaut.ClojureTools = (function (SH) {
      (partition-by (juxt :rname :pos))
      (mapcat
       (fn [alns]
-        (loop [[{:keys [pos tlen qname] :as x} :as xs] alns heads {} tails [] dups []]
+        (loop [[{:keys [pos tlen qname flag] :as x} :as xs] alns heads {} tails [] dups []]
           (if x
             (cond
-              (not (and (paired? x) (mapped? x) (= (:rnext x) &quot;=&quot;))) (recur (next xs) heads (conj tails x) dups)
+              (not (and (flag/multiple? flag)
+                        (not (flag/both-unmapped? flag))
+                        (= (:rnext x) &quot;=&quot;))) (recur (next xs) heads (conj tails x) dups)
               (pos? tlen) (let [k [pos tlen]]
                             (if-let [v (get heads k)]
                               (let [[good bad] (if (pos? (compare (cp v) (cp x))) [v x] [x v])]

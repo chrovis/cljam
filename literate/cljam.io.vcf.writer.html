@@ -2875,12 +2875,12 @@ net.brehaut.ClojureTools = (function (SH) {
   (:import [java.io Closeable BufferedWriter]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare write-variants)</pre></td></tr><tr><td class="docs"><h2>VCFWriter</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype VCFWriter [f writer meta-info header]
+</td><td class="codes"><pre class="brush: clojure">(deftype VCFWriter [url writer meta-info header]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this] (.f this))
+  (writer-url [this] (.url this))
   protocols/IVariantWriter
   (write-variants [this variants]
     (write-variants this variants)))</pre></td></tr><tr><td class="docs"><h2>Vars and utilities</h2>
@@ -2911,8 +2911,7 @@ net.brehaut.ClojureTools = (function (SH) {
          (:species m) (conj (str &quot;species=\ (:species m) &quot;\))
          (:taxonomy m) (conj (str &quot;taxonomy=&quot; (:taxonomy m)))
          (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
-       (interpose &quot;,&quot;)
-       (apply str)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-info
   [m]
   (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
@@ -2922,15 +2921,13 @@ net.brehaut.ClojureTools = (function (SH) {
          (:source m) (conj (str &quot;Source=&quot; (:source m)))
          (:version m) (conj (str &quot;Version=&quot; (:version m)))
          (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
-       (interpose &quot;,&quot;)
-       (apply str)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-filter
   [m]
   (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
                 (str &quot;Description=\ (:description m) &quot;\)]
          (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
-       (interpose &quot;,&quot;)
-       (apply str)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-format
   [m]
   (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
@@ -2938,29 +2935,25 @@ net.brehaut.ClojureTools = (function (SH) {
                 (str &quot;Type=&quot; (nil-&gt;dot (:type m)))
                 (str &quot;Description=\ (:description m) &quot;\)]
          (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
-       (interpose &quot;,&quot;)
-       (apply str)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-alt
   [m]
   (-&gt;&gt; [(str &quot;ID=&quot; (:id m))
         (str &quot;Description=\ (:description m) &quot;\)]
-       (interpose &quot;,&quot;)
-       (apply str)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-sample
   [m]
   (-&gt;&gt; [(str &quot;ID=&quot; (:id m))
         (str &quot;Genomes=&quot; (:genomes m))
         (str &quot;Mixture=&quot; (:mixture m))
         (str &quot;Description=\ (:description m) &quot;\)]
-       (interpose &quot;,&quot;)
-       (apply str)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-pedigree
   [m]
   (-&gt;&gt; (range (count m))
        (map (fn [i]
               (str &quot;Name_&quot; i &quot;=&quot; (get m (keyword (str &quot;name-&quot; i))))))
-       (interpose &quot;,&quot;)
-       (apply str)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn stringify-structured-line
   [k m]
   (let [f (case k
@@ -2993,14 +2986,15 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^String stringify-header
   [header]
-  (str header-prefix (apply str (interpose &quot;\t&quot; header))))</pre></td></tr><tr><td class="docs">
+  (str header-prefix (cstr/join \tab header)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-header
   [^VCFWriter wtr header]
   (write-line (.writer wtr) (stringify-header header)))</pre></td></tr><tr><td class="docs"><h2>Writing data lines</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-data-line-alt
   [v]
-  (if v (apply str (interpose &quot;,&quot; v))))</pre></td></tr><tr><td class="docs">
+  (if v
+    (cstr/join \, v)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-data-line-qual
   [x]
   (if x
@@ -3016,8 +3010,7 @@ net.brehaut.ClojureTools = (function (SH) {
                  (map keyword (drop 8 header)))
          (map #(get m* %))
          (map nil-&gt;dot)
-         (interpose &quot;\t&quot;)
-         (apply str))))</pre></td></tr><tr><td class="docs">
+         (cstr/join \tab))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-variants
   [^VCFWriter wtr variants]
   (let [stringify-vals (vcf-util/variant-vals-stringifier (.meta-info wtr) (.header wtr))

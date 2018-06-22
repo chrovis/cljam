@@ -2890,7 +2890,7 @@ net.brehaut.ClojureTools = (function (SH) {
                     (vcf-reader/load-meta-info r))
         header (with-open [r (cio/reader (util/compressor-input-stream f))]
                  (vcf-reader/load-header r))]
-    (VCFReader. (.getAbsolutePath (cio/file f)) meta-info header
+    (VCFReader. (util/as-url f) meta-info header
                 (cio/reader (util/compressor-input-stream f)))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bcf.reader.BCFReader of f. Should be used inside
   with-open to ensure the reader is properly closed. Throws IOException if
   failed to parse BCF file format.</p>
@@ -2931,7 +2931,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </code></pre>
 </td><td class="codes"><pre class="brush: clojure">(defn ^VCFWriter vcf-writer
   [f meta-info header]
-  (doto (VCFWriter. (.getAbsolutePath (cio/file f))
+  (doto (VCFWriter. (util/as-url f)
                     (cio/writer (util/compressor-output-stream f))
                     meta-info
                     header)

@@ -2871,7 +2871,7 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.fasta.util :refer [header-line? parse-header-line]])
   (:import [java.io BufferedWriter]))</pre></td></tr><tr><td class="docs"><p>FAIWriter</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype FAIWriter [writer f]
+</td><td class="codes"><pre class="brush: clojure">(deftype FAIWriter [writer url]
   java.io.Closeable
   (close [this]
     (.close ^java.io.Closeable (.writer this))))</pre></td></tr><tr><td class="docs"><p>Writing</p>

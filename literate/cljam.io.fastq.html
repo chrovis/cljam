@@ -2871,39 +2871,36 @@ net.brehaut.ClojureTools = (function (SH) {
             [clojure.string :as string]
             [cljam.io.protocols :as protocols]
             [cljam.util :as util])
-  (:import [java.io Closeable]))</pre></td></tr><tr><td class="docs">
+  (:import [java.io Closeable]
+           [java.nio CharBuffer]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare read-sequences write-sequences)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype FASTQReader [reader f]
+</td><td class="codes"><pre class="brush: clojure">(deftype FASTQReader [reader url]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read [this] (read-sequences this))
   (read [this opts] (read-sequences this opts))
   (indexed? [_] false))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype FASTQWriter [writer f]
+</td><td class="codes"><pre class="brush: clojure">(deftype FASTQWriter [writer url]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this] (.f this)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.fastq.FASTQReader of f. Should be used inside
+  (writer-url [this] (.url this)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.fastq.FASTQReader of f. Should be used inside
   with-open to ensure the reader is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTQReader reader
-  [^String f]
-  (let [file (cio/file f)
-        path (.getAbsolutePath file)]
-    (-&gt; (util/compressor-input-stream path)
-        cio/reader
-        (FASTQReader. path))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.fastq.FASTQWriter of f. Should be used inside
+  [f]
+  (-&gt; (util/compressor-input-stream f)
+      cio/reader
+      (FASTQReader. (util/as-url f))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.fastq.FASTQWriter of f. Should be used inside
   with-open to ensure the writer is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTQWriter writer
-  [^String f]
-  (let [file (cio/file f)
-        path (.getAbsolutePath file)]
-    (-&gt; (util/compressor-output-stream path)
-        cio/writer
-        (FASTQWriter. path))))</pre></td></tr><tr><td class="docs">
+  [f]
+  (-&gt; (util/compressor-output-stream f)
+      cio/writer
+      (FASTQWriter. (util/as-url f))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord FASTQRead [^String name ^String sequence quality])</pre></td></tr><tr><td class="docs"><p>Deserialize a read from 4 lines of fastq file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- ^FASTQRead deserialize-fastq
   [[^String name-line ^String seq-line ^String plus-line ^String qual-line]
@@ -2940,7 +2937,7 @@ net.brehaut.ClojureTools = (function (SH) {
           (map #(deserialize-fastq % opts)))
     (line-seq (.reader rdr)))))</pre></td></tr><tr><td class="docs"><p>Serialize a FASTQRead to FASTQ format string.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- ^String serialize-fastq
-  [^FASTQRead {:keys [name sequence quality]}
+  [^FASTQRead {:keys [^String name ^String sequence quality]}
    {:keys [encode-quality] :or {encode-quality :phred33}}]
   {:pre [(not-empty name)
          (not-empty sequence)
@@ -2950,16 +2947,24 @@ net.brehaut.ClojureTools = (function (SH) {
                     :phred33 (&lt;= 0 % 93)
                     :phred64 (&lt;= 0 % 62)
                     true) quality)]}
-  (-&gt; [(str &quot;@&quot; name)
-       sequence
-       &quot;+&quot;
-       (apply str (map #(case encode-quality
-                          :phred33 (char (+ % 33))
-                          :phred64 (char (+ % 64))
-                          %)
-                       quality))]
-      (interleave (repeat \newline))
-      (as-&gt; x (apply str x))))</pre></td></tr><tr><td class="docs"><p>Write given sequence of reads to a FASTQ file.</p>
+  (let [cb (CharBuffer/allocate (+ 6 (.length name) (.length sequence) (.length sequence)))]
+    (.put cb \@)
+    (.put cb name)
+    (.put cb \newline)
+    (.put cb sequence)
+    (.put cb \newline)
+    (.put cb \+)
+    (.put cb \newline)
+    (if (string? quality)
+      (.put cb ^String quality)
+      (doseq [q quality]
+        (.put cb (char (case encode-quality
+                         :phred33 (+ q 33)
+                         :phred64 (+ q 64)
+                         q)))))
+    (.put cb \newline)
+    (.flip cb)
+    (.toString cb)))</pre></td></tr><tr><td class="docs"><p>Write given sequence of reads to a FASTQ file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-sequences
   ([wtr sequences]
    (write-sequences wtr sequences {}))

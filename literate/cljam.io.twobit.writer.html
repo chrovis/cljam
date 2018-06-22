@@ -2869,17 +2869,18 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.twobit.writer
   (:require [clojure.java.io :as cio]
             [cljam.io.protocols :as protocols]
-            [cljam.io.util.lsb :as lsb])
+            [cljam.io.util.lsb :as lsb]
+            [cljam.util :as util])
   (:import [java.io Closeable OutputStream DataOutputStream BufferedOutputStream FileOutputStream]
            [java.nio ByteBuffer]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare write-sequences)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype TwoBitWriter [f writer file-output-stream index]
+</td><td class="codes"><pre class="brush: clojure">(deftype TwoBitWriter [url writer file-output-stream index]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this]
-    (.f this))
+  (writer-url [this]
+    (.url this))
   protocols/ISequenceWriter
   (write-sequences [this seqs]
     (write-sequences this seqs)))</pre></td></tr><tr><td class="docs"><p>Returns a 2bit writer of f.</p>
@@ -2889,7 +2890,7 @@ net.brehaut.ClojureTools = (function (SH) {
         fos (FileOutputStream. abs-f)
         bos (BufferedOutputStream. fos)
         dos (DataOutputStream. bos)]
-    (TwoBitWriter. abs-f dos fos index)))</pre></td></tr><tr><td class="docs"><p>Writes a 2bit file header. Supports little-endian only.</p>
+    (TwoBitWriter. (util/as-url abs-f) dos fos index)))</pre></td></tr><tr><td class="docs"><p>Writes a 2bit file header. Supports little-endian only.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- write-file-header!
   [w nseq]
   (lsb/write-int w 0x1A412743)
@@ -2975,9 +2976,9 @@ net.brehaut.ClojureTools = (function (SH) {
            unchecked-int
            (.write o)))
     (when (pos? (mod len 4))
-      (loop [b 0 i (mod len 4)]
+      (loop [b 0 i (mod len 4) j 1]
         (if (pos? i)
-          (recur (bit-or b (bit-shift-left (aget table (.get bb)) (* 2 (- 4 i)))) (dec i))
+          (recur (bit-or b (bit-shift-left (aget table (.get bb)) (* 2 (- 4 j)))) (dec i) (inc j))
           (.write o (unchecked-int b)))))))</pre></td></tr><tr><td class="docs"><p>Writes a single sequence entry to writer.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- write-sequence!
   [w sequence idx]

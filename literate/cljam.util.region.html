@@ -2868,7 +2868,13 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.util.region" name="cljam.util.region"><h1 class="project-name">cljam.util.region</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utility functions for manipulating chromosomal regions.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.util.region
   (:require [clojure.string :as cstr]
-            [proton.core :as proton]))</pre></td></tr><tr><td class="docs"><h2>region conversion</h2>
+            [proton.core :as proton]))</pre></td></tr><tr><td class="docs"><h2>region predicates</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Returns true if two regions are overlapped with each other.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn overlapped-regions?
+  [x y]
+  (and (= (:chr x) (:chr y))
+       (&lt;= (:start y) (:end x))
+       (&lt;= (:start x) (:end y))))</pre></td></tr><tr><td class="docs"><h2>region conversion</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns a lazy sequence of merged regions. Input regions must be sorted.
   Neighboring regions apart less than or equal to 'max-gap' will be merged
   with 'merge-fn'. Returns a stateful transducer when no input 'regions' is

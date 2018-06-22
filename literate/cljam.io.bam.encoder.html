@@ -2870,7 +2870,10 @@ net.brehaut.ClojureTools = (function (SH) {
   (:require [clojure.string :as cstr]
             [cljam.util :as util]
             [cljam.io.sam.util :as sam-util]
-            [cljam.io.util.cigar :as cgr]
+            [cljam.io.sam.util.refs :as refs]
+            [cljam.io.sam.util.quality :as qual]
+            [cljam.io.sam.util.cigar :as cigar]
+            [cljam.io.sam.util.sequence :as seq]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.bam.common :as common]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private fixed-tag-size 3)
@@ -2878,8 +2881,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- get-next-ref-id [sa refs]
   (condp = (:rnext sa)
     &quot;*&quot; -1
-    &quot;=&quot; (if-let [id (sam-util/ref-id refs (:rname sa))] id -1)
-    (if-let [id (sam-util/ref-id refs (:rnext sa))] id -1)))</pre></td></tr><tr><td class="docs">
+    &quot;=&quot; (if-let [id (refs/ref-id refs (:rname sa))] id -1)
+    (if-let [id (refs/ref-id refs (:rnext sa))] id -1)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- get-options-size [sam-alignment]
   (-&gt;&gt; (map
         (fn [op]
@@ -2907,7 +2910,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- encode-qual [sam-alignment]
   (if (= (:qual sam-alignment) &quot;*&quot;)
     (byte-array (.length ^String (:seq sam-alignment)) (util/ubyte 0xff))
-    (sam-util/fastq-&gt;phred (:qual sam-alignment))))</pre></td></tr><tr><td class="docs">
+    (qual/fastq-&gt;phred (:qual sam-alignment))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- encode-tag-value [writer val-type value]
   (case val-type
     \A (lsb/write-char writer (char value))
@@ -2931,7 +2934,7 @@ net.brehaut.ClojureTools = (function (SH) {
            \f nil))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn get-block-size [aln]
   (let [read-length (.length ^String (:seq aln))
-        cigar-length ^long (cgr/count-op (:cigar aln))]
+        cigar-length ^long (cigar/count-op (:cigar aln))]
     (+ ^long common/fixed-block-size
        (.length ^String (:qname aln))
        1 ;; null
@@ -2941,7 +2944,7 @@ net.brehaut.ClojureTools = (function (SH) {
        ^long (get-options-size aln))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn encode-alignment [wrtr aln refs]
   ;; refID
-  (lsb/write-int wrtr (or (sam-util/ref-id refs (:rname aln)) -1))
+  (lsb/write-int wrtr (or (refs/ref-id refs (:rname aln)) -1))
   ;; pos
   (lsb/write-int wrtr (dec (:pos aln)))
   ;; bin_mq_nl
@@ -2949,7 +2952,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (lsb/write-ubyte wrtr (short (:mapq aln)))
   (lsb/write-ushort wrtr (sam-util/compute-bin aln))
   ;; flag_nc
-  (lsb/write-ushort wrtr (cgr/count-op (:cigar aln)))
+  (lsb/write-ushort wrtr (cigar/count-op (:cigar aln)))
   (lsb/write-ushort wrtr (:flag aln))
   ;; l_seq
   (lsb/write-int wrtr (.length ^String (:seq aln)))
@@ -2963,10 +2966,10 @@ net.brehaut.ClojureTools = (function (SH) {
   (lsb/write-string wrtr (:qname aln))
   (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
   ;; cigar
-  (doseq [cigar (cgr/encode-cigar (:cigar aln))]
+  (doseq [cigar (cigar/encode-cigar (:cigar aln))]
     (lsb/write-int wrtr cigar))
   ;; seq
-  (lsb/write-bytes wrtr (sam-util/str-&gt;compressed-bases (:seq aln)))
+  (lsb/write-bytes wrtr (seq/str-&gt;compressed-bases (:seq aln)))
   ;; qual
   (lsb/write-bytes wrtr (encode-qual aln))
   ;; options

@@ -2865,96 +2865,66 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.util.cigar" name="cljam.io.util.cigar"><h1 class="project-name">cljam.io.util.cigar</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Parser of CIGAR strings.</p>
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.util.cigar
-  (:import [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs"><p>Parses CIGAR string, returning a sequence of lengths and operations.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn parse
-  [^String s]
-  (for [[_ n op] (re-seq #&quot;([0-9]*)([MIDNSHP=X])&quot; s)]
-    [(Integer/parseInt n) (first op)]))</pre></td></tr><tr><td class="docs"><p>Merge contiguous same operations of parsed CIGAR.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn simplify
-  [cigs]
-  (loop [[[^long l op :as x] &amp; xs] cigs result (transient [])]
-    (if (and l op)
-      (let [[^long nl nop] (first xs)]
-        (if (= op nop)
-          (recur (cons [(+ l nl) op] (next xs)) result)
-          (recur xs (conj! result x))))
-      (persistent! result))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- concat! [v coll]
-  (reduce conj! v coll))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- update-last! [coll f]
-  (let [c (dec (count coll))]
-    (if (neg? c)
-      coll
-      (let [[op x] (get coll c)]
-        (if (= :m op)
-          (assoc! coll c (f x))
-          coll)))))</pre></td></tr><tr><td class="docs"><p>Convert CIGAR string to sequence of indices.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn to-index*
-  [^String s]
-  (let [cigs (simplify (remove (comp #{\P \H} second) (parse s)))]
-    (loop [[[^long l op] &amp; xs] cigs r 0 s 0 idx (transient [])]
-      (if (and l op)
-        (condp get op
-          #{\M \= \X} (recur xs (+ l r) (+ l s) (concat! idx (map (fn [x] [:m x]) (range s (+ l s)))))
-          #{\D} (recur xs (+ r l) s (concat! (update-last! idx (fn [x] [:d x (range r (+ l r))])) (repeat l [:m \*])))
-          #{\N} (recur xs (+ r l) s (concat! idx (repeat l [:m \&gt;])))
-          #{\S} (recur xs r (+ s l) idx)
-          #{\I} (recur xs r (+ s l) (update-last! idx (fn [x] [:i x (range s (+ l s))]))))
-        (persistent! idx)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def to-index (memoize to-index*))</pre></td></tr><tr><td class="docs"><p>Returns length of CIGAR operations.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn count-op
-  [^String s]
-  (count (parse s)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- count-ref-str*
-  [^String s]
-  (-&gt;&gt; (parse s)
-       (filter (comp #{\M \D \N \= \X} peek))
-       (map first)
-       (reduce +)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private count-ref-str
-  (memoize count-ref-str*))</pre></td></tr><tr><td class="docs"><p>Count covering length in reference from encoded CIGAR byte-array.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn count-ref-bytes
-  [cigar-bytes]
-  (let [buf (ByteBuffer/wrap cigar-bytes)]
-    (.order buf ByteOrder/LITTLE_ENDIAN)
-    (loop [ref-length 0]
-      (if (.hasRemaining buf)
-        (let [b (.getInt buf)
-              op (bit-and b 0xF)
-              n (bit-shift-right b 4)]
-          (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
-        ref-length))))</pre></td></tr><tr><td class="docs"><p>Decode CIGAR string and length of alignment in reference.
-  Returns a vector of [cigar, ref-length].</p>
-</td><td class="codes"><pre class="brush: clojure">(defn decode-cigar-and-ref-length
-  [cigar-bytes]
-  (let [buf (ByteBuffer/wrap cigar-bytes)
-        sb (StringBuilder.)]
-    (.order buf ByteOrder/LITTLE_ENDIAN)
-    (loop [ref-length 0]
-      (if (.hasRemaining buf)
-        (let [b (.getInt buf)
-              op (bit-and b 0xF)
-              n  (bit-shift-right b 4)]
-          (doto sb
-            (.append n)
-            (.append (case op 0 \M 1 \I 2 \D 3 \N 4 \S 5 \H 6 \P 7 \= 8 \X)))
-          (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
-        [(.toString sb) ref-length]))))</pre></td></tr><tr><td class="docs"><p>Encodes CIGAR string into a sequence of longs.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn encode-cigar
-  [cigar]
-  (mapv #(bit-or (bit-shift-left (first %) 4)
-                 (case (second %) \M 0 \I 1 \D 2 \N 3 \S 4 \H 5 \P 6 \= 7 \X 8))
-        (parse cigar)))</pre></td></tr><tr><td class="docs"><p>Returns length of reference bases.</p>
-</td><td class="codes"><pre class="brush: clojure">(defmulti count-ref
-  class)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmethod count-ref String
-  [s]
-  (count-ref-str s))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmethod count-ref (Class/forName &quot;[B&quot;)
-  [b]
-  (count-ref-bytes b))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.flag" name="cljam.io.sam.util.flag"><h1 class="project-name">cljam.io.sam.util.flag</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utility functions for SAM flags.</p>
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam.util.flag)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const flags
+  {:multiple         1 ; template having multiple segments in sequencing
+   :properly-aligned 2 ; each segment properly aligned according to the aligner
+   :unmapped         4 ; segment unmapped
+   :next-unmapped    8 ; next segment in the template unmapped
+   :reversed        16 ; SEQ begin reverse complemented
+   :next-reversed   32 ; SEQ of the next segment in the template being reverse complemented
+   :first           64 ; the first segment in the template
+   :last           128 ; the last segment in the template
+   :secondary      256 ; secondary alignment
+   :filtered-out   512 ; not passing filters, such as platform/vendor quality controls
+   :duplicated    1024 ; PCR or optical duplicate
+   :supplementary 2048 ; supplementary alignment
+   })</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const flag-keywords
+  (vec (map vector (map key (sort-by val flags)) (range))))</pre></td></tr><tr><td class="docs"><p>Returns a set of keywords for a given flag integer.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn decode
+  [^long f]
+  (into #{} (for [[k i] flag-keywords :when (bit-test f i)] k)))</pre></td></tr><tr><td class="docs"><p>Returns a flag integer encoding set of keywords.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn encode
+  [flag-set]
+  (reduce + (map flags flag-set)))</pre></td></tr><tr><td class="docs"><p>Macro to provide a encoded flag with set of keywords.</p>
+</td><td class="codes"><pre class="brush: clojure">(defmacro encoded
+  [flag-set-literal]
+  (let [f (encode flag-set-literal)]
+    f))</pre></td></tr><tr><td class="docs"><p>Returns true when an alignment with given flag is a primary line.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn primary?
+  [^long f]
+  (zero? (bit-and f 0x900)))</pre></td></tr><tr><td class="docs"><p>Tests if the template has multiple segments.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn multiple?
+  [^long f]
+  (bit-test f 0))</pre></td></tr><tr><td class="docs"><p>Tests if the paired-end segments are properly aligned.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn properly-aligned?
+  [^long f]
+  (bit-test f 1))</pre></td></tr><tr><td class="docs"><p>Tests if the segment is unmapped.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn unmapped?
+  [^long f]
+  (bit-test f 2))</pre></td></tr><tr><td class="docs"><p>Tests if both the segment and its mate segment are unmapped.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn both-unmapped?
+  [^long f]
+  (zero? (bit-xor (bit-and f 0xC) 0xC)))</pre></td></tr><tr><td class="docs"><p>Tests if the segment is reversed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn reversed?
+  [^long f]
+  (bit-test f 4))</pre></td></tr><tr><td class="docs"><p>Tests if the segment is the first in the template.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn r1?
+  [^long f]
+  (bit-test f 6))</pre></td></tr><tr><td class="docs"><p>Tests if the segment is the last in the template.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn r2?
+  [^long f]
+  (bit-test f 7))</pre></td></tr><tr><td class="docs"><p>Returns 0 for single-end, 1 for R1 and 2 for R2.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn r1r2
+  [^long f]
+  (-&gt; f
+      (bit-and 0xC0) ;; last-bit first-bit
+      (unsigned-bit-shift-right 6)))</pre></td></tr><tr><td class="docs"><p>Tests if the alignment is secondary.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn secondary?
+  [^long f]
+  (bit-test f 8))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

@@ -2874,15 +2874,17 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]
             [cljam.util.chromosome :as chr]
+            [cljam.util.region :as region]
             [clojure.tools.logging :as logging])
-  (:import [java.io BufferedReader BufferedWriter Closeable]))</pre></td></tr><tr><td class="docs">
+  (:import [java.net URL]
+           [java.io BufferedReader BufferedWriter Closeable]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare read-fields write-fields)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord BEDReader [^BufferedReader reader ^String f]
+</td><td class="codes"><pre class="brush: clojure">(defrecord BEDReader [^BufferedReader reader ^URL url]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read [this] (protocols/read this {}))
   (read [this option] (read-fields this))
   (indexed? [_] false)
@@ -2895,22 +2897,20 @@ net.brehaut.ClojureTools = (function (SH) {
                          (or (not start) (&lt;= start (:start m)))
                          (or (not end) (&lt;= (:end m) end))))
             (read-fields this))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord BEDWriter [^BufferedWriter writer ^String f]
+</td><td class="codes"><pre class="brush: clojure">(defrecord BEDWriter [^BufferedWriter writer ^URL url]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this] (.getAbsolutePath (cio/file (.f this)))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bed.BEDReader of f. Should be used inside with-open
+  (writer-url [this] (.url this)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bed.BEDReader of f. Should be used inside with-open
   to ensure the reader is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^BEDReader reader
   [f]
-  (let [abs (.getAbsolutePath (cio/file f))]
-    (BEDReader. (cio/reader (util/compressor-input-stream abs)) abs)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bed.BEDWriter of f. Should be used inside with-open
+  (BEDReader. (cio/reader (util/compressor-input-stream f)) (util/as-url f)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bed.BEDWriter of f. Should be used inside with-open
   to ensure the writer is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^BEDWriter writer
   [f]
-  (let [abs (.getAbsolutePath (cio/file f))]
-  (BEDWriter. (cio/writer (util/compressor-output-stream abs)) abs)))</pre></td></tr><tr><td class="docs">
+  (BEDWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:const bed-columns
   [:chr :start :end :name :score :strand :thick-start :thick-end :item-rgb :block-count :block-sizes :block-starts])</pre></td></tr><tr><td class="docs"><p>Convert string of comma-separated long values into list of longs.
   Comma at the end of input string will be ignored.
@@ -2921,8 +2921,8 @@ net.brehaut.ClojureTools = (function (SH) {
     (map as-long (cstr/split s #&quot;,&quot;))))</pre></td></tr><tr><td class="docs"><p>Inverse function of str->long-list.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- long-list-&gt;str
   [xs]
-  (when-not (nil? xs)
-    (apply str (interpose &quot;,&quot; xs))))</pre></td></tr><tr><td class="docs"><p>Same as update if map 'm' contains key 'k'. Otherwise returns the original map 'm'.</p>
+  (when (seq xs)
+    (cstr/join &quot;,&quot; xs)))</pre></td></tr><tr><td class="docs"><p>Same as update if map 'm' contains key 'k'. Otherwise returns the original map 'm'.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- update-some
   [m k f &amp; args]
   (if (get m k)
@@ -2987,8 +2987,7 @@ net.brehaut.ClojureTools = (function (SH) {
            (update-some :block-starts long-list-&gt;str))
        ((apply juxt bed-columns))
        (take-while identity)
-       (interpose &quot; &quot;)
-       (apply str)))</pre></td></tr><tr><td class="docs"><p>Checks if given string is neither a header nor a comment line.</p>
+       (cstr/join \tab)))</pre></td></tr><tr><td class="docs"><p>Checks if given string is neither a header nor a comment line.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- header-or-comment?
   [^String s]
   (or (empty? s)
@@ -2996,7 +2995,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (.startsWith s &quot;track&quot;)
       (.startsWith s &quot;#&quot;)))</pre></td></tr><tr><td class="docs"><p>Normalize BED fields.
   BED fields are stored in format: 0-origin and inclusive-start / exclusive-end.
-  This function converts the coordinate into cljam style: 1-origin and inclusice-start / inclusive-end.</p>
+  This function converts the coordinate into cljam style: 1-origin and inclusive-start / inclusive-end.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- normalize
   [m]
   (-&gt; m
@@ -3035,29 +3034,108 @@ net.brehaut.ClojureTools = (function (SH) {
   Currently, this function affects only :end and :name fields.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn merge-fields
   [xs]
-  (reduce
-   (fn [r m]
-     (let [l (last r)]
-       (if (and l (= (:chr l) (:chr m)) (&lt;= (:start m) (:end l)) (&lt;= (:start l) (:end m)))
-         (update r (dec (count r)) (fn [n m] (-&gt; n (assoc :end (:end m)) (update-some :name str &quot;+&quot; (:name m)))) m)
-         (conj r m))))
-   []
-   (sort-fields xs)))</pre></td></tr><tr><td class="docs"><p>Write sequence of BED fields to writer without converting :start and :thick-start values.</p>
+  (region/merge-regions-with
+   (fn [x {:keys [name end]}]
+     (-&gt; x
+         (update :end max end)
+         (update-some :name str &quot;+&quot; name)))
+   0
+   (sort-fields xs)))</pre></td></tr><tr><td class="docs"><p>Compare two BED fields on the basis of :chr and :end fields.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- fields-&lt;=
+  [x y]
+  (&lt;= (compare [(chr/chromosome-order-key (:chr x)) (:end x)]
+               [(chr/chromosome-order-key (:chr y)) (:end y)])
+      0))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence that is the intersection of the two BED sequences.</p>
+
+<p>  The input sequences will first be sorted with sort-fields, which may cause
+  an extensive memory use for ones with a large number of elements.
+  Note also that this function assumes the input sequences contain only valid
+  regions, and thus :start &lt;= :end holds for each region. Make sure yourself
+  the input sequences meet the condition, or the function may return a wrong
+  result.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn intersect-fields
+  [xs ys]
+  (letfn [(intersect [xs ys]
+            (lazy-seq
+             (if-let [x (first xs)]
+               (if-let [y (first ys)]
+                 (cond-&gt;&gt; (if (fields-&lt;= x y)
+                            (intersect (next xs) ys)
+                            (intersect xs (next ys)))
+                   (region/overlapped-regions? x y)
+                   (cons (-&gt; x
+                             (update :start max (:start y))
+                             (update :end min (:end y)))))
+                 [])
+               [])))]
+    (intersect (sort-fields xs) (merge-fields ys))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence that is the result of subtracting the BED fields
+  in the sequence ys from the sequence xs.</p>
+
+<p>  The input sequences will first be sorted with sort-fields, which may cause
+  an extensive memory use for ones with a large number of elements.
+  Note also that this function assumes the input sequences contain only valid
+  regions, and thus :start &lt;= :end holds for each region. Make sure yourself
+  the input sequences meet the condition, or the function may return a wrong
+  result.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn subtract-fields
+  [xs ys]
+  (letfn [(subtract [xs ys]
+            (lazy-seq
+             (if-let [x (first xs)]
+               (if-let [y (first ys)]
+                 (let [[r1 r2] (region/subtract-region x y)]
+                   (if r2
+                     (cons r1 (subtract (cons r2 (next xs)) (next ys)))
+                     (if r1
+                       (if (fields-&lt;= r1 y)
+                         (cons r1 (subtract (next xs) ys))
+                         (subtract (cons r1 (next xs)) (next ys)))
+                       (subtract (next xs) ys))))
+                 xs)
+               [])))]
+    (subtract (sort-fields xs) (merge-fields ys))))</pre></td></tr><tr><td class="docs"><p>Takes a sequence of maps containing :name and :len keys (representing
+  chromosome's name and length, resp.) and a sequence of BED fields,
+  and returns a lazy sequence that is the complement of the BED sequence.</p>
+
+<p>  The input sequence will first be sorted with sort-fields, which may cause
+  an extensive memory use for ones with a large number of elements.
+  Note also that this function assumes the BED sequence contains only valid
+  regions, and thus :start &lt;= :end holds for each region. Make sure yourself
+  the BED sequence meets the condition, or the function may return a wrong
+  result.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn complement-fields
+  [refs xs]
+  (let [chr-&gt;len (into {} (map (juxt :name :len)) refs)
+        chrs (sort-by chr/chromosome-order-key (map :name refs))]
+    (when-first [{:keys [chr]} (filter #(not (chr-&gt;len (:chr %))) xs)]
+      (let [msg (str &quot;Length of chromosome &quot; chr &quot; not specified&quot;)]
+        (throw (IllegalArgumentException. msg))))
+    (letfn [(complement [xs chrs pos]
+              (lazy-seq
+               (when-let [chr (first chrs)]
+                 (let [len (get chr-&gt;len chr)
+                       x (first xs)]
+                   (if (and x (= (:chr x) chr))
+                     (cond-&gt;&gt; (complement (next xs) chrs (inc (:end x)))
+                       (&lt; pos (:start x))
+                       (cons {:chr chr :start pos :end (dec (:start x))}))
+                     (cond-&gt;&gt; (complement xs (next chrs) 1)
+                       (&lt; pos len)
+                       (cons {:chr chr :start pos :end len})))))))]
+      (complement (merge-fields xs) chrs 1))))</pre></td></tr><tr><td class="docs"><p>Write sequence of BED fields to writer without converting :start and :thick-start values.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-raw-fields
   [^BEDWriter wtr xs]
   (let [w ^BufferedWriter (.writer wtr)]
     (-&gt;&gt; xs
          (map serialize-bed)
-         (interpose &quot;\n&quot;)
-         ^String (apply str)
+         (cstr/join \newline)
          (.write w))))</pre></td></tr><tr><td class="docs"><p>Write sequence of BED fields to writer.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-fields
   [^BEDWriter wtr xs]
   (let [w ^BufferedWriter (.writer wtr)]
     (-&gt;&gt; xs
          (map (comp serialize-bed denormalize))
-         (interpose &quot;\n&quot;)
-         ^String (apply str)
+         (cstr/join \newline)
          (.write w))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 

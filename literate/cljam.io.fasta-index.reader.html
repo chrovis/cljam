@@ -2869,7 +2869,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.fasta-index.reader
   (:require [proton.core :refer [as-long]]))</pre></td></tr><tr><td class="docs"><p>FAIReader</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype FAIReader [indices f])</pre></td></tr><tr><td class="docs"><p>Reader</p>
+</td><td class="codes"><pre class="brush: clojure">(deftype FAIReader [indices url])</pre></td></tr><tr><td class="docs"><p>Reader</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn parse-fai
   [rdr]

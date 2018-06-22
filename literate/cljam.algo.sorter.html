@@ -2867,6 +2867,7 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.algo.sorter" name="cljam.algo.sorter"><h1 class="project-name">cljam.algo.sorter</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Sorter of the SAM/BAM format alignments.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.algo.sorter
+  (:refer-clojure :exclude [sorted?])
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [com.climate.claypoole :as cp]
@@ -2874,16 +2875,10 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.sam :as sam]
             [cljam.io.util :as io-util]
             [cljam.util :as util]
-            [cljam.io.sam.common :refer [sam-version]])
+            [cljam.io.sam.util.header :as header])
   (:import [java.io Closeable File]
            [java.util PriorityQueue]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:const default-chunk-size 1500000)
-(def ^:const order-unknown :unknown)
-(def ^:const order-coordinate :coordinate)
-(def ^:const order-queryname :queryname)</pre></td></tr><tr><td class="docs"><p>Replaces version number and sorting info of the header.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- replace-header
-  [hdr vn so]
-  (assoc hdr :HD {:VN vn, :SO so}))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const default-chunk-size 1500000)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- refmap
   [refs]
   (into {} (map-indexed (fn [i x] [(:name x) i])) refs))</pre></td></tr><tr><td class="docs"><h2>comparators</h2>
@@ -2911,8 +2906,8 @@ net.brehaut.ClojureTools = (function (SH) {
   name-fn must be a function taking a int value i and returning a path string for i-th output.
   read-fn must produce a sequence of alignments and write-fn must consume the splitted sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- split**
-  [rdr chunk-size name-fn read-fn write-fn]
-  (let [hdr (replace-header (sam/read-header rdr) sam-version (name order-coordinate))]
+  [rdr mode chunk-size name-fn read-fn write-fn]
+  (let [hdr (header/sorted-by mode (header/update-version (sam/read-header rdr)))]
     (logging/info &quot;Splitting...&quot;)
     (cp/with-shutdown! [p (cp/threadpool (cp/ncpus))]
       (-&gt;&gt; (read-fn rdr)
@@ -2932,14 +2927,14 @@ net.brehaut.ClojureTools = (function (SH) {
            doall))))</pre></td></tr><tr><td class="docs"><p>Splits SAM/BAM files with appropriate reader/writer functions.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- split*
   [rdr chunk-size name-fn mode sort-fn]
-  (let [block? (same-type? (protocols/reader-path rdr) (name-fn 0))
+  (let [block? (same-type? (protocols/reader-url rdr) (name-fn 0))
         read-fn (if block?
                   (fn [r] (sam/read-blocks r {} {:mode mode}))
                   sam/read-alignments)
         write-fn (if block?
                    (fn [w xs _] (sam/write-blocks w (sort-fn xs)))
                    (fn [w xs hdr] (sam/write-alignments w (sort-fn xs) hdr)))]
-    (split** rdr chunk-size name-fn read-fn write-fn)))</pre></td></tr><tr><td class="docs"><p>Take a smallest element from sequences in priority queue.</p>
+    (split** rdr mode chunk-size name-fn read-fn write-fn)))</pre></td></tr><tr><td class="docs"><p>Take a smallest element from sequences in priority queue.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- head-pq
   [^PriorityQueue q]
   (when-not (.isEmpty q)
@@ -2970,7 +2965,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (.close ^Closeable rdr))))</pre></td></tr><tr><td class="docs"><p>Merges multiple SAM/BAM files with appropriate reader/writer functions.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- merge*
   [wtr hdr files mode key-fn]
-  (let [block? (apply same-type? (protocols/writer-path wtr) files)
+  (let [block? (apply same-type? (protocols/writer-url wtr) files)
         read-fn (if block?
                   (fn [r] (sam/read-blocks r {} {:mode mode}))
                   sam/read-alignments)
@@ -2991,36 +2986,31 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn sort!
   [rdr wtr {:keys [mode chunk-size cache-fmt] :or {cache-fmt :bam}}]
   (let [name-fn (-&gt;&gt; rdr
-                     protocols/reader-path
+                     protocols/reader-url
                      util/basename
                      (partial gen-cache-filename (name cache-fmt)))
-        key-fn (case mode
-                 :coordinate (partial coordinate-key (refmap (sam/read-refs rdr)))
-                 :queryname queryname-key)
+        key-fn ({header/order-coordinate (partial coordinate-key (refmap (sam/read-refs rdr)))
+                 header/order-queryname queryname-key} mode)
         splitted-files (split* rdr chunk-size name-fn mode #(sort-by-index key-fn %))
-        hdr (replace-header (sam/read-header rdr) sam-version (name mode))]
+        hdr (header/sorted-by mode (header/update-version (sam/read-header rdr)))]
     (logging/info (str &quot;Merging from &quot; (count splitted-files) &quot; files...&quot;))
     (merge* wtr hdr splitted-files mode key-fn)
     (logging/info &quot;Deleting cache files...&quot;)
     (clean-all! splitted-files)))</pre></td></tr><tr><td class="docs"><p>Sorts alignments by chromosomal position.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn sort-by-pos
   [rdr wtr &amp; [option]]
-  (sort! rdr wtr (into (or option {}) {:mode :coordinate})))</pre></td></tr><tr><td class="docs"><p>Sort alignments by query name.</p>
+  (sort! rdr wtr (into (or option {}) {:mode header/order-coordinate})))</pre></td></tr><tr><td class="docs"><p>Sort alignments by query name.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn sort-by-qname
   [rdr wtr &amp; [option]]
-  (sort! rdr wtr (into (or option {}) {:mode :queryname})))</pre></td></tr><tr><td class="docs"><p>Returns true if the sam is sorted, false if not. It is detected by
+  (sort! rdr wtr (into (or option {}) {:mode header/order-queryname})))</pre></td></tr><tr><td class="docs"><p>Returns true if the sam is sorted, false if not. It is detected by
   <code>@HD SO:***</code> tag in the header.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn sorted-by?
+</td><td class="codes"><pre class="brush: clojure">(defn sorted?
   [rdr]
-  (let [so (:SO (:HD (sam/read-header rdr)))]
-    (or (= so (name order-queryname))
-        (= so (name order-coordinate)))))</pre></td></tr><tr><td class="docs"><p>Returns sorting order of the sam as Keyword. Returning order is one of the
+  (header/sorted? (sam/read-header rdr)))</pre></td></tr><tr><td class="docs"><p>Returns sorting order of the sam as Keyword. Returning order is one of the
   following: :queryname, :coordinate, :unsorted, :unknown.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn sort-order
   [rdr]
-  (if-let [so (:SO (:HD (sam/read-header rdr)))]
-    (keyword so)
-    order-unknown))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (header/sort-order (sam/read-header rdr)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

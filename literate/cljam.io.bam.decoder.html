@@ -2870,10 +2870,12 @@ net.brehaut.ClojureTools = (function (SH) {
   (:require [clojure.string :as cstr]
             [proton.core :as proton]
             [cljam.util :as util]
-            [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.quality :as qual]
+            [cljam.io.sam.util.sequence :as sam-seq]
+            [cljam.io.sam.util.refs :as refs]
+            [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.bam.common :as common]
-            [cljam.io.util.lsb :as lsb]
-            [cljam.io.util.cigar :as cigar])
+            [cljam.io.util.lsb :as lsb])
   (:import [java.util Arrays]
            [java.nio ByteBuffer ByteOrder CharBuffer]
            [cljam.io.protocols SAMAlignment SAMRegionBlock SAMCoordinateBlock SAMQuerynameBlock]))</pre></td></tr><tr><td class="docs">
@@ -2944,15 +2946,15 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn decode-qual [^bytes b]
   (if (Arrays/equals b (byte-array (alength b) (util/ubyte 0xff)))
     &quot;*&quot;
-    (sam-util/phred-bytes-&gt;fastq b)))</pre></td></tr><tr><td class="docs">
+    (qual/phred-bytes-&gt;fastq b)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn decode-seq [seq-bytes length]
-  (sam-util/compressed-bases-&gt;str length seq-bytes 0))</pre></td></tr><tr><td class="docs">
+  (sam-seq/compressed-bases-&gt;str length seq-bytes 0))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn decode-next-ref-id [refs ^long ref-id ^long next-ref-id]
   (if (= next-ref-id -1)
     &quot;*&quot;
     (if (= ref-id next-ref-id)
       &quot;=&quot;
-      (sam-util/ref-name refs next-ref-id))))</pre></td></tr><tr><td class="docs">
+      (refs/ref-name refs next-ref-id))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord BAMRawBlock [data ^long pointer-beg ^long pointer-end])</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and creates SAMAlignment instance which is compatible with SAM.
   When called with start and end, this function may return nil if any base of the block
   is not included in the range.</p>
@@ -2960,7 +2962,7 @@ net.brehaut.ClojureTools = (function (SH) {
   ([refs block]
    (let [buffer      (ByteBuffer/wrap (:data block))
          ref-id      ^int (lsb/read-int buffer)
-         rname       (or (sam-util/ref-name refs ref-id) &quot;*&quot;)
+         rname       (or (refs/ref-name refs ref-id) &quot;*&quot;)
          pos         (inc ^int (lsb/read-int buffer))
          l-read-name (int ^long (lsb/read-ubyte buffer))
          mapq        ^long (lsb/read-ubyte buffer)
@@ -3007,7 +3009,7 @@ net.brehaut.ClojureTools = (function (SH) {
            (let [seq     (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
                  qual    (decode-qual (lsb/read-bytes buffer l-seq))
                  rest    (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
-                 rname   (or (sam-util/ref-name refs ref-id) &quot;*&quot;)
+                 rname   (or (refs/ref-name refs ref-id) &quot;*&quot;)
                  options (decode-options rest)]
              (SAMAlignment. qname (int flag) rname (int pos) ref-end (int mapq)
                             cigar rnext (int pnext) (int tlen) seq qual options))))))))</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and returns a SAMRegionBlock instance containing covering range of the alignment.</p>

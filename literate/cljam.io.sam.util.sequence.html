@@ -2865,177 +2865,73 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.fasta.reader" name="cljam.io.fasta.reader"><h1 class="project-name">cljam.io.fasta.reader</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.fasta.reader
-  (:refer-clojure :exclude [read])
-  (:require [cljam.util :refer [graph?]]
-            [cljam.io.fasta.util :refer [header-line? parse-header-line]]
-            [cljam.io.fasta-index.core :as fasta-index])
-  (:import [java.io RandomAccessFile InputStream]
-           [java.nio ByteBuffer CharBuffer]
-           [java.nio.channels FileChannel$MapMode]))</pre></td></tr><tr><td class="docs"><h2>FASTAReader</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype FASTAReader [reader stream url index-delay]
-  java.io.Closeable
-  (close [this]
-    (.close ^java.io.Closeable (.reader this))
-    (.close ^java.io.Closeable (.stream this))))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read* [line ^RandomAccessFile rdr]
-  (loop [line line
-         ret {}]
-    (if-not (nil? line)
-      (if (= (first line) \&gt;)
-        (if (seq ret)
-          (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
-                (lazy-seq (read* line rdr)))
-          (let [ref (subs line 1)
-                offset (.getFilePointer rdr)]
-            (recur (.readLine rdr) (assoc ret :rname ref :offset offset))))
-        (let [ret' (if (:line-len ret)
-                     (update-in ret [:seq] str line)
-                     (assoc ret
-                       :seq line
-                       :line-len (inc (count line))
-                       :line-blen (count (filter graph? line))))]
-          (recur (.readLine rdr) ret')))
-      (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
-            nil))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn load-headers
-  [^RandomAccessFile rdr]
-  (.seek rdr 0)
-  (loop [line (.readLine rdr), headers []]
-    (if line
-      (if (header-line? line)
-        (let [offset (.getFilePointer rdr)]
-          (recur (.readLine rdr) (conj headers (merge (parse-header-line line)
-                                                      {:offset offset}))))
-        (recur (.readLine rdr) headers))
-      headers)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-sequence*
-  [^FASTAReader rdr name]
-  (let [reader ^RandomAccessFile (.reader rdr)
-        line (.readLine reader)]
-    (if line
-      (if-not (header-line? line)
-        {:name name, :sequence line}
-        (:name (parse-header-line line))))))</pre></td></tr><tr><td class="docs"><p>Reads sequences by line, returning the line-separated sequences
-  as lazy sequence.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn read-sequences
-  [^FASTAReader rdr]
-  (.seek ^RandomAccessFile (.reader rdr) 0)
-  (let [read-fn (fn read-fn* [^FASTAReader rdr name]
-                  (let [s (read-sequence* rdr name)]
-                    (cond
-                     (string? s) (read-fn* rdr s)
-                     (map? s) (cons s (lazy-seq (read-fn* rdr name))))))]
-    (read-fn rdr nil)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn read-sequence
-  [^FASTAReader rdr name start end {:keys [mask?]}]
-  (let [fai @(.index-delay rdr)]
-    (when-let [len (:len (fasta-index/get-header fai name))]
-      (let [start' (max 1 (or start 1))
-            end' (min len (or end len))]
-        (when (&lt;= start' end')
-          (let [buf (CharBuffer/allocate (inc (- end' start')))
-                r ^RandomAccessFile (.reader rdr)]
-            (when-let [[s e] (fasta-index/get-span fai name (dec start') end')]
-              (let [mbb (.. r getChannel (map FileChannel$MapMode/READ_ONLY s (- e s)))]
-                (if mask?
-                  (while (.hasRemaining mbb)
-                    (let [c (unchecked-char (.get mbb))]
-                      (when-not (or (= \newline c) (= \return c))
-                        (.put buf c))))
-                  (while (.hasRemaining mbb)
-                    (let [c (unchecked-long (.get mbb))]
-                      (when-not (or (= 10 c) (= 13 c))
-                        ;; toUpperCase works only for ASCII chars.
-                        (.put buf (unchecked-char (bit-and c 0x5f))))))))
-              (.flip buf)
-              (.toString buf))))))))</pre></td></tr><tr><td class="docs"><p>Reads FASTA sequence data, returning its information as a lazy sequence.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn read
-  [^FASTAReader rdr]
-  (let [r ^RandomAccessFile (.reader rdr)]
-    (read* (.readLine r) r)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn reset
-  [^FASTAReader rdr]
-  (let [r ^RandomAccessFile (.reader rdr)]
-    (.seek r 0)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(definline create-ba [^ByteBuffer buffer]
-  `(when (pos? (.position ~buffer))
-       (let [ba# (byte-array (.position ~buffer))]
-         (.clear ~buffer)
-         (.get ~buffer ba#)
-         (.clear ~buffer)
-         ba#)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const gt-byte (byte \&gt;))
-(def ^:private ^:const newline-byte (byte \newline))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-buffer!
-  [^bytes buf ^long size buffers ^bytes byte-map]
-  (let [{:keys [^ByteBuffer name-buf ^ByteBuffer seq-buf ^ByteBuffer rest-buf]} buffers]
-    (loop [i 0, name-line? false]
-      (if (&lt; i size)
-        (let [b (aget buf i)]
-          (cond
-            (= b gt-byte) (if (pos? (.position seq-buf))
-                            (do (.put rest-buf buf i (- size i))
-                                true)
-                            (recur (inc i) true))
-            (= b newline-byte) (if name-line?
-                                 (recur (inc i) false)
-                                 (recur (inc i) name-line?))
-            :else (do (if name-line?
-                        (.put name-buf b)
-                        (.put seq-buf (aget byte-map b)))
-                      (recur (inc i) name-line?))))
-        false))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- sequential-read1!
-  [^InputStream stream buf buffers byte-map loaded-bytes]
-  (let [{:keys [^ByteBuffer name-buf ^ByteBuffer seq-buf ^ByteBuffer rest-buf]} buffers
-        read-preload? (atom (some? (seq loaded-bytes)))]
-    (loop [new-ref? false]
-      (if-not new-ref?
-        (if @read-preload?
-          (let [new-ref*? (read-buffer! loaded-bytes (count loaded-bytes) buffers byte-map)]
-            (reset! read-preload? false)
-            (recur new-ref*?))
-          (let [n (.read stream buf)]
-            (if (pos? n)
-              (recur (read-buffer! buf n buffers byte-map))
-              {:name (create-ba name-buf) :sequence (create-ba seq-buf) :rest-bytes (create-ba rest-buf) :eof? true})))
-        {:name (create-ba name-buf) :sequence (create-ba seq-buf) :rest-bytes (create-ba rest-buf) :eof? false}))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- sequential-read!
-  [stream buf buffers byte-map loaded-bytes eof?]
-  (when (or (not eof?) (seq loaded-bytes))
-    (lazy-seq
-     (let [m (sequential-read1! stream buf buffers byte-map loaded-bytes)]
-       (cons (select-keys m [:name :sequence])
-             (sequential-read! stream buf buffers byte-map (:rest-bytes m) (:eof? m)))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- sequential-read
-  [stream page-size seq-buf-size byte-map]
-  (let [buf (byte-array page-size)
-        name-buf (ByteBuffer/allocate 1024)
-        seq-buf (ByteBuffer/allocate seq-buf-size)
-        rest-buf (ByteBuffer/allocate page-size)]
-    (sequential-read! stream buf
-                      {:name-buf name-buf :seq-buf seq-buf :rest-buf rest-buf}
-                      byte-map (byte-array 0) false)))</pre></td></tr><tr><td class="docs"><p>Returns list of maps containing sequence as byte-array. Bases ACGTN are
-  encoded as 1-5.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn sequential-read-byte-array
-  [stream page-size seq-buf-size]
-  (let [byte-map (byte-array (range 128))]
-    (doseq [[i v] [[\a 1] [\A 1] [\c 2] [\C 2] [\g 3] [\G 3] [\t 4] [\T 4] [\n 5] [\N 5]]]
-      (aset-byte byte-map (byte i) (byte v)))
-    (sequential-read stream page-size seq-buf-size byte-map)))</pre></td></tr><tr><td class="docs"><p>Returns list of maps containing sequence as upper-case string.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn sequential-read-string
-  [stream page-size seq-buf-size {:keys [mask?]}]
-  (let [byte-map (byte-array (range 128))]
-    (when-not mask?
-      (doseq [[i v] [[\a \A] [\c \C] [\g \G] [\t \T] [\n \N]]]
-        (aset-byte byte-map (byte i) (byte v))))
-    (map (fn [{:keys [^bytes name ^bytes sequence]}]
-           {:name (String. name) :sequence (String. sequence)})
-         (sequential-read stream page-size seq-buf-size byte-map))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.sequence" name="cljam.io.sam.util.sequence"><h1 class="project-name">cljam.io.sam.util.sequence</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utility functions for base sequences.</p>
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam.util.sequence
+  (:require [clojure.string :as cstr])
+  (:import [java.nio ByteBuffer CharBuffer]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const nibble-to-base-table
+  ;; Index: nibble of a compressed base.
+  ;; Value: base for the nibble.
+  &quot;=ACMGRSVTWYHKDBN&quot;)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private two-bytes-to-compressed-bases-table
+  ;; Index: two bases (A,C) =&gt; ASCII (65,67) =&gt; 2r 1000001 1000011 =&gt; 8387
+  ;; Value: two bases (A,C) =&gt; nibbles (1,2) =&gt; 2r 0001 0010 =&gt; 18
+  (let [ba (byte-array (bit-shift-left 1 14))
+        byte-to-nibble-table (byte-array (bit-shift-left 1 7) (byte 15))]
+    (doseq [[i c] (map vector (range) nibble-to-base-table)]
+      (aset-byte byte-to-nibble-table (int c) i)
+      (aset-byte byte-to-nibble-table (int (.charAt (cstr/lower-case c) 0)) i))
+    (dotimes [i (alength ba)]
+      (let [u (unchecked-byte (bit-and 0x7F (unsigned-bit-shift-right i 7)))
+            l (unchecked-byte (bit-and 0x7F i))]
+        (-&gt;&gt; (aget byte-to-nibble-table l)
+             (bit-or (bit-shift-left (aget byte-to-nibble-table u) 4))
+             unchecked-byte
+             (aset-byte ba i))))
+    ba))</pre></td></tr><tr><td class="docs"><p>Creates a buffer consists of compressed bases from ASCII sequence.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn str-&gt;compressed-bases
+  ^bytes [^String s]
+  (let [b (.getBytes s)
+        length (alength b)
+        result-len (quot (inc length) 2)
+        in-bb (ByteBuffer/wrap b)
+        out-bb (ByteBuffer/allocate result-len)]
+    (dotimes [i result-len]
+      (let [u (.get in-bb)
+            l (byte (if (.hasRemaining in-bb) (.get in-bb) \=))]
+        (-&gt;&gt; (bit-and 0x7F l)
+             (bit-or (bit-shift-left (bit-and 0x7F u) 7))
+             (aget ^bytes two-bytes-to-compressed-bases-table)
+             (.put out-bb))))
+    (.array out-bb)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private compressed-bases-to-bases-table
+  ;; Index: compressed base n containing two nibbles =&gt; 2n
+  ;; Value 2n+0: base for upper nibble of n.
+  ;; Value 2n+1: base for lower nibble of n.
+  (-&gt;&gt; (for [i nibble-to-base-table j nibble-to-base-table] [i j])
+       (apply concat)
+       cstr/join))</pre></td></tr><tr><td class="docs"><p>Decode a sequence from byte array to String.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn compressed-bases-&gt;str
+  [^long length ^bytes compressed-bases ^long compressed-offset]
+  (let [cb (CharBuffer/allocate (inc length))
+        bb (ByteBuffer/wrap compressed-bases)]
+    (.position bb compressed-offset)
+    (dotimes [_ (quot (inc length) 2)]
+      (let [i (-&gt; (.get bb) (bit-and 0xff) (* 2))]
+        (.put cb (.charAt compressed-bases-to-bases-table i))
+        (.put cb (.charAt compressed-bases-to-bases-table (inc i)))))
+    (.limit cb length)
+    (.flip cb)
+    (.toString cb)))</pre></td></tr><tr><td class="docs"><p>Converts bases in given buffer to upper-case. Also converts '.' to 'N'.
+   Bases are represented as buffer of ASCII characters.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn normalize-bases
+  ^bytes [^bytes bases]
+  (dotimes [i (alength bases)]
+    (let [b (aget bases i)]
+      (cond
+        (= b (byte \.)) (aset-byte bases i (byte \N))
+        (&lt;= (byte \a) b (byte \z)) (aset-byte bases i (- b 32))))) ;; Upper-case ASCII offset
+  bases)</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

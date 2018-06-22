@@ -2873,6 +2873,7 @@ net.brehaut.ClojureTools = (function (SH) {
             [clojure.tools.cli :refer [parse-opts]]
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]
+            [cljam.io.sam.util.header :as header]
             [cljam.io.sequence :as cseq]
             [cljam.algo.bam-indexer :as bai]
             [cljam.algo.normal :as normal]
@@ -2921,7 +2922,7 @@ net.brehaut.ClojureTools = (function (SH) {
                                  &quot;sam&quot;  (sam/sam-reader f)
                                  &quot;bam&quot;  (sam/bam-reader f))]
         (when (:header options)
-          (println (sam-util/stringify-header (sam/read-header r))))
+          (println (header/stringify-header (sam/read-header r))))
         (doseq [aln (if (:region options)
                       (if-let [region (region/parse-region (:region options))]
                         (if (sam/indexed? r)
@@ -2939,7 +2940,7 @@ net.brehaut.ClojureTools = (function (SH) {
    [&quot;-h&quot; &quot;--help&quot; &quot;Print help&quot;]])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- convert-usage [options-summary]
   (-&gt;&gt; [&quot;Convert file format based on the file extension.&quot;
-        &quot;Usage: cljam convert [-t THREAD] &lt;in-file&gt; &lt;out-file&gt;&quot;
+        &quot;Usage: cljam convert [-t THREAD] &lt;in-file&gt; &lt;out-file&gt; [&lt;out-file-2&gt; [&lt;out-file-3&gt;]]&quot;
         &quot;Options:&quot;
         options-summary]
        (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
@@ -2947,10 +2948,10 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [{:keys [options arguments errors summary]} (parse-opts args convert-cli-options)]
     (cond
      (:help options) (exit 0 (convert-usage summary))
-     (not= (count arguments) 2) (exit 1 (convert-usage summary))
+     (not (&lt;= 2 (count arguments) 4)) (exit 1 (convert-usage summary))
      errors (exit 1 (error-msg errors)))
-    (let [[in out] arguments]
-      (convert/convert in out :n-threads (:thread options))))
+    (let [[in &amp; [out &amp; more :as outs]] arguments]
+      (convert/convert in (if more outs out) :n-threads (:thread options))))
   nil)</pre></td></tr><tr><td class="docs"><h3>normalize command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private normalize-cli-options
@@ -2996,8 +2997,8 @@ net.brehaut.ClojureTools = (function (SH) {
       (with-open [r (sam/reader in)
                   w (sam/writer out)]
         (condp = (:order options)
-          (name sorter/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
-          (name sorter/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
+          (name header/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
+          (name header/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
   nil)</pre></td></tr><tr><td class="docs"><h3>index command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private index-cli-options
@@ -3090,7 +3091,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (with-open [r (sam/reader f)]
         (when (= (type r) cljam.io.sam.reader.SAMReader)
           (exit 1 &quot;Not support SAM file&quot;))
-        (when-not (sorter/sorted-by? r)
+        (when-not (sorter/sorted? r)
           (exit 1 &quot;Not sorted&quot;))
         (if (:region options)
           (if-let [region (region/parse-region (:region options))]

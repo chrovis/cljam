@@ -2881,7 +2881,7 @@ net.brehaut.ClojureTools = (function (SH) {
            [cljam.io.bam_index.chunk Chunk]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare make-index-from-blocks)</pre></td></tr><tr><td class="docs"><h2>BAIWriter</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype BAIWriter [^DataOutputStream writer refs f]
+</td><td class="codes"><pre class="brush: clojure">(deftype BAIWriter [^DataOutputStream writer refs url]
   Closeable
   (close [this]
     (.close writer)))</pre></td></tr><tr><td class="docs"><h2>Indexing</h2>

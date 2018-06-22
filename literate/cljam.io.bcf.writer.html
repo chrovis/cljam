@@ -2867,22 +2867,23 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bcf.writer" name="cljam.io.bcf.writer"><h1 class="project-name">cljam.io.bcf.writer</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bcf.writer
-  (:require [clojure.java.io :as cio]
-            [clojure.string :as cstr]
+  (:require [clojure.string :as cstr]
             [cljam.io.protocols :as protocols]
+            [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.vcf.writer :as vw]
-            [cljam.io.vcf.util :as vcf-util])
+            [cljam.io.vcf.util :as vcf-util]
+            [cljam.util :as util])
   (:import [java.io Closeable IOException DataOutputStream]
-           [java.nio ByteBuffer ByteOrder]
-           [bgzf4j BGZFOutputStream]))</pre></td></tr><tr><td class="docs">
+           [java.net URL]
+           [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare write-variants)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype BCFWriter [^String f meta-info header ^DataOutputStream writer]
+</td><td class="codes"><pre class="brush: clojure">(deftype BCFWriter [^URL url meta-info header ^DataOutputStream writer]
   Closeable
   (close [this]
     (.close ^Closeable (.writer this)))
   protocols/IWriter
-  (writer-path [this] (.f this))
+  (writer-url [this] (.url this))
   protocols/IVariantWriter
   (write-variants [this variants]
     (write-variants this variants)))</pre></td></tr><tr><td class="docs">
@@ -2922,8 +2923,8 @@ net.brehaut.ClojureTools = (function (SH) {
    (WRITING-BCF))
 </code></pre>
 </td><td class="codes"><pre class="brush: clojure">(defn ^BCFWriter writer
-  [^String f meta-info header]
-  (let [bos (BGZFOutputStream. f)
+  [f meta-info header]
+  (let [bos (bgzf/bgzf-output-stream f)
         dos (DataOutputStream. bos)
         indexed-meta (-&gt; meta-info
                          (update :contig (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
@@ -2934,7 +2935,7 @@ net.brehaut.ClojureTools = (function (SH) {
                                                      (map-indexed (fn [i m] (assoc m :idx (str (inc i)))) others)))))
                          (update :info (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
                          (update :format (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs))))
-        w (BCFWriter. (.getAbsolutePath (cio/file f)) indexed-meta header dos)]
+        w (BCFWriter. (util/as-url f) indexed-meta header dos)]
     (write-file-header w)
     w))</pre></td></tr><tr><td class="docs"><p>Returns an integer indicating type of input value.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- value-type

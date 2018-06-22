@@ -2878,12 +2878,12 @@ net.brehaut.ClojureTools = (function (SH) {
            [clojure.lang LazilyPersistentVector]))</pre></td></tr><tr><td class="docs"><h2>VCFReader</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare read-variants)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype VCFReader [f meta-info header reader]
+</td><td class="codes"><pre class="brush: clojure">(deftype VCFReader [url meta-info header reader]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
-  (reader-path [this] (.f this))
+  (reader-url [this] (.url this))
   (read [this] (read-variants this))
   (read [this option] (read-variants this option))
   (indexed? [_] false)

@@ -4,16 +4,24 @@ cache:
   directories:
     - $HOME/.m2
 jdk:
+  - oraclejdk10
   - oraclejdk9
   - oraclejdk8
+  - openjdk11
+  - openjdk10
+  - openjdk9
   - openjdk8
-  - openjdk7
 env:
   matrix:
     - VERSION='1.8'
     - VERSION='1.9'
     - VERSION='1.10'
-script: lein with-profile dev,$VERSION test
+before_install:
+  - if [ -f "${JAVA_HOME}/lib/security/cacerts" -a -w  "${JAVA_HOME}/lib/security/cacerts" ]; then rm "${JAVA_HOME}/lib/security/cacerts" && ln -s /etc/ssl/certs/java/cacerts "${JAVA_HOME}/lib/security/cacerts"; fi;
+script:
+    - lein with-profile dev,$VERSION test
+    - lein with-profile dev,1.9 bin
+    - target/cljam version
 jobs:
   include:
     - stage: coverage

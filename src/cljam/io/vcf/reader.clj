@@ -60,12 +60,12 @@
   (= (subs line 0 2) "##"))
 
 (defn- parse-structured-line
-  "e.g. (parse-structured-line \"ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\"\")
+  "e.g. (parse-structured-line \"ID=NS,Number=1,Type=Integer,Description=\\\"Number of Samples With Data\\\"\")
         => {:id \"NS\" :number \"1\" :type \"Integer\"
             :description \"Number of Samples With Data\"}"
   [s]
-  (->> (re-seq #"([\w:/\.\?\-]*)=((?:\"(.*)\")|([\w:/\.\?\-]*))" s)
-       (map (fn [[_ k v1 v2 _]]
+  (->> (re-seq #"([\w:/\.\?\-]*)=(?:(?:\"([^\"]*?)\")|([\w:/\.\?\-]*))" s)
+       (map (fn [[_ k v1 v2]]
               {(->kebab-case-keyword k) (dot->nil (or v2 v1))}))
        (apply merge)))
 

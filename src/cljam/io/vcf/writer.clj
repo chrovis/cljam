@@ -49,57 +49,63 @@
     (cstr/upper-case (name k))
     (->camelCaseString k)))
 
+(defn- add-extra-fields
+  [fields m required-keys]
+  (reduce-kv (fn [fields k v]
+               (conj fields (str (->camelCaseString k) "=\"" v "\"")))
+             fields
+             (apply dissoc m required-keys)))
+
+(defn- pack-meta-info
+  [fields m required-keys]
+  (cstr/join \, (add-extra-fields fields m required-keys)))
+
 (defn- stringify-meta-info-contig
   [m]
-  (->> (cond-> [(str "ID=" (:id m))
-                (str "length=" (:length m))
-                (str "assembly=" (:assembly m))
-                (str "md5=" (:md-5 m))]
-         (:species m) (conj (str "species=\"" (:species m) "\""))
-         (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m)))
-         (:idx m) (conj (str "idx=" (:idx m))))
-       (cstr/join \,)))
+  (-> [(str "ID=" (:id m))
+       (str "length=" (:length m))
+       (str "assembly=" (:assembly m))
+       (str "md5=" (:md-5 m))]
+      (pack-meta-info m [:id :length :assembly :md-5])))
 
 (defn- stringify-meta-info-info
   [m]
-  (->> (cond-> [(str "ID=" (:id m))
-                (str "Number=" (nil->dot (:number m)))
-                (str "Type=" (nil->dot (:type m)))
-                (str "Description=\"" (:description m) "\"")]
-         (:source m) (conj (str "Source=" (:source m)))
-         (:version m) (conj (str "Version=" (:version m)))
-         (:idx m) (conj (str "idx=" (:idx m))))
-       (cstr/join \,)))
+  (-> [(str "ID=" (:id m))
+       (str "Number=" (nil->dot (:number m)))
+       (str "Type=" (nil->dot (:type m)))
+       (str "Description=\"" (:description m) "\"")]
+      (cond->
+        (:source m) (conj (str "Source=" (:source m)))
+        (:version m) (conj (str "Version=" (:version m))))
+      (pack-meta-info m [:id :number :type :description :source :version])))
 
 (defn- stringify-meta-info-filter
   [m]
-  (->> (cond-> [(str "ID=" (:id m))
-                (str "Description=\"" (:description m) "\"")]
-         (:idx m) (conj (str "idx=" (:idx m))))
-       (cstr/join \,)))
+  (-> [(str "ID=" (:id m))
+       (str "Description=\"" (:description m) "\"")]
+      (pack-meta-info m [:id :description])))
 
 (defn- stringify-meta-info-format
   [m]
-  (->> (cond-> [(str "ID=" (:id m))
-                (str "Number=" (nil->dot (:number m)))
-                (str "Type=" (nil->dot (:type m)))
-                (str "Description=\"" (:description m) "\"")]
-         (:idx m) (conj (str "idx=" (:idx m))))
-       (cstr/join \,)))
+  (-> [(str "ID=" (:id m))
+       (str "Number=" (nil->dot (:number m)))
+       (str "Type=" (nil->dot (:type m)))
+       (str "Description=\"" (:description m) "\"")]
+      (pack-meta-info m [:id :number :type :description])))
 
 (defn- stringify-meta-info-alt
   [m]
-  (->> [(str "ID=" (:id m))
-        (str "Description=\"" (:description m) "\"")]
-       (cstr/join \,)))
+  (-> [(str "ID=" (:id m))
+       (str "Description=\"" (:description m) "\"")]
+      (pack-meta-info m [:id :description])))
 
 (defn- stringify-meta-info-sample
   [m]
-  (->> [(str "ID=" (:id m))
-        (str "Genomes=" (:genomes m))
-        (str "Mixture=" (:mixture m))
-        (str "Description=\"" (:description m) "\"")]
-       (cstr/join \,)))
+  (-> [(str "ID=" (:id m))
+       (str "Genomes=" (:genomes m))
+       (str "Mixture=" (:mixture m))
+       (str "Description=\"" (:description m) "\"")]
+      (pack-meta-info m [:id :genomes :mixture :description])))
 
 (defn- stringify-meta-info-pedigree
   [m]

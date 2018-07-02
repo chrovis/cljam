@@ -638,8 +638,8 @@
           {:id "AA", :number 1, :type "String", :description "Ancestral Allele"}
           {:id "DB", :number 0, :type "Flag", :description "dbSNP membership, build 129"}
           {:id "H2", :number 0, :type "Flag", :description "HapMap2 membership"}]
-   :filter [{:id "q10", :description "Quality below 10"}
-            {:id "s50", :description "Less than 50% of samples have data"}]
+   :filter [{:id "q10", :description "Quality below 10", :min-quality "10"}
+            {:id "s50", :description "Less than 50% of samples have data" :threshold "50"}]
    :format [{:id "GT", :number 1, :type "String", :description "Genotype"}
             {:id "GQ", :number 1, :type "Integer", :description "Genotype Quality"}
             {:id "DP", :number 1, :type "Integer", :description "Read Depth"}

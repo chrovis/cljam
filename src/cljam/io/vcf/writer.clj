@@ -63,6 +63,8 @@
 (defn- stringify-meta-info-contig
   [m]
   (-> [(str "ID=" (:id m))]
+      (cond->
+        (:idx m) (conj (str "idx=" (:idx m))))
       (pack-meta-info m [:id])))
 
 (defn- stringify-meta-info-info
@@ -73,14 +75,17 @@
        (str "Description=\"" (:description m) "\"")]
       (cond->
         (:source m) (conj (str "Source=\"" (:source m) "\""))
-        (:version m) (conj (str "Version=\"" (:version m) "\"")))
-      (pack-meta-info m [:id :number :type :description :source :version])))
+        (:version m) (conj (str "Version=\"" (:version m) "\""))
+        (:idx m) (conj (str "idx=" (:idx m))))
+      (pack-meta-info m [:id :number :type :description :source :version :idx])))
 
 (defn- stringify-meta-info-filter
   [m]
   (-> [(str "ID=" (:id m))
        (str "Description=\"" (:description m) "\"")]
-      (pack-meta-info m [:id :description])))
+      (cond->
+        (:idx m) (conj (str "idx=" (:idx m))))
+      (pack-meta-info m [:id :description :idx])))
 
 (defn- stringify-meta-info-format
   [m]
@@ -88,7 +93,9 @@
        (str "Number=" (nil->dot (:number m)))
        (str "Type=" (nil->dot (:type m)))
        (str "Description=\"" (:description m) "\"")]
-      (pack-meta-info m [:id :number :type :description])))
+      (cond->
+        (:idx m) (conj (str "idx=" (:idx m))))
+      (pack-meta-info m [:id :number :type :description :idx])))
 
 (defn- stringify-meta-info-alt
   [m]

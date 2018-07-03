@@ -5,13 +5,10 @@
 
 (deftest stringify-meta-info-pedigree
   (is (= (#'vcf-writer/stringify-structured-line :pedigree
-                                                 {:name-0 "G0-ID"
+                                                 {:id "SampleID"
+                                                  :name-0 "G0-ID"
                                                   :name-1 "G1-ID"})
-         "Name_0=G0-ID,Name_1=G1-ID"))
-  (is (= (#'vcf-writer/stringify-structured-line :pedigree
-                                                 {:name-1 "G1-ID"
-                                                  :name-0 "G0-ID"})
-         "Name_0=G0-ID,Name_1=G1-ID")))
+         "ID=SampleID,name0=\"G0-ID\",name1=\"G1-ID\"")))
 
 (deftest stringify-data-line-alt
   (is (= (#'vcf-writer/stringify-data-line-alt ["C"]) "C"))

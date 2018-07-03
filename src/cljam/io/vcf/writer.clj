@@ -103,10 +103,8 @@
 
 (defn- stringify-meta-info-pedigree
   [m]
-  (->> (range (count m))
-       (map (fn [i]
-              (str "Name_" i "=" (get m (keyword (str "name-" i))))))
-       (cstr/join \,)))
+  (-> [(str "ID=" (:id m))]
+      (pack-meta-info m [:id])))
 
 (defn stringify-structured-line
   [k m]

@@ -72,8 +72,8 @@
        (str "Type=" (nil->dot (:type m)))
        (str "Description=\"" (:description m) "\"")]
       (cond->
-        (:source m) (conj (str "Source=" (:source m)))
-        (:version m) (conj (str "Version=" (:version m))))
+        (:source m) (conj (str "Source=\"" (:source m) "\""))
+        (:version m) (conj (str "Version=\"" (:version m) "\"")))
       (pack-meta-info m [:id :number :type :description :source :version])))
 
 (defn- stringify-meta-info-filter

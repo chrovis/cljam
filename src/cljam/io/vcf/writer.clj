@@ -62,11 +62,8 @@
 
 (defn- stringify-meta-info-contig
   [m]
-  (-> [(str "ID=" (:id m))
-       (str "length=" (:length m))
-       (str "assembly=" (:assembly m))
-       (str "md5=" (:md-5 m))]
-      (pack-meta-info m [:id :length :assembly :md-5])))
+  (-> [(str "ID=" (:id m))]
+      (pack-meta-info m [:id])))
 
 (defn- stringify-meta-info-info
   [m]
@@ -101,11 +98,8 @@
 
 (defn- stringify-meta-info-sample
   [m]
-  (-> [(str "ID=" (:id m))
-       (str "Genomes=" (:genomes m))
-       (str "Mixture=" (:mixture m))
-       (str "Description=\"" (:description m) "\"")]
-      (pack-meta-info m [:id :genomes :mixture :description])))
+  (-> [(str "ID=" (:id m))]
+      (pack-meta-info m [:id])))
 
 (defn- stringify-meta-info-pedigree
   [m]

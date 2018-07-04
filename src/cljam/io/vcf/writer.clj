@@ -70,7 +70,7 @@
         (:url m) (conj (str "URL=" (:url m)))
         (:species m) (conj (str "species=\"" (:species m) "\""))
         (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m)))
-        (:idx m) (conj (str "idx=" (:idx m))))
+        (:idx m) (conj (str "IDX=" (:idx m))))
       (pack-meta-info m [:id :length :assembly :md-5 :url :species :taxonomy :idx])))
 
 (defn- stringify-meta-info-info
@@ -82,7 +82,7 @@
       (cond->
         (:source m) (conj (str "Source=\"" (:source m) "\""))
         (:version m) (conj (str "Version=\"" (:version m) "\""))
-        (:idx m) (conj (str "idx=" (:idx m))))
+        (:idx m) (conj (str "IDX=" (:idx m))))
       (pack-meta-info m [:id :number :type :description :source :version :idx])))
 
 (defn- stringify-meta-info-filter
@@ -90,7 +90,7 @@
   (-> [(str "ID=" (:id m))
        (str "Description=\"" (:description m) "\"")]
       (cond->
-        (:idx m) (conj (str "idx=" (:idx m))))
+        (:idx m) (conj (str "IDX=" (:idx m))))
       (pack-meta-info m [:id :description :idx])))
 
 (defn- stringify-meta-info-format
@@ -100,7 +100,7 @@
        (str "Type=" (nil->dot (:type m)))
        (str "Description=\"" (:description m) "\"")]
       (cond->
-        (:idx m) (conj (str "idx=" (:idx m))))
+        (:idx m) (conj (str "IDX=" (:idx m))))
       (pack-meta-info m [:id :number :type :description :idx])))
 
 (defn- stringify-meta-info-alt

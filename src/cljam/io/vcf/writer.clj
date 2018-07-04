@@ -2,7 +2,7 @@
   "A type of VCF writer and internal functions to write VCF contents. See
   https://samtools.github.io/hts-specs/ for the detail VCF specifications."
   (:require [clojure.string :as cstr]
-            [camel-snake-kebab.core :refer [->camelCaseString]]
+            [camel-snake-kebab.core :refer [->camelCaseString ->PascalCaseString]]
             [cljam.io.protocols :as protocols]
             [cljam.io.vcf.util :as vcf-util])
   (:import [java.io Closeable BufferedWriter]))
@@ -52,7 +52,7 @@
 (defn- add-extra-fields
   [fields m required-keys]
   (reduce-kv (fn [fields k v]
-               (conj fields (str (->camelCaseString k) "=\"" v "\"")))
+               (conj fields (str (->PascalCaseString k) "=\"" v "\"")))
              fields
              (apply dissoc m required-keys)))
 

@@ -27,4 +27,4 @@
                                                   :mixture "1."
                                                   :description "test"
                                                   :note "extra note"})
-         "ID=Blood,genomes=\"Germline\",mixture=\"1.\",description=\"test\",note=\"extra note\"")))
+         "ID=Blood,genomes=\"Germline\",mixture=\"1.\",description=\"test\",Note=\"extra note\"")))

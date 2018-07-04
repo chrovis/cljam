@@ -638,12 +638,22 @@
           {:id "AA", :number 1, :type "String", :description "Ancestral Allele"}
           {:id "DB", :number 0, :type "Flag", :description "dbSNP membership, build 129"}
           {:id "H2", :number 0, :type "Flag", :description "HapMap2 membership"}]
-   :filter [{:id "q10", :description "Quality below 10"}
-            {:id "s50", :description "Less than 50% of samples have data"}]
+   :filter [{:id "q10", :description "Quality below 10", :min-quality "10"}
+            {:id "s50", :description "Less than 50% of samples have data" :threshold "50"}]
    :format [{:id "GT", :number 1, :type "String", :description "Genotype"}
             {:id "GQ", :number 1, :type "Integer", :description "Genotype Quality"}
             {:id "DP", :number 1, :type "Integer", :description "Read Depth"}
-            {:id "HQ", :number 2, :type "Integer", :description "Haplotype Quality"}]})
+            {:id "HQ", :number 2, :type "Integer", :description "Haplotype Quality"}]
+   :sample [{:id "Sample1", :assay "WholeGenome", :ethnicity "AFR", :disease "None",
+             :description "Patient germline genome from unaffected", :doi "url"}
+            {:id "Sample2", :assay "Exome", :ethnicity "CEU", :disease "Cancer",
+             :tissue "Breast", :description "European patient exome from breast cancer"}
+            {:id "Blood", :genomes "Germline", :mixture "1.", :description "Patient germline genome"}
+            {:id "TissueSample", :genomes "Germline", :mixture ".3", :description "Patient germline genome;Patient tumor genome"}]
+   :pedigree [{:id "TumourSample", :original "GermlineID"}
+              {:id "SomaticNonTumour", :original "GermlineID"}
+              {:id "ChildID", :father "FatherID", :mother "MotherID"}
+              {:id "SampleID", :name-1 "Ancestor_1", :name-2 "Ancestor_2", :name-3 "Ancestor_3"}]})
 
 (def test-vcf-v4_3-header
   ["CHROM" "POS" "ID" "REF" "ALT" "QUAL" "FILTER" "INFO" "FORMAT" "NA00001"

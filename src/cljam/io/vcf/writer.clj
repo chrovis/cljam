@@ -64,8 +64,14 @@
   [m]
   (-> [(str "ID=" (:id m))]
       (cond->
+        (:length m) (conj (str "length=" (:length m)))
+        (:assembly m) (conj (str "assembly=" (:assembly m)))
+        (:md-5 m) (conj (str "md5=" (:md-5 m)))
+        (:url m) (conj (str "URL=" (:url m)))
+        (:species m) (conj (str "species=\"" (:species m) "\""))
+        (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m)))
         (:idx m) (conj (str "idx=" (:idx m))))
-      (pack-meta-info m [:id])))
+      (pack-meta-info m [:id :length :assembly :md-5 :url :species :taxonomy :idx])))
 
 (defn- stringify-meta-info-info
   [m]
@@ -106,7 +112,11 @@
 (defn- stringify-meta-info-sample
   [m]
   (-> [(str "ID=" (:id m))]
-      (pack-meta-info m [:id])))
+      (cond->
+        (:genomes m) (conj (str "Genomes=" (:genomes m)))
+        (:mixture m) (conj (str "Mixture=" (:mixture m))))
+      (conj (str "Description=\"" (:description m) "\""))
+      (pack-meta-info m [:id :genomes :mixture :description])))
 
 (defn- stringify-meta-info-pedigree
   [m]

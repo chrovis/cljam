@@ -64,10 +64,26 @@
         => {:id \"NS\" :number \"1\" :type \"Integer\"
             :description \"Number of Samples With Data\"}"
   [s]
-  (->> (re-seq #"([\w:/\.\?\-]*)=(?:(?:\"([^\"]*?)\")|([\w:/\.\?\-]*))" s)
-       (map (fn [[_ k v1 v2]]
-              {(->kebab-case-keyword k) (dot->nil (or v2 v1))}))
-       (apply merge)))
+  (letfn [(parse-string-field [s]
+            (loop [s s, acc []]
+              (if-let [[_ pre c post] (re-matches #"([^\\\"]*?)([\\\"])(.*)" s)]
+                (if (= c "\\")
+                  ;; expecting one of the special characters occurs immediately after \\
+                  (if (#{\\ \"} (first post))
+                    (recur (subs post 1) (conj acc pre (first post)))
+                    (let [msg (str "Either '\\' or '\"' was expected immediately after '\\', "
+                                   "but got '" (first post) "'")]
+                      (throw (RuntimeException. msg))))
+                  ;; c == \", that is, we are now at the end of the string field
+                  [nil (cstr/join (conj acc pre)) (cstr/replace post #"^," "")])
+                (throw (RuntimeException. "Unexpected end of string field")))))]
+    (loop [s s, m {}]
+      (if-let [[_ k more] (some->> s (re-matches #"([^=]+?)=(.*)"))]
+        (let [[_ v more] (if (= (first more) \")
+                           (parse-string-field (subs more 1))
+                           (re-matches #"([^,]*?)(?:,(.*))?" more))]
+          (recur more (assoc m (->kebab-case-keyword k) (dot->nil v))))
+        m))))
 
 (defn- parse-meta-info-contig
   [m]

@@ -120,8 +120,14 @@
 
 (defn- stringify-meta-info-pedigree
   [m]
-  (-> [(str "ID=" (:id m))]
-      (pack-meta-info m [:id])))
+  (->> (reduce-kv (fn [fields k v]
+                    (conj fields
+                          (if-let [[_ i] (re-matches #"name-(\d+)" (name k))]
+                            (str "Name_" i "=" v)
+                            (str (->PascalCaseString k) "=" v))))
+                  [(str "ID=" (:id m))]
+                  (dissoc m :id))
+       (cstr/join \,)))
 
 (defn stringify-structured-line
   [k m]

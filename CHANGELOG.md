@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Added
+
+* Support extra fields for VCF/BCF meta info. [#135](https://github.com/chrovis/cljam/pull/135)
+
 ## [0.6.0] - 2018-06-22
 
 ### BREAKING

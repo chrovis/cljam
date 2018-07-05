@@ -73,7 +73,7 @@
         (:assembly m) (conj (str "assembly=" (:assembly m)))
         (:md-5 m) (conj (str "md5=" (:md-5 m)))
         (:url m) (conj (str "URL=" (:url m)))
-        (:species m) (conj (str "species=\"" (:species m) "\""))
+        (:species m) (conj (str "species=\"" (escape-special-chars (:species m)) "\""))
         (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m)))
         (:idx m) (conj (str "IDX=" (:idx m))))
       (pack-meta-info m [:id :length :assembly :md-5 :url :species :taxonomy :idx])))

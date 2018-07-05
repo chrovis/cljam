@@ -649,7 +649,7 @@
             {:id "Sample2", :assay "Exome", :ethnicity "CEU", :disease "Cancer",
              :tissue "Breast", :description "European patient exome from breast cancer"}
             {:id "Blood", :genomes "Germline", :mixture "1.", :description "Patient germline genome"}
-            {:id "TissueSample", :genomes "Germline", :mixture ".3", :description "Patient germline genome;Patient tumor genome"}]
+            {:id "TissueSample", :genomes "Germline;Tumor", :mixture ".3;.7", :description "Patient germline genome;Patient tumor genome"}]
    :pedigree [{:id "TumourSample", :original "GermlineID"}
               {:id "SomaticNonTumour", :original "GermlineID"}
               {:id "ChildID", :father "FatherID", :mother "MotherID"}

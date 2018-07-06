@@ -49,10 +49,15 @@
     (cstr/upper-case (name k))
     (->camelCaseString k)))
 
+(defn- escape-special-chars [s]
+  (-> s (cstr/replace "\\" "\\\\") (cstr/replace "\"" "\\\"")))
+
 (defn- add-extra-fields
   [fields m required-keys]
   (reduce-kv (fn [fields k v]
-               (conj fields (str (->PascalCaseString k) "=\"" v "\"")))
+               (conj fields
+                     (str (->PascalCaseString k) "=\""
+                          (escape-special-chars v) "\"")))
              fields
              (apply dissoc m required-keys)))
 
@@ -68,7 +73,7 @@
         (:assembly m) (conj (str "assembly=" (:assembly m)))
         (:md-5 m) (conj (str "md5=" (:md-5 m)))
         (:url m) (conj (str "URL=" (:url m)))
-        (:species m) (conj (str "species=\"" (:species m) "\""))
+        (:species m) (conj (str "species=\"" (escape-special-chars (:species m)) "\""))
         (:taxonomy m) (conj (str "taxonomy=" (:taxonomy m)))
         (:idx m) (conj (str "IDX=" (:idx m))))
       (pack-meta-info m [:id :length :assembly :md-5 :url :species :taxonomy :idx])))
@@ -78,17 +83,17 @@
   (-> [(str "ID=" (:id m))
        (str "Number=" (nil->dot (:number m)))
        (str "Type=" (nil->dot (:type m)))
-       (str "Description=\"" (:description m) "\"")]
+       (str "Description=\"" (escape-special-chars (:description m)) "\"")]
       (cond->
-        (:source m) (conj (str "Source=\"" (:source m) "\""))
-        (:version m) (conj (str "Version=\"" (:version m) "\""))
+        (:source m) (conj (str "Source=\"" (escape-special-chars (:source m)) "\""))
+        (:version m) (conj (str "Version=\"" (escape-special-chars (:version m)) "\""))
         (:idx m) (conj (str "IDX=" (:idx m))))
       (pack-meta-info m [:id :number :type :description :source :version :idx])))
 
 (defn- stringify-meta-info-filter
   [m]
   (-> [(str "ID=" (:id m))
-       (str "Description=\"" (:description m) "\"")]
+       (str "Description=\"" (escape-special-chars (:description m)) "\"")]
       (cond->
         (:idx m) (conj (str "IDX=" (:idx m))))
       (pack-meta-info m [:id :description :idx])))
@@ -98,7 +103,7 @@
   (-> [(str "ID=" (:id m))
        (str "Number=" (nil->dot (:number m)))
        (str "Type=" (nil->dot (:type m)))
-       (str "Description=\"" (:description m) "\"")]
+       (str "Description=\"" (escape-special-chars (:description m)) "\"")]
       (cond->
         (:idx m) (conj (str "IDX=" (:idx m))))
       (pack-meta-info m [:id :number :type :description :idx])))
@@ -106,7 +111,7 @@
 (defn- stringify-meta-info-alt
   [m]
   (-> [(str "ID=" (:id m))
-       (str "Description=\"" (:description m) "\"")]
+       (str "Description=\"" (escape-special-chars (:description m)) "\"")]
       (pack-meta-info m [:id :description])))
 
 (defn- stringify-meta-info-sample
@@ -115,7 +120,7 @@
       (cond->
         (:genomes m) (conj (str "Genomes=" (:genomes m)))
         (:mixture m) (conj (str "Mixture=" (:mixture m))))
-      (conj (str "Description=\"" (:description m) "\""))
+      (conj (str "Description=\"" (escape-special-chars (:description m)) "\""))
       (pack-meta-info m [:id :genomes :mixture :description])))
 
 (defn- stringify-meta-info-pedigree

@@ -5,87 +5,80 @@
             [cljam.io.sam :as sam]
             [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.sam.util.flag :as flag]
+            [cljam.io.sam.util.quality :as qual]
             [cljam.io.sam.util.refs :as refs]
-            [cljam.io.sequence :as cseq]))
+            [cljam.io.sequence :as cseq])
+  (:import [cljam.io.protocols SAMAlignment]
+           [java.io BufferedWriter]))
 
-(defn to-mpileup
-  "Stringify mpileup sequence."
-  [x]
-  (if (vector? x)
-    (let [[y op xs] x] (apply str y op (count xs) xs))
-    (str x)))
-
-(defn substitute-seq
-  "Substitute sequence with mpileup index."
-  [[^Character r & refs] ^String s [op x xs]]
-  (letfn [(get-char [i] (if (number? i) (let [c (.charAt s i)] (if (= c r) \. c)) i))]
-    (case op
-      :m (get-char x)
-      :d [(get-char x) \- (take (count xs) refs)]
-      :i [(get-char x) \+ (map #(.charAt s %) xs)]
-      x)))
-
-(defn substitute-qual
-  "Substitute base quality with mpileup index."
-  [^String q [op x]]
-  (if (and (number? x) (not= q "*")) (.charAt q x) \~))
+(defn- cover-locus? [^long pos ^SAMAlignment aln]
+  (<= (.pos aln) pos (.end aln))) ;; TODO: end?
 
 (defn pileup-seq
-  "Returns a lazy sequence that each element contains reads piled-up at the locus."
-  [^long start ^long end reads]
-  (letfn [(cover-locus? [pos aln]
-            (<= (:pos aln) pos (:end aln)))
-          (step [pos buf alns]
-            (lazy-seq
-             (when (< pos end)
-               (let [[i o] (split-with (partial cover-locus? (inc pos)) alns)
-                     b (doall (concat (filter #(<= (inc pos) (:end %)) buf) i))]
-                 (cons b (step (inc pos) b o))))))]
-    (->> reads
-         (sequence
-          (comp
-           (remove #(empty? (:cigar %)))
-           (drop-while #(< (:end %) start))))
-         (step (dec start) []))))
+  "Returns a lazy sequence that each element contains [position (reads piled-up at the locus)]."
+  [^long start ^long end alns]
+  (let [step (fn step [^long pos prev-buf rest-alns]
+               (lazy-seq
+                (when (< (dec pos) end)
+                  (let [[i rests] (split-with (partial cover-locus? pos) rest-alns)
+                        p (some-> rests ^SAMAlignment first .pos)
+                        [b :as buf] (into (filterv #(<= pos (.end ^SAMAlignment %)) prev-buf) i)
+                        next-pos (if (and p (not b)) p (inc pos))]
+                    (if b
+                      (cons [pos buf] (step next-pos buf rests))
+                      (when (and p (<= p end))
+                        (step next-pos buf rests)))))))
+        [x :as xs] (drop-while #(< (.end ^SAMAlignment %) start) alns)]
+    (when x
+      (step (max start (.pos ^SAMAlignment x)) [] xs))))
 
-(defrecord MPileupElement [^String rname ^long pos ^Character ref pile])
+(defn- quals-at-ref
+  [idx ^String qual]
+  (let [empty-qual? (and (= (.length qual) 1)
+                         (= (.charAt qual 0) \*))]
+    (if empty-qual?
+      (vec (repeat (count idx) 93)) ;; \~
+      (mapv (fn [[op x xs]]
+              (if (number? x) (qual/fastq-char->phred-byte (.charAt qual x)) 93)) idx))))
 
-(defn gen-mpileup
-  "Compute mpileup info from piled-up reads and reference."
-  [^String rname ^long locus [^Character ref-base :as refs] reads]
-  (->> reads
-       (map (fn gen-mpileup-seq [{:keys [^long pos seq qual cig-index] :as aln}]
-              {:qual (- (int (substitute-qual qual (nth cig-index (- locus pos)))) 33)
-               :seq (substitute-seq refs seq (nth cig-index (- locus pos)))
-               :read aln}))
-       (MPileupElement. rname locus ref-base)))
+(defn- seqs-at-ref
+  [idx ^String s]
+  (mapv (fn [[op x xs]]
+          (let [c (if (number? x) (.charAt s x) x)]
+            (case op
+              :m [c]
+              :d [c xs]
+              :i [c (subs s (first xs) (last xs))]))) idx))
 
-(defn pileup*
-  "Internal mpileup function independent from I/O.
-   Can take multiple alignments seqs."
-  [refseq {:keys [chr start end]} & aln-seqs]
-  (->> aln-seqs
-       (map
-        (fn [alns]
-          (->> alns
-               (map (fn [a] (assoc a :cig-index (cigar/to-index (:cigar a)))))
-               (pileup-seq start end))))
-       (apply map
-              (fn [index refs & plps]
-                (map (fn [plp] (gen-mpileup chr index refs plp)) plps))
-              (range start (inc end))
-              (partition 100 1 (concat refseq (repeat \N))))))
+(defn index-cigar [^SAMAlignment aln]
+  (let [idx (cigar/to-index (.cigar aln))]
+    (assoc aln
+           :seqs-at-ref (seqs-at-ref idx (:seq aln))
+           :quals-at-ref (quals-at-ref idx (.qual aln)))))
 
 (defn basic-mpileup-pred
   "Basic predicate function for filtering alignments for mpileup."
-  [{:keys [flag]}]
-  (and flag
-       (zero? (bit-and (flag/encoded #{:unmapped :filtered-out :duplicated :supplementary :secondary}) flag))
-       (or (not (flag/multiple? flag)) (flag/properly-aligned? flag))))
+  [^long min-mapq]
+  (fn [^SAMAlignment aln]
+    (let [flag (.flag aln)]
+      (and flag
+           (zero? (bit-and (flag/encoded #{:unmapped :filtered-out :duplicated :supplementary :secondary}) flag))
+           (or (not (flag/multiple? flag)) (flag/properly-aligned? flag))
+           (not-empty (.cigar aln))
+           (<= min-mapq (.mapq aln))))))
+
+(defn gen-pile [chr [ref-pos alns]]
+  {:rname chr
+   :pos ref-pos
+   :pile (mapv (fn seq-and-qual [^SAMAlignment aln]
+                 (let [rel-pos (- ref-pos (.pos aln))]
+                   {:qual ((:quals-at-ref aln) rel-pos)
+                    :seq ((:seqs-at-ref aln) rel-pos)
+                    :read aln})) alns)})
 
 (defn- correct-qual
   "Correct quality of two overlapped mate reads by setting zero quality for one of the base."
-  [{s1 :seq q1 :qual :as r1} {s2 :seq q2 :qual :as r2}]
+  [{[s1] :seq q1 :qual :as r1} {[s2] :seq q2 :qual :as r2}]
   (if (= s1 s2)
     [(assoc r1 :qual (min 200 (+ q1 q2))) (assoc r2 :qual 0)]
     (if (<= q2 q1)
@@ -94,83 +87,98 @@
 
 (defn correct-overlapped-reads
   "Correct quality of two overlapped mate reads in piled-up reads."
-  [pile]
-  (if (<= (count (:pile pile)) 1)
-    pile
-    (->> (:pile pile)
-         (group-by (comp :qname :read))
-         (mapcat
-          (fn [[qname xs]]
-            (if (<= (count xs) 1) xs (apply correct-qual xs))))
-         (assoc pile :pile))))
+  [{:keys [pile] :as p}]
+  (if (<= (count pile) 1)
+    p
+    (->> pile
+         (group-by (fn [x] (.qname ^SAMAlignment (:read x))))
+         (into [] (mapcat
+                   (fn [[qname xs]]
+                     (if (<= (count xs) 1) xs (apply correct-qual xs)))))
+         (assoc p :pile))))
 
 (defn filter-by-base-quality
   "Returns a predicate for filtering piled-up reads by base quality at its position."
   [min-base-quality]
-  (fn [p] (update p :pile (fn [pp] (filter #(<= min-base-quality (:qual %)) pp)))))
-
-(defn transpose-pile
-  "Converts a pile {:pile [{:seq SEQ, :qual QUAL, :read READ}]}
-  into {:seq [], :qual [], :reads []}."
-  [p]
-  (if (zero? (count (:pile p)))
-    (assoc p :seq [] :qual [] :reads [] :count 0)
-    (->> (:pile p)
-         (map (juxt :seq #(char (+ (:qual %) 33)) :read))
-         (apply map vector)
-         (zipmap [:seq :qual :reads])
-         (merge p {:count (count (:pile p))}))))
+  (fn [p] (update p :pile (fn [pp] (filterv #(<= min-base-quality (:qual %)) pp)))))
 
 (defn pileup
-  "Returns a lazy sequence of MPileupElement calculated from FASTA and BAM."
-  ([bam-reader region]
-   (pileup nil bam-reader region))
-  ([ref-reader bam-reader {:keys [chr start end] :or {start -1 end -1}}]
-   (try
-     (if-let [r (refs/ref-by-name (sam/read-refs bam-reader) chr)]
-       (let [s (if (neg? start) 1 start)
-             e (if (neg? end) (:len r) end)
-             refseq (if ref-reader
-                      (cseq/read-sequence ref-reader {:chr chr :start s :end e})
-                      (repeat \N))]
-         (->> (sam/read-alignments bam-reader {:chr chr :start s :end e})
-              (sequence
-               (comp
-                (filter basic-mpileup-pred)
-                (filter (fn [a] (<= 0 (:mapq a))))))
-              (pileup* refseq {:chr chr :start s :end e})
-              (sequence
-               (comp (map first)
-                     (map correct-overlapped-reads)
-                     (map (filter-by-base-quality 13))
-                     (map transpose-pile)
-                     (map (fn [p] (update p :seq (fn [s] (map to-mpileup s))))))))))
-     (catch bgzf4j.BGZFException _
-       (throw (RuntimeException. "Invalid file format"))))))
+  ([sam-reader region]
+   (pileup sam-reader region {}))
+  ([sam-reader
+    {:keys [chr start end] :or {start 1 end Integer/MAX_VALUE}}
+    {:keys [min-base-quality min-map-quality] :or {min-base-quality 13 min-map-quality 0}}]
+  (when-let [len (:len (refs/ref-by-name (sam/read-refs sam-reader) chr))]
+    (let [s (max 1 start)
+          e (min len end)]
+      (->> {:chr chr :start s :end e}
+           (sam/read-alignments sam-reader)
+           (sequence
+            (comp
+             (filter (basic-mpileup-pred min-map-quality))
+             (map index-cigar)))
+           (pileup-seq s e)
+           (sequence
+            (comp (map (partial gen-pile chr))
+                  (map correct-overlapped-reads)
+                  (map (filter-by-base-quality min-base-quality))
+                  (filter (comp seq :pile)))))))))
+
+(defn align-pileup-seqs
+  "Align multiple pileup seqs."
+  [& xs]
+  (if (<= (count xs) 1)
+    (map (fn [{:keys [pos] :as m}] [pos [m]]) (first xs))
+    (letfn [(step [xs]
+              (lazy-seq
+               (when (some seq xs)
+                 (let [min-pos (apply min (keep (comp :pos first) xs))]
+                   (cons [min-pos (mapv (fn [[{:keys [pos] :as m}]] (when (= pos min-pos) m)) xs)]
+                         (step (mapv (fn [[{:keys [pos]} :as ys]] (if (= pos min-pos) (next ys) ys)) xs)))))))]
+      (step xs))))
 
 ;; Writing
 ;; -------
 
-(defn- write-line!
-  [^java.io.BufferedWriter w line]
-  (.write w (cstr/join \tab [(:rname line)
-                             (:pos line)
-                             (:ref line)
-                             (:count line)
-                             (cstr/join (:seq line))
-                             (cstr/join (:qual line))]))
-  (.newLine w))
+(defn ^String stringify-mpileup-read
+  [ref-reader rname pos ref {:keys [seq read]}]
+  (let [forward? (not (flag/reversed? (:flag read)))
+        case-fn (if forward? cstr/upper-case cstr/lower-case)
+        sb (StringBuilder.)
+        base (first seq)]
+    (when (= (:pos read) pos)
+      (.append sb \^)
+      (.append sb (qual/phred-byte->fastq-char (:mapq read))))
+    (if (= base ref)
+      (.append sb (if forward? \. \,))
+      (.append sb (case-fn base)))
+    (when-let [x (second seq)]
+      (if (number? x)
+        (do (.append sb \-)
+            (.append sb x)
+            (.append sb (case-fn
+                         (if ref-reader
+                           (cseq/read-sequence ref-reader {:chr rname :start (inc pos) :end (+ pos x)})
+                           (apply str (repeat x \N))))))
+        (do (.append sb \+)
+            (.append sb (count x))
+            (.append sb (case-fn x)))))
+    (when (= (:end read) pos)
+      (.append sb \$))
+    (str sb)))
+
+(defn ^String stringify-mpileup-line
+  [ref-reader {:keys [rname pos pile]}]
+  (let [ref-base (some-> ref-reader
+                         (cseq/read-sequence {:chr rname :start pos :end pos} {:mask? true}))
+        ref-char (some-> ref-base cstr/upper-case first)
+        bases (cstr/join (map (partial stringify-mpileup-read ref-reader rname pos ref-char) pile))
+        quals (cstr/join (map (comp qual/phred-byte->fastq-char :qual) pile))]
+    (cstr/join \tab [rname pos (or ref-base "N") (count pile) bases quals])))
 
 (defn create-mpileup
   "Creates a mpileup file from the BAM file."
-  [f fa-rdr bam-reader]
-  (try
-    (with-open [w (cio/writer f)]
-      (doseq [rname (map :name (sam/read-refs bam-reader))]
-        (doseq [line (pileup fa-rdr bam-reader {:chr rname})]
-          (when-not (zero? (:count line))
-            (write-line! w line)))))
-    (catch Exception e (do
-                         (cio/delete-file f)
-                         (logging/error "Failed to create mpileup")
-                         (throw e)))))
+  [sam-reader ref-reader ^BufferedWriter out-writer region]
+  (doseq [elm (pileup sam-reader region)]
+    (.write out-writer (stringify-mpileup-line ref-reader elm))
+    (.newLine out-writer)))

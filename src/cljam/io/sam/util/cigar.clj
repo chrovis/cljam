@@ -39,10 +39,10 @@
       (if (and l op)
         (condp get op
           #{\M \= \X} (recur xs (+ l r) (+ l s) (concat! idx (map (fn [x] [:m x]) (range s (+ l s)))))
-          #{\D} (recur xs (+ r l) s (concat! (update-last! idx (fn [x] [:d x (range r (+ l r))])) (repeat l [:m \*])))
+          #{\D} (recur xs (+ r l) s (concat! (update-last! idx (fn [x] [:d x l])) (repeat l [:m \*])))
           #{\N} (recur xs (+ r l) s (concat! idx (repeat l [:m \>])))
           #{\S} (recur xs r (+ s l) idx)
-          #{\I} (recur xs r (+ s l) (update-last! idx (fn [x] [:i x (range s (+ l s))]))))
+          #{\I} (recur xs r (+ s l) (update-last! idx (fn [x] [:i x [s (+ l s)]]))))
         (persistent! idx)))))
 
 (def to-index (memoize to-index*))

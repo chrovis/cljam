@@ -2,10 +2,10 @@
   "Utility functions for phred quality strings."
   (:import [java.nio ByteBuffer CharBuffer]))
 
-(defmacro fastq-char->phred-byte [ch]
+(definline fastq-char->phred-byte [ch]
   `(byte (- (int ~ch) 33)))
 
-(defmacro phred-byte->fastq-char [b]
+(definline phred-byte->fastq-char [b]
   `(unchecked-char (unchecked-add ~b 33)))
 
 (defn fastq->phred ^bytes [^String fastq]

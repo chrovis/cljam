@@ -201,8 +201,6 @@
                 fr (cseq/fasta-reader test-fa-file)]
       (let [mplp-ref (doall (plp/mpileup br {:chr "ref"}))
             mplp-ref2 (doall (plp/mpileup br {:chr "ref2"}))]
-        (is (= (repeat 39 "ref")
-               (map :rname mplp-ref)))
         (is (= (filter pos? test-bam-pileup-ref)
                (map (comp count :pile) mplp-ref)))
         (is (= (->> test-bam-pileup-ref
@@ -211,21 +209,20 @@
                     (map (comp inc first)))
                (map :pos mplp-ref)))
         (is (= (remove empty? test-bam-mpileup-seq-ref-freq)
-               (map #(frequencies (map (comp first :seq) (:pile %))) mplp-ref)))
+               (map #(frequencies (map :base (:pile %))) mplp-ref)))
         (is (= (keep #(seq (map qual/fastq-char->phred-byte %)) test-bam-mpileup-qual-ref)
                (map #(map :qual (:pile %)) mplp-ref)))
         (is (= (filter pos? test-bam-pileup-ref2)
                (map (comp count :pile) mplp-ref2)))
         (is (= (remove empty? test-bam-mpileup-seq-ref2-freq)
-               (map #(frequencies (map (comp first :seq) (:pile %))) mplp-ref2)))))))
+               (map #(frequencies (map :base (:pile %))) mplp-ref2)))))))
 
 (deftest mpileup-region
   (with-open [br (sam/bam-reader test-sorted-bam-file)]
-    ;; 1234567890123456789012345678901234567890
-    ;; aggttttataaaacaattaagtctacagagcaactacgcg
     (let [mplp-ref1 (doall (plp/mpileup br {:chr "ref" :start 1 :end 40}))
           mplp-ref2 (doall (plp/mpileup br {:chr "ref2" :start 1 :end 40}))]
-      (is (= (filter pos? (take 40 test-bam-pileup-ref)) (map (comp count :pile) mplp-ref1)))
+      (is (= (filter pos? (take 40 test-bam-pileup-ref))
+             (map (comp count :pile) mplp-ref1)))
       (is (= (->> test-bam-pileup-ref
                   (take 40)
                   (map vector (range))
@@ -233,7 +230,7 @@
                   (map (comp inc first)))
              (map :pos mplp-ref1)))
       (is (= (filter seq (take 40 test-bam-mpileup-seq-ref-freq))
-             (map #(frequencies (map (comp first :seq) (:pile %))) mplp-ref1))))))
+             (map #(frequencies (map :base (:pile %))) mplp-ref1))))))
 
 (def ^:private reads-for-pileup
   (mapv
@@ -243,112 +240,58 @@
     {:qname "R001" :flag (int 147) :rname "seq1" :pos (int 3) :end (int 10) :seq "TTGGCCAATT" :qual "AABBCCDDEE" :cigar "8M2S"
      :rnext "=" :pnext (int 3) :tlen (int -8) :mapq (int 20)}]))
 
-(defn- pileup* [{:keys [chr start end] :as region} xs]
-  (->> xs
-       (sequence
-        (comp
-         (filter (mplp/basic-mpileup-pred 13))
-         (map mplp/index-cigar)))
-       (mplp/pileup-seq start end)
-       (map (partial mplp/gen-pile chr))))
+(defn- pileup* [region xs]
+  (mplp/pileup
+   (reify p/IAlignmentReader
+     (p/read-refs [_]
+       [{:name "seq1",  :len 249250621}])
+     (p/read-alignments [_ _]
+       xs))
+   region))
 
 (deftest overlap-correction
   (let [plps (->> reads-for-pileup
-                  (pileup* {:chr "seq1" :start 1 :end 10})
-                  (map mplp/correct-overlapped-reads))]
-    (is (= (filter pos? [0 0 2 2 2 2 2 2 2 2])
+                  (pileup* {:chr "seq1" :start 1 :end 10}))]
+    (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
            (map (comp count :pile) plps)))
-    (is (= (filter seq [[] [] [\T \T] [\T \T] [\G \G] [\G \G] [\C \C] [\C \C] [\A \A] [\A \A]])
-           (map #(map (comp first :seq) (:pile %)) plps)))
-    (is (= (filter seq [[] [] [65 0] [65 0] [67 0] [67 0] [69 0] [69 0] [71 0] [71 0]])
+    (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])
+           (map #(map :base (:pile %)) plps)))
+    (is (= (filter seq [[] [] [65] [65] [67] [67] [69] [69] [71] [71]])
            (map #(map :qual (:pile %)) plps)))))
 
 (deftest overlap-qual-correction
-  (let [aplp (mplp/correct-overlapped-reads
-              {:pile
-               (map #(update % :read ->aln)
-                    [{:seq [\A] :qual (- (int \I) 33) :read {:qname "R001" :flag 99}}
-                     {:seq [\T] :qual (- (int \A) 33) :read {:qname "R001" :flag 147}}])})]
-    (is (= (map (comp first :seq) (:pile aplp)) [\A \T]))
-    (is (= (map :qual (:pile aplp)) [32 0])))
-  (let [aplp (mplp/correct-overlapped-reads
-              {:pile
-               (map #(update % :read ->aln)
-                    [{:seq [\T] :qual (- (int \A) 33) :read {:qname "R001" :flag 147}}
-                     {:seq [\A] :qual (- (int \I) 33) :read {:qname "R001" :flag 99}}])})]
-    (is (= (map (comp first :seq) (:pile aplp)) [\T \A]))
-    (is (= (map :qual (:pile aplp)) [0 32]))))
+  (let [[_ aplp] (mplp/correct-overlaps
+                  [nil [{:base \A :qual 40 :alignment (->aln {:qname "R001" :flag 99})}
+                        {:base \T :qual 32 :alignment (->aln {:qname "R001" :flag 147})}]])]
+    (is (= (map :base aplp) [\A \T]))
+    (is (= (map :qual aplp) [32 0])))
+  (let [[_ aplp] (mplp/correct-overlaps
+                  [nil [{:base \T :qual 32 :alignment (->aln {:qname "R001" :flag 147})}
+                        {:base \A :qual 40 :alignment (->aln {:qname "R001" :flag 99})}]])]
+    (is (= (map :base aplp) [\T \A]))
+    (is (= (map :qual aplp) [0 32]))))
 
 (deftest filter-by-base-quality
   (let [plps (->> reads-for-pileup
                   (pileup* {:chr "seq1" :start 1 :end 10})
-                  (sequence
-                   (comp
-                    (map mplp/correct-overlapped-reads)
-                    (map (mplp/filter-by-base-quality 1)))))]
+                  (map (mplp/filter-by-base-quality 1)))]
     (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
            (map (comp count :pile) plps)))
     (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])
-           (map #(map (comp first :seq) (:pile %)) plps)))
+           (map #(map :base (:pile %)) plps)))
     (is (= (filter seq [[] [] [65] [65] [67] [67] [69] [69] [71] [71]])
            (map #(map :qual (:pile %)) plps)))))
 
 (deftest filter-by-map-quality
   (let [plps (->> reads-for-pileup
                   (filter (fn [a] (<= 30 (:mapq a))))
-                  (pileup* {:chr "seq1" :start 1 :end 10})
-                  (sequence
-                   (comp
-                    (map mplp/correct-overlapped-reads))))]
+                  (pileup* {:chr "seq1" :start 1 :end 10}))]
     (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
            (map (comp count :pile) plps)))
     (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])
-           (map #(map (comp first :seq) (:pile %)) plps)))
+           (map #(map :base (:pile %)) plps)))
     (is (= (filter seq [[] [] [33] [33] [34] [34] [35] [35] [36] [36]])
            (map #(map :qual (:pile %)) plps)))))
-
-(deftest stringify-mpileup-read
-  (testing "without-ref"
-    (are [?in ?out]
-        (= ?out (mplp/stringify-mpileup-read nil "chr1" 10 nil ?in))
-      {:seq [\A] :read {:flag 0 :mapq 60 :pos 5 :end 15}} "A"
-      {:seq [\N] :read {:flag 0 :mapq 60 :pos 5 :end 15}} "N"
-      {:seq [\A] :read {:flag 16 :mapq 60 :pos 5 :end 15}} "a"
-      {:seq [\N] :read {:flag 16 :mapq 60 :pos 5 :end 15}} "n"
-      {:seq [\A "A"] :read {:flag 0 :mapq 60 :pos 5 :end 15}} "A+1A"
-      {:seq [\A 2] :read {:flag 0 :mapq 60 :pos 5 :end 15}} "A-2NN"
-      {:seq [\A "AT"] :read {:flag 16 :mapq 60 :pos 5 :end 15}} "a+2at"
-      {:seq [\A 3] :read {:flag 16 :mapq 60 :pos 5 :end 15}} "a-3nnn"
-      {:seq [\A] :read {:flag 0 :mapq 60 :pos 10 :end 15}} "^]A"
-      {:seq [\A "AT"] :read {:flag 16 :mapq 40 :pos 10 :end 15}} "^Ia+2at"
-      {:seq [\A] :read {:flag 0 :mapq 40 :pos 5 :end 10}} "A$"
-      {:seq [\A 4] :read {:flag 16 :mapq 40 :pos 5 :end 10}} "a-4nnnn$"))
-  (testing "with-ref"
-    (let [r (reify p/ISequenceReader
-              (p/read-sequence [this {:keys [start end]}]
-                (subs "ATGCATGCATGCATGC" (dec start) end)))]
-      (are [?in ?out]
-          (= ?out (mplp/stringify-mpileup-read r "chr1" 10 \T ?in))
-        {:seq [\A] :read {:flag 0 :mapq 60 :pos 5 :end 15}} "A"
-        {:seq [\T] :read {:flag 0 :mapq 60 :pos 5 :end 15}} "."
-        {:seq [\T] :read {:flag 16 :mapq 60 :pos 5 :end 15}} ","
-        {:seq [\N] :read {:flag 0 :mapq 60 :pos 5 :end 15}} "N"
-        {:seq [\A] :read {:flag 16 :mapq 60 :pos 5 :end 15}} "a"
-        {:seq [\N] :read {:flag 16 :mapq 60 :pos 5 :end 15}} "n"
-        {:seq [\A "A"] :read {:flag 0 :mapq 60 :pos 5 :end 15}} "A+1A"
-        {:seq [\A 2] :read {:flag 0 :mapq 60 :pos 5 :end 15}} "A-2GC"
-        {:seq [\A "AT"] :read {:flag 16 :mapq 60 :pos 5 :end 15}} "a+2at"
-        {:seq [\A 3] :read {:flag 16 :mapq 60 :pos 5 :end 15}} "a-3gca"
-        {:seq [\A] :read {:flag 0 :mapq 60 :pos 10 :end 15}} "^]A"
-        {:seq [\A "AT"] :read {:flag 16 :mapq 40 :pos 10 :end 15}} "^Ia+2at"
-        {:seq [\A] :read {:flag 0 :mapq 40 :pos 5 :end 10}} "A$"
-        {:seq [\A 4] :read {:flag 16 :mapq 40 :pos 5 :end 10}} "a-4gcat$"))))
-
-(deftest stringify-mpileup-line
-  (testing "without-ref"
-    (are [?in ?out]
-        (= ?out (mplp/stringify-mpileup-line nil ?in))
-      {:rname "chr1" :pos 10 :pile []} "chr1\t10\tN\t0\t\t")))
 
 (deftest about-create-mpileup
   (with-before-after {:before (prepare-cache!)

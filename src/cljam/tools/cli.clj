@@ -18,7 +18,9 @@
             [cljam.algo.convert :as convert]
             [cljam.algo.level :as level]
             [cljam.util.region :as region]
-            [clojure.java.io :as cio])
+            [clojure.java.io :as cio]
+            [cljam.io.pileup :as plpio]
+            [cljam.algo.pileup :as plp])
   (:import [java.io Closeable BufferedWriter OutputStreamWriter]))
 
 ;; CLI functions
@@ -220,12 +222,21 @@
        (cstr/join \newline)))
 
 (defn- depth
-  [rdr n-threads region]
-  (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
-            *flush-on-newline* false]
-    (doseq [line (depth/lazy-depth rdr region {:n-threads n-threads})]
-      (println line))
-    (flush)))
+  [f region n-threads]
+  (with-open [r (sam/reader f)
+              w (cio/writer *out*)]
+    (when-not (sam/indexed? r)
+      (exit 1 "Random alignment retrieval only works for indexed BAM."))
+    (when-not (sorter/sorted? r)
+      (exit 1 "Not sorted"))
+    (let [regs (or (some-> region parse-region vector)
+                   (map (fn [{:keys [name len]}] {:chr name :start 1 :end len}) (sam/read-refs r)))]
+      (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
+                *flush-on-newline* false]
+        (doseq [reg regs
+                line (depth/lazy-depth r reg {:n-threads n-threads})]
+          (println line))
+        (flush)))))
 
 (defn pileup [args]
   (let [{:keys [options arguments errors summary]
@@ -235,24 +246,10 @@
       (not= (count arguments) 1) (exit 1 (pileup-usage summary))
       errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (with-open [r (sam/reader f)
-                  w (cio/writer *out*)]
-        (when-not (sam/indexed? r)
-          (exit 1 "Random alignment retrieval only works for indexed BAM."))
-        (when-not (sorter/sorted? r)
-          (exit 1 "Not sorted"))
-        (let [regs (or (some-> (parse-region region) vector)
-                       (map (fn [{:keys [name]}] {:chr name}) (sam/read-refs r)))
-              ref-rdr (when (and (not simple) ref)
-                        (cseq/reader ref))]
-          (try
-            (doseq [reg regs]
-              (if simple
-                (depth r thread reg)
-                (mplp/create-mpileup r ref-rdr w reg)))
-            (finally
-              (when ref-rdr
-                (.close ^Closeable ref-rdr)))))))))
+      (if simple
+        (depth f region thread)
+        (with-open [w (cio/writer (cio/output-stream System/out))]
+          (plp/create-mpileup f ref w (some-> region parse-region)))))))
 
 ;; ### faidx command
 

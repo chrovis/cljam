@@ -3,7 +3,8 @@
   (:require [cljam.io.sam :as sam]
             [cljam.algo.pileup.mpileup :as mplp]
             [clojure.java.io :as cio]
-            [cljam.io.sequence :as cseq])
+            [cljam.io.sequence :as cseq]
+            [cljam.io.pileup :as plpio])
   (:import [java.io Closeable]))
 
 (defn mpileup
@@ -20,17 +21,12 @@
    (create-mpileup in-sam in-ref out-mplp nil))
   ([in-sam in-ref out-mplp region]
    (with-open [s (sam/reader in-sam)
-               w (cio/writer out-mplp)]
-     (let [r (some-> in-ref cseq/reader)
-           regs (if region
+               w (plpio/writer out-mplp in-ref)]
+     (let [regs (if region
                   [region]
                   (map
                    (fn [{:keys [name len]}]
                      {:chr name :start 1 :end len})
                    (sam/read-refs s)))]
-       (try
-         (doseq [reg regs]
-           (mplp/create-mpileup s r w reg))
-         (finally
-           (when r
-             (.close ^Closeable r))))))))
+       (doseq [reg regs]
+         (plpio/write-piles w (mplp/pileup s reg)))))))

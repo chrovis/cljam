@@ -14,13 +14,11 @@
             [cljam.algo.fasta-indexer :as fai]
             [cljam.algo.dict :as dict]
             [cljam.algo.depth :as depth]
-            [cljam.algo.pileup.mpileup :as mplp]
             [cljam.algo.convert :as convert]
             [cljam.algo.level :as level]
+            [cljam.algo.pileup :as plp]
             [cljam.util.region :as region]
-            [clojure.java.io :as cio]
-            [cljam.io.pileup :as plpio]
-            [cljam.algo.pileup :as plp])
+            [clojure.java.io :as cio])
   (:import [java.io Closeable BufferedWriter OutputStreamWriter]))
 
 ;; CLI functions

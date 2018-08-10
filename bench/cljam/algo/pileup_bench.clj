@@ -14,5 +14,5 @@
         (criterium/with-progress-reporting
           (is
            (c/quick-bench
-            (dorun (pileup/mpileup r region)))))))))
+            (dorun (pileup/pileup r region)))))))))
 

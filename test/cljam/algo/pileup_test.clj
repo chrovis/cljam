@@ -6,8 +6,8 @@
             [cljam.io.sam.util.quality :as qual]
             [cljam.io.sequence :as cseq]
             [cljam.algo.pileup :as plp]
-            [cljam.algo.pileup.mpileup :as mplp]
-            [clojure.string :as cstr]))
+            [clojure.string :as cstr]
+            [cljam.io.pileup :as plpio]))
 
 (def test-bam-pileup-ref [0 0 0 0 0 0 1 1 3 3 3 3 3 3 2 3 3 3 2 2 2 2 1 1 1 1 1 1 2 2 2 2 2 1 1 1 2 2 2 2 1 1 1 1 1])
 (def test-bam-pileup-ref2 [1 2 2 2 2 3 3 3 3 4 4 5 5 6 6 6 6 6 6 6 5 5 4 4 4 4 4 3 3 3 3 3 3 3 2 1 0 0 0 0])
@@ -72,6 +72,9 @@
       (update :mapq int)
       p/map->SAMAlignment))
 
+(defn- ->pbase [m]
+  (plpio/map->PileupBase (merge {:start? false :reverse? false :end? false} m)))
+
 (defn- ->pile [[pos pile]]
   [pos (map (juxt :pos :end) pile)])
 
@@ -79,7 +82,7 @@
 
   ;; ----------
   ;; 1234567890...
-  (is (= (map ->pile (mplp/pileup-seq 1 2 (mapv ->aln [{:pos 1 :cigar "10M" :end 10}])))
+  (is (= (map ->pile (plp/pileup-seq 1 2 (mapv ->aln [{:pos 1 :cigar "10M" :end 10}])))
          [[1 [[1 10]]]
           [2 [[1 10]]]]))
 
@@ -89,13 +92,13 @@
   ;; ----------
   ;; 1234567890123...
   (is (= (map (comp count second)
-              (mplp/pileup-seq 1 20 (map #(->aln (hash-map :pos (inc %) :cigar "10M" :end (+ % 10))) (range))))
+              (plp/pileup-seq 1 20 (map #(->aln (hash-map :pos (inc %) :cigar "10M" :end (+ % 10))) (range))))
          [1 2 3 4 5 6 7 8 9 10 10 10 10 10 10 10 10 10 10 10]))
   (is (= (map (comp count second)
-              (mplp/pileup-seq 101 120 (map #(->aln (hash-map :pos (inc %) :cigar "10M" :end (+ % 10))) (range))))
+              (plp/pileup-seq 101 120 (map #(->aln (hash-map :pos (inc %) :cigar "10M" :end (+ % 10))) (range))))
          [10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10]))
   (is (= (map :pos
-              (second (last (mplp/pileup-seq 1 100000 (map #(->aln (hash-map :pos (inc %) :cigar "10M" :end (+ % 10))) (range))))))
+              (second (last (plp/pileup-seq 1 100000 (map #(->aln (hash-map :pos (inc %) :cigar "10M" :end (+ % 10))) (range))))))
          [99991 99992 99993 99994 99995 99996 99997 99998 99999 100000]))
 
   ;;     -----
@@ -105,7 +108,7 @@
   ;; -
   ;; 1234567890...
   (is (= (map (comp count second)
-              (mplp/pileup-seq 1 10 (map #(->aln (hash-map :pos (inc %) :cigar (str (inc %) "M") :end (+ % (inc %)))) (range))))
+              (plp/pileup-seq 1 10 (map #(->aln (hash-map :pos (inc %) :cigar (str (inc %) "M") :end (+ % (inc %)))) (range))))
          [1 1 2 2 3 3 4 4 5 5]))
 
   ;;       --------
@@ -117,24 +120,24 @@
   ;; ----------
   ;; 1234567890...
   (is (= (map (comp count second)
-              (mplp/pileup-seq 1 10 (map #(->aln (hash-map :pos (inc %) :cigar (str (- 10 (* (mod % 5) 2)) "M") :end (+ % (- 10 (* (mod % 5) 2))))) (range))))
+              (plp/pileup-seq 1 10 (map #(->aln (hash-map :pos (inc %) :cigar (str (- 10 (* (mod % 5) 2)) "M") :end (+ % (- 10 (* (mod % 5) 2))))) (range))))
          [1 2 3 4 5 6 6 6 6 6])))
 
 (deftest pileup-seq
   (testing "empty"
-    (is (nil? (seq (mplp/pileup-seq 1 10 []))))
-    (is (nil? (seq (mplp/pileup-seq 2 10 (map ->aln [{:pos 1 :end 1}])))))
-    (is (nil? (seq (mplp/pileup-seq 1 10 (map ->aln [{:pos 11 :end 11}]))))))
+    (is (nil? (seq (plp/pileup-seq 1 10 []))))
+    (is (nil? (seq (plp/pileup-seq 2 10 (map ->aln [{:pos 1 :end 1}])))))
+    (is (nil? (seq (plp/pileup-seq 1 10 (map ->aln [{:pos 11 :end 11}]))))))
   (testing "dense"
     (are [?in ?out]
-        (= ?out (mapv ->pile (mplp/pileup-seq 1 10 (mapv ->aln (map #(zipmap [:pos :end] %) ?in)))))
+        (= ?out (mapv ->pile (plp/pileup-seq 1 10 (mapv ->aln (map #(zipmap [:pos :end] %) ?in)))))
       [[1 1]] [[1 [[1 1]]]]
       [[3 5]] [[3 [[3 5]]] [4 [[3 5]]] [5 [[3 5]]]]
       [[3 5] [4 4]] [[3 [[3 5]]] [4 [[3 5] [4 4]]] [5 [[3 5]]]]
       [[3 5] [4 6]] [[3 [[3 5]]] [4 [[3 5] [4 6]]] [5 [[3 5] [4 6]]] [6 [[4 6]]]]))
   (testing "sparse"
     (are [?in ?out]
-        (= ?out (mapv ->pile (mplp/pileup-seq 1 10 (mapv ->aln (map #(zipmap [:pos :end] %) ?in)))))
+        (= ?out (mapv ->pile (plp/pileup-seq 1 10 (mapv ->aln (map #(zipmap [:pos :end] %) ?in)))))
       [[3 5] [14 16]] [[3 [[3 5]]] [4 [[3 5]]] [5 [[3 5]]]]
       [[3 5] [6 7]] [[3 [[3 5]]] [4 [[3 5]]] [5 [[3 5]]] [6 [[6 7]]] [7 [[6 7]]]]
       [[3 5] [4 5] [6 7]] [[3 [[3 5]]] [4 [[3 5] [4 5]]] [5 [[3 5] [4 5]]] [6 [[6 7]]] [7 [[6 7]]]]
@@ -142,12 +145,12 @@
 
 (deftest align-pileup-seqs
   (testing "empty"
-    (is (empty? (mplp/align-pileup-seqs)))
-    (is (empty? (mplp/align-pileup-seqs [])))
-    (is (empty? (mplp/align-pileup-seqs [] []))))
+    (is (empty? (plp/align-pileup-seqs)))
+    (is (empty? (plp/align-pileup-seqs [])))
+    (is (empty? (plp/align-pileup-seqs [] []))))
   (testing "single"
     (are [?in ?out]
-        (= ?out (mplp/align-pileup-seqs ?in))
+        (= ?out (plp/align-pileup-seqs ?in))
       [{:pos 3 :pile [{:pos 3 :end 5}]}]
       [[3 [{:pos 3 :pile [{:pos 3 :end 5}]}]]]
 
@@ -171,7 +174,7 @@
             [4 [{:pos 4, :pile [{:pos 3, :end 5}]} {:pos 4, :pile [{:pos 4, :end 6}]}]]
             [5 [{:pos 5, :pile [{:pos 3, :end 5}]} {:pos 5, :pile [{:pos 4, :end 6}]}]]
             [6 [nil {:pos 6, :pile [{:pos 4, :end 6}]}]]]
-           (mplp/align-pileup-seqs [{:pos 3 :pile [{:pos 3 :end 5}]}
+           (plp/align-pileup-seqs [{:pos 3 :pile [{:pos 3 :end 5}]}
                                     {:pos 4 :pile [{:pos 3 :end 5}]}
                                     {:pos 5 :pile [{:pos 3 :end 5}]}]
                                    [{:pos 4 :pile [{:pos 4 :end 6}]}
@@ -182,55 +185,59 @@
             [5 [{:pos 5, :pile [{:pos 3, :end 5}]} nil]]
             [8 [nil {:pos 8, :pile [{:pos 8, :end 9}]}]]
             [9 [nil {:pos 9, :pile [{:pos 8, :end 9}]}]]]
-           (mplp/align-pileup-seqs [{:pos 3 :pile [{:pos 3 :end 5}]}
+           (plp/align-pileup-seqs [{:pos 3 :pile [{:pos 3 :end 5}]}
                                     {:pos 4 :pile [{:pos 3 :end 5}]}
                                     {:pos 5 :pile [{:pos 3 :end 5}]}]
                                    [{:pos 8 :pile [{:pos 8 :end 9}]}
                                     {:pos 9 :pile [{:pos 8 :end 9}]}])))
     (is (= [[3 [{:pos 3, :pile [{:pos 3, :end 4}]} nil {:pos 3, :pile [{:pos 3, :end 3}]} nil]]
             [4 [{:pos 4, :pile [{:pos 3, :end 4}]} {:pos 4, :pile [{:pos 4, :end 4}]} nil nil]]]
-           (mplp/align-pileup-seqs [{:pos 3 :pile [{:pos 3 :end 4}]}
+           (plp/align-pileup-seqs [{:pos 3 :pile [{:pos 3 :end 4}]}
                                     {:pos 4 :pile [{:pos 3 :end 4}]}]
                                    [{:pos 4 :pile [{:pos 4 :end 4}]}]
                                    [{:pos 3 :pile [{:pos 3 :end 3}]}]
                                    [])))))
 
-(deftest about-mpileup
+(deftest about-pileup
   (testing "dense"
     (with-open [br (sam/bam-reader test-sorted-bam-file)
                 fr (cseq/fasta-reader test-fa-file)]
-      (let [mplp-ref (doall (plp/mpileup br {:chr "ref"}))
-            mplp-ref2 (doall (plp/mpileup br {:chr "ref2"}))]
+      (let [plp-ref (doall (plp/pileup br {:chr "ref"}))
+            plp-ref2 (doall (plp/pileup br {:chr "ref2"}))]
         (is (= (filter pos? test-bam-pileup-ref)
-               (map (comp count :pile) mplp-ref)))
-        (is (= (->> test-bam-pileup-ref
-                    (map vector (range))
-                    (filter (comp pos? second))
-                    (map (comp inc first)))
-               (map :pos mplp-ref)))
+               (map (comp count :pile) plp-ref)))
+        (is (= (keep-indexed #(when (pos? %2) (inc %1)) test-bam-pileup-ref)
+               (map :pos plp-ref)))
         (is (= (remove empty? test-bam-mpileup-seq-ref-freq)
-               (map #(frequencies (map :base (:pile %))) mplp-ref)))
+               (map #(frequencies (map :base (:pile %))) plp-ref)))
         (is (= (keep #(seq (map qual/fastq-char->phred-byte %)) test-bam-mpileup-qual-ref)
-               (map #(map :qual (:pile %)) mplp-ref)))
+               (map #(map :qual (:pile %)) plp-ref)))
         (is (= (filter pos? test-bam-pileup-ref2)
-               (map (comp count :pile) mplp-ref2)))
+               (map (comp count :pile) plp-ref2)))
         (is (= (remove empty? test-bam-mpileup-seq-ref2-freq)
-               (map #(frequencies (map :base (:pile %))) mplp-ref2)))))))
+               (map #(frequencies (map :base (:pile %))) plp-ref2)))))))
 
-(deftest mpileup-region
+(deftest mpileup
+  (with-open [r1 (sam/reader test-sorted-bam-file)
+              r2 (sam/reader r1)]
+    (let [mplp (plp/mpileup {:chr "ref"} r1 r2)]
+      (is (= (keep-indexed #(when (pos? %2) (inc %1)) test-bam-pileup-ref)
+             (map first mplp))))))
+
+(deftest pileup-region
   (with-open [br (sam/bam-reader test-sorted-bam-file)]
-    (let [mplp-ref1 (doall (plp/mpileup br {:chr "ref" :start 1 :end 40}))
-          mplp-ref2 (doall (plp/mpileup br {:chr "ref2" :start 1 :end 40}))]
+    (let [plp-ref1 (doall (plp/pileup br {:chr "ref" :start 1 :end 40}))
+          plp-ref2 (doall (plp/pileup br {:chr "ref2" :start 1 :end 40}))]
       (is (= (filter pos? (take 40 test-bam-pileup-ref))
-             (map (comp count :pile) mplp-ref1)))
+             (map (comp count :pile) plp-ref1)))
       (is (= (->> test-bam-pileup-ref
                   (take 40)
                   (map vector (range))
                   (filter (comp pos? second))
                   (map (comp inc first)))
-             (map :pos mplp-ref1)))
+             (map :pos plp-ref1)))
       (is (= (filter seq (take 40 test-bam-mpileup-seq-ref-freq))
-             (map #(frequencies (map :base (:pile %))) mplp-ref1))))))
+             (map #(frequencies (map :base (:pile %))) plp-ref1))))))
 
 (def ^:private reads-for-pileup
   (mapv
@@ -241,7 +248,7 @@
      :rnext "=" :pnext (int 3) :tlen (int -8) :mapq (int 20)}]))
 
 (defn- pileup* [region xs]
-  (mplp/pileup
+  (plp/pileup
    (reify p/IAlignmentReader
      (p/read-refs [_]
        [{:name "seq1",  :len 249250621}])
@@ -260,21 +267,21 @@
            (map #(map :qual (:pile %)) plps)))))
 
 (deftest overlap-qual-correction
-  (let [[_ aplp] (mplp/correct-overlaps
-                  [nil [{:base \A :qual 40 :alignment (->aln {:qname "R001" :flag 99})}
-                        {:base \T :qual 32 :alignment (->aln {:qname "R001" :flag 147})}]])]
+  (let [[_ aplp] (#'plp/correct-overlaps
+                  [nil [(->pbase {:base \A :qual (byte 40) :alignment (->aln {:qname "R001" :flag 99})})
+                        (->pbase {:base \T :qual (byte 32) :alignment (->aln {:qname "R001" :flag 147})})]])]
     (is (= (map :base aplp) [\A \T]))
     (is (= (map :qual aplp) [32 0])))
-  (let [[_ aplp] (mplp/correct-overlaps
-                  [nil [{:base \T :qual 32 :alignment (->aln {:qname "R001" :flag 147})}
-                        {:base \A :qual 40 :alignment (->aln {:qname "R001" :flag 99})}]])]
+  (let [[_ aplp] (#'plp/correct-overlaps
+                  [nil [(->pbase {:base \T :qual (byte 32) :alignment (->aln {:qname "R001" :flag 147})})
+                        (->pbase {:base \A :qual (byte 40) :alignment (->aln {:qname "R001" :flag 99})})]])]
     (is (= (map :base aplp) [\T \A]))
     (is (= (map :qual aplp) [0 32]))))
 
 (deftest filter-by-base-quality
   (let [plps (->> reads-for-pileup
                   (pileup* {:chr "seq1" :start 1 :end 10})
-                  (map (mplp/filter-by-base-quality 1)))]
+                  (map (plp/filter-by-base-quality 1)))]
     (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
            (map (comp count :pile) plps)))
     (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])

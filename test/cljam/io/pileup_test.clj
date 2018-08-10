@@ -16,7 +16,8 @@
 (deftest parse-bases-col
   (testing "without-ref"
     (are [?in ?out]
-        (= ?out (mapv #(into {} %) (plpio/parse-bases-col nil ?in)))
+        (= (mapv #(into {:alignment nil} %) ?out)
+           (mapv #(into {} %) (#'plpio/parse-bases-col nil ?in)))
       "" []
       "A" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? false, :end? false, :insertion nil, :deletion nil}]
       "a" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? true, :end? false, :insertion nil, :deletion nil}]
@@ -43,7 +44,8 @@
                    {:start? true, :mapq 34, :base \A, :qual -1, :reverse? true, :end? false, :insertion nil, :deletion nil}]))
   (testing "with-ref"
     (are [?in ?out]
-        (= ?out (mapv #(into {} %) (plpio/parse-bases-col \T ?in)))
+        (= (mapv #(into {:alignment nil} %) ?out)
+           (mapv #(into {} %) (#'plpio/parse-bases-col \T ?in)))
       "" []
       "A" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? false, :end? false, :insertion nil, :deletion nil}]
       "a$" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? true, :end? true, :insertion nil, :deletion nil}]
@@ -57,48 +59,50 @@
       ",-2at$^Ca" [{:start? false, :mapq nil, :base \T, :qual -1, :reverse? true, :end? true, :insertion nil, :deletion 2}
                    {:start? true, :mapq 34, :base \A, :qual -1, :reverse? true, :end? false, :insertion nil, :deletion nil}]))
   (testing "invalid arguments"
-    (is (thrown? Exception (plpio/parse-bases-col nil "A+")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "^")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "^A")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "^A+1A")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "+")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "-")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "++")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "--")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "A$$A")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "A+2A^]A")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "A+2A")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "A+2")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "A-2N")))
-    (is (thrown? Exception (plpio/parse-bases-col nil "A-2")))))
+    (are [?in]
+        (thrown? Exception (#'plpio/parse-bases-col nil ?in))
+      "A+"
+      "^"
+      "^A"
+      "^A+1A"
+      "+"
+      "-"
+      "++"
+      "--"
+      "A$$A"
+      "A+2A^]A"
+      "A+2A"
+      "A+2"
+      "A-2N"
+      "A-2")))
 
 (deftest parse-pileup-line
   (testing "without-ref"
     (are [?in ?out]
-        (= ?out (update (plpio/parse-pileup-line ?in) :pile (fn [xs] (mapv #(into {} %) xs))))
+        (= ?out (into {} (update (#'plpio/parse-pileup-line ?in) :pile (fn [xs] (mapv #(into {} %) xs)))))
       "chr1\t10\tN\t0\t\t" {:rname "chr1", :pos 10, :ref \N, :count 0,
                             :pile []}
       "chr1\t10\tN\t1\tA\tI" {:rname "chr1", :pos 10, :ref \N, :count 1,
-                              :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? false, :end? false, :insertion nil, :deletion nil}]}
+                              :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? false, :end? false, :insertion nil, :deletion nil, :alignment nil}]}
       "chr1\t10\tN\t2\taA\tIB" {:rname "chr1", :pos 10, :ref \N, :count 2,
-                                :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil}
-                                       {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? false, :insertion nil, :deletion nil}]}
+                                :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :alignment nil}
+                                       {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? false, :insertion nil, :deletion nil, :alignment nil}]}
       "chr1\t10\tN\t2\taA-2NN$\tIB" {:rname "chr1", :pos 10, :ref \N, :count 2,
-                                     :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil}
-                                            {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? true, :insertion nil, :deletion 2}]}))
+                                     :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :alignment nil}
+                                            {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? true, :insertion nil, :deletion 2, :alignment nil}]}))
   (testing "with-ref"
     (are [?in ?out]
-        (= ?out (update (plpio/parse-pileup-line ?in) :pile (fn [xs] (mapv #(into {} %) xs))))
+        (= ?out (into {} (update (#'plpio/parse-pileup-line ?in) :pile (fn [xs] (mapv #(into {} %) xs)))))
       "chr1\t10\tA\t0\t\t" {:rname "chr1", :pos 10, :ref \A, :count 0,
                             :pile []}
       "chr1\t10\ta\t1\t.\tI" {:rname "chr1", :pos 10, :ref \a, :count 1,
-                              :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? false, :end? false, :insertion nil, :deletion nil}]}
+                              :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? false, :end? false, :insertion nil, :deletion nil, :alignment nil}]}
       "chr1\t10\tA\t2\t,.\tIB" {:rname "chr1", :pos 10, :ref \A, :count 2,
-                                :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil}
-                                       {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? false, :insertion nil, :deletion nil}]}
+                                :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :alignment nil}
+                                       {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? false, :insertion nil, :deletion nil, :alignment nil}]}
       "chr1\t10\tA\t2\t,.-2CA$\tIB" {:rname "chr1", :pos 10, :ref \A, :count 2,
-                                     :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil}
-                                            {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? true, :insertion nil, :deletion 2}]})))
+                                     :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :alignment nil}
+                                            {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? true, :insertion nil, :deletion 2, :alignment nil}]})))
 
 (deftest reader
   (with-open [r (plpio/reader test-pileup-file)]
@@ -117,8 +121,13 @@
                     :reverse? false,
                     :end? true,
                     :insertion nil,
-                    :deletion nil}]}
-           (update (last (plpio/read-piles r)) :pile (fn [xs] (map #(into {} %) xs)))))))
+                    :deletion nil
+                    :alignment nil}]}
+           (->> xs
+                (map #(into {} %))
+                (fn [xs])
+                (update (last (plpio/read-piles r)) :pile)
+                (into {}))))))
 
 ;; Writer
 ;; ------
@@ -126,7 +135,7 @@
 (deftest stringify-mpileup-read
   (testing "without-ref"
     (are [?in ?out]
-        (= ?out (plpio/stringify-mpileup-alignment nil "chr1" 10 nil ?in))
+        (= ?out (#'plpio/stringify-mpileup-alignment nil "chr1" 10 nil ?in))
       {:base \A :reverse? false :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "A"
       {:base \N :reverse? false :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "N"
       {:base \A :reverse? true :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a"
@@ -148,7 +157,7 @@
               (p/read-sequence [this {:keys [start end]}]
                 (subs "ATGCATGCATGCATGC" (dec start) end)))]
       (are [?in ?out]
-          (= ?out (plpio/stringify-mpileup-alignment r "chr1" 10 \T ?in))
+          (= ?out (#'plpio/stringify-mpileup-alignment r "chr1" 10 \T ?in))
         {:base \A :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "A"
         {:base \T :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "."
         {:base \T :reverse? true :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} ","
@@ -179,7 +188,7 @@
 (deftest stringify-mpileup-line
   (testing "without-ref"
     (are [?in ?out]
-        (= ?out (plpio/stringify-mpileup-line nil {:rname (first ?in)
+        (= ?out (#'plpio/stringify-mpileup-line nil {:rname (first ?in)
                                                    :pos (second ?in)
                                                    :pile (last ?in)}))
       ["chr1" 10 []] "chr1\t10\tN\t0\t\t"
@@ -189,7 +198,7 @@
   (testing "with-ref"
     (let [r (string-sequence-reader "NNNNNNNNNAtGCATGCAT")]
       (are [?in ?out]
-          (= ?out (plpio/stringify-mpileup-line r {:rname (first ?in)
+          (= ?out (#'plpio/stringify-mpileup-line r {:rname (first ?in)
                                                    :pos (second ?in)
                                                    :pile (last ?in)}))
         ["chr1" 10 []] "chr1\t10\tA\t0\t\t"

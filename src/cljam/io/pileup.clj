@@ -1,11 +1,29 @@
 (ns cljam.io.pileup
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
-            [cljam.io.sam.util.flag :as flag]
             [cljam.io.sam.util.quality :as qual]
             [cljam.io.sequence :as cseq]
             [proton.core :as p])
   (:import [java.io Closeable BufferedWriter]))
+
+;; Records
+;; -------
+
+(defrecord PileupBase [^boolean start?
+                       mapq ;; byte?
+                       ^char base
+                       ^byte qual
+                       ^boolean reverse?
+                       ^boolean end?
+                       insertion ;; String?
+                       deletion ;; int?
+                       alignment])
+
+(defrecord LocusPile [rname
+                      ^int pos
+                      ^char ref
+                      ^long count
+                      pile])
 
 ;; Reader
 ;; ------
@@ -16,17 +34,10 @@
     (.close ^Closeable (.reader this))))
 
 (defn ^PileupReader reader
-  [in]
-  (PileupReader. (cio/reader in)))
-
-(defrecord PileupBase [^boolean start?
-                       mapq
-                       ^char base
-                       ^byte qual
-                       ^boolean reverse?
-                       ^boolean end?
-                       insertion
-                       deletion])
+  "Returns an open instance of cljam.io.pileup.PileupReader of f. Should be used
+  inside with-open to ensure the reader is properly closed."
+  [f]
+  (PileupReader. (cio/reader f)))
 
 (def ^:private
   upper-table
@@ -38,7 +49,7 @@
       (aset-byte ba (byte from) (byte to)))
     ba))
 
-(defn parse-bases-col
+(defn- parse-bases-col
   [ref-base ^String column]
   ;; TODO: Too slow and unreadable
   (let [len (.length column)]
@@ -58,7 +69,7 @@
           (when (zero? upper-base-int)
             (throw (ex-info (format "Invalid character %s in %s" base column) {:column column :base base})))
           (if (= len (+ i (if mapq 3 1)))
-            (persistent! (conj! results (PileupBase. start? mapq upper-base -1 reverse? false nil nil)))
+            (persistent! (conj! results (PileupBase. start? mapq upper-base -1 reverse? false nil nil nil)))
             (let [x (.charAt column (+ i (if mapq 3 1)))
                   ins? (= x \+)
                   del? (= x \-)
@@ -81,20 +92,22 @@
                                     (if indel-num (+ 1 indel-num-chars indel-num) 0)
                                     (if end? 1 0)))]
               (recur next-pos
-                     (conj! results (PileupBase. start? mapq upper-base -1 reverse? end? (when ins? indel-seq) (when del? indel-num)))))))
+                     (conj! results (PileupBase. start? mapq upper-base -1 reverse? end? (when ins? indel-seq) (when del? indel-num) nil))))))
         (persistent! results)))))
 
-(defn parse-pileup-line
+(defn- parse-pileup-line
   [line]
-  (let [[rname pos [ref-base] cnt bases quals & _] (cstr/split line #"\t") ;; TODO: extra columns
-        upper-ref-base (Character/toUpperCase ^char ref-base)]
-    {:rname rname
-     :pos (p/as-int pos)
-     :ref ref-base
-     :count (p/as-long cnt)
-     :pile (mapv (fn [b q] (assoc b :qual q)) (some->> bases (parse-bases-col upper-ref-base)) (some-> quals qual/fastq->phred))}))
+  (let [[rname pos [ref-base] cnt bases quals & _] (cstr/split line #"\t")
+        ;; TODO: handle extra columns like mapq, qname...
+        upper-ref-base (Character/toUpperCase ^char ref-base)
+        pile (mapv (fn [b q] (assoc b :qual q))
+                   (some->> bases (parse-bases-col upper-ref-base))
+                   (some-> quals qual/fastq->phred))]
+    (LocusPile. rname (p/as-int pos) ref-base (p/as-long cnt) pile)))
 
 (defn read-piles
+  "Reads piled-up bases of the pileup file, returning them as a lazy sequence of
+  cljam.io.pileup.LocusPile."
   [^PileupReader reader]
   (->> reader
        .reader
@@ -105,10 +118,12 @@
 ;; Writer
 ;; ------
 
-(defn ^String stringify-mpileup-alignment
+(defn- ^String stringify-mpileup-alignment
   ([ref-reader rname ref-pos ref pileup-base]
-   (stringify-mpileup-alignment (StringBuilder.) ref-reader rname ref-pos ref pileup-base))
-  ([^StringBuilder sb ref-reader rname ref-pos ref {:keys [base qual reverse? mapq start? end? insertion deletion]}]
+   (-> (StringBuilder.)
+       (stringify-mpileup-alignment ref-reader rname ref-pos ref pileup-base)))
+  ([^StringBuilder sb ref-reader rname ref-pos ref
+    {:keys [base reverse? mapq start? end? insertion deletion]}]
    (let [case-base-fn (if-not reverse?
                         identity
                         (fn [c]
@@ -141,7 +156,7 @@
        (.append sb \$))
      (str sb))))
 
-(defn ^String stringify-mpileup-line
+(defn- ^String stringify-mpileup-line
   ([ref-reader pile]
    (stringify-mpileup-line (StringBuilder.) ref-reader pile))
   ([sb ref-reader {:keys [rname pos pile]}]
@@ -150,7 +165,8 @@
                            {:chr rname :start pos :end pos}
                            {:mask? true}))
          ref-char (some-> ref-base cstr/upper-case first)
-         base-fn (partial stringify-mpileup-alignment sb ref-reader rname pos ref-char)
+         base-fn (partial stringify-mpileup-alignment
+                          sb ref-reader rname pos ref-char)
          bases (cstr/join (map base-fn pile))
          quals (cstr/join (map (comp qual/phred-byte->fastq-char :qual) pile))]
      (cstr/join \tab [rname pos (or ref-base "N") (count pile) bases quals]))))
@@ -162,12 +178,17 @@
     (some-> ^Closeable (.ref-reader this) .close)))
 
 (defn ^PileupWriter writer
-  ([out]
-   (writer out nil))
-  ([out reference]
-   (PileupWriter. (cio/writer out) (some-> reference cseq/reader))))
+  "Returns an open instance of cljam.io.pileup.PileupWriter of f. Should be used
+  inside with-open to ensure the writer is properly closed. A reference sequence
+  is used when the second arg `reference-path` is supplied."
+  ([f]
+   (writer f nil))
+  ([f reference-path]
+   (PileupWriter. (cio/writer f) (some-> reference-path cseq/reader))))
 
 (defn write-piles
+  "Writes piled-up bases to a file. `pileup-writer` must be an instance of  
+  cljam.io.pileup.PileupWriter."
   [^PileupWriter pileup-writer piles]
   (let [^BufferedWriter writer (.writer pileup-writer)
         ref-reader (.ref-reader pileup-writer)]

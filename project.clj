@@ -34,8 +34,8 @@
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
              :1.10 {:dependencies [[org.clojure/clojure "1.10.0-alpha6"]]}
              :uberjar {:dependencies [[org.clojure/clojure "1.9.0"]
-                                      [org.apache.logging.log4j/log4j-api "2.11.0"]
-                                      [org.apache.logging.log4j/log4j-core "2.11.0"]]
+                                      [org.apache.logging.log4j/log4j-api "2.11.1"]
+                                      [org.apache.logging.log4j/log4j-core "2.11.1"]]
                        :resource-paths ["bin-resources"]
                        :main cljam.tools.main
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]

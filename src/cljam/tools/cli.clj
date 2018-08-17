@@ -236,7 +236,7 @@
         (flush)))))
 
 (defn pileup [args]
-  (let [{:keys [options arguments errors summary]
+  (let [{:keys [arguments errors summary]
          {:keys [help region simple ref thread]} :options} (parse-opts args pileup-cli-options)]
     (cond
       help (exit 0 (pileup-usage summary))

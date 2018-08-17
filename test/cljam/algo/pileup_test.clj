@@ -175,28 +175,28 @@
             [5 [{:pos 5, :pile [{:pos 3, :end 5}]} {:pos 5, :pile [{:pos 4, :end 6}]}]]
             [6 [nil {:pos 6, :pile [{:pos 4, :end 6}]}]]]
            (plp/align-pileup-seqs [{:pos 3 :pile [{:pos 3 :end 5}]}
-                                    {:pos 4 :pile [{:pos 3 :end 5}]}
-                                    {:pos 5 :pile [{:pos 3 :end 5}]}]
-                                   [{:pos 4 :pile [{:pos 4 :end 6}]}
-                                    {:pos 5 :pile [{:pos 4 :end 6}]}
-                                    {:pos 6 :pile [{:pos 4 :end 6}]}])))
+                                   {:pos 4 :pile [{:pos 3 :end 5}]}
+                                   {:pos 5 :pile [{:pos 3 :end 5}]}]
+                                  [{:pos 4 :pile [{:pos 4 :end 6}]}
+                                   {:pos 5 :pile [{:pos 4 :end 6}]}
+                                   {:pos 6 :pile [{:pos 4 :end 6}]}])))
     (is (= [[3 [{:pos 3, :pile [{:pos 3, :end 5}]} nil]]
             [4 [{:pos 4, :pile [{:pos 3, :end 5}]} nil]]
             [5 [{:pos 5, :pile [{:pos 3, :end 5}]} nil]]
             [8 [nil {:pos 8, :pile [{:pos 8, :end 9}]}]]
             [9 [nil {:pos 9, :pile [{:pos 8, :end 9}]}]]]
            (plp/align-pileup-seqs [{:pos 3 :pile [{:pos 3 :end 5}]}
-                                    {:pos 4 :pile [{:pos 3 :end 5}]}
-                                    {:pos 5 :pile [{:pos 3 :end 5}]}]
-                                   [{:pos 8 :pile [{:pos 8 :end 9}]}
-                                    {:pos 9 :pile [{:pos 8 :end 9}]}])))
+                                   {:pos 4 :pile [{:pos 3 :end 5}]}
+                                   {:pos 5 :pile [{:pos 3 :end 5}]}]
+                                  [{:pos 8 :pile [{:pos 8 :end 9}]}
+                                   {:pos 9 :pile [{:pos 8 :end 9}]}])))
     (is (= [[3 [{:pos 3, :pile [{:pos 3, :end 4}]} nil {:pos 3, :pile [{:pos 3, :end 3}]} nil]]
             [4 [{:pos 4, :pile [{:pos 3, :end 4}]} {:pos 4, :pile [{:pos 4, :end 4}]} nil nil]]]
            (plp/align-pileup-seqs [{:pos 3 :pile [{:pos 3 :end 4}]}
-                                    {:pos 4 :pile [{:pos 3 :end 4}]}]
-                                   [{:pos 4 :pile [{:pos 4 :end 4}]}]
-                                   [{:pos 3 :pile [{:pos 3 :end 3}]}]
-                                   [])))))
+                                   {:pos 4 :pile [{:pos 3 :end 4}]}]
+                                  [{:pos 4 :pile [{:pos 4 :end 4}]}]
+                                  [{:pos 3 :pile [{:pos 3 :end 3}]}]
+                                  [])))))
 
 (deftest about-pileup
   (testing "dense"

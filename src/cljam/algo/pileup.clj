@@ -82,16 +82,17 @@
   (let [relative-pos (- ref-pos (.pos aln))
         qual ((:quals-at-ref aln) relative-pos)
         [base indel] ((:seqs-at-ref aln) relative-pos)]
-    (PileupBase.
-     (zero? relative-pos)
-     (when (zero? relative-pos) (.mapq aln))
-     base
-     qual
-     (flag/reversed? (.flag aln))
-     (= ref-pos (.end aln))
-     (when-not (number? indel) indel)
-     (when (number? indel) indel)
-     aln)))
+    (-> (PileupBase.
+         (zero? relative-pos)
+         (when (zero? relative-pos) (.mapq aln))
+         base
+         qual
+         (flag/reversed? (.flag aln))
+         (= ref-pos (.end aln))
+         (when-not (number? indel) indel)
+         (when (number? indel) indel)
+         (.qname aln))
+        (assoc :alignment aln))))
 
 (defn- resolve-bases
   [[ref-pos alns]]
@@ -124,7 +125,7 @@
   (if (<= (count xs) 1)
     xs
     (->> xs
-         (group-by (fn [x] (.qname ^SAMAlignment (.alignment ^PileupBase x))))
+         (group-by (fn [x] (.qname ^PileupBase x)))
          (into [] (mapcat
                    (fn [[_ xs]]
                      (if (<= (count xs) 1) xs (apply correct-qual xs))))))))

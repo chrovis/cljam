@@ -17,7 +17,7 @@
                        ^boolean end?
                        insertion ;; String?
                        deletion ;; int?
-                       alignment])
+                       qname]) ;; String?
 
 (defrecord LocusPile [rname
                       ^int pos

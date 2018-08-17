@@ -230,14 +230,24 @@
           plp-ref2 (doall (plp/pileup br {:chr "ref2" :start 1 :end 40}))]
       (is (= (filter pos? (take 40 test-bam-pileup-ref))
              (map (comp count :pile) plp-ref1)))
+      (is (= (filter pos? (take 40 test-bam-pileup-ref2))
+             (map (comp count :pile) plp-ref2)))
       (is (= (->> test-bam-pileup-ref
                   (take 40)
                   (map vector (range))
                   (filter (comp pos? second))
                   (map (comp inc first)))
              (map :pos plp-ref1)))
+      (is (= (->> test-bam-pileup-ref2
+                  (take 40)
+                  (map vector (range))
+                  (filter (comp pos? second))
+                  (map (comp inc first)))
+             (map :pos plp-ref2)))
       (is (= (filter seq (take 40 test-bam-mpileup-seq-ref-freq))
-             (map #(frequencies (map :base (:pile %))) plp-ref1))))))
+             (map #(frequencies (map :base (:pile %))) plp-ref1)))
+      (is (= (filter seq (take 40 test-bam-mpileup-seq-ref2-freq))
+             (map #(frequencies (map :base (:pile %))) plp-ref2))))))
 
 (def ^:private reads-for-pileup
   (mapv

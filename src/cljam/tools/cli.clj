@@ -7,17 +7,17 @@
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]
             [cljam.io.sam.util.header :as header]
-            [cljam.io.sequence :as cseq]
             [cljam.algo.bam-indexer :as bai]
             [cljam.algo.normal :as normal]
             [cljam.algo.sorter :as sorter]
             [cljam.algo.fasta-indexer :as fai]
             [cljam.algo.dict :as dict]
             [cljam.algo.depth :as depth]
-            [cljam.algo.pileup :as plp]
             [cljam.algo.convert :as convert]
             [cljam.algo.level :as level]
-            [cljam.util.region :as region])
+            [cljam.algo.pileup :as plp]
+            [cljam.util.region :as region]
+            [clojure.java.io :as cio])
   (:import [java.io Closeable BufferedWriter OutputStreamWriter]))
 
 ;; CLI functions
@@ -35,6 +35,12 @@
   [errors]
   (str "The following errors occurred while parsing your command:\n\n"
        (cstr/join \newline errors)))
+
+(defn- parse-region [region-str]
+  (when region-str
+    (if-let [reg (region/parse-region region-str)]
+      reg
+      (exit 1 (str "Invalid region format: " region-str)))))
 
 ;; Sub-commands
 ;; ------------
@@ -70,12 +76,10 @@
                                  "bam"  (sam/bam-reader f))]
         (when (:header options)
           (println (header/stringify-header (sam/read-header r))))
-        (doseq [aln (if (:region options)
-                      (if-let [region (region/parse-region (:region options))]
-                        (if (sam/indexed? r)
-                          (sam/read-alignments r region)
-                          (exit 1 "Random alignment retrieval only works for indexed BAM."))
-                        (exit 1 "Invalid region format"))
+        (doseq [aln (if-let [region (parse-region (:region options))]
+                      (if (sam/indexed? r)
+                        (sam/read-alignments r region)
+                        (exit 1 "Random alignment retrieval only works for indexed BAM."))
                       (sam/read-alignments r))]
           (println (sam-util/stringify-alignment aln))))))
   nil)
@@ -214,77 +218,34 @@
         options-summary]
        (cstr/join \newline)))
 
-(defn- pileup-simple
-  ([rdr n-threads]
-   (doseq [rname (map :name (sam/read-refs rdr))]
-     (pileup-simple rdr n-threads {:chr rname})))
-  ([rdr n-threads region]
-   (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
-             *flush-on-newline* false]
-     (doseq [line (depth/lazy-depth rdr region {:n-threads n-threads})]
-       (println line))
-     (flush))))
-
-(defn- pileup-with-ref
-  ([rdr ref-fa]
-   (with-open [fa-rdr (cseq/reader ref-fa)]
-     (doseq [rname (map :name (sam/read-refs rdr))
-             line  (plp/mpileup fa-rdr rdr {:chr rname})]
-       (if-not (zero? (:count line))
-         (println (cstr/join \tab (map #(case %
-                                          :qual (cstr/join (% line))
-                                          :seq (cstr/join (% line))
-                                          (% line)) [:rname :pos :ref :count :seq :qual])))))))
-  ([rdr ref-fa region]
-   (with-open [fa-rdr (cseq/reader ref-fa)]
-     (doseq [line  (plp/mpileup fa-rdr rdr region)]
-       (if-not (zero? (:count line))
-         (println (cstr/join \tab (map #(case %
-                                          :qual (cstr/join (% line))
-                                          :seq (cstr/join (% line))
-                                          (% line)) [:rname :pos :ref :count :seq :qual]))))))))
-
-(defn- pileup-without-ref
-  ([rdr]
-   (doseq [rname (map :name (sam/read-refs rdr))
-           line  (plp/mpileup rdr {:chr rname})]
-     (if-not (zero? (:count line))
-       (println (cstr/join \tab (map #(case %
-                                        :qual (cstr/join (% line))
-                                        :seq (cstr/join (% line))
-                                        (% line)) [:rname :pos :ref :count :seq :qual]))))))
-  ([rdr region]
-   (doseq [line  (plp/mpileup nil rdr region)]
-     (if-not (zero? (:count line))
-       (println (cstr/join \tab (map #(case %
-                                        :qual (cstr/join (% line))
-                                        :seq (cstr/join (% line))
-                                        (% line)) [:rname :pos :ref :count :seq :qual])))))))
+(defn- depth
+  [f region n-threads]
+  (with-open [r (sam/reader f)]
+    (when-not (sam/indexed? r)
+      (exit 1 "Random alignment retrieval only works for indexed BAM."))
+    (when-not (sorter/sorted? r)
+      (exit 1 "Not sorted"))
+    (let [regs (or (some-> region parse-region vector)
+                   (map (fn [{:keys [name len]}] {:chr name :start 1 :end len}) (sam/read-refs r)))]
+      (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
+                *flush-on-newline* false]
+        (doseq [reg regs
+                line (depth/lazy-depth r reg {:n-threads n-threads})]
+          (println line))
+        (flush)))))
 
 (defn pileup [args]
-  (let [{:keys [options arguments errors summary]} (parse-opts args pileup-cli-options)]
+  (let [{:keys [arguments errors summary]
+         {:keys [help region simple ref thread]} :options} (parse-opts args pileup-cli-options)]
     (cond
-     (:help options) (exit 0 (pileup-usage summary))
-     (not= (count arguments) 1) (exit 1 (pileup-usage summary))
-     errors (exit 1 (error-msg errors)))
+      help (exit 0 (pileup-usage summary))
+      (not= (count arguments) 1) (exit 1 (pileup-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (with-open [r (sam/reader f)]
-        (when (= (type r) cljam.io.sam.reader.SAMReader)
-          (exit 1 "Not support SAM file"))
-        (when-not (sorter/sorted? r)
-          (exit 1 "Not sorted"))
-        (if (:region options)
-          (if-let [region (region/parse-region (:region options))]
-            (cond
-              (:simple options) (pileup-simple r (:thread options) region)
-              (:ref options) (pileup-with-ref r (:ref options) region)
-              :else (pileup-without-ref r region))
-            (exit 1 "Invalid region format"))
-          (cond
-            (:simple options) (pileup-simple r (:thread options))
-            (:ref options) (pileup-with-ref r (:ref options))
-            :else (pileup-without-ref r))))))
-  nil)
+      (if simple
+        (depth f region thread)
+        (with-open [w (cio/writer (cio/output-stream System/out))]
+          (plp/create-mpileup f ref w (parse-region region)))))))
 
 ;; ### faidx command
 

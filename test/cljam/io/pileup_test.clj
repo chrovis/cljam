@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
             [clojure.string :as cstr]
+            [clojure.walk :as walk]
             [cljam.test-common :refer :all]
             [cljam.io.pileup :as plpio]
             [cljam.io.sequence :as cseq]
@@ -10,6 +11,31 @@
   (:import [java.io File StringWriter StringReader]
            [cljam.io.pileup PileupReader PileupWriter]))
 
+(defn- rec->map [coll]
+  (walk/postwalk
+   (fn [x]
+     (if (record? x)
+       (into {} x)
+       x))
+   coll))
+
+(def ^:private ^:const the-last-pile
+  ;; ref2	36	N	1	A$	?
+  {:rname "ref2",
+   :pos 36,
+   :ref \N,
+   :count 1,
+   :pile
+   [{:start? false,
+     :mapq nil,
+     :base \A,
+     :qual 30,
+     :reverse? false,
+     :end? true,
+     :insertion nil,
+     :deletion nil,
+     :alignment nil}]})
+
 ;; Reader
 ;; ------
 
@@ -17,7 +43,7 @@
   (testing "without-ref"
     (are [?in ?out]
         (= (mapv #(into {:alignment nil} %) ?out)
-           (mapv #(into {} %) (#'plpio/parse-bases-col nil ?in)))
+           (mapv rec->map (#'plpio/parse-bases-col nil ?in)))
       "" []
       "A" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? false, :end? false, :insertion nil, :deletion nil}]
       "a" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? true, :end? false, :insertion nil, :deletion nil}]
@@ -45,7 +71,7 @@
   (testing "with-ref"
     (are [?in ?out]
         (= (mapv #(into {:alignment nil} %) ?out)
-           (mapv #(into {} %) (#'plpio/parse-bases-col \T ?in)))
+           (mapv rec->map (#'plpio/parse-bases-col \T ?in)))
       "" []
       "A" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? false, :end? false, :insertion nil, :deletion nil}]
       "a$" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? true, :end? true, :insertion nil, :deletion nil}]
@@ -79,7 +105,7 @@
 (deftest parse-pileup-line
   (testing "without-ref"
     (are [?in ?out]
-        (= ?out (into {} (update (#'plpio/parse-pileup-line ?in) :pile (fn [xs] (mapv #(into {} %) xs)))))
+        (= ?out (rec->map (#'plpio/parse-pileup-line ?in)))
       "chr1\t10\tN\t0\t\t" {:rname "chr1", :pos 10, :ref \N, :count 0,
                             :pile []}
       "chr1\t10\tN\t1\tA\tI" {:rname "chr1", :pos 10, :ref \N, :count 1,
@@ -92,7 +118,7 @@
                                             {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? true, :insertion nil, :deletion 2, :alignment nil}]}))
   (testing "with-ref"
     (are [?in ?out]
-        (= ?out (into {} (update (#'plpio/parse-pileup-line ?in) :pile (fn [xs] (mapv #(into {} %) xs)))))
+        (= ?out (rec->map (#'plpio/parse-pileup-line ?in)))
       "chr1\t10\tA\t0\t\t" {:rname "chr1", :pos 10, :ref \A, :count 0,
                             :pile []}
       "chr1\t10\ta\t1\t.\tI" {:rname "chr1", :pos 10, :ref \a, :count 1,
@@ -110,24 +136,8 @@
 
 (deftest read-piles
   (with-open [r (plpio/reader test-pileup-file)]
-    (is (= {:rname "ref2",
-            :pos 36,
-            :ref \N,
-            :count 1,
-            :pile [{:start? false,
-                    :mapq nil,
-                    :base \A,
-                    :qual 30,
-                    :reverse? false,
-                    :end? true,
-                    :insertion nil,
-                    :deletion nil
-                    :alignment nil}]}
-           (->> xs
-                (map #(into {} %))
-                (fn [xs])
-                (update (last (plpio/read-piles r)) :pile)
-                (into {}))))))
+    (is (= the-last-pile
+           (rec->map (last (plpio/read-piles r)))))))
 
 ;; Writer
 ;; ------
@@ -263,3 +273,24 @@
       "chr1\t10\tA\t1\t.\tI\n"
       "chr1\t10\tA\t4\t.,Tt\tIABC\n"
       "chr1\t10\tA\t4\t^].+3TTT,-2tg$Tt\tIABC\n")))
+
+(deftest source-type-test
+  (testing "reader"
+    (with-open [server (http-server)]
+      (are [x] (= the-last-pile
+                  (with-open [r (plpio/reader x)]
+                    (rec->map (last (plpio/read-piles r)))))
+        test-pileup-file
+        (cio/file test-pileup-file)
+        (cio/as-url (cio/file test-pileup-file))
+        (cio/as-url (str (:uri server) "/pileup/test.pileup")))))
+
+  (testing "writer"
+    (let [tmp-pileup-file (cio/file temp-dir "pileup-source-type-writer.mpileup")]
+      (are [x] (with-before-after {:before (prepare-cache!)
+                                   :after (clean-cache!)}
+                 (with-open [w (plpio/writer x)]
+                   (not-throw? (plpio/write-piles w [the-last-pile]))))
+        (.getCanonicalPath tmp-pileup-file)
+        tmp-pileup-file
+        (cio/as-url tmp-pileup-file)))))

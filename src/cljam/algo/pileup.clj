@@ -6,8 +6,7 @@
             [cljam.io.sam.util.quality :as qual]
             [cljam.io.sam.util.refs :as refs]
             [cljam.io.pileup :as plpio])
-  (:import [java.io Closeable]
-           [cljam.io.protocols SAMAlignment]
+  (:import [cljam.io.protocols SAMAlignment]
            [cljam.io.pileup PileupBase LocusPile]))
 
 (defn- cover-locus? [^long pos ^SAMAlignment aln]

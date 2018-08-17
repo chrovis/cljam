@@ -77,7 +77,7 @@
            (<= min-mapq (.mapq aln))))))
 
 (defn resolve-base
-  "Find a piled-up base and an indel from a alignment."
+  "Find a piled-up base and an indel from an alignment."
   [^long ref-pos ^SAMAlignment aln]
   (let [relative-pos (- ref-pos (.pos aln))
         qual ((:quals-at-ref aln) relative-pos)
@@ -168,7 +168,7 @@
                    (keep (partial ->locus-pile chr)))))))))
 
 (defn align-pileup-seqs
-  "Align multiple pileed-up seqs."
+  "Align multiple piled-up seqs."
   [& xs]
   (if (<= (count xs) 1)
     (map (fn [{:keys [pos] :as m}] [pos [m]]) (first xs))

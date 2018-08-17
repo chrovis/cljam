@@ -142,10 +142,18 @@
 ;; Writer
 ;; ------
 
-(deftest stringify-mpileup-read
+(defmacro with-string-writer [symbol & exprs]
+  `(with-open [sw# (StringWriter.)
+               ~symbol (cio/writer sw#)]
+     ~@exprs
+     (.flush ~symbol)
+     (str sw#)))
+
+(deftest write-mpileup-alignment!
   (testing "without-ref"
     (are [?in ?out]
-        (= ?out (#'plpio/stringify-mpileup-alignment nil "chr1" 10 nil ?in))
+        (= ?out (with-string-writer w
+                  (#'plpio/write-mpileup-alignment! w nil "chr1" 10 nil ?in)))
       {:base \A :reverse? false :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "A"
       {:base \N :reverse? false :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "N"
       {:base \A :reverse? true :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a"
@@ -157,7 +165,9 @@
       {:base \A :reverse? false :insertion "A" :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "A+1A"
       {:base \A :reverse? false :deletion 2 :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "A-2NN"
       {:base \A :reverse? true :insertion "AT" :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a+2at"
+      {:base \A :reverse? true :insertion "AAAATTTTGGGGCCCC" :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a+16aaaattttggggcccc"
       {:base \A :reverse? true :deletion 3 :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a-3nnn"
+      {:base \A :reverse? true :deletion 10 :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a-10nnnnnnnnnn"
       {:base \A :reverse? false :start? true :mapq 60 :alignment {:flag 0 :mapq 60 :pos 10 :end 15}} "^]A"
       {:base \A :reverse? false :start? true :mapq 93 :alignment {:flag 0 :mapq 93 :pos 10 :end 15}} "^~A"
       {:base \A :reverse? false :start? true :mapq 94 :alignment {:flag 0 :mapq 94 :pos 10 :end 15}} "^~A"
@@ -167,9 +177,10 @@
   (testing "with-ref"
     (let [r (reify p/ISequenceReader
               (p/read-sequence [this {:keys [start end]}]
-                (subs "ATGCATGCATGCATGC" (dec start) end)))]
+                (subs "ATGCATGCATGCATGCATGCATGCATGC" (dec start) end)))]
       (are [?in ?out]
-          (= ?out (#'plpio/stringify-mpileup-alignment r "chr1" 10 \T ?in))
+          (= ?out (with-string-writer w
+                    (#'plpio/write-mpileup-alignment! w r "chr1" 10 \T ?in)))
         {:base \A :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "A"
         {:base \T :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "."
         {:base \T :reverse? true :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} ","
@@ -183,7 +194,9 @@
         {:base \A :insertion "A" :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "A+1A"
         {:base \A :deletion 2 :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "A-2GC"
         {:base \A :reverse? true :insertion "AT" :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a+2at"
+        {:base \A :reverse? true :insertion "AAAATTTTGGGGCCCC" :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a+16aaaattttggggcccc"
         {:base \A :reverse? true :deletion 3 :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a-3gca"
+        {:base \A :reverse? true :deletion 10 :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a-10gcatgcatgc"
         {:base \A :start? true :mapq 60 :alignment {:flag 0 :mapq 60 :pos 10 :end 15}} "^]A"
         {:base \A :start? true :mapq 93 :alignment {:flag 0 :mapq 93 :pos 10 :end 15}} "^~A"
         {:base \A :start? true :mapq 94 :alignment {:flag 0 :mapq 94 :pos 10 :end 15}} "^~A"
@@ -199,12 +212,13 @@
       ((if mask? identity cstr/upper-case)
        (subs s (dec start) end)))))
 
-(deftest stringify-mpileup-line
+(deftest write-mpileup-line!
   (testing "without-ref"
     (are [?in ?out]
-        (= ?out (#'plpio/stringify-mpileup-line nil {:rname (first ?in)
-                                                     :pos (second ?in)
-                                                     :pile (last ?in)}))
+        (= ?out (with-string-writer w
+                  (#'plpio/write-mpileup-line! w nil {:rname (first ?in)
+                                                      :pos (second ?in)
+                                                      :pile (last ?in)})))
       ["chr1" 10 []] "chr1\t10\tN\t0\t\t"
       ["chr1" 10 [{:base \A :qual 40 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tN\t1\tA\tI"
       ["chr1" 10 [{:base \A :qual 93 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tN\t1\tA\t~"
@@ -214,9 +228,10 @@
   (testing "with-ref"
     (let [r (string-sequence-reader "NNNNNNNNNAtGCATGCAT")]
       (are [?in ?out]
-          (= ?out (#'plpio/stringify-mpileup-line r {:rname (first ?in)
-                                                     :pos (second ?in)
-                                                     :pile (last ?in)}))
+          (= ?out (with-string-writer w
+                    (#'plpio/write-mpileup-line! w r {:rname (first ?in)
+                                                      :pos (second ?in)
+                                                      :pile (last ?in)})))
         ["chr1" 10 []] "chr1\t10\tA\t0\t\t"
         ["chr1" 10 [{:base \A :qual 40 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tA\t1\t.\tI"
         ["chr1" 10 [{:base \A :qual 93 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tA\t1\t.\t~"

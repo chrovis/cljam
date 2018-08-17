@@ -118,58 +118,59 @@
 ;; Writer
 ;; ------
 
-(defn- ^String stringify-mpileup-alignment
-  ([ref-reader rname ref-pos ref pileup-base]
-   (-> (StringBuilder.)
-       (stringify-mpileup-alignment ref-reader rname ref-pos ref pileup-base)))
-  ([^StringBuilder sb ref-reader rname ref-pos ref
-    {:keys [base reverse? mapq start? end? insertion deletion]}]
-   (let [case-base-fn (if-not reverse?
-                        identity
-                        (fn [c]
-                          (if (= c \>)
-                            \<
-                            (Character/toLowerCase ^char c))))
-         case-fn (if-not reverse? identity cstr/lower-case)]
-     (.setLength sb 0)
-     (when start?
-       (.append sb \^)
-       (.append sb (qual/phred-byte->fastq-char mapq)))
-     (if (= base ref) ;; match / deleted / skipped
-       (.append sb (if reverse? \, \.))
-       (.append sb (case-base-fn base)))
-     (when deletion
-       (do (.append sb \-)
-           (.append sb deletion)
-           (.append sb (case-fn
-                        (if ref-reader
-                          (->> {:chr rname
-                                :start (inc ref-pos)
-                                :end (+ ref-pos deletion)}
-                               (cseq/read-sequence ref-reader))
-                          (apply str (repeat deletion \N)))))))
-     (when insertion
-       (do (.append sb \+)
-           (.append sb (count insertion))
-           (.append sb (case-fn insertion))))
-     (when end?
-       (.append sb \$))
-     (str sb))))
+(defn- write-mpileup-alignment!
+  [^BufferedWriter w ref-reader rname ref-pos ref
+   {:keys [base reverse? mapq start? end? insertion deletion]}]
+  (let [case-base-fn (if-not reverse?
+                       identity
+                       (fn [c]
+                         (if (= c \>)
+                           \<
+                           (Character/toLowerCase ^char c))))
+        case-fn (if-not reverse? identity cstr/lower-case)]
+    (when start?
+      (.append w \^)
+      (.append w (qual/phred-byte->fastq-char mapq)))
+    (if (= base ref) ;; match / deleted / skipped
+      (.append w (if reverse? \, \.))
+      (.append w (unchecked-char (case-base-fn base))))
+    (when deletion
+      (do (.append w \-)
+          (.append w (String/valueOf ^int deletion))
+          (.append w ^String (case-fn
+                              (if ref-reader
+                                (->> {:chr rname
+                                      :start (inc ref-pos)
+                                      :end (+ ref-pos deletion)}
+                                     (cseq/read-sequence ref-reader))
+                                (apply str (repeat deletion \N)))))))
+    (when insertion
+      (do (.append w \+)
+          (.append w (String/valueOf (count insertion)))
+          (.append w ^String (case-fn insertion))))
+    (when end?
+      (.append w \$))))
 
-(defn- ^String stringify-mpileup-line
-  ([ref-reader pile]
-   (stringify-mpileup-line (StringBuilder.) ref-reader pile))
-  ([sb ref-reader {:keys [rname pos pile]}]
-   (let [ref-base (some-> ref-reader
-                          (cseq/read-sequence
-                           {:chr rname :start pos :end pos}
-                           {:mask? true}))
-         ref-char (some-> ref-base cstr/upper-case first)
-         base-fn (partial stringify-mpileup-alignment
-                          sb ref-reader rname pos ref-char)
-         bases (cstr/join (map base-fn pile))
-         quals (cstr/join (map (comp qual/phred-byte->fastq-char :qual) pile))]
-     (cstr/join \tab [rname pos (or ref-base "N") (count pile) bases quals]))))
+(defn- write-mpileup-line!
+  [^BufferedWriter w ref-reader {:keys [rname pos pile]}]
+  (let [ref-base (some-> ref-reader
+                         (cseq/read-sequence
+                          {:chr rname :start pos :end pos}
+                          {:mask? true}))
+        ref-char (some-> ref-base cstr/upper-case first)]
+    (.write w ^String rname)
+    (.append w \tab)
+    (.write w (String/valueOf (long pos)))
+    (.append w \tab)
+    (.write w (or ^String ref-base "N"))
+    (.append w \tab)
+    (.write w (String/valueOf (count pile)))
+    (.append w \tab)
+    (doseq [p pile]
+      (write-mpileup-alignment! w ref-reader rname pos ref-char p))
+    (.append w \tab)
+    (doseq [p pile]
+      (.append w (qual/phred-byte->fastq-char (:qual p))))))
 
 (deftype PileupWriter [writer ref-reader]
   Closeable
@@ -187,12 +188,12 @@
    (PileupWriter. (cio/writer f) (some-> reference-path cseq/reader))))
 
 (defn write-piles
-  "Writes piled-up bases to a file. `pileup-writer` must be an instance of  
+  "Writes piled-up bases to a file. `pileup-writer` must be an instance of
   cljam.io.pileup.PileupWriter."
   [^PileupWriter pileup-writer piles]
   (let [^BufferedWriter writer (.writer pileup-writer)
         ref-reader (.ref-reader pileup-writer)]
     (doseq [pile piles]
-      (.write writer (stringify-mpileup-line ref-reader pile))
+      (write-mpileup-line! writer ref-reader pile)
       (.newLine writer))
     (.flush writer)))

@@ -246,7 +246,7 @@
       (if simple
         (depth f region thread)
         (with-open [w (cio/writer (cio/output-stream System/out))]
-          (plp/create-mpileup f ref w (some-> region parse-region)))))))
+          (plp/create-mpileup f ref w (parse-region region)))))))
 
 ;; ### faidx command
 

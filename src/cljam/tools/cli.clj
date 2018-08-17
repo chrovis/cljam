@@ -220,8 +220,7 @@
 
 (defn- depth
   [f region n-threads]
-  (with-open [r (sam/reader f)
-              w (cio/writer *out*)]
+  (with-open [r (sam/reader f)]
     (when-not (sam/indexed? r)
       (exit 1 "Random alignment retrieval only works for indexed BAM."))
     (when-not (sorter/sorted? r)

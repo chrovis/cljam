@@ -7,7 +7,6 @@
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]
             [cljam.io.sam.util.header :as header]
-            [cljam.io.sequence :as cseq]
             [cljam.algo.bam-indexer :as bai]
             [cljam.algo.normal :as normal]
             [cljam.algo.sorter :as sorter]

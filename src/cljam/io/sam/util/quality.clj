@@ -6,7 +6,7 @@
   `(byte (- (int ~ch) 33)))
 
 (definline phred-byte->fastq-char [b]
-  `(unchecked-char (unchecked-add ~b 33)))
+  `(unchecked-char (unchecked-add (Math/min 93 (Math/max (long ~b) 0)) 33)))
 
 (defn fastq->phred ^bytes [^String fastq]
   (let [b (.getBytes fastq)

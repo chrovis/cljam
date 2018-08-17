@@ -159,6 +159,8 @@
       {:base \A :reverse? true :insertion "AT" :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a+2at"
       {:base \A :reverse? true :deletion 3 :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a-3nnn"
       {:base \A :reverse? false :start? true :mapq 60 :alignment {:flag 0 :mapq 60 :pos 10 :end 15}} "^]A"
+      {:base \A :reverse? false :start? true :mapq 93 :alignment {:flag 0 :mapq 93 :pos 10 :end 15}} "^~A"
+      {:base \A :reverse? false :start? true :mapq 94 :alignment {:flag 0 :mapq 94 :pos 10 :end 15}} "^~A"
       {:base \A :reverse? true :start? true :mapq 40 :insertion "AT" :alignment {:flag 16 :mapq 40 :pos 10 :end 15}} "^Ia+2at"
       {:base \A :reverse? false :end? true :alignment {:flag 0 :mapq 40 :pos 5 :end 10}} "A$"
       {:base \A :reverse? true :end? true :deletion 4 :alignment {:flag 16 :mapq 40 :pos 5 :end 10}} "a-4nnnn$"))
@@ -183,6 +185,8 @@
         {:base \A :reverse? true :insertion "AT" :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a+2at"
         {:base \A :reverse? true :deletion 3 :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a-3gca"
         {:base \A :start? true :mapq 60 :alignment {:flag 0 :mapq 60 :pos 10 :end 15}} "^]A"
+        {:base \A :start? true :mapq 93 :alignment {:flag 0 :mapq 93 :pos 10 :end 15}} "^~A"
+        {:base \A :start? true :mapq 94 :alignment {:flag 0 :mapq 94 :pos 10 :end 15}} "^~A"
         {:base \A :reverse? true :start? true :mapq 40 :insertion "AT" :alignment {:flag 16 :mapq 40 :pos 10 :end 15}} "^Ia+2at"
         {:base \A :end? true :alignment {:flag 0 :mapq 40 :pos 5 :end 10}} "A$"
         {:base \A :reverse? true :end? true :deletion 4 :alignment {:flag 16 :mapq 40 :pos 5 :end 10}} "a-4gcat$"))))
@@ -199,20 +203,24 @@
   (testing "without-ref"
     (are [?in ?out]
         (= ?out (#'plpio/stringify-mpileup-line nil {:rname (first ?in)
-                                                   :pos (second ?in)
-                                                   :pile (last ?in)}))
+                                                     :pos (second ?in)
+                                                     :pile (last ?in)}))
       ["chr1" 10 []] "chr1\t10\tN\t0\t\t"
       ["chr1" 10 [{:base \A :qual 40 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tN\t1\tA\tI"
+      ["chr1" 10 [{:base \A :qual 93 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tN\t1\tA\t~"
+      ["chr1" 10 [{:base \A :qual 94 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tN\t1\tA\t~"
       ["chr1" 10 [{:base \A :qual 40 :alignment {:flag 0 :pos 5}}
                   {:base \A :qual 33 :reverse? true :start? true :mapq 60 :alignment {:flag 16 :mapq 60 :pos 10}}]] "chr1\t10\tN\t2\tA^]a\tIB"))
   (testing "with-ref"
     (let [r (string-sequence-reader "NNNNNNNNNAtGCATGCAT")]
       (are [?in ?out]
           (= ?out (#'plpio/stringify-mpileup-line r {:rname (first ?in)
-                                                   :pos (second ?in)
-                                                   :pile (last ?in)}))
+                                                     :pos (second ?in)
+                                                     :pile (last ?in)}))
         ["chr1" 10 []] "chr1\t10\tA\t0\t\t"
         ["chr1" 10 [{:base \A :qual 40 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tA\t1\t.\tI"
+        ["chr1" 10 [{:base \A :qual 93 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tA\t1\t.\t~"
+        ["chr1" 10 [{:base \A :qual 94 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tA\t1\t.\t~"
         ["chr1" 10 [{:base \A :insertion "AA" :qual 40 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tA\t1\t.+2AA\tI"
         ["chr1" 10 [{:base \A :deletion 2 :qual 40 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tA\t1\t.-2TG\tI"
         ["chr1" 11 [{:base \T :qual 40 :alignment {:flag 0 :pos 5}}]] "chr1\t11\tt\t1\t.\tI"

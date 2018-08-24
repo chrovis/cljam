@@ -192,6 +192,10 @@
 (def test-bcf-v4_3-file "test-resources/bcf/test-v4_3.bcf")
 (def test-bcf-invalid-file "test-resources/bcf/invalid.bcf")
 
+;; ### GFF3 files
+
+(def test-gff3-file "test-resources/gff3/example.gff3")
+
 (def to-sam-alignment
   (comp
    protocols/map->SAMAlignment

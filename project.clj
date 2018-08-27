@@ -16,12 +16,11 @@
                                   [cavia "0.5.1"]
                                   [criterium "0.4.4"]
                                   [net.totakke/libra "0.1.1"]
-                                  [org.tcrawley/dynapath "1.0.0"]
                                   [se.haleby/stub-http "0.2.5"]]
                    :plugins [[lein-binplus "0.6.4" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.4"]
                              [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]
-                             [lein-cloverage "1.0.11" :exclusions [org.clojure/clojure org.tcrawley/dynapath]]
+                             [lein-cloverage "1.0.13"]
                              [net.totakke/lein-libra "0.1.2"]]
                    :test-selectors {:default #(not-any? % [:slow :remote])
                                     :slow :slow ; Slow tests with local resources

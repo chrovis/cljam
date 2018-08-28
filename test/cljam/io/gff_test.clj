@@ -242,10 +242,10 @@
   encoding-edn
   [{:chr "ch r;1", :source "sour =ce", :type "ty &p,e", :start 1, :end 10, :score 9.0, :strand :unknown, :phase nil, :attributes {}}
    {:chr "chr%3B1", :source "sour%3Dce", :type "ty%26p%2Ce", :start 1, :end 10, :score nil, :strand :forward, :phase nil,
-    :attributes {:target {:chr "Foo Bar", :start 1, :end 10, :reverse? false}, :db-xref [{:db-tag "EMBL", :id "AA816246"}, {:db-tag "NCBI_gi", :id "10727410"}], "Foo" ["Bar," "Baz "]}}
+    :attributes {:target {:chr "Foo Bar", :start 1, :end 10, :strand :forward}, :db-xref [{:db-tag "EMBL", :id "AA816246"}, {:db-tag "NCBI_gi", :id "10727410"}], "Foo" ["Bar," "Baz "]}}
    {:chr " !\"#$%&'\t()*+,-./\n0123456789:;<=>?@[\\]^_`{|}~", :source nil, :type "type", :start 1, :end 10, :score nil, :strand nil, :phase nil,
     :attributes {:id " !\"#$%&'\t()*+,-./\n0123456789:;<=>?@[\\]^_`{|}~",
-                 :target {:chr " !\"#$%&'\t()*+,-./\n0123456789:;<=>?@[\\]^_`{|}~", :start 1, :end 10, :reverse? true}}}])
+                 :target {:chr " !\"#$%&'\t()*+,-./\n0123456789:;<=>?@[\\]^_`{|}~", :start 1, :end 10, :strand :reverse}}}])
 
 (def ^:private
   example-edn

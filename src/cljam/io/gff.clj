@@ -88,17 +88,16 @@
   target-regexp
   #"(\S+) ([1-9]\d*) ([1-9]\d*)(?: ([+-]))?")
 
-(defn- ^String encode-target [{:keys [chr start end reverse?]}]
+(defn- ^String encode-target [{:keys [chr start end strand]}]
   (cstr/join \space (cond-> [(encode escape-in-target? chr) start end]
-                      ;; +: forward, -: reverse, nil: unspecified
-                      (some? reverse?) (conj (if reverse? \- \+)))))
+                      strand (conj (case strand :forward \+ :reverse \-)))))
 
 (defn- decode-target [s]
   (when-let [[_ target-id start end strand] (re-matches target-regexp s)]
     (cond-> {:chr (decode escape-in-target? target-id)
              :start (p/as-long start)
              :end (p/as-long end)}
-      strand (assoc :reverse? (= \- (first strand))))))
+      strand (assoc :strand (case (first strand) \+ :forward \- :reverse)))))
 
 (defn- ^String encode-gap [xs]
   (cstr/join \space (map (fn [[op len]] (str op len)) xs)))

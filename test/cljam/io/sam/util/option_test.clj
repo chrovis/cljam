@@ -43,9 +43,9 @@
     (is (= (opt/read-group aln) "ReadGroup01"))
     (is (= (opt/barcode aln) "CGTAC"))
     (is (= (opt/supplementary-alignments aln)
-           [{:rname "chr1", :pos 550, :strand \+,
+           [{:rname "chr1", :pos 550, :strand :forward,
              :cigar "70S50M", :mapq 0, :edit-distance 4}
-            {:rname "chr1", :pos 550, :strand \-,
+            {:rname "chr1", :pos 550, :strand :reverse,
              :cigar "40S30M50S", :mapq 0, :edit-distance 0}]))
     (is (= (opt/primary-to-alt-score aln) 0.987))
     (is (= (opt/alternative-hits aln)

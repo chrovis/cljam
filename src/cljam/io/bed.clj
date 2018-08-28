@@ -104,7 +104,7 @@
    {:start as-long
     :end as-long
     :score as-long
-    :strand #(case % "." :no-strand "+" :plus "-" :minus)
+    :strand #(case % "." nil "+" :forward "-" :reverse)
     :thick-start as-long
     :thick-end as-long
     :block-count as-long
@@ -133,7 +133,7 @@
          ;; Blocks may not overlap.
          (if-let [xs (:block-starts m)] (apply <= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes m))) true)]}
   (->> (-> m
-           (update-some :strand #(case % :plus "+" :minus "-" :no-strand "."))
+           (update-some :strand #(case % :forward "+" :reverse "-" nil "."))
            (update-some :block-sizes long-list->str)
            (update-some :block-starts long-list->str))
        ((apply juxt bed-columns))

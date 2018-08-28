@@ -108,7 +108,10 @@
                     (zipmap rests)
                     (update :pos p/as-long)
                     (update :mapq p/as-long)
-                    (update :strand first)
+                    (update :strand (fn [^String strand]
+                                      (case (.charAt strand 0)
+                                        \+ :forward
+                                        \- :reverse)))
                     (update :edit-distance p/as-long)))))))
 
 (def

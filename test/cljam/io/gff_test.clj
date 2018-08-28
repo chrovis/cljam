@@ -19,11 +19,11 @@
 
 (def ^:private
   simple-edn
-  [{:chr "ctg123", :source nil, :type "exon", :start 1300, :end 1500, :score nil, :strand \+, :phase nil, :attributes {:id "exon00001"}}
-   {:chr "ctg123", :source nil, :type "exon", :start 1050, :end 1500, :score nil, :strand \+, :phase nil, :attributes {:id "exon00002"}}
-   {:chr "ctg123", :source nil, :type "exon", :start 3000, :end 3902, :score nil, :strand \+, :phase nil, :attributes {:id "exon00003"}}
-   {:chr "ctg123", :source nil, :type "exon", :start 5000, :end 5500, :score nil, :strand \+, :phase nil, :attributes {:id "exon00004"}}
-   {:chr "ctg123", :source nil, :type "exon", :start 7000, :end 9000, :score nil, :strand \+, :phase nil, :attributes {:id "exon00005"}}])
+  [{:chr "ctg123", :source nil, :type "exon", :start 1300, :end 1500, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00001"}}
+   {:chr "ctg123", :source nil, :type "exon", :start 1050, :end 1500, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00002"}}
+   {:chr "ctg123", :source nil, :type "exon", :start 3000, :end 3902, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00003"}}
+   {:chr "ctg123", :source nil, :type "exon", :start 5000, :end 5500, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00004"}}
+   {:chr "ctg123", :source nil, :type "exon", :start 7000, :end 9000, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00005"}}])
 
 (def ^:private ^String
   nested-gff-1
@@ -38,12 +38,12 @@
 
 (def ^:private
   nested-edn-1
-  [{:chr "ctg123", :source nil, :type "mRNA", :start 1300, :end 9000, :score nil, :strand \+, :phase nil, :attributes {:id "mrna0001", :name "foobar"}}
-   {:chr "ctg123", :source nil, :type "exon", :start 1300, :end 1500, :score nil, :strand \+, :phase nil, :attributes {:id "exon00001", :parent ["mrna0001"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 1050, :end 1500, :score nil, :strand \+, :phase nil, :attributes {:id "exon00002", :parent ["mrna0001"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 3000, :end 3902, :score nil, :strand \+, :phase nil, :attributes {:id "exon00003", :parent ["mrna0001"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 5000, :end 5500, :score nil, :strand \+, :phase nil, :attributes {:id "exon00004", :parent ["mrna0001"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 7000, :end 9000, :score nil, :strand \+, :phase nil, :attributes {:id "exon00005", :parent ["mrna0001"]}}])
+  [{:chr "ctg123", :source nil, :type "mRNA", :start 1300, :end 9000, :score nil, :strand :forward, :phase nil, :attributes {:id "mrna0001", :name "foobar"}}
+   {:chr "ctg123", :source nil, :type "exon", :start 1300, :end 1500, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00001", :parent ["mrna0001"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 1050, :end 1500, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00002", :parent ["mrna0001"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 3000, :end 3902, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00003", :parent ["mrna0001"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 5000, :end 5500, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00004", :parent ["mrna0001"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 7000, :end 9000, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00005", :parent ["mrna0001"]}}])
 
 (def ^:private ^String
   nested-gff-2
@@ -62,16 +62,16 @@
 
 (def ^:private
   nested-edn-2
-  [{:chr "ctg123", :source nil, :type "operon", :start 1300, :end 15000, :score nil, :strand \+, :phase nil, :attributes {:id "operon001", :name "Operon"}}
-   {:chr "ctg123", :source nil, :type "mRNA", :start 1300, :end 9000, :score nil, :strand \+, :phase nil, :attributes {:id "mrna0001", :parent ["operon001"], :name "foobar"}}
-   {:chr "ctg123", :source nil, :type "exon", :start 1300, :end 1500, :score nil, :strand \+, :phase nil, :attributes {:parent ["mrna0001"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 1050, :end 1500, :score nil, :strand \+, :phase nil, :attributes {:parent ["mrna0001"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 3000, :end 3902, :score nil, :strand \+, :phase nil, :attributes {:parent ["mrna0001"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 5000, :end 5500, :score nil, :strand \+, :phase nil, :attributes {:parent ["mrna0001"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 7000, :end 9000, :score nil, :strand \+, :phase nil, :attributes {:parent ["mrna0001"]}}
-   {:chr "ctg123", :source nil, :type "mRNA", :start 10000, :end 15000, :score nil, :strand \+, :phase nil, :attributes {:id "mrna0002", :parent ["operon001"], :name "baz"}}
-   {:chr "ctg123", :source nil, :type "exon", :start 10000, :end 12000, :score nil, :strand \+, :phase nil, :attributes {:parent ["mrna0002"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 14000, :end 15000, :score nil, :strand \+, :phase nil, :attributes {:parent ["mrna0002"]}}])
+  [{:chr "ctg123", :source nil, :type "operon", :start 1300, :end 15000, :score nil, :strand :forward, :phase nil, :attributes {:id "operon001", :name "Operon"}}
+   {:chr "ctg123", :source nil, :type "mRNA", :start 1300, :end 9000, :score nil, :strand :forward, :phase nil, :attributes {:id "mrna0001", :parent ["operon001"], :name "foobar"}}
+   {:chr "ctg123", :source nil, :type "exon", :start 1300, :end 1500, :score nil, :strand :forward, :phase nil, :attributes {:parent ["mrna0001"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 1050, :end 1500, :score nil, :strand :forward, :phase nil, :attributes {:parent ["mrna0001"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 3000, :end 3902, :score nil, :strand :forward, :phase nil, :attributes {:parent ["mrna0001"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 5000, :end 5500, :score nil, :strand :forward, :phase nil, :attributes {:parent ["mrna0001"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 7000, :end 9000, :score nil, :strand :forward, :phase nil, :attributes {:parent ["mrna0001"]}}
+   {:chr "ctg123", :source nil, :type "mRNA", :start 10000, :end 15000, :score nil, :strand :forward, :phase nil, :attributes {:id "mrna0002", :parent ["operon001"], :name "baz"}}
+   {:chr "ctg123", :source nil, :type "exon", :start 10000, :end 12000, :score nil, :strand :forward, :phase nil, :attributes {:parent ["mrna0002"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 14000, :end 15000, :score nil, :strand :forward, :phase nil, :attributes {:parent ["mrna0002"]}}])
 
 (def ^:private ^String
   discontinuous-gff
@@ -85,11 +85,11 @@
 
 (def ^:private
   discontinuous-edn
-  [{:chr "ctg123", :source "example", :type "match", :start 26122, :end 26126, :score nil, :strand \+, :phase nil, :attributes {:id "match001"}}
-   {:chr "ctg123", :source "example", :type "match", :start 26497, :end 26869, :score nil, :strand \+, :phase nil, :attributes {:id "match001"}}
-   {:chr "ctg123", :source "example", :type "match", :start 27201, :end 27325, :score nil, :strand \+, :phase nil, :attributes {:id "match001"}}
-   {:chr "ctg123", :source "example", :type "match", :start 27372, :end 27433, :score nil, :strand \+, :phase nil, :attributes {:id "match001"}}
-   {:chr "ctg123", :source "example", :type "match", :start 27565, :end 27565, :score nil, :strand \+, :phase nil, :attributes {:id "match001"}}])
+  [{:chr "ctg123", :source "example", :type "match", :start 26122, :end 26126, :score nil, :strand :forward, :phase nil, :attributes {:id "match001"}}
+   {:chr "ctg123", :source "example", :type "match", :start 26497, :end 26869, :score nil, :strand :forward, :phase nil, :attributes {:id "match001"}}
+   {:chr "ctg123", :source "example", :type "match", :start 27201, :end 27325, :score nil, :strand :forward, :phase nil, :attributes {:id "match001"}}
+   {:chr "ctg123", :source "example", :type "match", :start 27372, :end 27433, :score nil, :strand :forward, :phase nil, :attributes {:id "match001"}}
+   {:chr "ctg123", :source "example", :type "match", :start 27565, :end 27565, :score nil, :strand :forward, :phase nil, :attributes {:id "match001"}}])
 
 (def ^:private ^String
   example-gene-gff
@@ -122,29 +122,29 @@
 
 (def ^:private
   example-gene-edn
-  [{:chr "ctg123", :source nil, :type "gene", :start 1000, :end 9000, :score nil, :strand \+, :phase nil, :attributes {:id "gene00001", :name "EDEN"}}
-   {:chr "ctg123", :source nil, :type "TF_binding_site", :start 1000, :end 1012, :score nil, :strand \+, :phase nil, :attributes {:id "tfbs00001", :parent ["gene00001"]}}
-   {:chr "ctg123", :source nil, :type "mRNA", :start 1050, :end 9000, :score nil, :strand \+, :phase nil, :attributes {:id "mRNA00001", :parent ["gene00001"], :name "EDEN.1"}}
-   {:chr "ctg123", :source nil, :type "mRNA", :start 1050, :end 9000, :score nil, :strand \+, :phase nil, :attributes {:id "mRNA00002", :parent ["gene00001"], :name "EDEN.2"}}
-   {:chr "ctg123", :source nil, :type "mRNA", :start 1300, :end 9000, :score nil, :strand \+, :phase nil, :attributes {:id "mRNA00003", :parent ["gene00001"], :name "EDEN.3"}}
-   {:chr "ctg123", :source nil, :type "exon", :start 1300, :end 1500, :score nil, :strand \+, :phase nil, :attributes {:id "exon00001", :parent ["mRNA00003"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 1050, :end 1500, :score nil, :strand \+, :phase nil, :attributes {:id "exon00002", :parent ["mRNA00001" "mRNA00002"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 3000, :end 3902, :score nil, :strand \+, :phase nil, :attributes {:id "exon00003", :parent ["mRNA00001" "mRNA00003"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 5000, :end 5500, :score nil, :strand \+, :phase nil, :attributes {:id "exon00004", :parent ["mRNA00001" "mRNA00002" "mRNA00003"]}}
-   {:chr "ctg123", :source nil, :type "exon", :start 7000, :end 9000, :score nil, :strand \+, :phase nil, :attributes {:id "exon00005", :parent ["mRNA00001" "mRNA00002" "mRNA00003"]}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 1201, :end 1500, :score nil, :strand \+, :phase 0, :attributes {:id "cds00001", :parent ["mRNA00001"], :name "edenprotein.1"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 3000, :end 3902, :score nil, :strand \+, :phase 0, :attributes {:id "cds00001", :parent ["mRNA00001"], :name "edenprotein.1"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 5000, :end 5500, :score nil, :strand \+, :phase 0, :attributes {:id "cds00001", :parent ["mRNA00001"], :name "edenprotein.1"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 7000, :end 7600, :score nil, :strand \+, :phase 0, :attributes {:id "cds00001", :parent ["mRNA00001"], :name "edenprotein.1"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 1201, :end 1500, :score nil, :strand \+, :phase 0, :attributes {:id "cds00002", :parent ["mRNA00002"], :name "edenprotein.2"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 5000, :end 5500, :score nil, :strand \+, :phase 0, :attributes {:id "cds00002", :parent ["mRNA00002"], :name "edenprotein.2"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 7000, :end 7600, :score nil, :strand \+, :phase 0, :attributes {:id "cds00002", :parent ["mRNA00002"], :name "edenprotein.2"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 3301, :end 3902, :score nil, :strand \+, :phase 0, :attributes {:id "cds00003", :parent ["mRNA00003"], :name "edenprotein.3"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 5000, :end 5500, :score nil, :strand \+, :phase 1, :attributes {:id "cds00003", :parent ["mRNA00003"], :name "edenprotein.3"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 7000, :end 7600, :score nil, :strand \+, :phase 1, :attributes {:id "cds00003", :parent ["mRNA00003"], :name "edenprotein.3"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 3391, :end 3902, :score nil, :strand \+, :phase 0, :attributes {:id "cds00004", :parent ["mRNA00003"], :name "edenprotein.4"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 5000, :end 5500, :score nil, :strand \+, :phase 1, :attributes {:id "cds00004", :parent ["mRNA00003"], :name "edenprotein.4"}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 7000, :end 7600, :score nil, :strand \+, :phase 1, :attributes {:id "cds00004", :parent ["mRNA00003"], :name "edenprotein.4"}}])
+  [{:chr "ctg123", :source nil, :type "gene", :start 1000, :end 9000, :score nil, :strand :forward, :phase nil, :attributes {:id "gene00001", :name "EDEN"}}
+   {:chr "ctg123", :source nil, :type "TF_binding_site", :start 1000, :end 1012, :score nil, :strand :forward, :phase nil, :attributes {:id "tfbs00001", :parent ["gene00001"]}}
+   {:chr "ctg123", :source nil, :type "mRNA", :start 1050, :end 9000, :score nil, :strand :forward, :phase nil, :attributes {:id "mRNA00001", :parent ["gene00001"], :name "EDEN.1"}}
+   {:chr "ctg123", :source nil, :type "mRNA", :start 1050, :end 9000, :score nil, :strand :forward, :phase nil, :attributes {:id "mRNA00002", :parent ["gene00001"], :name "EDEN.2"}}
+   {:chr "ctg123", :source nil, :type "mRNA", :start 1300, :end 9000, :score nil, :strand :forward, :phase nil, :attributes {:id "mRNA00003", :parent ["gene00001"], :name "EDEN.3"}}
+   {:chr "ctg123", :source nil, :type "exon", :start 1300, :end 1500, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00001", :parent ["mRNA00003"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 1050, :end 1500, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00002", :parent ["mRNA00001" "mRNA00002"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 3000, :end 3902, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00003", :parent ["mRNA00001" "mRNA00003"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 5000, :end 5500, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00004", :parent ["mRNA00001" "mRNA00002" "mRNA00003"]}}
+   {:chr "ctg123", :source nil, :type "exon", :start 7000, :end 9000, :score nil, :strand :forward, :phase nil, :attributes {:id "exon00005", :parent ["mRNA00001" "mRNA00002" "mRNA00003"]}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 1201, :end 1500, :score nil, :strand :forward, :phase 0, :attributes {:id "cds00001", :parent ["mRNA00001"], :name "edenprotein.1"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 3000, :end 3902, :score nil, :strand :forward, :phase 0, :attributes {:id "cds00001", :parent ["mRNA00001"], :name "edenprotein.1"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 5000, :end 5500, :score nil, :strand :forward, :phase 0, :attributes {:id "cds00001", :parent ["mRNA00001"], :name "edenprotein.1"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 7000, :end 7600, :score nil, :strand :forward, :phase 0, :attributes {:id "cds00001", :parent ["mRNA00001"], :name "edenprotein.1"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 1201, :end 1500, :score nil, :strand :forward, :phase 0, :attributes {:id "cds00002", :parent ["mRNA00002"], :name "edenprotein.2"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 5000, :end 5500, :score nil, :strand :forward, :phase 0, :attributes {:id "cds00002", :parent ["mRNA00002"], :name "edenprotein.2"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 7000, :end 7600, :score nil, :strand :forward, :phase 0, :attributes {:id "cds00002", :parent ["mRNA00002"], :name "edenprotein.2"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 3301, :end 3902, :score nil, :strand :forward, :phase 0, :attributes {:id "cds00003", :parent ["mRNA00003"], :name "edenprotein.3"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 5000, :end 5500, :score nil, :strand :forward, :phase 1, :attributes {:id "cds00003", :parent ["mRNA00003"], :name "edenprotein.3"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 7000, :end 7600, :score nil, :strand :forward, :phase 1, :attributes {:id "cds00003", :parent ["mRNA00003"], :name "edenprotein.3"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 3391, :end 3902, :score nil, :strand :forward, :phase 0, :attributes {:id "cds00004", :parent ["mRNA00003"], :name "edenprotein.4"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 5000, :end 5500, :score nil, :strand :forward, :phase 1, :attributes {:id "cds00004", :parent ["mRNA00003"], :name "edenprotein.4"}}
+   {:chr "ctg123", :source nil, :type "CDS", :start 7000, :end 7600, :score nil, :strand :forward, :phase 1, :attributes {:id "cds00004", :parent ["mRNA00003"], :name "edenprotein.4"}}])
 
 (def ^:private ^String
   circular-gff
@@ -157,8 +157,8 @@
 
 (def ^:private
   circular-edn
-  [{:chr "J02448", :source "GenBank", :type "region", :start 1, :end 6407, :score nil, :strand \+, :phase nil, :attributes {:id "J02448", :name "J02448", :circular? true}}
-   {:chr "J02448", :source "GenBank", :type "CDS", :start 6006, :end 7238, :score nil, :strand \+, :phase 0, :attributes {:id "geneII", :name "II", :note ["protein II"]}}])
+  [{:chr "J02448", :source "GenBank", :type "region", :start 1, :end 6407, :score nil, :strand :forward, :phase nil, :attributes {:id "J02448", :name "J02448", :circular? true}}
+   {:chr "J02448", :source "GenBank", :type "CDS", :start 6006, :end 7238, :score nil, :strand :forward, :phase 0, :attributes {:id "geneII", :name "II", :note ["protein II"]}}])
 
 (def ^:private ^String
   gap-gff
@@ -171,7 +171,7 @@
   gap-edn
   [{:chr "chr3", :source nil, :type "Match", :start 1, :end 23, :score nil, :strand nil, :phase nil,
     :attributes {:id "Match1", :target {:chr "EST23", :start 1, :end 21}, :gap [[\M 8] [\D 3] [\M 6] [\I 1] [\M 6]]}}
-   {:chr "ctg123", :source nil, :type "nucleotide_to_protein", :start 100, :end 129, :score nil, :strand \+, :phase nil,
+   {:chr "ctg123", :source nil, :type "nucleotide_to_protein", :start 100, :end 129, :score nil, :strand :forward, :phase nil,
     :attributes {:id "match008", :target {:chr "p101", :start 1, :end 10}, :gap [[\M 3] [\I 1] [\M 2] [\D 1] [\M 4]]}}])
 
 (def ^:private ^String
@@ -182,7 +182,7 @@
 
 (def ^:private
   alignment-edn
-  [{:chr "ctg123", :source nil, :type "cDNA_match", :start 1050, :end 9000, :score 6.2e-45, :strand \+, :phase nil,
+  [{:chr "ctg123", :source nil, :type "cDNA_match", :start 1050, :end 9000, :score 6.2e-45, :strand :forward, :phase nil,
     :attributes {:id "match00001", :target {:chr "cdna0123", :start 12, :end 2964}, :gap [[\M 451] [\D 3499] [\M 501] [\D 1499] [\M 2001]]}}])
 
 (def ^:private ^String
@@ -195,9 +195,9 @@
 
 (def ^:private
   alignment-multiple-edn
-  [{:chr "ctg123", :source nil, :type "cDNA_match", :start 1050, :end 1500, :score 5.8e-42, :strand \+, :phase nil, :attributes {:id "match00001", :target {:chr "cdna0123", :start 12, :end 462}}}
-   {:chr "ctg123", :source nil, :type "cDNA_match", :start 5000, :end 5500, :score 8.1e-43, :strand \+, :phase nil, :attributes {:id "match00001", :target {:chr "cdna0123", :start 463, :end 963}}}
-   {:chr "ctg123", :source nil, :type "cDNA_match", :start 7000, :end 9000, :score 1.4e-40, :strand \+, :phase nil, :attributes {:id "match00001", :target {:chr "cdna0123", :start 964, :end 2964}}}])
+  [{:chr "ctg123", :source nil, :type "cDNA_match", :start 1050, :end 1500, :score 5.8e-42, :strand :forward, :phase nil, :attributes {:id "match00001", :target {:chr "cdna0123", :start 12, :end 462}}}
+   {:chr "ctg123", :source nil, :type "cDNA_match", :start 5000, :end 5500, :score 8.1e-43, :strand :forward, :phase nil, :attributes {:id "match00001", :target {:chr "cdna0123", :start 463, :end 963}}}
+   {:chr "ctg123", :source nil, :type "cDNA_match", :start 7000, :end 9000, :score 1.4e-40, :strand :forward, :phase nil, :attributes {:id "match00001", :target {:chr "cdna0123", :start 964, :end 2964}}}])
 
 (def ^:private ^String
   alignment-reverse-gff
@@ -208,9 +208,9 @@
 
 (def ^:private
   alignment-reverse-edn
-  [{:chr "ctg123", :source nil, :type "EST_match", :start 1200, :end 3200, :score 2.2e-30, :strand \+, :phase nil,
+  [{:chr "ctg123", :source nil, :type "EST_match", :start 1200, :end 3200, :score 2.2e-30, :strand :forward, :phase nil,
     :attributes {:id "match00002", :target {:chr "mjm1123.5", :start 5, :end 506}, :gap [[\M 301] [\D 1499] [\M 201]]}}
-   {:chr "ctg123", :source nil, :type "EST_match", :start 7000, :end 9000, :score 7.4e-32, :strand \-, :phase nil,
+   {:chr "ctg123", :source nil, :type "EST_match", :start 7000, :end 9000, :score 7.4e-32, :strand :reverse, :phase nil,
     :attributes {:id "match00003", :target {:chr "mjm1123.3", :start 1, :end 502}, :gap [[\M 101] [\D 1499] [\M 401]]}}])
 
 (def ^:private ^String
@@ -225,9 +225,9 @@
   alignment-group-edn
   [{:chr "ctg123", :source nil, :type "cDNA_match", :start 1200, :end 9000, :score nil, :strand nil, :phase nil,
     :attributes {:id "cDNA00001"}}
-   {:chr "ctg123", :source nil, :type "match_part", :start 1200, :end 3200, :score 2.2e-30, :strand \+, :phase nil,
+   {:chr "ctg123", :source nil, :type "match_part", :start 1200, :end 3200, :score 2.2e-30, :strand :forward, :phase nil,
     :attributes {:id "match00002", :parent ["cDNA00001"], :target {:chr "mjm1123.5", :start 5, :end 506}, :gap [[\M 301] [\D 1499] [\M 201]]}}
-   {:chr "ctg123", :source nil, :type "match_part", :start 7000, :end 9000, :score 7.4e-32, :strand \-, :phase nil,
+   {:chr "ctg123", :source nil, :type "match_part", :start 7000, :end 9000, :score 7.4e-32, :strand :reverse, :phase nil,
     :attributes {:id "match00003", :parent ["cDNA00001"], :target {:chr "mjm1123.3", :start 1, :end 502}, :gap [[\M 101] [\D 1499] [\M 401]]}}])
 
 (def ^:private ^String
@@ -240,8 +240,8 @@
 
 (def ^:private
   encoding-edn
-  [{:chr "ch r;1", :source "sour =ce", :type "ty &p,e", :start 1, :end 10, :score 9.0, :strand \?, :phase nil, :attributes {}}
-   {:chr "chr%3B1", :source "sour%3Dce", :type "ty%26p%2Ce", :start 1, :end 10, :score nil, :strand \+, :phase nil,
+  [{:chr "ch r;1", :source "sour =ce", :type "ty &p,e", :start 1, :end 10, :score 9.0, :strand :unknown, :phase nil, :attributes {}}
+   {:chr "chr%3B1", :source "sour%3Dce", :type "ty%26p%2Ce", :start 1, :end 10, :score nil, :strand :forward, :phase nil,
     :attributes {:target {:chr "Foo Bar", :start 1, :end 10, :reverse? false}, :db-xref [{:db-tag "EMBL", :id "AA816246"}, {:db-tag "NCBI_gi", :id "10727410"}], "Foo" ["Bar," "Baz "]}}
    {:chr " !\"#$%&'\t()*+,-./\n0123456789:;<=>?@[\\]^_`{|}~", :source nil, :type "type", :start 1, :end 10, :score nil, :strand nil, :phase nil,
     :attributes {:id " !\"#$%&'\t()*+,-./\n0123456789:;<=>?@[\\]^_`{|}~",
@@ -249,29 +249,29 @@
 
 (def ^:private
   example-edn
-  [{:chr "ctg123", :source nil, :type "gene", :start 1000, :end 9000, :score nil, :strand \+, :phase nil,
+  [{:chr "ctg123", :source nil, :type "gene", :start 1000, :end 9000, :score nil, :strand :forward, :phase nil,
     :attributes {:id "gene00001", :name "EDEN"}}
-   {:chr "ctg123", :source nil, :type "TF_binding_site", :start 1000, :end 1012, :score nil, :strand \+, :phase nil,
+   {:chr "ctg123", :source nil, :type "TF_binding_site", :start 1000, :end 1012, :score nil, :strand :forward, :phase nil,
     :attributes {:id "tfbs00001", :parent ["gene00001"]}}
-   {:chr "ctg123", :source nil, :type "mRNA", :start 1050, :end 9000, :score nil, :strand \+, :phase nil,
+   {:chr "ctg123", :source nil, :type "mRNA", :start 1050, :end 9000, :score nil, :strand :forward, :phase nil,
     :attributes {:id "mRNA00001", :parent ["gene00001"], :name "EDEN.1"}}
-   {:chr "ctg123", :source nil, :type "five_prime_UTR", :start 1050, :end 1200, :score nil, :strand \+, :phase nil,
+   {:chr "ctg123", :source nil, :type "five_prime_UTR", :start 1050, :end 1200, :score nil, :strand :forward, :phase nil,
     :attributes {:parent ["mRNA00001"]}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 1201, :end 1500, :score nil, :strand \+, :phase 0,
+   {:chr "ctg123", :source nil, :type "CDS", :start 1201, :end 1500, :score nil, :strand :forward, :phase 0,
     :attributes {:id "cds00001", :parent ["mRNA00001"]}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 3000, :end 3902, :score nil, :strand \+, :phase 0,
+   {:chr "ctg123", :source nil, :type "CDS", :start 3000, :end 3902, :score nil, :strand :forward, :phase 0,
     :attributes {:id "cds00001", :parent ["mRNA00001"]}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 5000, :end 5500, :score nil, :strand \+, :phase 0,
+   {:chr "ctg123", :source nil, :type "CDS", :start 5000, :end 5500, :score nil, :strand :forward, :phase 0,
     :attributes {:id "cds00001", :parent ["mRNA00001"]}}
-   {:chr "ctg123", :source nil, :type "CDS", :start 7000, :end 7600, :score nil, :strand \+, :phase 0,
+   {:chr "ctg123", :source nil, :type "CDS", :start 7000, :end 7600, :score nil, :strand :forward, :phase 0,
     :attributes {:id "cds00001", :parent ["mRNA00001"]}}
-   {:chr "ctg123", :source nil, :type "three_prime_UTR", :start 7601, :end 9000, :score nil, :strand \+, :phase nil,
+   {:chr "ctg123", :source nil, :type "three_prime_UTR", :start 7601, :end 9000, :score nil, :strand :forward, :phase nil,
     :attributes {:parent ["mRNA00001"]}}
-   {:chr "ctg123", :source nil, :type "cDNA_match", :start 1050, :end 1500, :score 5.8e-42, :strand \+, :phase nil,
+   {:chr "ctg123", :source nil, :type "cDNA_match", :start 1050, :end 1500, :score 5.8e-42, :strand :forward, :phase nil,
     :attributes {:id "match00001", :target {:chr "cdna0123", :start 12, :end 462}}}
-   {:chr "ctg123", :source nil, :type "cDNA_match", :start 5000, :end 5500, :score 8.1e-43, :strand \+, :phase nil,
+   {:chr "ctg123", :source nil, :type "cDNA_match", :start 5000, :end 5500, :score 8.1e-43, :strand :forward, :phase nil,
     :attributes {:id "match00001", :target {:chr "cdna0123", :start 463, :end 963}}}
-   {:chr "ctg123", :source nil, :type "cDNA_match", :start 7000, :end 9000, :score 1.4e-40, :strand \+, :phase nil,
+   {:chr "ctg123", :source nil, :type "cDNA_match", :start 7000, :end 9000, :score 1.4e-40, :strand :forward, :phase nil,
     :attributes {:id "match00001", :target {:chr "cdna0123", :start 964, :end 2964}}}])
 
 (deftest reader

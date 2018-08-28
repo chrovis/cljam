@@ -226,7 +226,7 @@
      :end (p/as-long end)
      :score (p/as-double score)
      ;; +: forward, -: reverse, ?: unknown, nil: not-stranded
-     :strand (some-> strand dot->nil first (case \+ \+ \- \- \? \?))
+     :strand (some-> strand dot->nil first (case \+ :forward \- :reverse \? :unknown))
      :phase (some-> phase dot->nil first (case \0 0 \1 1 \2 2))
      :attributes (-> attrs dot->nil parse-attrs)}))
 
@@ -320,7 +320,7 @@
   (.append w \tab)
   (.write w (or (some->> score String/valueOf cstr/lower-case) "."))
   (.append w \tab)
-  (.append w (or strand \.))
+  (.append w (case strand :forward \+ :reverse \- :unknown \? nil \.))
   (.append w \tab)
   (.append w (if (nil? phase) \. (case (byte phase) 0 \0 1 \1 2 \2)))
   (.append w \tab)

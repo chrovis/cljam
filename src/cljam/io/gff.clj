@@ -90,6 +90,7 @@
 
 (defn- ^String encode-target [{:keys [chr start end reverse?]}]
   (cstr/join \space (cond-> [(encode escape-in-target? chr) start end]
+                      ;; +: forward, -: reverse, nil: unspecified
                       (some? reverse?) (conj (if reverse? \- \+)))))
 
 (defn- decode-target [s]
@@ -190,7 +191,7 @@
         (when-not version-directive
           (throw
            (ex-info
-            "GFF3 must starts with a `##gff-version 3.#.#` directive"
+            "GFF3 must start with the `##gff-version 3.#.#` directive"
             {:url (try (util/as-url f) (catch Exception _ nil)),
              :version-directive version-line})))
         (when-not (= version 3)
@@ -258,10 +259,10 @@
 
 (defn ^GFFWriter writer
   "Returns an open `cljam.io.gff.GFFWriter` instance of `f`. Should be used
-  inside `with-open` to ensure the writer is properly closed. Can take a optional
-  argument `options`, a map containing `:version`, `:major-revision`,
+  inside `with-open` to ensure the writer is properly closed. Can take an
+  optional argument `options`, a map containing `:version`, `:major-revision`,
   `:minor-revision` and `:encoding`. Currently supporting only `:version` 3.
-  To compress outputs, set `:gzip` or `:bzip2` to `:encoding`."
+  To compress outputs, set `:encoding` to `:gzip` or `:bzip2`."
   ([f]
    (writer f {}))
   ([f options]

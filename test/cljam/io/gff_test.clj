@@ -157,7 +157,7 @@
 
 (def ^:private
   circular-edn
-  [{:chr "J02448", :source "GenBank", :type "region", :start 1, :end 6407, :score nil, :strand \+, :phase nil, :attributes {:id "J02448", :name "J02448", :is-circular? true}}
+  [{:chr "J02448", :source "GenBank", :type "region", :start 1, :end 6407, :score nil, :strand \+, :phase nil, :attributes {:id "J02448", :name "J02448", :circular? true}}
    {:chr "J02448", :source "GenBank", :type "CDS", :start 6006, :end 7238, :score nil, :strand \+, :phase 0, :attributes {:id "geneII", :name "II", :note ["protein II"]}}])
 
 (def ^:private ^String

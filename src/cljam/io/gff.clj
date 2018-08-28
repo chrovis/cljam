@@ -155,7 +155,7 @@
              :encoder encode-db, :decoder decode-db},
    "Ontology_term" {:index 9, :key :ontology-term,
                     :encoder encode-db, :decoder decode-db},
-   "Is_circular" {:index 10, :key :is-circular?,
+   "Is_circular" {:index 10, :key :circular?,
                   :encoder str, :decoder #(Boolean/parseBoolean %)}})
 
 ;; Reader

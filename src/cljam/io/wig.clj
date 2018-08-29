@@ -119,7 +119,7 @@
                     (throw (IllegalArgumentException. "Invalid wiggle format")))]
             (recur (rest lines)
                    wigs
-                   (update current-track :values #(conj % v)))))))))
+                   (update current-track :values conj v))))))))
 
 (defn- serialize-wig
   "Serialize WIG line into vector of strings."

@@ -58,10 +58,11 @@
 (defn- fields->map
   "Convert vector [\"key1=value1\" \"key2=value2\" ...] to map {:key1 \"value1\" :key2 \"value2\" ...}."
   [fields]
-  (->> fields
-       (map #(cstr/split % #"="))
-       (map (fn [[k v]] [(keyword k) v]))
-       (into {})))
+  (into {}
+        (map (fn [field]
+               (let [[k v] (cstr/split field #"=")]
+                 [(keyword k) v])))
+        fields))
 
 (defn- str->wiggle-track-data
   "Convert string to Wiggle track data values which can be integer or real,

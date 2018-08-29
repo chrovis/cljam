@@ -153,5 +153,5 @@
     #"(?i)\.vcf" :vcf
     #"(?i)\.bcf$" :bcf
     #"(?i)\.bed" :bed
-    #"(?i)\.wig$" :wig
+    #"(?i)\.wig" :wig
     (throw (IllegalArgumentException. "Invalid file type"))))

@@ -196,6 +196,11 @@
 
 (def test-gff3-file "test-resources/gff3/example.gff3")
 
+;; ### WIG files
+
+(def test-wig-file1 "test-resources/wig/test1.wig")
+(def test-wig-file2 "test-resources/wig/test2.wig")
+
 (def to-sam-alignment
   (comp
    protocols/map->SAMAlignment

@@ -122,7 +122,7 @@
                    (update current-track :values conj v))))))))
 
 (defn- serialize-wig
-  "Serialize WIG line into vector of strings."
+  "Serialize WIG fields into string."
   [wig]
   {:pre [;; There are two options for formatting wiggle data.
          (or (= (:format wig) :fixed-step) (= (:format wig) :variable-step))

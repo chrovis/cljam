@@ -80,8 +80,8 @@
   [lines]
   (letfn [(deserialize [lines pre-start current-track]
             (lazy-seq
-             (when (some? (first lines))
-               (let [fields (-> lines first cstr/trim (cstr/split #"\s+"))]
+             (when-first [line lines]
+               (let [fields (-> line cstr/trim (cstr/split #"\s+"))]
                  (case (first fields)
                    ; declaration line of variableStep
                    "variableStep"
@@ -161,9 +161,8 @@
                     (- (:end wig) (:start wig)))))
           (serialize [wigs]
             (lazy-seq
-             (when (some? (first wigs))
-               (let [[track rest-wigs] (split-with (partial same-track?
-                                                            (first wigs))
+             (when-first [wig wigs]
+               (let [[track rest-wigs] (split-with (partial same-track? wig)
                                                    wigs)
                      track (case (-> track first :format)
                              :variable-step
@@ -184,7 +183,7 @@
 
                              :fixed-step
                              (let [{:keys [chr start end]} (first track)
-                                   step (- (-> track rest first :start) start)
+                                   step (- (-> track second :start) start)
                                    span (inc (- end start))
                                    declaration-line (->> (cond-> ["fixedStep"
                                                                   (str "chrom=" chr)

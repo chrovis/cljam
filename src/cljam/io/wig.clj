@@ -78,7 +78,7 @@
 (defn- deserialize-wigs
   "Parse WIG lines and return a lazy sequence of flat map."
   [lines]
-  (letfn [(deserialize [lines current-track]
+  (letfn [(deserialize [lines pre-start current-track]
             (lazy-seq
              (when (some? (first lines))
                (let [fields (-> lines first cstr/trim (cstr/split #"\s+"))]
@@ -89,9 +89,9 @@
                           :or {span 1}} (->> fields rest fields->map)
                          span (as-long span)]
                      (deserialize (rest lines)
+                                  nil
                                   {:format :variable-step
                                    :chr chrom
-                                   :pre-start nil
                                    :span span
                                    :step nil}))
 
@@ -103,9 +103,9 @@
                          pre-start (- (as-long start) step)
                          span (as-long span)]
                      (deserialize (rest lines)
+                                  pre-start
                                   {:format :fixed-step
                                    :chr chrom
-                                   :pre-start pre-start
                                    :span span
                                    :step step}))
 
@@ -124,7 +124,7 @@
                                 :value value})
 
                              :fixed-step
-                             (let [{:keys [chr pre-start span step]} current-track
+                             (let [{:keys [chr span step]} current-track
                                    start (+ pre-start step)
                                    end (dec (+ start span))
                                    value (-> fields first str->wiggle-track-data)]
@@ -138,14 +138,12 @@
                                (IllegalArgumentException.
                                  "Invalid wiggle format")))]
                      (cons m (deserialize (rest lines)
-                                          (assoc current-track
-                                                 :pre-start
-                                                 (:start m))))))))))]
-    (deserialize lines {:format nil
-                        :chr nil
-                        :pre-start nil
-                        :span nil
-                        :step nil})))
+                                          (:start m)
+                                          current-track))))))))]
+    (deserialize lines nil {:format nil
+                            :chr nil
+                            :span nil
+                            :step nil})))
 
 (defn- serialize-wigs
   "Serialize a sequence of WIG fields into a lazy sequence of string."

@@ -120,6 +120,22 @@
             {:track {:line nil :format :fixed-step :chr "chr1" :step 1 :span 1}
              :chr "chr1" :start 2 :end 2 :value 2}])))
 
+  (testing "read a single track with a single variableStep"
+    (is (= (str->wig (cstr/join \newline ["track type=wiggle_0"
+                                          "variableStep chrom=chr1 span=10"
+                                          "1 1"]))
+           [{:track {:line "track type=wiggle_0" :format :variable-step
+                     :chr "chr1" :step nil :span 10}
+             :chr "chr1" :start 1 :end 10 :value 1}])))
+
+  (testing "read a single track with a single fixedStep"
+    (is (= (str->wig (cstr/join \newline ["track type=wiggle_0"
+                                          "fixedStep chrom=chr1 start=1 span=10"
+                                          "1"]))
+           [{:track {:line "track type=wiggle_0" :format :fixed-step
+                     :chr "chr1" :step 1 :span 10}
+             :chr "chr1" :start 1 :end 10 :value 1}])))
+
   (testing "read wig with continuous same formats"
     (let [s (cstr/join \newline ["variableStep chrom=chr19 span=5"
                                  "1 1"

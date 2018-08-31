@@ -9,6 +9,29 @@
             ByteArrayOutputStream OutputStreamWriter BufferedWriter]
            [cljam.io.wig WIGReader WIGWriter]))
 
+(def ^:private test-wig-fields1
+  [{:format :variable-step :chrom "chr19" :start 49304701 :end 49304850 :value 10.0}
+   {:format :variable-step :chrom "chr19" :start 49304901 :end 49305050 :value 12.5}
+   {:format :variable-step :chrom "chr19" :start 49305401 :end 49305550 :value 15.0}
+   {:format :variable-step :chrom "chr19" :start 49305601 :end 49305750 :value 17.5}
+   {:format :variable-step :chrom "chr19" :start 49305901 :end 49306050 :value 20.0}
+   {:format :variable-step :chrom "chr19" :start 49306081 :end 49306230 :value 17.5}
+   {:format :variable-step :chrom "chr19" :start 49306301 :end 49306450 :value 15.0}
+   {:format :variable-step :chrom "chr19" :start 49306691 :end 49306840 :value 12.5}
+   {:format :variable-step :chrom "chr19" :start 49307871 :end 49308020 :value 10.0}
+   {:format :fixed-step :chrom "chr19" :start 49307401 :end 49307600 :value 1000}
+   {:format :fixed-step :chrom "chr19" :start 49307701 :end 49307900 :value 900}
+   {:format :fixed-step :chrom "chr19" :start 49308001 :end 49308200 :value 800}
+   {:format :fixed-step :chrom "chr19" :start 49308301 :end 49308500 :value 700}
+   {:format :fixed-step :chrom "chr19" :start 49308601 :end 49308800 :value 600}
+   {:format :fixed-step :chrom "chr19" :start 49308901 :end 49309100 :value 500}
+   {:format :fixed-step :chrom "chr19" :start 49309201 :end 49309400 :value 400}
+   {:format :fixed-step :chrom "chr19" :start 49309501 :end 49309700 :value 300}
+   {:format :fixed-step :chrom "chr19" :start 49309801 :end 49310000 :value 200}
+   {:format :fixed-step :chrom "chr19" :start 49310101 :end 49310300 :value 100}])
+
+(def ^:private ^String temp-wig-file (str temp-dir "/test.wig"))
+
 (defn- str->wig
   [^String s]
   (with-open [bais (ByteArrayInputStream. (.getBytes s))
@@ -78,25 +101,7 @@
   (testing "read wig file"
     (with-open [r (wig/reader test-wig-file1)]
       (is (= (wig/read-fields r)
-             [{:format :variable-step :chrom "chr19" :start 49304701 :end 49304850 :value 10.0}
-              {:format :variable-step :chrom "chr19" :start 49304901 :end 49305050 :value 12.5}
-              {:format :variable-step :chrom "chr19" :start 49305401 :end 49305550 :value 15.0}
-              {:format :variable-step :chrom "chr19" :start 49305601 :end 49305750 :value 17.5}
-              {:format :variable-step :chrom "chr19" :start 49305901 :end 49306050 :value 20.0}
-              {:format :variable-step :chrom "chr19" :start 49306081 :end 49306230 :value 17.5}
-              {:format :variable-step :chrom "chr19" :start 49306301 :end 49306450 :value 15.0}
-              {:format :variable-step :chrom "chr19" :start 49306691 :end 49306840 :value 12.5}
-              {:format :variable-step :chrom "chr19" :start 49307871 :end 49308020 :value 10.0}
-              {:format :fixed-step :chrom "chr19" :start 49307401 :end 49307600 :value 1000}
-              {:format :fixed-step :chrom "chr19" :start 49307701 :end 49307900 :value 900}
-              {:format :fixed-step :chrom "chr19" :start 49308001 :end 49308200 :value 800}
-              {:format :fixed-step :chrom "chr19" :start 49308301 :end 49308500 :value 700}
-              {:format :fixed-step :chrom "chr19" :start 49308601 :end 49308800 :value 600}
-              {:format :fixed-step :chrom "chr19" :start 49308901 :end 49309100 :value 500}
-              {:format :fixed-step :chrom "chr19" :start 49309201 :end 49309400 :value 400}
-              {:format :fixed-step :chrom "chr19" :start 49309501 :end 49309700 :value 300}
-              {:format :fixed-step :chrom "chr19" :start 49309801 :end 49310000 :value 200}
-              {:format :fixed-step :chrom "chr19" :start 49310101 :end 49310300 :value 100}])))
+             test-wig-fields1)))
     (with-open [r (wig/reader test-wig-file2)]
       (is (= (wig/read-fields r)
              [{:format :variable-step :chrom "chr19" :start 49304701 :end 49304701 :value 10.0}
@@ -140,12 +145,20 @@
       (is (= s (-> s str->wig wig->str))))))
 
 (deftest source-type-test
-  (let [temp-file (str temp-dir "test.wig")]
+  (testing "reader"
+    (with-open [server (http-server)]
+      (are [x] (with-open [rdr (wig/reader x)]
+                 (= (wig/read-fields rdr) test-wig-fields1))
+        test-wig-file1
+        (cio/file test-wig-file1)
+        (cio/as-url (cio/file test-wig-file1))
+        (cio/as-url (str (:uri server) "/wig/test1.wig")))))
+
+  (testing "writer"
     (are [x] (with-before-after {:before (prepare-cache!)
                                  :after (clean-cache!)}
-               (with-open [rdr (wig/reader test-wig-file1)
-                           wtr (wig/writer temp-file)]
-                 (not-throw? (wig/write-fields wtr (wig/read-fields rdr)))))
-         temp-file
-         (cio/file temp-file)
-         (cio/as-url (cio/file temp-file)))))
+               (with-open [wtr (wig/writer x)]
+                 (not-throw? (wig/write-fields wtr test-wig-fields1))))
+      temp-wig-file
+      (cio/file temp-wig-file)
+      (cio/as-url (cio/file temp-wig-file)))))

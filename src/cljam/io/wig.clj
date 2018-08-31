@@ -218,5 +218,6 @@
   (let [w ^BufferedWriter (.writer wtr)]
     (->> xs
          serialize-wigs
-         (cstr/join \newline)
-         (.write w))))
+         (interpose \newline)
+         (map #(.write w (str %)))
+         dorun)))

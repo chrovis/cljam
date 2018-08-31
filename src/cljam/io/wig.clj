@@ -42,14 +42,13 @@
   [f]
   (WIGWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))
 
-(def ^:const wig-fields [:format :chr :start :end :value])
+(def ^:const wig-fields [:track :chr :start :end :value])
 
 (defn- header-or-comment?
   "Checks if given string is neither a header nor a comment line."
   [^String s]
   (or (empty? s)
       (.startsWith s "browser")
-      (.startsWith s "track")
       (.startsWith s "#")))
 
 (defn- normalize
@@ -78,22 +77,28 @@
 (defn- deserialize-wigs
   "Parse WIG lines and return a lazy sequence of flat map."
   [lines]
-  (letfn [(deserialize [lines pre-start current-track]
+  (letfn [(deserialize [lines pre-start track]
             (lazy-seq
              (when-first [line lines]
                (let [fields (-> line cstr/trim (cstr/split #"\s+"))]
                  (case (first fields)
+                   ; track definition line
+                   "track"
+                   (let [type (->> fields rest fields->map :type)]
+                     (if (= type "wiggle_0")
+                       (deserialize (rest lines) pre-start {:line line})
+                       (throw "The track type with version must be `wiggle_0`")))
+
                    ; declaration line of variableStep
                    "variableStep"
                    (let [{:keys [chrom span]
                           :or {span 1}} (->> fields rest fields->map)
-                         span (as-long span)]
-                     (deserialize (rest lines)
-                                  nil
-                                  {:format :variable-step
-                                   :chr chrom
-                                   :span span
-                                   :step nil}))
+                         span (as-long span)
+                         track (into track [{:format :variable-step}
+                                            {:chr chrom}
+                                            {:span span}
+                                            {:step nil}])]
+                     (deserialize (rest lines) nil track))
 
                    ; declaration line of fixedStep
                    "fixedStep"
@@ -101,49 +106,49 @@
                           :or {span 1, step 1}} (->> fields rest fields->map)
                          step (as-long step)
                          pre-start (- (as-long start) step)
-                         span (as-long span)]
-                     (deserialize (rest lines)
-                                  pre-start
-                                  {:format :fixed-step
-                                   :chr chrom
-                                   :span span
-                                   :step step}))
+                         span (as-long span)
+                         track (into track [{:format :fixed-step}
+                                            {:chr chrom}
+                                            {:span span}
+                                            {:step step}])]
+                     (deserialize (rest lines) pre-start track))
 
                    ; data line
-                   (let [m (case (:format current-track)
+                   (let [m (case (:format track)
                              :variable-step
-                             (let [{:keys [chr span]} current-track
+                             (let [{:keys [chr span]} track
                                    [start value] fields
                                    start (as-long start)
                                    end (dec (+ start span))
                                    value (str->wiggle-track-data value)]
-                               {:format :variable-step
+                               {:track track
                                 :chr chr
                                 :start start
                                 :end end
                                 :value value})
 
                              :fixed-step
-                             (let [{:keys [chr span step]} current-track
+                             (let [{:keys [chr span step]} track
                                    start (+ pre-start step)
                                    end (dec (+ start span))
                                    value (-> fields first str->wiggle-track-data)]
-                               {:format :fixed-step
+                               {:track track
                                 :chr chr
                                 :start start
                                 :end end
                                 :value value})
 
                              (throw
-                               (IllegalArgumentException.
-                                 "Invalid wiggle format")))]
+                              (IllegalArgumentException.
+                               "Invalid wiggle format")))]
                      (cons m (deserialize (rest lines)
                                           (:start m)
-                                          current-track))))))))]
-    (deserialize lines nil {:format nil
+                                          track))))))))]
+    (deserialize lines nil {:line nil
+                            :format nil
                             :chr nil
-                            :span nil
-                            :step nil})))
+                            :step nil
+                            :span nil})))
 
 (defn- serialize-wigs
   "Serialize a sequence of WIG fields into a lazy sequence of string."
@@ -151,12 +156,13 @@
   {:pre [;; These fields are required.
          (map (fn [wig] (every? some? ((apply juxt wig-fields) wig))) wigs)
          ;; There are two options for formatting wiggle data.
-         (map (fn [{:keys [format]} wig]
-                (or (= format :fixed-step)
-                    (= format :variable-step)))
+         (map (fn [wig]
+                (let [format (-> wig :track :format)]
+                  (or (= format :fixed-step)
+                      (= format :variable-step))))
               wigs)]}
   (letfn [(same-track? [first-wig wig]
-            (and (= (:format first-wig) (:format wig))
+            (and (= (-> :track :format first-wig) (-> :track :format wig))
                  (= (- (:end first-wig) (:start first-wig))
                     (- (:end wig) (:start wig)))))
           (serialize [wigs]
@@ -164,10 +170,11 @@
              (when-first [wig wigs]
                (let [[track rest-wigs] (split-with (partial same-track? wig)
                                                    wigs)
-                     track (case (-> track first :format)
+                     track (case (-> track first :track :format)
                              :variable-step
                              (let [{:keys [chr start end]} (first track)
                                    span (inc (- end start))
+                                   track-line (-> track :track :line)
                                    declaration-line (->> (cond-> ["variableStep"
                                                                   (str "chrom=" chr)]
                                                            (not= span 1)
@@ -179,12 +186,14 @@
                                                                      [start value])))
                                                    (cstr/join \newline))]
                                (cstr/join \newline
-                                          [declaration-line data-lines]))
+                                          (cond-> [declaration-line data-lines]
+                                            track-line (cons track-line))))
 
                              :fixed-step
                              (let [{:keys [chr start end]} (first track)
                                    step (- (-> track second :start) start)
                                    span (inc (- end start))
+                                   track-line (-> track :track :line)
                                    declaration-line (->> (cond-> ["fixedStep"
                                                                   (str "chrom=" chr)
                                                                   (str "start=" start)]
@@ -198,7 +207,8 @@
                                                    (map (fn [{:keys [value]}] value))
                                                    (cstr/join \newline))]
                                (cstr/join \newline
-                                          [declaration-line data-lines])))]
+                                          (cond-> [declaration-line data-lines]
+                                            track-line (cons track-line)))))]
                  (cons track (serialize rest-wigs))))))]
     (serialize wigs)))
 

@@ -220,7 +220,7 @@
 (deftest mpileup
   (with-open [r1 (sam/reader test-sorted-bam-file)
               r2 (sam/reader r1)]
-    (let [mplp (plp/mpileup {:chr "ref"} r1 r2)]
+    (let [mplp (plp/mpileup {:chr "ref"} {} r1 r2)]
       (is (= (keep-indexed #(when (pos? %2) (inc %1)) test-bam-pileup-ref)
              (map first mplp))))))
 
@@ -257,24 +257,35 @@
     {:qname "R001" :flag (int 147) :rname "seq1" :pos (int 3) :end (int 10) :seq "TTGGCCAATT" :qual "AABBCCDDEE" :cigar "8M2S"
      :rnext "=" :pnext (int 3) :tlen (int -8) :mapq (int 20)}]))
 
-(defn- pileup* [region xs]
+(defn- pileup* [region options xs]
   (plp/pileup
    (reify p/IAlignmentReader
      (p/read-refs [_]
-       [{:name "seq1",  :len 249250621}])
+       [{:name "seq1", :len 249250621}])
      (p/read-alignments [_ _]
        xs))
-   region))
+   region
+   options))
 
 (deftest overlap-correction
-  (let [plps (->> reads-for-pileup
-                  (pileup* {:chr "seq1" :start 1 :end 10}))]
-    (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
-           (map (comp count :pile) plps)))
-    (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])
-           (map #(map :base (:pile %)) plps)))
-    (is (= (filter seq [[] [] [65] [65] [67] [67] [69] [69] [71] [71]])
-           (map #(map :qual (:pile %)) plps)))))
+  (testing "defalut"
+    (let [plps (->> reads-for-pileup
+                    (pileup* {:chr "seq1" :start 1 :end 10} {}))]
+      (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
+             (map (comp count :pile) plps)))
+      (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])
+             (map #(map :base (:pile %)) plps)))
+      (is (= (filter seq [[] [] [65] [65] [67] [67] [69] [69] [71] [71]])
+             (map #(map :qual (:pile %)) plps)))))
+  (testing "ignoring overlaps"
+    (let [plps (->> reads-for-pileup
+                    (pileup* {:chr "seq1" :start 1 :end 10} {:ignore-overlaps? true}))]
+      (is (= (filter pos? [0 0 2 2 2 2 2 2 2 2])
+             (map (comp count :pile) plps)))
+      (is (= (filter seq [[] [] [\T \T] [\T \T] [\G \G] [\G \G] [\C \C] [\C \C] [\A \A] [\A \A]])
+             (map #(map :base (:pile %)) plps)))
+      (is (= (filter seq [[] [] [33 32] [33 32] [34 33] [34 33] [35 34] [35 34] [36 35] [36 35]])
+             (map #(map :qual (:pile %)) plps))))))
 
 (deftest overlap-qual-correction
   (let [[_ aplp] (#'plp/correct-overlaps
@@ -289,20 +300,31 @@
     (is (= (map :qual aplp) [0 32]))))
 
 (deftest filter-by-base-quality
-  (let [plps (->> reads-for-pileup
-                  (pileup* {:chr "seq1" :start 1 :end 10})
-                  (map (plp/filter-by-base-quality 1)))]
-    (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
-           (map (comp count :pile) plps)))
-    (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])
-           (map #(map :base (:pile %)) plps)))
-    (is (= (filter seq [[] [] [65] [65] [67] [67] [69] [69] [71] [71]])
-           (map #(map :qual (:pile %)) plps)))))
+  (testing "default"
+    (let [plps (->> reads-for-pileup
+                    (pileup* {:chr "seq1" :start 1 :end 10} {})
+                    (map (plp/filter-by-base-quality 1)))]
+      (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
+             (map (comp count :pile) plps)))
+      (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])
+             (map #(map :base (:pile %)) plps)))
+      (is (= (filter seq [[] [] [65] [65] [67] [67] [69] [69] [71] [71]])
+             (map #(map :qual (:pile %)) plps)))))
+  (testing "without filtering"
+    (let [plps (->> reads-for-pileup
+                    (pileup* {:chr "seq1" :start 1 :end 10} {:min-base-quality 0})
+                    (map (plp/filter-by-base-quality 1)))]
+      (is (= (filter pos? [0 0 2 2 2 2 2 2 2 2])
+             (map (comp count :pile) plps)))
+      (is (= (filter seq [[] [] [\T \T] [\T \T] [\G \G] [\G \G] [\C \C] [\C \C] [\A \A] [\A \A]])
+             (map #(map :base (:pile %)) plps)))
+      (is (= (filter seq [[] [] [65 0] [65 0] [67 0] [67 0] [69 0] [69 0] [71 0] [71 0]])
+             (map #(map :qual (:pile %)) plps))))))
 
 (deftest filter-by-map-quality
   (let [plps (->> reads-for-pileup
                   (filter (fn [a] (<= 30 (:mapq a))))
-                  (pileup* {:chr "seq1" :start 1 :end 10}))]
+                  (pileup* {:chr "seq1" :start 1 :end 10} {}))]
     (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
            (map (comp count :pile) plps)))
     (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])

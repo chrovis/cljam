@@ -145,13 +145,18 @@
 
 (defn pileup
   "Piles up alignments in given region and returns a lazy sequence of
-  `cljam.io.pileup.LocusPile`s."
+  `cljam.io.pileup.LocusPile`s.
+
+  The following options are available:
+  - `min-base-quality` Minimum quality of called bases [13]
+  - `min-map-quality` Minimum quality of alignments [0]
+  - `ignore-overlaps?` Disable detecting overlapped bases of PE reads [false]"
   ([sam-reader region]
    (pileup sam-reader region {}))
   ([sam-reader
     {:keys [chr start end] :or {start 1 end Integer/MAX_VALUE}}
-    {:keys [min-base-quality min-map-quality]
-     :or {min-base-quality 13 min-map-quality 0}}]
+    {:keys [min-base-quality min-map-quality ignore-overlaps?]
+     :or {min-base-quality 13 min-map-quality 0 ignore-overlaps? false}}]
    (when-let [len (:len (refs/ref-by-name (sam/read-refs sam-reader) chr))]
      (let [s (max 1 start)
            e (min len end)]
@@ -164,8 +169,12 @@
             (pileup-seq s e)
             (sequence
              (comp (map resolve-bases)
-                   (map correct-overlaps)
-                   (map (filter-by-base-quality min-base-quality))
+                   (if ignore-overlaps?
+                     identity
+                     (map correct-overlaps))
+                   (if (pos? min-base-quality)
+                     (map (filter-by-base-quality min-base-quality))
+                     identity)
                    (keep (partial ->locus-pile chr)))))))))
 
 (defn align-pileup-seqs
@@ -187,8 +196,8 @@
 
 (defn mpileup
   "Pile up alignments from multiple sources."
-  [region & sam-readers]
-  (apply align-pileup-seqs (map #(pileup % region) sam-readers)))
+  [region options & sam-readers]
+  (apply align-pileup-seqs (map #(pileup % region options) sam-readers)))
 
 (defn create-mpileup
   "Creates a mpileup file from the BAM file."
@@ -197,6 +206,8 @@
   ([in-sam in-ref out-mplp]
    (create-mpileup in-sam in-ref out-mplp nil))
   ([in-sam in-ref out-mplp region]
+   (create-mpileup in-sam in-ref out-mplp region nil))
+  ([in-sam in-ref out-mplp region options]
    (with-open [s (sam/reader in-sam)
                w (plpio/writer out-mplp in-ref)]
      (let [regs (if region
@@ -206,4 +217,4 @@
                      {:chr name :start 1 :end len})
                    (sam/read-refs s)))]
        (doseq [reg regs]
-         (plpio/write-piles w (pileup s reg)))))))
+         (plpio/write-piles w (pileup s reg options)))))))

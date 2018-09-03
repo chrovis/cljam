@@ -12,7 +12,7 @@
 (defrecord PileupBase [^boolean start?
                        mapq ;; byte?
                        ^char base
-                       ^byte qual
+                       ^short qual
                        ^boolean reverse?
                        ^boolean end?
                        insertion ;; String?

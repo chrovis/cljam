@@ -195,12 +195,22 @@
       (step xs))))
 
 (defn mpileup
-  "Pile up alignments from multiple sources."
+  "Pile up alignments from multiple sources.
+
+  The following `options` are available:
+  - `min-base-quality` Minimum quality of called bases [13]
+  - `min-map-quality` Minimum quality of alignments [0]
+  - `ignore-overlaps?` Disable detecting overlapped bases of PE reads [false]"
   [region options & sam-readers]
   (apply align-pileup-seqs (map #(pileup % region options) sam-readers)))
 
 (defn create-mpileup
-  "Creates a mpileup file from the BAM file."
+  "Creates a mpileup file from the BAM file.
+
+  The following `options` are available:
+  - `min-base-quality` Minimum quality of called bases [13]
+  - `min-map-quality` Minimum quality of alignments [0]
+  - `ignore-overlaps?` Disable detecting overlapped bases of PE reads [false]"
   ([in-sam out-mplp]
    (create-mpileup in-sam nil out-mplp))
   ([in-sam in-ref out-mplp]

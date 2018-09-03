@@ -45,7 +45,7 @@
 (def ^:const wig-fields [:track :chr :start :end :value])
 
 (defn- header-or-comment?
-  "Checks if given string is neither a header nor a comment line."
+  "Returns true if given string is a blank, header, or comment line."
   [^String s]
   (or (empty? s)
       (.startsWith s "browser")

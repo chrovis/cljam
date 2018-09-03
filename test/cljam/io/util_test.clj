@@ -8,7 +8,8 @@
             [cljam.io.sam :as sam]
             [cljam.io.sequence :as cseq]
             [cljam.io.util :as io-util]
-            [cljam.io.vcf :as vcf]))
+            [cljam.io.vcf :as vcf]
+            [cljam.io.wig :as wig]))
 
 (deftest about-file-type-detection
   (are [?path ?expected] (and (= (io-util/file-type ?path) ?expected)
@@ -54,7 +55,9 @@
     "foo.bed" :bed
     "foo.bed.gz" :bed
     "foo.BED" :bed
-    "foo.BED.GZ" :bed)
+    "foo.BED.GZ" :bed
+    "foo.wig" :wig
+    "foo.WIG" :wig)
   (are [?dir]
       (are [?path] (thrown? Exception (io-util/file-type (str ?dir ?path)))
         "foo.bam.gz"
@@ -81,7 +84,8 @@
         io-util/fasta-reader? false
         io-util/twobit-reader? false
         io-util/fastq-reader? false
-        io-util/bed-reader? false)))
+        io-util/bed-reader? false
+        io-util/wig-reader? false)))
   (testing "bam reader"
     (with-open [r (sam/reader small-bam-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -95,7 +99,8 @@
         io-util/fasta-reader? false
         io-util/twobit-reader? false
         io-util/fastq-reader? false
-        io-util/bed-reader? false))
+        io-util/bed-reader? false
+        io-util/wig-reader? false))
     (with-open [r (sam/reader small-bam-file)
                 cloned (sam/reader r)]
       (is (true? (io-util/bam-reader? cloned))))
@@ -114,7 +119,8 @@
         io-util/fasta-reader? false
         io-util/twobit-reader? false
         io-util/fastq-reader? false
-        io-util/bed-reader? false)))
+        io-util/bed-reader? false
+        io-util/wig-reader? false)))
   (testing "bcf reader"
     (with-open [r (vcf/reader test-bcf-v4_3-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -128,7 +134,8 @@
         io-util/fasta-reader? false
         io-util/twobit-reader? false
         io-util/fastq-reader? false
-        io-util/bed-reader? false)))
+        io-util/bed-reader? false
+        io-util/wig-reader? false)))
   (testing "fasta reader"
     (with-open [r (cseq/reader test-fa-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -142,7 +149,8 @@
         io-util/fasta-reader? true
         io-util/twobit-reader? false
         io-util/fastq-reader? false
-        io-util/bed-reader? false)))
+        io-util/bed-reader? false
+        io-util/wig-reader? false)))
   (testing "twobit reader"
     (with-open [r (cseq/reader test-twobit-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -156,7 +164,8 @@
         io-util/fasta-reader? false
         io-util/twobit-reader? true
         io-util/fastq-reader? false
-        io-util/bed-reader? false)))
+        io-util/bed-reader? false
+        io-util/wig-reader? false)))
   (testing "fastq reader"
     (with-open [r (fastq/reader test-fq-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -170,7 +179,8 @@
         io-util/sequence-reader? false
         io-util/twobit-reader? false
         io-util/fastq-reader? true
-        io-util/bed-reader? false)))
+        io-util/bed-reader? false
+        io-util/wig-reader? false)))
   (testing "bed reader"
     (with-open [r (bed/reader test-bed-file1)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -184,7 +194,23 @@
         io-util/fasta-reader? false
         io-util/twobit-reader? false
         io-util/fastq-reader? false
-        io-util/bed-reader? true))))
+        io-util/bed-reader? true
+        io-util/wig-reader? false)))
+  (testing "wig reader"
+    (with-open [r (wig/reader test-wig-file1)]
+      (are [?pred ?expected] (= (?pred r) ?expected)
+        io-util/alignment-reader? false
+        io-util/sam-reader? false
+        io-util/bam-reader? false
+        io-util/variant-reader? false
+        io-util/vcf-reader? false
+        io-util/bcf-reader? false
+        io-util/sequence-reader? false
+        io-util/fasta-reader? false
+        io-util/twobit-reader? false
+        io-util/fastq-reader? false
+        io-util/bed-reader? false
+        io-util/wig-reader? true))))
 
 (deftest writer-predicates-test
   (testing "sam writer"
@@ -200,7 +226,8 @@
         io-util/vcf-writer? false
         io-util/bcf-writer? false
         io-util/fastq-writer? false
-        io-util/bed-writer? false)))
+        io-util/bed-writer? false
+        io-util/wig-writer? false)))
   (testing "bam writer"
     (with-open [r (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bam")))]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -214,7 +241,8 @@
         io-util/vcf-writer? false
         io-util/bcf-writer? false
         io-util/fastq-writer? false
-        io-util/bed-writer? false)))
+        io-util/bed-writer? false
+        io-util/wig-writer? false)))
   (testing "fasta writer"
     (with-open [r (cseq/writer (.getAbsolutePath (cio/file util/temp-dir "temp.fa")))]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -228,7 +256,8 @@
         io-util/vcf-writer? false
         io-util/bcf-writer? false
         io-util/fastq-writer? false
-        io-util/bed-writer? false)))
+        io-util/bed-writer? false
+        io-util/wig-writer? false)))
   (testing "twobit writer"
     (with-open [r (cseq/writer (.getAbsolutePath (cio/file util/temp-dir "temp.2bit")))]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -242,7 +271,8 @@
         io-util/vcf-writer? false
         io-util/bcf-writer? false
         io-util/fastq-writer? false
-        io-util/bed-writer? false)))
+        io-util/bed-writer? false
+        io-util/wig-writer? false)))
   (testing "vcf writer"
     (with-open [r (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.vcf")) {} [])]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -256,7 +286,8 @@
         io-util/vcf-writer? true
         io-util/bcf-writer? false
         io-util/fastq-writer? false
-        io-util/bed-writer? false)))
+        io-util/bed-writer? false
+        io-util/wig-writer? false)))
   (testing "bcf writer"
     (with-open [r (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bcf")) {} [])]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -270,7 +301,8 @@
         io-util/vcf-writer? false
         io-util/bcf-writer? true
         io-util/fastq-writer? false
-        io-util/bed-writer? false)))
+        io-util/bed-writer? false
+        io-util/wig-writer? false)))
   (testing "fastq writer"
     (with-open [r (fastq/writer (.getAbsolutePath (cio/file util/temp-dir "temp.fq")))]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -284,7 +316,8 @@
         io-util/vcf-writer? false
         io-util/bcf-writer? false
         io-util/fastq-writer? true
-        io-util/bed-writer? false)))
+        io-util/bed-writer? false
+        io-util/wig-writer? false)))
   (testing "bed writer"
     (with-open [r (bed/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bed")))]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -298,4 +331,20 @@
         io-util/vcf-writer? false
         io-util/bcf-writer? false
         io-util/fastq-writer? false
-        io-util/bed-writer? true))))
+        io-util/bed-writer? true
+        io-util/wig-writer? false)))
+  (testing "wig writer"
+    (with-open [r (wig/writer (.getAbsolutePath (cio/file util/temp-dir "temp.wig")))]
+      (are [?pred ?expected] (= (?pred r) ?expected)
+        io-util/alignment-writer? false
+        io-util/sam-writer? false
+        io-util/bam-writer? false
+        io-util/sequence-writer? false
+        io-util/fasta-writer? false
+        io-util/twobit-writer? false
+        io-util/variant-writer?  false
+        io-util/vcf-writer? false
+        io-util/bcf-writer? false
+        io-util/fastq-writer? false
+        io-util/bed-writer? false
+        io-util/wig-writer? true))))

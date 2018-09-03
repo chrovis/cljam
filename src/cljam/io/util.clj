@@ -15,6 +15,7 @@
             cljam.io.twobit.writer
             cljam.io.fastq
             cljam.io.bed
+            cljam.io.wig
             [cljam.util :as util]))
 
 (defn alignment-reader?
@@ -127,6 +128,16 @@
   [wtr]
   (instance? cljam.io.bed.BEDWriter wtr))
 
+(defn wig-reader?
+  "Checks if given object is an instance of WIGReader."
+  [rdr]
+  (instance? cljam.io.wig.WIGReader rdr))
+
+(defn wig-writer?
+  "Checks if given object is an instance of WIGWriter."
+  [wtr]
+  (instance? cljam.io.wig.WIGWriter wtr))
+
 (defn file-type
   "Detects a file format from a path of f, returning a keyword representing the
   format. Throws an exception if an unsupported file is supplied."
@@ -142,4 +153,5 @@
     #"(?i)\.vcf" :vcf
     #"(?i)\.bcf$" :bcf
     #"(?i)\.bed" :bed
+    #"(?i)\.wig" :wig
     (throw (IllegalArgumentException. "Invalid file type"))))

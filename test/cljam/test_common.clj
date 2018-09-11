@@ -201,6 +201,12 @@
 (def test-wig-file1 "test-resources/wig/test1.wig")
 (def test-wig-file2 "test-resources/wig/test2.wig")
 
+;; ### bigWig files
+
+(def test-bigwig-fixed-file "test-resources/bigwig/test-fixed.bigWig")
+(def test-bigwig-variable-file "test-resources/bigwig/test-variable.bigWig")
+(def test-bigwig-bedgraph-file "test-resources/bigwig/test-bedgraph.bigWig")
+
 (def to-sam-alignment
   (comp
    protocols/map->SAMAlignment

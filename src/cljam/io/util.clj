@@ -16,6 +16,7 @@
             cljam.io.fastq
             cljam.io.bed
             cljam.io.wig
+            cljam.io.bigwig
             [cljam.util :as util]))
 
 (defn alignment-reader?
@@ -138,6 +139,11 @@
   [wtr]
   (instance? cljam.io.wig.WIGWriter wtr))
 
+(defn bigwig-reader?
+  "Checks if given object is an instance of BIGWIGReader."
+  [rdr]
+  (instance? cljam.io.bigwig.BIGWIGReader rdr))
+
 (defn file-type
   "Detects a file format from a path of f, returning a keyword representing the
   format. Throws an exception if an unsupported file is supplied."
@@ -154,4 +160,5 @@
     #"(?i)\.bcf$" :bcf
     #"(?i)\.bed" :bed
     #"(?i)\.wig" :wig
+    #"(?i)\.(bigWig|bw)" :bigwig
     (throw (IllegalArgumentException. "Invalid file type"))))

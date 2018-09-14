@@ -10,9 +10,8 @@
 
 (def ^:private ^BigWigStructure test-bigwig-fixed-fields
   [(BigWigStructure.
-    (FixedWidthHeader. 2291137574 4 2 152 200 368 0 0 0 112 32768 0)
-    [(ZoomHeader. 132 0 6588 6629) (ZoomHeader. 528 0 12833 12874)]
-    nil
+    (FixedWidthHeader. 2291137574 4 2 152 200 368 112 32768 0)
+    [(ZoomHeader. 132 6588 6629) (ZoomHeader. 528 12833 12874)]
     (TotalSummary. 110 0.5 79.6 4045.0 188969.5)
     nil
     (BptHeader. 1 4 8 1 184))
@@ -20,9 +19,8 @@
 
 (def ^:private ^BigWigStructure test-bigwig-variable-fields
   [(BigWigStructure.
-    (FixedWidthHeader. 2291137574 4 2 152 214 419 0 0 0 112 32768 0)
-    [(ZoomHeader. 10428 0 6631 6706) (ZoomHeader. 41712 0 12910 12986)]
-    nil
+    (FixedWidthHeader. 2291137574 4 2 152 214 419 112 32768 0)
+    [(ZoomHeader. 10428 6631 6706) (ZoomHeader. 41712 12910 12986)]
     (TotalSummary. 1050 -0.39 0.78 3.5 78.515)
     nil
     (BptHeader. 2 5 8 2 184))
@@ -31,9 +29,8 @@
 
 (def ^:private ^BigWigStructure test-bigwig-bedgraph-fields
   [(BigWigStructure.
-    (FixedWidthHeader. 2291137574 4 2 152 212 500 0 0 0 112 32768 0)
-    [(ZoomHeader. 2462838 0 6712 6787) (ZoomHeader. 9851352 0 12991 13067)]
-    nil
+    (FixedWidthHeader. 2291137574 4 2 152 212 500 112 32768 0)
+    [(ZoomHeader. 2462838 6712 6787) (ZoomHeader. 9851352 12991 13067)]
     (TotalSummary. 17002 14.6 25.1 321574.0 6240134.25)
     nil
     (BptHeader. 2 4 8 2 184))

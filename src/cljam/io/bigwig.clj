@@ -16,12 +16,11 @@
 (declare read-structure)
 
 (defrecord FixedWidthHeader [magic version zoom-levels chromosome-tree-offset
-                             full-data-offset full-index-offset field-count
-                             defined-field-count auto-sql-offset
+                             full-data-offset full-index-offset
                              total-summary-offset uncompress-buf-size
                              extension-offset])
 
-(defrecord ZoomHeader [reduction-level reserved data-offset index-offset])
+(defrecord ZoomHeader [reduction-level data-offset index-offset])
 
 (defrecord TotalSummary [bases-covered min-val max-val sum-data sum-squared])
 
@@ -36,7 +35,6 @@
 ; Cf. https://github.com/ucscGenomeBrowser/kent/blob/3a0198acd1f859a603f5aad90188bee2d82efe0c/src/inc/bbiFile.h#L384
 (defrecord BigWigStructure [^FixedWidthHeader fixed-width-header
                             zoom-headers
-                            ^String auto-sql
                             ^TotalSummary total-summary
                             ^ExtendedHeader extended-header
                             ^BptHeader bpt-header])
@@ -113,8 +111,8 @@
     (check-auto-sql-offset auto-sql-offset)
     (FixedWidthHeader.
      magic version zoom-levels chromosome-tree-offset full-data-offset
-     full-index-offset field-count defined-field-count auto-sql-offset
-     total-summary-offset uncompress-buf-size extension-offset)))
+     full-index-offset total-summary-offset uncompress-buf-size
+     extension-offset)))
 
 (defn- read-zoom-headers
   "Returns a vector of ZoomHeader from reader."
@@ -123,24 +121,14 @@
             (if (zero? n)
               acc
               (let [reduction-level (lsb/read-uint r)
-                    reserved (lsb/read-uint r)
+                    _reserved (lsb/read-uint r)
                     data-offset (lsb/read-long r)
                     index-offset (lsb/read-long r)]
                 (recur (dec n)
                        (conj acc
                              (ZoomHeader.
-                              reduction-level reserved data-offset
-                              index-offset))))))]
+                              reduction-level data-offset index-offset))))))]
     (read-zoom-header zoom-levels [])))
-
-(defn- read-auto-sql
-  "Returns an autoSql string. It it isn't present, returns nil."
-  [^RandomAccessFile r {:keys [auto-sql-offset]}]
-  (if (zero? auto-sql-offset)
-    nil
-    (do
-      (.seek r auto-sql-offset)
-      (lsb/read-null-terminated-string r))))
 
 (defn- read-total-summary
   "Returns a totalSummay. If it isn't present, returns nil."
@@ -196,13 +184,11 @@
   [^RandomAccessFile r]
   (let [fixed-width-header (read-fixed-width-header r)
         zoom-headers (read-zoom-headers r fixed-width-header)
-        auto-sql (read-auto-sql r fixed-width-header)
         total-summary (read-total-summary r fixed-width-header)
         extended-header (read-extended-header r fixed-width-header)
         bpt-header (read-bpt-header r fixed-width-header)]
     (BigWigStructure.
-     fixed-width-header zoom-headers auto-sql total-summary extended-header
-     bpt-header)))
+     fixed-width-header zoom-headers total-summary extended-header bpt-header)))
 
 (defn- read-leafs
   "Returns the Chrom data of leafs."

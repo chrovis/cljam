@@ -222,11 +222,11 @@
     (traverse root-offset)))
 
 (defn read-structure
-  "Reads a bigWig tracks from reader and returns a vector with two values,
+  "Reads a bigWig tracks from reader and returns a map with two values,
   a header structure and a sequence of chromosome data."
   [^BIGWIGReader rdr]
   (let [r ^RandomAccessFile (.reader rdr)]
     (.seek r 0)
     (let [headers (read-all-headers r)
           chroms (read-chroms r (:bpt-header headers))]
-      [headers chroms])))
+      {:headers headers, :chroms chroms})))

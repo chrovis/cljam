@@ -9,33 +9,33 @@
             ZoomHeader TotalSummary ExtendedHeader BptHeader Chrom]))
 
 (def ^:private ^BigWigStructure test-bigwig-fixed-fields
-  [(BigWigStructure.
-    (FixedWidthHeader. 2291137574 4 2 152 200 368 112 32768 0)
-    [(ZoomHeader. 132 6588 6629) (ZoomHeader. 528 12833 12874)]
-    (TotalSummary. 110 0.5 79.6 4045.0 188969.5)
-    nil
-    (BptHeader. 1 4 8 1 184))
-   [(Chrom. "chr7" 0 158821424)]])
+  {:headers (BigWigStructure.
+             (FixedWidthHeader. 2291137574 4 2 152 200 368 112 32768 0)
+             [(ZoomHeader. 132 6588 6629) (ZoomHeader. 528 12833 12874)]
+             (TotalSummary. 110 0.5 79.6 4045.0 188969.5)
+             nil
+             (BptHeader. 1 4 8 1 184))
+   :chroms [(Chrom. "chr7" 0 158821424)]})
 
 (def ^:private ^BigWigStructure test-bigwig-variable-fields
-  [(BigWigStructure.
-    (FixedWidthHeader. 2291137574 4 2 152 214 419 112 32768 0)
-    [(ZoomHeader. 10428 6631 6706) (ZoomHeader. 41712 12910 12986)]
-    (TotalSummary. 1050 -0.39 0.78 3.5 78.515)
-    nil
-    (BptHeader. 2 5 8 2 184))
-   [(Chrom. "chr22" 0 49691432)
-    (Chrom. "chrY" 1 57772954)]])
+  {:headers (BigWigStructure.
+             (FixedWidthHeader. 2291137574 4 2 152 214 419 112 32768 0)
+             [(ZoomHeader. 10428 6631 6706) (ZoomHeader. 41712 12910 12986)]
+             (TotalSummary. 1050 -0.39 0.78 3.5 78.515)
+             nil
+             (BptHeader. 2 5 8 2 184))
+   :chroms [(Chrom. "chr22" 0 49691432)
+            (Chrom. "chrY" 1 57772954)]})
 
 (def ^:private ^BigWigStructure test-bigwig-bedgraph-fields
-  [(BigWigStructure.
-    (FixedWidthHeader. 2291137574 4 2 152 212 500 112 32768 0)
-    [(ZoomHeader. 2462838 6712 6787) (ZoomHeader. 9851352 12991 13067)]
-    (TotalSummary. 17002 14.6 25.1 321574.0 6240134.25)
-    nil
-    (BptHeader. 2 4 8 2 184))
-   [(Chrom. "chr5" 0 180857866)
-    (Chrom. "chr7" 1 158821424)]])
+  {:headers (BigWigStructure.
+             (FixedWidthHeader. 2291137574 4 2 152 212 500 112 32768 0)
+             [(ZoomHeader. 2462838 6712 6787) (ZoomHeader. 9851352 12991 13067)]
+             (TotalSummary. 17002 14.6 25.1 321574.0 6240134.25)
+             nil
+             (BptHeader. 2 4 8 2 184))
+   :chroms [(Chrom. "chr5" 0 180857866)
+            (Chrom. "chr7" 1 158821424)]})
 
 (defn- same-headers?
   [ah bh]
@@ -62,9 +62,9 @@
 (defn- same-bigwig-structure?
   "Returns true if the given arguments are same bigWig structure, otherwise
   false."
-  [[ah ac] [bh bc]]
-  (and (same-headers? ah bh)
-       (same-chroms? ac bc)))
+  [a b]
+  (and (same-headers? (:headers a) (:headers b))
+       (same-chroms? (:chroms a) (:chroms b))))
 
 (deftest reader
   (testing "make reader instance"

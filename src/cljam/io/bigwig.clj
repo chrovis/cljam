@@ -133,30 +133,26 @@
 (defn- read-total-summary
   "Returns a totalSummay. If it isn't present, returns nil."
   [^RandomAccessFile r {:keys [total-summary-offset]}]
-  (if (zero? total-summary-offset)
-    nil
-    (do
-      (.seek r total-summary-offset)
-      (let [bases-covered (lsb/read-long r)
-            min-val (lsb/read-double r)
-            max-val (lsb/read-double r)
-            sum-data (lsb/read-double r)
-            sum-squared (lsb/read-double r)]
-        (TotalSummary.
-         bases-covered min-val max-val sum-data sum-squared)))))
+  (when-not (zero? total-summary-offset)
+    (.seek r total-summary-offset)
+    (let [bases-covered (lsb/read-long r)
+          min-val (lsb/read-double r)
+          max-val (lsb/read-double r)
+          sum-data (lsb/read-double r)
+          sum-squared (lsb/read-double r)]
+      (TotalSummary.
+       bases-covered min-val max-val sum-data sum-squared))))
 
 (defn- read-extended-header
   "Returns an extendedHeader. It it isn't present, returns nil."
   [^RandomAccessFile r {:keys [extension-offset]}]
-  (if (zero? extension-offset)
-    nil
-    (do
-      (.seek r extension-offset)
-      (let [extension-size (lsb/read-ushort r)
-            extra-index-count (lsb/read-ushort r)
-            extra-index-list-offset (lsb/read-long r)]
-        (ExtendedHeader.
-         extension-size extra-index-count extra-index-list-offset)))))
+  (when-not (zero? extension-offset)
+    (.seek r extension-offset)
+    (let [extension-size (lsb/read-ushort r)
+          extra-index-count (lsb/read-ushort r)
+          extra-index-list-offset (lsb/read-long r)]
+      (ExtendedHeader.
+       extension-size extra-index-count extra-index-list-offset))))
 
 (defn- check-bpt-magic
   "Checks if the magic is right for bpt format. Otherwise, throws IOException."
@@ -193,23 +189,23 @@
 (defn- read-leafs
   "Returns the Chrom data of leafs."
   [^RandomAccessFile r key-size child-count]
-  (map (fn [_]
-         (let [name (->> (lsb/read-bytes r key-size)
-                         (map #(format "%c" %))
-                         (apply str))
-               id (lsb/read-uint r)
-               size (lsb/read-uint r)]
-           (Chrom.
-            name id size)))
-       (range child-count)))
+  (repeatedly child-count
+              (fn [_]
+                (let [name (->> (lsb/read-bytes r key-size)
+                                (map char)
+                                (apply str))
+                      id (lsb/read-uint r)
+                      size (lsb/read-uint r)]
+                  (Chrom.
+                   name id size)))))
 
 (defn- read-file-offsets
   "Skips offsets and returns the file offsets of children."
   [^RandomAccessFile r key-size child-count]
-  (map (fn [_]
-         (lsb/skip r key-size)
-         (lsb/read-long r))
-       (range child-count)))
+  (repeatedly child-count
+              (fn [_]
+                (lsb/skip r key-size)
+                (lsb/read-long r))))
 
 (defn- read-chroms
   "Returns a sequence of Chrom data."

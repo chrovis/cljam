@@ -190,7 +190,7 @@
   "Returns the Chrom data of leafs."
   [^RandomAccessFile r key-size child-count]
   (repeatedly child-count
-              (fn [_]
+              (fn []
                 (let [name (->> (lsb/read-bytes r key-size)
                                 (map char)
                                 (apply str))
@@ -203,7 +203,7 @@
   "Skips offsets and returns the file offsets of children."
   [^RandomAccessFile r key-size child-count]
   (repeatedly child-count
-              (fn [_]
+              (fn []
                 (lsb/skip r key-size)
                 (lsb/read-long r))))
 

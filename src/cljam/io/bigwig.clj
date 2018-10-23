@@ -209,7 +209,7 @@
 
 (defn- read-chroms
   "Returns a sequence of Chrom data."
-  [^RandomAccessFile r {:keys [key-size val-size root-offset]}]
+  [^RandomAccessFile r {:keys [key-size root-offset]}]
   (letfn [(traverse [block-start]
             (.seek r block-start)
             (let [leaf? (-> r lsb/read-ubyte zero? not)

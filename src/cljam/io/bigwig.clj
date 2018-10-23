@@ -216,7 +216,7 @@
                   _reversed (lsb/read-ubyte r)
                   child-count (lsb/read-ushort r)]
               (if leaf?
-                (read-leafs r key-size child-count)
+                (doall (read-leafs r key-size child-count))
                 (let [file-offsets (read-file-offsets r key-size child-count)]
                   (map traverse file-offsets)))))]
     (traverse root-offset)))

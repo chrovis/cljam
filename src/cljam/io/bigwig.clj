@@ -13,7 +13,7 @@
 
 (def ^:private bpt-magic 0x78CA8C91)
 
-(declare read-structure)
+(declare read-structure read-all-headers)
 
 (defrecord FixedWidthHeader [magic version zoom-levels chromosome-tree-offset
                              full-data-offset full-index-offset
@@ -41,7 +41,7 @@
 
 (defrecord BbiChromInfo [name id size])
 
-(defrecord BIGWIGReader [^RandomAccessFile reader ^URL url]
+(defrecord BIGWIGReader [^RandomAccessFile reader ^URL url ^BigWigStructure headers]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
@@ -56,8 +56,9 @@
   to ensure the reader is properly closed."
   [f]
   (let [f (.getAbsolutePath (cio/file f))
-        reader (RandomAccessFile. f "r")]
-    (BIGWIGReader. reader (util/as-url f))))
+        reader (RandomAccessFile. f "r")
+        headers (read-all-headers reader)]
+    (BIGWIGReader. reader (util/as-url f) headers)))
 
 (defn- check-bigwig-magic
   "Checks if the magic is right for bigWig format. Otherwise, throws IOException."
@@ -178,6 +179,7 @@
 (defn- read-all-headers
   "Returns the all headers of bigWig format."
   [^RandomAccessFile r]
+  (.seek r 0)
   (let [fixed-width-header (read-fixed-width-header r)
         zoom-headers (read-zoom-headers r fixed-width-header)
         total-summary (read-total-summary r fixed-width-header)
@@ -226,7 +228,5 @@
   a header structure and a sequence of chromosome data."
   [^BIGWIGReader rdr]
   (let [r ^RandomAccessFile (.reader rdr)]
-    (.seek r 0)
-    (let [headers (read-all-headers r)
-          bbi-chrom-info (read-bbi-chrom-info r (:bpt-header headers))]
-      {:headers headers, :bbi-chrom-info bbi-chrom-info})))
+    (let [bbi-chrom-info (read-bbi-chrom-info r (:bpt-header (.headers rdr)))]
+      {:headers (.headers rdr), :bbi-chrom-info bbi-chrom-info})))

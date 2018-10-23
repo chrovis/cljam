@@ -6,7 +6,7 @@
             [cljam.io.bigwig :as bigwig]
             [cljam.util :as util])
   (:import [cljam.io.bigwig BIGWIGReader BigWigStructure FixedWidthHeader
-            ZoomHeader TotalSummary ExtendedHeader BptHeader Chrom]))
+            ZoomHeader TotalSummary ExtendedHeader BptHeader BbiChromInfo]))
 
 (def ^:private ^BigWigStructure test-bigwig-fixed-fields
   {:headers (BigWigStructure.
@@ -15,7 +15,7 @@
              (TotalSummary. 110 0.5 79.6 4045.0 188969.5)
              nil
              (BptHeader. 1 4 8 1 184))
-   :chroms [(Chrom. "chr7" 0 158821424)]})
+   :bbi-chrom-info [(BbiChromInfo. "chr7" 0 158821424)]})
 
 (def ^:private ^BigWigStructure test-bigwig-variable-fields
   {:headers (BigWigStructure.
@@ -24,8 +24,8 @@
              (TotalSummary. 1050 -0.39 0.78 3.5 78.515)
              nil
              (BptHeader. 2 5 8 2 184))
-   :chroms [(Chrom. "chr22" 0 49691432)
-            (Chrom. "chrY" 1 57772954)]})
+   :bbi-chrom-info [(BbiChromInfo. "chr22" 0 49691432)
+                    (BbiChromInfo. "chrY" 1 57772954)]})
 
 (def ^:private ^BigWigStructure test-bigwig-bedgraph-fields
   {:headers (BigWigStructure.
@@ -34,8 +34,8 @@
              (TotalSummary. 17002 14.6 25.1 321574.0 6240134.25)
              nil
              (BptHeader. 2 4 8 2 184))
-   :chroms [(Chrom. "chr5" 0 180857866)
-            (Chrom. "chr7" 1 158821424)]})
+   :bbi-chrom-info [(BbiChromInfo. "chr5" 0 180857866)
+                    (BbiChromInfo. "chr7" 1 158821424)]})
 
 (defn- same-headers?
   [ah bh]
@@ -53,7 +53,7 @@
               (-> (- (:sum-data x) (:sum-data y)) Math/abs (< eps))
               (-> (- (:sum-squared x) (:sum-squared y)) Math/abs (< eps))))))
 
-(defn- same-chroms?
+(defn- same-bbi-chrom-info
   [ac bc]
   (and (= (:name ac) (:name bc))
        (= (:id ac) (:id bc))
@@ -64,7 +64,7 @@
   false."
   [a b]
   (and (same-headers? (:headers a) (:headers b))
-       (same-chroms? (:chroms a) (:chroms b))))
+       (same-bbi-chrom-info (:bbi-chrom-info a) (:bbi-chrom-info b))))
 
 (deftest reader
   (testing "make reader instance"

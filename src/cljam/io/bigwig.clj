@@ -39,7 +39,7 @@
                             ^ExtendedHeader extended-header
                             ^BptHeader bpt-header])
 
-(defrecord Chrom [name id size])
+(defrecord BbiChromInfo [name id size])
 
 (defrecord BIGWIGReader [^RandomAccessFile reader ^URL url]
   Closeable
@@ -187,7 +187,7 @@
      fixed-width-header zoom-headers total-summary extended-header bpt-header)))
 
 (defn- read-leafs
-  "Returns the Chrom data of leafs."
+  "Returns the BbiChromInfo data of leafs."
   [^RandomAccessFile r key-size child-count]
   (repeatedly child-count
               (fn []
@@ -196,7 +196,7 @@
                                 (apply str))
                       id (lsb/read-uint r)
                       size (lsb/read-uint r)]
-                  (Chrom.
+                  (BbiChromInfo.
                    name id size)))))
 
 (defn- read-file-offsets
@@ -207,8 +207,8 @@
                 (lsb/skip r key-size)
                 (lsb/read-long r))))
 
-(defn- read-chroms
-  "Returns a sequence of Chrom data."
+(defn- read-bbi-chrom-info
+  "Returns a sequence of BbiChromInfo data."
   [^RandomAccessFile r {:keys [key-size root-offset]}]
   (letfn [(traverse [block-start]
             (.seek r block-start)
@@ -228,5 +228,5 @@
   (let [r ^RandomAccessFile (.reader rdr)]
     (.seek r 0)
     (let [headers (read-all-headers r)
-          chroms (read-chroms r (:bpt-header headers))]
-      {:headers headers, :chroms chroms})))
+          bbi-chrom-info (read-bbi-chrom-info r (:bpt-header headers))]
+      {:headers headers, :bbi-chrom-info bbi-chrom-info})))

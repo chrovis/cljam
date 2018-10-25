@@ -84,7 +84,7 @@
         [base indel] ((:seqs-at-ref aln) relative-pos)]
     (-> (PileupBase.
          (zero? relative-pos)
-         (when (zero? relative-pos) (.mapq aln))
+         (.mapq aln)
          base
          qual
          (flag/reversed? (.flag aln))
@@ -101,9 +101,8 @@
 (defn ->locus-pile
   "Convert a pile into `cljam.io.pileup.LocusPile`."
   [chr [pos pile]]
-  (let [c (count pile)]
-    (when (pos? c)
-      (LocusPile. chr pos \N c pile))))
+  (when (seq pile)
+    (LocusPile. chr pos pile)))
 
 (defn- correct-qual
   "Correct quality of two overlapped mate reads by setting zero quality for one

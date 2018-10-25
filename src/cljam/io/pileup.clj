@@ -21,8 +21,6 @@
 
 (defrecord LocusPile [rname
                       ^int pos
-                      ^char ref
-                      ^long count
                       pile])
 
 ;; Reader
@@ -103,7 +101,8 @@
         pile (mapv (fn [b q] (assoc b :qual q))
                    (some->> bases (parse-bases-col upper-ref-base))
                    (some-> quals qual/fastq->phred))]
-    (LocusPile. rname (p/as-int pos) ref-base (p/as-long cnt) pile)))
+    (-> (LocusPile. rname (p/as-long pos) pile)
+        (assoc :count (p/as-int cnt) :ref ref-base))))
 
 (defn read-piles
   "Reads piled-up bases of the pileup file, returning them as a lazy sequence of

@@ -4,9 +4,9 @@
   :license {:name "Apache License, Version 2.0"
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
   :dependencies [[org.clojure/tools.logging "0.4.1"]
-                 [org.clojure/tools.cli "0.3.7"]
+                 [org.clojure/tools.cli "0.4.1"]
                  [org.apache.commons/commons-compress "1.18"]
-                 [clj-sub-command "0.4.1"]
+                 [clj-sub-command "0.5.0"]
                  [digest "1.4.8"]
                  [bgzf4j "0.1.0"]
                  [com.climate/claypoole "1.1.4"]
@@ -18,7 +18,7 @@
                                   [net.totakke/libra "0.1.1"]
                                   [se.haleby/stub-http "0.2.5"]]
                    :plugins [[lein-binplus "0.6.4" :exclusions [org.clojure/clojure]]
-                             [lein-codox "0.10.4"]
+                             [lein-codox "0.10.5"]
                              [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]
                              [lein-cloverage "1.0.13"]
                              [net.totakke/lein-libra "0.1.2"]]
@@ -31,7 +31,7 @@
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
-             :1.10 {:dependencies [[org.clojure/clojure "1.10.0-alpha6"]]}
+             :1.10 {:dependencies [[org.clojure/clojure "1.10.0-beta4"]]}
              :uberjar {:dependencies [[org.clojure/clojure "1.9.0"]
                                       [org.apache.logging.log4j/log4j-api "2.11.1"]
                                       [org.apache.logging.log4j/log4j-core "2.11.1"]]

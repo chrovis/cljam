@@ -28,6 +28,36 @@
       test-fai-file
       (Object.))))
 
+(deftest multithread-reader-test
+  (with-open [f (cseq/reader medium-fa-file)
+              t (cseq/reader medium-twobit-file)]
+    (let [xs (cseq/read-indices f)]
+      (is (->> (repeatedly
+                #(let [{:keys [name len]} (rand-nth xs)
+                       [s e] (sort [(inc (rand-int len))
+                                    (inc (rand-int len))])]
+                   {:chr name :start s :end e}))
+               (take 100)
+               (pmap
+                (fn [region]
+                  (with-open [fc (cseq/reader f)
+                              tc (cseq/reader t)]
+                    (= (cseq/read-sequence fc region)
+                       (cseq/read-sequence tc region)))))
+               (every? true?))))))
+
+(deftest read-seq-summaries-test
+  (testing "fasta"
+    (with-open [rdr (cseq/reader test-fa-file)]
+      (is (= (cseq/read-seq-summaries rdr)
+             [{:name "ref", :len 45}
+              {:name "ref2", :len 40}]))))
+  (testing "twobit"
+    (with-open [rdr (cseq/reader test-twobit-file)]
+      (is (= (cseq/read-seq-summaries rdr)
+             [{:name "ref", :len 45}
+              {:name "ref2", :len 40}])))))
+
 (deftest read-indices-test
   (testing "fasta"
     (with-open [rdr (cseq/reader test-fa-file)]
@@ -37,8 +67,8 @@
   (testing "twobit"
     (with-open [rdr (cseq/reader test-twobit-file)]
       (is (= (cseq/read-indices rdr)
-             [{:name "ref", :len 45, :offset 33, :ambs [], :masks [], :header-offset 16}
-              {:name "ref2", :len 40, :offset 61, :ambs [], :masks [[1 40]], :header-offset 24}])))))
+             [{:name "ref", :len 45, :offset 33, :ambs {}, :masks {}, :header-offset 16}
+              {:name "ref2", :len 40, :offset 61, :ambs {}, :masks {1 40}, :header-offset 24}])))))
 
 (deftest read-sequence-test
   (with-open [fa-rdr (cseq/reader test-fa-file)

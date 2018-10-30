@@ -11,3 +11,31 @@
     tcommon/medium-fa-file {:mask? true}
     tcommon/medium-twobit-file {}
     tcommon/medium-twobit-file {:mask? true}))
+
+(defbench read-sequence-once-test
+  (are [f opts]
+      (let [region {:chr "chr7",
+                    :start 10000,
+                    :end 45000}]
+        (c/quick-bench
+         (with-open [rdr (cseq/reader f)]
+           (cseq/read-sequence rdr region opts))))
+    tcommon/medium-fa-file {}
+    tcommon/medium-fa-file {:mask? true}
+    tcommon/medium-twobit-file {}
+    tcommon/medium-twobit-file {:mask? true}))
+
+(defbench read-sequence-test
+  (are [f opts]
+      (let [region {:chr "chr7",
+                    :start 10000,
+                    :end 45000}]
+        (with-open [rdr (cseq/reader f)]
+          ;; warm up
+          (cseq/read-sequence rdr region opts)
+          (c/quick-bench
+           (cseq/read-sequence rdr region opts))))
+    tcommon/medium-fa-file {}
+    tcommon/medium-fa-file {:mask? true}
+    tcommon/medium-twobit-file {}
+    tcommon/medium-twobit-file {:mask? true}))

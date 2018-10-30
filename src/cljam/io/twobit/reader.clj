@@ -145,6 +145,14 @@
   ([^TwoBitReader rdr option]
    (read-all-sequences* rdr (sort-by :index (vals (.index rdr))) option)))
 
+(defn read-seq-summaries
+  "Reads summaries of sequences in this 2bit file."
+  [^TwoBitReader rdr]
+  (mapv
+   (fn [^Chrom c]
+     {:name (.name c), :len (.len c)})
+   (sort-by :index (vals (.index rdr)))))
+
 (defn read-indices
   "Reads metadata of indexed sequences. Forces loading all indices."
   [^TwoBitReader rdr]
@@ -164,6 +172,8 @@
     ([this option] (protocols/read-all-sequences this option)))
   (indexed? [_] true)
   protocols/ISequenceReader
+  (read-seq-summaries
+    [this] (read-seq-summaries this))
   (read-indices
     [this] (read-indices this))
   (read-all-sequences

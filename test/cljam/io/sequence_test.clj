@@ -31,7 +31,7 @@
 (deftest multithread-reader-test
   (with-open [f (cseq/reader medium-fa-file)
               t (cseq/reader medium-twobit-file)]
-    (let [xs (cseq/read-indices f)]
+    (let [xs (cseq/read-seq-summaries f)]
       (is (->> (repeatedly
                 #(let [{:keys [name len]} (rand-nth xs)
                        [s e] (sort [(inc (rand-int len))

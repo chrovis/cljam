@@ -7,13 +7,16 @@
             [cljam.io.util.lsb :as lsb]
             [cljam.util :as util])
   (:import [java.net URL]
-           [java.io Closeable IOException RandomAccessFile]))
+           [java.io Closeable IOException RandomAccessFile]
+           [java.util.zip InflaterInputStream]))
 
 (def ^:private bigwig-magic 0x888ffc26)
 
 (def ^:private bpt-magic 0x78CA8C91)
 
-(declare read-structure read-all-headers)
+(def ^:private cir-tree-magic 0x2468ACE0)
+
+(declare read-tracks read-all-headers read-bbi-chrom-info read-cir-tree)
 
 (defrecord FixedWidthHeader [magic version zoom-levels chromosome-tree-offset
                              full-data-offset full-index-offset
@@ -29,26 +32,32 @@
 
 (defrecord BptHeader [block-size key-size val-size item-count root-offset])
 
+(defrecord BbiChromInfo [name id size])
+
+(defrecord CirTree [block-size item-count start-chrom-ix start-base
+                    end-chrom-ix end-base file-size items-per-slot
+                    root-offset])
+
 ; Currently, max number of zoom levels (i.e. max number of zoom headers) is 10,
 ; the number is small. Therefore, we choose a record containing vector of zoom
 ; header instead of a flat record.
 ; Cf. https://github.com/ucscGenomeBrowser/kent/blob/3a0198acd1f859a603f5aad90188bee2d82efe0c/src/inc/bbiFile.h#L384
-(defrecord BigWigStructure [^FixedWidthHeader fixed-width-header
-                            zoom-headers
-                            ^TotalSummary total-summary
-                            ^ExtendedHeader extended-header
-                            ^BptHeader bpt-header])
+(defrecord BigWigHeaders [^FixedWidthHeader fixed-width-header
+                          zoom-headers
+                          ^TotalSummary total-summary
+                          ^ExtendedHeader extended-header
+                          ^BptHeader bpt-header
+                          bbi-chrom-info
+                          ^CirTree cir-tree])
 
-(defrecord BbiChromInfo [name id size])
-
-(defrecord BIGWIGReader [^RandomAccessFile reader ^URL url ^BigWigStructure headers]
+(defrecord BIGWIGReader [^RandomAccessFile reader ^URL url ^BigWigHeaders headers]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
   protocols/IReader
   (reader-url [this] (.url this))
-  (read [this] (read-structure this))
-  (read [this option] (read-structure this))
+  (read [this] (read-tracks this))
+  (read [this option] (read-tracks this))
   (indexed? [_] false))
 
 (defn ^BIGWIGReader reader
@@ -184,24 +193,25 @@
         zoom-headers (read-zoom-headers r fixed-width-header)
         total-summary (read-total-summary r fixed-width-header)
         extended-header (read-extended-header r fixed-width-header)
-        bpt-header (read-bpt-header r fixed-width-header)]
-    (BigWigStructure.
-     fixed-width-header zoom-headers total-summary extended-header bpt-header)))
+        bpt-header (read-bpt-header r fixed-width-header)
+        bbi-chrom-info (read-bbi-chrom-info r bpt-header)
+        cir-tree (read-cir-tree r fixed-width-header)]
+    (BigWigHeaders.
+     fixed-width-header zoom-headers total-summary extended-header bpt-header
+     bbi-chrom-info cir-tree)))
 
-(defn- read-leafs
+(defn- read-bbi-chrom-info-leafs
   "Returns the BbiChromInfo data of leafs."
   [^RandomAccessFile r key-size child-count]
   (repeatedly child-count
               (fn []
-                (let [name (->> (lsb/read-bytes r key-size)
-                                (map char)
-                                (apply str))
+                (let [name (lsb/read-string r key-size)
                       id (lsb/read-uint r)
                       size (lsb/read-uint r)]
                   (BbiChromInfo.
                    name id size)))))
 
-(defn- read-file-offsets
+(defn- read-bbi-chrom-info-file-offsets
   "Skips offsets and returns the file offsets of children."
   [^RandomAccessFile r key-size child-count]
   (repeatedly child-count
@@ -218,15 +228,257 @@
                   _reversed (lsb/read-ubyte r)
                   child-count (lsb/read-ushort r)]
               (if leaf?
-                (doall (read-leafs r key-size child-count))
-                (let [file-offsets (read-file-offsets r key-size child-count)]
+                (doall (read-bbi-chrom-info-leafs r key-size child-count))
+                (let [file-offsets (read-bbi-chrom-info-file-offsets r
+                                                                     key-size
+                                                                     child-count)]
                   (map traverse file-offsets)))))]
-    (traverse root-offset)))
+    (vec (traverse root-offset))))
 
-(defn read-structure
-  "Reads a bigWig tracks from reader and returns a map with two values,
-  a header structure and a sequence of chromosome data."
+(defn- check-cir-tree-magic
+  "Checks if the magic is right for chromosome id r-tree index format.
+  Otherwise, throws IOException."
+  [uint]
+  (when-not (= uint cir-tree-magic)
+    (throw (IOException. "Invalid cir-tree magic"))))
+
+(defn- read-cir-tree
+  "Returns a CirTree data."
+  [^RandomAccessFile r {:keys [full-index-offset]}]
+  (.seek r full-index-offset)
+  (let [magic (lsb/read-uint r)
+        block-size (lsb/read-uint r)
+        item-count (lsb/read-long r)
+        start-chrom-ix (lsb/read-uint r)
+        start-base (lsb/read-uint r)
+        end-chrom-ix (lsb/read-uint r)
+        end-base (lsb/read-uint r)
+        file-size (lsb/read-long r)
+        items-per-slot (lsb/read-uint r)]
+    (check-cir-tree-magic magic)
+    (lsb/skip r 4)
+    (let [root-offset (.getFilePointer r)]
+      (CirTree.
+       block-size item-count start-chrom-ix start-base end-chrom-ix
+       end-base file-size items-per-slot root-offset))))
+
+(defn- find-bpt-file
+  "Returns an ID associated with chrom name."
+  [^RandomAccessFile r chrom {:keys [key-size root-offset]}]
+  (letfn [(r-find [block-start]
+            (.seek r block-start)
+            (let [leaf? (-> r lsb/read-ubyte zero? not)
+                  _reversed (lsb/read-ubyte r)
+                  child-count (lsb/read-ushort r)]
+              (if leaf?
+                (letfn [(read-leafs [n]
+                          (when-not (zero? n)
+                            (let [key (lsb/read-string r key-size)
+                                  id (lsb/read-uint r)
+                                  _size (lsb/read-uint r)]
+                              (if (zero? (compare chrom key))
+                                id
+                                (recur (dec n))))))]
+                  (read-leafs child-count))
+                (let [_key (lsb/read-bytes r key-size)]
+                  (letfn [(through-remainder [n offset]
+                            (if (or (zero? n)
+                                    (neg? (compare chrom
+                                                   (lsb/read-string r key-size))))
+                              offset
+                              (recur (dec n) (lsb/read-ushort r))))]
+                    (recur (through-remainder (dec child-count)
+                                              (lsb/read-ushort r))))))))]
+    (r-find root-offset)))
+
+(defn- cir-tree-overlaps?
+  "Returns true if the given blocks are overlapped."
+  [id start end start-chrom-ix start-base end-chrom-ix end-base]
+  (letfn [(cmp [a-hi a-lo b-hi b-lo]
+            (cond
+              (< a-hi b-hi) 1
+              (> a-hi b-hi) -1
+              (< a-lo b-lo) 1
+              (> a-lo b-lo) -1
+              :else 0))]
+    (and (pos? (cmp id start end-chrom-ix end-base))
+         (neg? (cmp id end start-chrom-ix start-base)))))
+
+(defn- cir-tree-leafs->blocks
+  "Convert CirTree leafs into blocks that contain a flat map including offset and size."
+  [^RandomAccessFile r id start end child-count]
+  (->> (repeatedly child-count
+                   (fn []
+                     (let [start-chrom-ix (lsb/read-uint r)
+                           start-base (lsb/read-uint r)
+                           end-chrom-ix (lsb/read-uint r)
+                           end-base (lsb/read-uint r)
+                           offset (lsb/read-long r)
+                           size (lsb/read-long r)]
+                       (if (cir-tree-overlaps? id start end start-chrom-ix
+                                               start-base end-chrom-ix end-base)
+                         {:offset offset, :size size}))))
+       (remove nil?)))
+
+(defn- fetch-overlapping-blocks
+  "Returns a sequence that contains overlapping blocks describing CirTree leafs."
+  [^RandomAccessFile r id start end {:keys [root-offset]}]
+  (letfn [(make-blocks [index-file-offset]
+            (.seek r index-file-offset)
+            (let [leaf? (-> r lsb/read-ubyte zero? not)
+                  _reserved (lsb/read-ubyte r)
+                  child-count (lsb/read-ushort r)]
+              (if leaf?
+                (doall (cir-tree-leafs->blocks r id start end child-count))
+                (->> (repeatedly child-count
+                                 (fn []
+                                   (let [start-chrom-ix (lsb/read-uint r)
+                                         start-base (lsb/read-uint r)
+                                         end-chrom-ix (lsb/read-uint r)
+                                         end-base (lsb/read-uint r)
+                                         offset (lsb/read-uint r)]
+                                     {:start-chrom-ix start-chrom-ix
+                                      :start-base start-base
+                                      :end-chrom-ix end-chrom-ix
+                                      :end-base end-base
+                                      :offset offset})))
+                     doall
+                     (sequence
+                      (comp
+                       (filter (fn [{:keys [start-chrom-ix start-base
+                                            end-chrom-ix end-base]}]
+                                 (cir-tree-overlaps? id start end
+                                                     start-chrom-ix start-base
+                                                     end-chrom-ix end-base)))
+                       (map (fn [{:keys [offset]}] (recur offset)))))))))]
+    (make-blocks root-offset)))
+
+(defn- fetch-overlapping-blocks-group
+  "Returns a sequence of blocks that describe overlapping chrom range."
+  [^RandomAccessFile r ^BptHeader bpt-header ^BbiChromInfo chrom-info
+   ^CirTree cir-tree]
+  (when-let [id (find-bpt-file r (:name chrom-info) bpt-header)]
+    (fetch-overlapping-blocks r id 0 (:size chrom-info) cir-tree)))
+
+(defn- find-gap
+  "Returns a map containing `before` and `after` blocks that have gaps between
+  them."
+  [block]
+  (reduce
+   (fn [m x]
+     (if (not= (:offset x)
+               (+ (-> m :before :offset) (-> m :before :size)))
+       (reduced (assoc m :after x))
+       (assoc m :before x)))
+   {:before (first block)}
+   (rest block)))
+
+(defn- range-intersection
+  "Returns a range intersection of two ranges that include `start` and `end`."
+  [a b]
+  (- (min (:end a) (:end b))
+     (max (:start a) (:start b))))
+
+(defn- ->bedgraph
+  "Converts bigWig tracks into BedGraph format (0-based, half-open)."
+  [is track-start track-end item-count chrom rng]
+  (->> (repeatedly item-count
+                   (fn []
+                     (let [start (lsb/read-uint is)
+                           end (lsb/read-uint is)
+                           value (lsb/read-float is)]
+                       (when (range-intersection rng {:start start :end end})
+                         {:track {:line nil :chr chrom :start track-start
+                                  :end track-end}
+                          :chr chrom :start start :end end :value value}))))
+       (remove nil?)
+       doall))
+
+(defn- ->variable-step
+  "Converts bigWig tracks into variableStep tracks of wig format
+  (1-start, fully-closed)."
+  [is item-span item-count chrom rng]
+  (->> (repeatedly item-count
+                   (fn []
+                     (let [start (lsb/read-uint is)
+                           value (lsb/read-float is)]
+                       (when (range-intersection rng {:start start
+                                                      :end (+ start item-span)})
+                         {:track {:line nil :format :variable-step :chr chrom
+                                  :step nil :span item-span}
+                          :chr chrom :start (inc start)
+                          :end (+ start item-span) :value value}))))
+       (remove nil?)
+       doall))
+
+(defn- ->fixed-step
+  "Converts bigWig tracks into fixedStep tracks of wig format
+  (1-start, fully-closed)."
+  [is start item-step item-span item-count chrom rng]
+  (reduce
+   (fn [acc i]
+     (let [value (lsb/read-float is)]
+       (if (range-intersection rng {:start start, :end (+ start (* i item-step))})
+         (conj acc {:track {:line nil :format :fixed-step :chr chrom
+                            :step item-step :span item-span}
+                    :chr chrom :value value
+                    :start (inc (+ start (* i item-step)))
+                    :end (+ (+ start (* i item-step)) item-span)})
+         acc)))
+   []
+   (range item-count)))
+
+(defn- read-blocks
+  "Reads blocks according to BbiChromInfo data and returns tracks described
+  Wig or BedGraph format."
+  [^RandomAccessFile r ^BbiChromInfo chrom-info ^URL url
+   {:keys [bpt-header fixed-width-header cir-tree]}]
+  (let [blocks (fetch-overlapping-blocks-group r bpt-header chrom-info cir-tree)
+        rng {:start 0, :end (:size chrom-info)}]
+    (letfn [(bigwig-> [offset after blocks acc]
+              (let [block (first blocks)
+                    rst (rest blocks)]
+                (if (= block after)
+                  [acc blocks]
+                  (->> (with-open [is (cio/input-stream url)]
+                         (lsb/skip is offset)
+                         (with-open [is (InflaterInputStream. is)]
+                           (let [chrom-id (lsb/read-uint is)
+                                 start (lsb/read-uint is)
+                                 end (lsb/read-uint is)
+                                 item-step (lsb/read-uint is)
+                                 item-span (lsb/read-uint is)
+                                 typ (lsb/read-ubyte is)
+                                 _reserved (lsb/read-ubyte is)
+                                 item-count (lsb/read-ushort is)]
+                             (case (int typ)
+                               1 (->bedgraph is start end item-count
+                                             (:name chrom-info) rng)
+                               2 (->variable-step is item-span item-count
+                                                  (:name chrom-info) rng)
+                               3 (->fixed-step is start item-step item-span
+                                               item-count (:name chrom-info)
+                                               rng)
+                               (throw (IOException.
+                                       "Invalid type of bigWig section header."))))))
+                       (concat acc)
+                       (bigwig-> (+ offset (:size block)) after rst)
+                       lazy-seq))))
+            (aux [blocks acc]
+              (if (empty? blocks)
+                acc
+                (let [{:keys [_before after]} (find-gap blocks)]
+                  (let [[x new-blocks] (bigwig-> (-> blocks first :offset) after
+                                                 blocks [])]
+                    (lazy-seq
+                     (aux new-blocks (concat acc x)))))))]
+      (aux blocks []))))
+
+(defn read-tracks
+  "Reads a bigWig tracks from reader and returns a sequence of tracks
+  representing Wig (fixedStep or variableStep) or BedGraph format."
   [^BIGWIGReader rdr]
   (let [r ^RandomAccessFile (.reader rdr)]
-    (let [bbi-chrom-info (read-bbi-chrom-info r (:bpt-header (.headers rdr)))]
-      {:headers (.headers rdr), :bbi-chrom-info bbi-chrom-info})))
+    (mapcat (fn [chrom-info]
+              (read-blocks r chrom-info (.url rdr) (.headers rdr)))
+            (:bbi-chrom-info (.headers rdr)))))

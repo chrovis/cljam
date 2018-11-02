@@ -57,6 +57,8 @@
     "Writes variants to thee VCF/BCF file."))
 
 (defprotocol ISequenceReader
+  (read-seq-summaries [this]
+    "Reads summaries of sequences in the file.")
   (read-indices [this]
     "Reads metadata of indexed sequences in FASTA/2BIT file.")
   (read-all-sequences [this] [this option]

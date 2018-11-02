@@ -48,6 +48,14 @@
     (catch FileNotFoundException _
       (reader/load-headers (.reader rdr)))))
 
+(defn read-seq-summaries
+  "Read summaries of sequences in this FASTA file."
+  [^FASTAReader rdr]
+  (mapv
+   (fn [{:keys [name len]}]
+     {:name name, :len len})
+   (fai/get-indices @(.index-delay rdr))))
+
 (defn read-indices
   [^FASTAReader rdr]
   (fai/get-indices @(.index-delay rdr)))
@@ -95,6 +103,8 @@
     ([this region option]
      (protocols/read-sequence this region option)))
   protocols/ISequenceReader
+  (read-seq-summaries
+    [this] (read-seq-summaries this))
   (read-indices
     [this] (read-indices this))
   (read-all-sequences

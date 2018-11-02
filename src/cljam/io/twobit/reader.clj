@@ -121,7 +121,7 @@
                   ^chars (aget twobit-to-str)
                   (.put cb)))
            (let [cb' (-> cb
-                         ^CharBuffer (.position (mod (dec start') 4))
+                         ^CharBuffer (.position (rem (dec start') 4))
                          ^CharBuffer .slice
                          (.limit (int (inc (- end' start')))))]
              (replace-ambs! cb' (.ambs h) start' end')

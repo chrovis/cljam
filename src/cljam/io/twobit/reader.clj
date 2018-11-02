@@ -58,7 +58,7 @@
   (let [table "TCAG"]
     (->> 256
          range
-         (mapv
+         (map
           (fn [j] (let [i (byte (- j 128))
                         n4 (bit-and i 2r11)
                         n3 (bit-and (unsigned-bit-shift-right i 2) 2r11)

@@ -177,11 +177,7 @@
        (= (:auto-sql ah) (:auto-sql bh))
        (= (:extended-header ah) (:extended-header bh))
        (= (:bpt-header ah) (:bpt-header bh))
-       (map (fn [a b]
-              (and (= (:name a) (:name b))
-                   (= (:id a) (:id b))
-                   (= (:size a) (:size b))))
-            (:bbi-chrom-info ah) (:bbi-chrom-info bh))
+       (apply = (map #(map (juxt :name :id :size) (:bbi-chrom-info %))) [ah bh])
        (= (:cir-tree ah) (:cir-tree bh))
        (let [eps 1e-4
              x (:total-summary ah)
@@ -195,24 +191,26 @@
 (defn- same-wig?
   "Returns true if the given arguments are same wig formats and same values."
   [as bs]
-  (map (fn [a b]
-         (and (= (:track a) (:track b))
-              (= (:chr a) (:chr b))
-              (= (:start a) (:start b))
-              (= (:end a) (:end b))
-              (-> (- (:value a) (:value b)) Math/abs (< 1e-4))))
-       as bs))
+  (->> (map (fn [a b]
+              (and (= (:track a) (:track b))
+                   (= (:chr a) (:chr b))
+                   (= (:start a) (:start b))
+                   (= (:end a) (:end b))
+                   (-> (- (:value a) (:value b)) Math/abs (< 1e-4))))
+            as bs)
+       (every? true?)))
 
 (defn- same-bedgraph?
   "Returns true if the given arguments are same BedGraph values."
   [as bs]
-  (map (fn [a b]
-         (and (= (:track a) (:track b))
-              (= (:chr a) (:chr b))
-              (= (:start a) (:start b))
-              (= (:end a) (:end b))
-              (-> (- (:value a) (:value b)) Math/abs (< 1e-4))))
-       as bs))
+  (->> (map (fn [a b]
+              (and (= (:track a) (:track b))
+                   (= (:chr a) (:chr b))
+                   (= (:start a) (:start b))
+                   (= (:end a) (:end b))
+                   (-> (- (:value a) (:value b)) Math/abs (< 1e-4))))
+            as bs)
+       (every? true?)))
 
 (deftest reader
   (testing "make reader instance"

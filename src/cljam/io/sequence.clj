@@ -53,15 +53,9 @@
   ([rdr] (protocols/read-all-sequences rdr))
   ([rdr option] (protocols/read-all-sequences rdr option)))
 
-(defn read-seq-summaries
-  "Returns summaries of sequences in FASTA/TwoBit file. Returns a vector of maps
-  containing `:name` and `:len`."
-  [rdr]
-  (protocols/read-seq-summaries rdr))
-
 (defn read-indices
   "Reads metadata of indexed sequences. Returns a vector of maps containing
-  `:name`, `:len` and other format-specific keys. Forces loading all indices."
+  :name, :len and other format-specific keys."
   [rdr]
   (protocols/read-indices rdr))
 

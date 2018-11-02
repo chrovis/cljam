@@ -106,8 +106,8 @@
    (read-sequence rdr region {}))
   ([^TwoBitReader rdr {:keys [chr start end]} {:keys [mask?] :or {mask? false}}]
    (when-let [^Chrom c (get (.index rdr) chr)]
-     (let [start' (max 1 (or start 1))
-           end' (min (.len c) (or end (.len c)))]
+     (let [start' (long (max 1 (or start 1)))
+           end' (long (min (.len c) (or end (.len c))))]
        (when (<= start' end')
          ;; Potential seek & read.
          (let [^ChromHeader h @(.header c)

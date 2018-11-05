@@ -200,8 +200,8 @@
      fixed-width-header zoom-headers total-summary extended-header bpt-header
      bbi-chrom-info cir-tree)))
 
-(defn- read-bbi-chrom-info-leafs
-  "Returns the BbiChromInfo data of leafs."
+(defn- read-bbi-chrom-info-leaves
+  "Returns the BbiChromInfo data of leaves."
   [^RandomAccessFile r key-size child-count]
   (repeatedly child-count
               (fn []
@@ -228,7 +228,7 @@
                   _reversed (lsb/read-ubyte r)
                   child-count (lsb/read-ushort r)]
               (if leaf?
-                (doall (read-bbi-chrom-info-leafs r key-size child-count))
+                (doall (read-bbi-chrom-info-leaves r key-size child-count))
                 (let [file-offsets (read-bbi-chrom-info-file-offsets r
                                                                      key-size
                                                                      child-count)]
@@ -271,7 +271,7 @@
                   _reversed (lsb/read-ubyte r)
                   child-count (lsb/read-ushort r)]
               (if leaf?
-                (letfn [(read-leafs [n]
+                (letfn [(read-leaves [n]
                           (when-not (zero? n)
                             (let [key (lsb/read-string r key-size)
                                   id (lsb/read-uint r)
@@ -279,7 +279,7 @@
                               (if (zero? (compare chrom key))
                                 id
                                 (recur (dec n))))))]
-                  (read-leafs child-count))
+                  (read-leaves child-count))
                 (let [_key (lsb/read-bytes r key-size)]
                   (letfn [(through-remainder [n offset]
                             (if (or (zero? n)
@@ -304,8 +304,8 @@
     (and (pos? (cmp id start end-chrom-ix end-base))
          (neg? (cmp id end start-chrom-ix start-base)))))
 
-(defn- cir-tree-leafs->blocks
-  "Convert CirTree leafs into blocks that contain a flat map including offset and size."
+(defn- cir-tree-leaves->blocks
+  "Convert CirTree leaves into blocks that contain a flat map including offset and size."
   [^RandomAccessFile r id start end child-count]
   (->> (repeatedly child-count
                    (fn []
@@ -321,7 +321,7 @@
        (remove nil?)))
 
 (defn- fetch-overlapping-blocks
-  "Returns a sequence that contains overlapping blocks describing CirTree leafs."
+  "Returns a sequence that contains overlapping blocks describing CirTree leaves."
   [^RandomAccessFile r id start end {:keys [root-offset]}]
   (letfn [(make-blocks [index-file-offset]
             (.seek r index-file-offset)
@@ -329,7 +329,7 @@
                   _reserved (lsb/read-ubyte r)
                   child-count (lsb/read-ushort r)]
               (if leaf?
-                (doall (cir-tree-leafs->blocks r id start end child-count))
+                (doall (cir-tree-leaves->blocks r id start end child-count))
                 (->> (repeatedly child-count
                                  (fn []
                                    (let [start-chrom-ix (lsb/read-uint r)

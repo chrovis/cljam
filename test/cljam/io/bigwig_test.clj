@@ -177,7 +177,7 @@
        (= (:auto-sql ah) (:auto-sql bh))
        (= (:extended-header ah) (:extended-header bh))
        (= (:bpt-header ah) (:bpt-header bh))
-       (apply = (map #(map (juxt :name :id :size) (:bbi-chrom-info %))) [ah bh])
+       (apply = (map #(map (juxt :name :id :size) (:bbi-chrom-info %)) [ah bh]))
        (= (:cir-tree ah) (:cir-tree bh))
        (let [eps 1e-4
              x (:total-summary ah)

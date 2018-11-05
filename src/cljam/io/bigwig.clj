@@ -39,7 +39,7 @@
                     root-offset])
 
 ; Currently, max number of zoom levels (i.e. max number of zoom headers) is 10,
-; the number is small. Therefore, we choose a record containing vector of zoom
+; the numberais small. Therefore, we choose a record containing vector of zoom
 ; header instead of a flat record.
 ; Cf. https://github.com/ucscGenomeBrowser/kent/blob/3a0198acd1f859a603f5aad90188bee2d82efe0c/src/inc/bbiFile.h#L384
 (defrecord BigWigHeaders [^FixedWidthHeader fixed-width-header
@@ -200,12 +200,26 @@
      fixed-width-header zoom-headers total-summary extended-header bpt-header
      bbi-chrom-info cir-tree)))
 
+(defn- read-c-style-string
+  "Reads `length` bytes and returns a string. This function is useful for
+  handling c-style null-terminated string."
+  [^RandomAccessFile r ^long length]
+  (->> (lsb/read-bytes r length)
+       (reduce
+        (fn [cs c]
+          (if (zero? c)
+            (reduced cs)
+            (conj cs c)))
+        [])
+       (map char)
+       (apply str)))
+
 (defn- read-bbi-chrom-info-leaves
   "Returns the BbiChromInfo data of leaves."
   [^RandomAccessFile r key-size child-count]
   (repeatedly child-count
               (fn []
-                (let [name (lsb/read-string r key-size)
+                (let [name (read-c-style-string r key-size)
                       id (lsb/read-uint r)
                       size (lsb/read-uint r)]
                   (BbiChromInfo.
@@ -273,7 +287,7 @@
               (if leaf?
                 (letfn [(read-leaves [n]
                           (when-not (zero? n)
-                            (let [key (lsb/read-string r key-size)
+                            (let [key (read-c-style-string r key-size)
                                   id (lsb/read-uint r)
                                   _size (lsb/read-uint r)]
                               (if (zero? (compare chrom key))
@@ -284,7 +298,7 @@
                   (letfn [(through-remainder [n offset]
                             (if (or (zero? n)
                                     (neg? (compare chrom
-                                                   (lsb/read-string r key-size))))
+                                                   (read-c-style-string r key-size))))
                               offset
                               (recur (dec n) (lsb/read-ushort r))))]
                     (recur (through-remainder (dec child-count)

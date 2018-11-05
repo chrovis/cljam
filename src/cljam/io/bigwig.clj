@@ -387,7 +387,7 @@
                      (let [start (lsb/read-uint is)
                            end (lsb/read-uint is)
                            value (lsb/read-float is)]
-                       (when (range-intersection rng {:start start :end end})
+                       (when (pos? (range-intersection rng {:start start :end end}))
                          {:track {:line nil :chr chrom :start track-start
                                   :end track-end}
                           :chr chrom :start start :end end :value value}))))
@@ -402,8 +402,8 @@
                    (fn []
                      (let [start (lsb/read-uint is)
                            value (lsb/read-float is)]
-                       (when (range-intersection rng {:start start
-                                                      :end (+ start item-span)})
+                       (when (pos? (range-intersection rng {:start start
+                                                            :end (+ start item-span)}))
                          {:track {:line nil :format :variable-step :chr chrom
                                   :step nil :span item-span}
                           :chr chrom :start (inc start)
@@ -418,7 +418,7 @@
   (reduce
    (fn [acc i]
      (let [value (lsb/read-float is)]
-       (if (range-intersection rng {:start start, :end (+ start (* i item-step))})
+       (if (pos? (range-intersection rng {:start start, :end (+ start (* i item-step))}))
          (conj acc {:track {:line nil :format :fixed-step :chr chrom
                             :step item-step :span item-span}
                     :chr chrom :value value

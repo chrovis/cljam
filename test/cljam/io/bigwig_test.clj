@@ -39,7 +39,7 @@
             {:track {:line nil :format :fixed-step :chr "chr7" :step 5 :span 5}
              :chr "chr7" :start 115597806 :end 115597810 :value 19.9}
             {:track {:line nil :format :fixed-step :chr "chr7" :step 5 :span 5}
-             :chr "chr7" :start 115597811 :end 115597816 :value 59.0}
+             :chr "chr7" :start 115597811 :end 115597815 :value 59.0}
             {:track {:line nil :format :fixed-step :chr "chr7" :step 5 :span 5}
              :chr "chr7" :start 115597816 :end 115597820 :value 39.0}
             {:track {:line nil :format :fixed-step :chr "chr7" :step 5 :span 5}

@@ -276,35 +276,6 @@
        block-size item-count start-chrom-ix start-base end-chrom-ix
        end-base file-size items-per-slot root-offset))))
 
-(defn- find-bpt-file
-  "Returns an ID associated with chrom name."
-  [^RandomAccessFile r chrom {:keys [key-size root-offset]}]
-  (letfn [(r-find [block-start]
-            (.seek r block-start)
-            (let [leaf? (-> r lsb/read-ubyte zero? not)
-                  _reversed (lsb/read-ubyte r)
-                  child-count (lsb/read-ushort r)]
-              (if leaf?
-                (letfn [(read-leaves [n]
-                          (when-not (zero? n)
-                            (let [key (read-c-style-string r key-size)
-                                  id (lsb/read-uint r)
-                                  _size (lsb/read-uint r)]
-                              (if (zero? (compare chrom key))
-                                id
-                                (recur (dec n))))))]
-                  (read-leaves child-count))
-                (let [_key (lsb/read-bytes r key-size)]
-                  (letfn [(through-remainder [n offset]
-                            (if (or (zero? n)
-                                    (neg? (compare chrom
-                                                   (read-c-style-string r key-size))))
-                              offset
-                              (recur (dec n) (lsb/read-ushort r))))]
-                    (recur (through-remainder (dec child-count)
-                                              (lsb/read-ushort r))))))))]
-    (r-find root-offset)))
-
 (defn- cir-tree-overlaps?
   "Returns true if the given blocks are overlapped."
   [id start end start-chrom-ix start-base end-chrom-ix end-base]
@@ -369,10 +340,8 @@
 
 (defn- fetch-overlapping-blocks-group
   "Returns a sequence of blocks that describe overlapping chrom range."
-  [^RandomAccessFile r ^BptHeader bpt-header ^BbiChromInfo chrom-info
-   ^CirTree cir-tree]
-  (when-let [id (find-bpt-file r (:name chrom-info) bpt-header)]
-    (fetch-overlapping-blocks r id 0 (:size chrom-info) cir-tree)))
+  [^RandomAccessFile r ^BbiChromInfo chrom-info ^CirTree cir-tree]
+  (fetch-overlapping-blocks r (:id chrom-info) 0 (:size chrom-info) cir-tree))
 
 (defn- find-gap
   "Returns a map containing `before` and `after` blocks that have gaps between
@@ -446,8 +415,8 @@
   "Reads blocks according to BbiChromInfo data and returns tracks described
   Wig or BedGraph format."
   [^RandomAccessFile r ^BbiChromInfo chrom-info ^URL url
-   {:keys [bpt-header fixed-width-header cir-tree]}]
-  (let [blocks (fetch-overlapping-blocks-group r bpt-header chrom-info cir-tree)
+   {:keys [fixed-width-header cir-tree]}]
+  (let [blocks (fetch-overlapping-blocks-group r chrom-info cir-tree)
         rng {:start 0, :end (:size chrom-info)}]
     (letfn [(bigwig-> [offset after blocks acc]
               (let [block (first blocks)

@@ -400,13 +400,13 @@
   [is start item-step item-span item-count chrom rng]
   (reduce
    (fn [acc i]
-     (let [value (lsb/read-float is)]
-       (if (pos? (range-intersection rng {:start start, :end (+ start (* i item-step))}))
+     (let [value (lsb/read-float is)
+           cur-start (+ start (* i item-step))
+           cur-end (+ cur-start item-span)]
+       (if (pos? (range-intersection rng {:start cur-start :end cur-end}))
          (conj acc {:track {:line nil :format :fixed-step :chr chrom
                             :step item-step :span item-span}
-                    :chr chrom :value value
-                    :start (inc (+ start (* i item-step)))
-                    :end (+ (+ start (* i item-step)) item-span)})
+                    :chr chrom :value value :start (inc cur-start) :end cur-end})
          acc)))
    []
    (range item-count)))

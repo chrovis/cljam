@@ -321,7 +321,7 @@
                                          start-base (lsb/read-uint r)
                                          end-chrom-ix (lsb/read-uint r)
                                          end-base (lsb/read-uint r)
-                                         offset (lsb/read-uint r)]
+                                         offset (lsb/read-long r)]
                                      {:start-chrom-ix start-chrom-ix
                                       :start-base start-base
                                       :end-chrom-ix end-chrom-ix
@@ -335,7 +335,7 @@
                                  (cir-tree-overlaps? id start end
                                                      start-chrom-ix start-base
                                                      end-chrom-ix end-base)))
-                       (map (fn [{:keys [offset]}] (recur offset)))))))))]
+                       (mapcat (fn [{:keys [offset]}] (make-blocks offset)))))))))]
     (make-blocks root-offset)))
 
 (defn- fetch-overlapping-blocks-group

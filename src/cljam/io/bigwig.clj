@@ -414,8 +414,7 @@
 (defn- read-blocks
   "Reads blocks according to BbiChromInfo data and returns tracks described
   Wig or BedGraph format."
-  [^RandomAccessFile r ^BbiChromInfo chrom-info ^URL url
-   {:keys [fixed-width-header cir-tree]}]
+  [^RandomAccessFile r ^BbiChromInfo chrom-info ^URL url {:keys [cir-tree]}]
   (let [blocks (fetch-overlapping-blocks-group r chrom-info cir-tree)
         rng {:start 0, :end (:size chrom-info)}]
     (letfn [(bigwig-> [offset after blocks acc]
@@ -426,7 +425,7 @@
                   (->> (with-open [is (cio/input-stream url)]
                          (lsb/skip is offset)
                          (with-open [is (InflaterInputStream. is)]
-                           (let [chrom-id (lsb/read-uint is)
+                           (let [_chrom-id (lsb/read-uint is)
                                  start (lsb/read-uint is)
                                  end (lsb/read-uint is)
                                  item-step (lsb/read-uint is)

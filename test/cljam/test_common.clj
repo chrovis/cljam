@@ -206,6 +206,7 @@
 (def test-bigwig-fixed-file "test-resources/bigwig/test-fixed.bigWig")
 (def test-bigwig-variable-file "test-resources/bigwig/test-variable.bigWig")
 (def test-bigwig-bedgraph-file "test-resources/bigwig/test-bedgraph.bigWig")
+(def test-bigwig-non-leaf-blocks-file "test-resources/bigwig/test-non-leaf-blocks.bigWig")
 
 (def to-sam-alignment
   (comp

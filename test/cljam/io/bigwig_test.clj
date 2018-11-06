@@ -168,6 +168,37 @@
             {:track {:line nil :chr "chr7" :start 115637606 :end 117301101}
              :chr "chr7" :start 117300178 :end 117301101 :value 20.6}]})
 
+(def ^:private ^BigWigHeaders test-non-leaf-blocks-fields
+  {:headers (BigWigHeaders.
+             (FixedWidthHeader. 2291137574 4 2 152 201 362 112 96 0)
+             [(ZoomHeader. 3000 670 713) (ZoomHeader. 12000 845 888)]
+             (TotalSummary. 2000 100.0 1000.0 1100000.0 7.7E8)
+             nil
+             (BptHeader. 1 5 8 1 184)
+             [(BbiChromInfo. "chr19" 0 63811651)]
+             (CirTree. 3 4 0 49307400 0 49310300 362 1 410)),
+   :tracks
+   [{:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
+     :chr "chr19" :start 49307401 :end 49307600 :value 1000.0}
+    {:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
+     :chr "chr19" :start 49307701 :end 49307900 :value 900.0}
+    {:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
+     :chr "chr19" :start 49308001 :end 49308200 :value 800.0}
+    {:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
+     :chr "chr19" :start 49308301 :end 49308500 :value 700.0}
+    {:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
+     :chr "chr19" :start 49308601 :end 49308800 :value 600.0}
+    {:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
+     :chr "chr19" :start 49308901 :end 49309100 :value 500.0}
+    {:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
+     :chr "chr19" :start 49309201 :end 49309400 :value 400.0}
+    {:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
+     :chr "chr19" :start 49309501 :end 49309700 :value 300.0}
+    {:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
+     :chr "chr19" :start 49309801 :end 49310000 :value 200.0}
+    {:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
+     :chr "chr19" :start 49310101 :end 49310300 :value 100.0}]})
+
 (defn- same-bigwig-headers?
   "Returns true if the given arguments are same bigWig headers, otherwise
   false."
@@ -235,7 +266,12 @@
       (is (and (same-bigwig-headers? (.headers r)
                                      (:headers test-bigwig-bedgraph-fields))
                (same-bedgraph? (bigwig/read-tracks r)
-                               (:tracks test-bigwig-bedgraph-fields)))))))
+                               (:tracks test-bigwig-bedgraph-fields)))))
+    (with-open [r (bigwig/reader test-bigwig-non-leaf-blocks-file)]
+      (is (and (same-bigwig-headers? (.headers r)
+                                     (:headers test-non-leaf-blocks-fields))
+               (same-bedgraph? (bigwig/read-tracks r)
+                               (:tracks test-non-leaf-blocks-fields)))))))
 
 (deftest source-type-test
   (testing "reader"

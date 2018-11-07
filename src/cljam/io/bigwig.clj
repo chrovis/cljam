@@ -8,7 +8,8 @@
             [cljam.util :as util])
   (:import [java.net URL]
            [java.io Closeable IOException RandomAccessFile]
-           [java.util.zip InflaterInputStream]))
+           [java.nio ByteBuffer ByteOrder]
+           [java.util.zip Inflater]))
 
 (def ^:private bigwig-magic 0x888ffc26)
 
@@ -343,19 +344,6 @@
   [^RandomAccessFile r ^BbiChromInfo chrom-info ^CirTree cir-tree]
   (fetch-overlapping-blocks r (:id chrom-info) 0 (:size chrom-info) cir-tree))
 
-(defn- find-gap
-  "Returns a map containing `before` and `after` blocks that have gaps between
-  them."
-  [block]
-  (reduce
-   (fn [m x]
-     (if (not= (:offset x)
-               (+ (-> m :before :offset) (-> m :before :size)))
-       (reduced (assoc m :after x))
-       (assoc m :before x)))
-   {:before (first block)}
-   (rest block)))
-
 (defn- range-intersection
   "Returns a range intersection of two ranges that include `start` and `end`."
   [a b]
@@ -364,12 +352,12 @@
 
 (defn- ->bedgraph
   "Converts bigWig tracks into BedGraph format (0-based, half-open)."
-  [is track-start track-end item-count chrom rng]
+  [^ByteBuffer bb track-start track-end item-count chrom rng]
   (->> (repeatedly item-count
                    (fn []
-                     (let [start (lsb/read-uint is)
-                           end (lsb/read-uint is)
-                           value (lsb/read-float is)]
+                     (let [start (.getInt bb)
+                           end (.getInt bb)
+                           value (.getFloat bb)]
                        (when (pos? (range-intersection rng {:start start :end end}))
                          {:track {:line nil :chr chrom :start track-start
                                   :end track-end}
@@ -380,11 +368,11 @@
 (defn- ->variable-step
   "Converts bigWig tracks into variableStep tracks of wig format
   (1-start, fully-closed)."
-  [is item-span item-count chrom rng]
+  [^ByteBuffer bb item-span item-count chrom rng]
   (->> (repeatedly item-count
                    (fn []
-                     (let [start (lsb/read-uint is)
-                           value (lsb/read-float is)]
+                     (let [start (.getInt bb)
+                           value (.getFloat bb)]
                        (when (pos? (range-intersection rng {:start start
                                                             :end (+ start item-span)}))
                          {:track {:line nil :format :variable-step :chr chrom
@@ -397,10 +385,10 @@
 (defn- ->fixed-step
   "Converts bigWig tracks into fixedStep tracks of wig format
   (1-start, fully-closed)."
-  [is start item-step item-span item-count chrom rng]
+  [^ByteBuffer bb start item-step item-span item-count chrom rng]
   (reduce
    (fn [acc i]
-     (let [value (lsb/read-float is)
+     (let [value (.getFloat bb)
            cur-start (+ start (* i item-step))
            cur-end (+ cur-start item-span)]
        (if (pos? (range-intersection rng {:start cur-start :end cur-end}))
@@ -414,47 +402,43 @@
 (defn- read-blocks
   "Reads blocks according to BbiChromInfo data and returns tracks described
   Wig or BedGraph format."
-  [^RandomAccessFile r ^BbiChromInfo chrom-info ^URL url {:keys [cir-tree]}]
+  [^RandomAccessFile r ^BbiChromInfo chrom-info {:keys [fixed-width-header cir-tree]}]
   (let [blocks (fetch-overlapping-blocks-group r chrom-info cir-tree)
         rng {:start 0, :end (:size chrom-info)}]
-    (letfn [(bigwig-> [offset after blocks acc]
-              (let [block (first blocks)
-                    rst (rest blocks)]
-                (if (= block after)
-                  [acc blocks]
-                  (->> (with-open [is (cio/input-stream url)]
-                         (lsb/skip is offset)
-                         (with-open [is (InflaterInputStream. is)]
-                           (let [_chrom-id (lsb/read-uint is)
-                                 start (lsb/read-uint is)
-                                 end (lsb/read-uint is)
-                                 item-step (lsb/read-uint is)
-                                 item-span (lsb/read-uint is)
-                                 typ (lsb/read-ubyte is)
-                                 _reserved (lsb/read-ubyte is)
-                                 item-count (lsb/read-ushort is)]
-                             (case (int typ)
-                               1 (->bedgraph is start end item-count
-                                             (:name chrom-info) rng)
-                               2 (->variable-step is item-span item-count
-                                                  (:name chrom-info) rng)
-                               3 (->fixed-step is start item-step item-span
-                                               item-count (:name chrom-info)
-                                               rng)
-                               (throw (IOException.
-                                       "Invalid type of bigWig section header."))))))
-                       (concat acc)
-                       (bigwig-> (+ offset (:size block)) after rst)
-                       lazy-seq))))
-            (aux [blocks acc]
-              (if (empty? blocks)
-                acc
-                (let [{:keys [_before after]} (find-gap blocks)]
-                  (let [[x new-blocks] (bigwig-> (-> blocks first :offset) after
-                                                 blocks [])]
-                    (lazy-seq
-                     (aux new-blocks (concat acc x)))))))]
-      (aux blocks []))))
+    (->> blocks
+         (map
+          (fn [{:keys [offset size]}]
+            (.seek r offset)
+            (lsb/read-bytes r size)))
+         (map
+          (fn [^bytes block]
+            (let [inf (doto (Inflater.)
+                        (.setInput block))
+                  ba (byte-array (:uncompress-buf-size fixed-width-header))
+                  uncompress-size (.inflate inf ba)]
+              (.end inf)
+              (doto (ByteBuffer/wrap ba 0 uncompress-size)
+                (.order
+                 (case (:magic fixed-width-header)
+                   0x888ffc26 ByteOrder/LITTLE_ENDIAN
+                   0x26fc8f88 ByteOrder/BIG_ENDIAN))))))
+         (mapcat
+          (fn [^ByteBuffer bb]
+            (let [_chrom-id (.getInt bb)
+                  start (.getInt bb)
+                  end (.getInt bb)
+                  item-step (.getInt bb)
+                  item-span (.getInt bb)
+                  typ (int (.get bb))
+                  _reserved (int (.get bb))
+                  item-count (.getShort bb)]
+              (case typ
+                1 (->bedgraph bb start end item-count (:name chrom-info) rng)
+                2 (->variable-step bb item-span item-count (:name chrom-info) rng)
+                3 (->fixed-step bb start item-step item-span item-count
+                                (:name chrom-info) rng)
+                (throw (IOException.
+                        "Invalid type of bigWig section header.")))))))))
 
 (defn read-tracks
   "Reads a bigWig tracks from reader and returns a sequence of tracks
@@ -462,5 +446,5 @@
   [^BIGWIGReader rdr]
   (let [r ^RandomAccessFile (.reader rdr)]
     (mapcat (fn [chrom-info]
-              (read-blocks r chrom-info (.url rdr) (.headers rdr)))
+              (read-blocks r chrom-info (.headers rdr)))
             (:bbi-chrom-info (.headers rdr)))))

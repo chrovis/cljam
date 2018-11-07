@@ -270,8 +270,8 @@
     (with-open [r (bigwig/reader test-bigwig-non-leaf-blocks-file)]
       (is (and (same-bigwig-headers? (.headers r)
                                      (:headers test-non-leaf-blocks-fields))
-               (same-bedgraph? (bigwig/read-tracks r)
-                               (:tracks test-non-leaf-blocks-fields)))))))
+               (same-wig? (bigwig/read-tracks r)
+                          (:tracks test-non-leaf-blocks-fields)))))))
 
 (deftest source-type-test
   (testing "reader"

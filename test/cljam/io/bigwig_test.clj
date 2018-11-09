@@ -1,10 +1,8 @@
 (ns cljam.io.bigwig-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
-            [clojure.string :as cstr]
             [cljam.test-common :refer :all]
-            [cljam.io.bigwig :as bigwig]
-            [cljam.util :as util])
+            [cljam.io.bigwig :as bigwig])
   (:import [cljam.io.bigwig BIGWIGReader BigWigHeaders FixedWidthHeader
             ZoomHeader TotalSummary ExtendedHeader BptHeader BbiChromInfo
             CirTree]))

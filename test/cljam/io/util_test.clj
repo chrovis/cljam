@@ -62,8 +62,7 @@
     "foo.bigWig" :bigwig
     "foo.BIGWIG" :bigwig
     "foo.bw" :bigwig
-    "foo.BW" :bigwig
-    )
+    "foo.BW" :bigwig)
   (are [?dir]
       (are [?path] (thrown? Exception (io-util/file-type (str ?dir ?path)))
         "foo.bam.gz"

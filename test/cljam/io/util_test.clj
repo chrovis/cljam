@@ -9,7 +9,8 @@
             [cljam.io.sequence :as cseq]
             [cljam.io.util :as io-util]
             [cljam.io.vcf :as vcf]
-            [cljam.io.wig :as wig]))
+            [cljam.io.wig :as wig]
+            [cljam.io.bigwig :as bigwig]))
 
 (deftest about-file-type-detection
   (are [?path ?expected] (and (= (io-util/file-type ?path) ?expected)
@@ -57,7 +58,11 @@
     "foo.BED" :bed
     "foo.BED.GZ" :bed
     "foo.wig" :wig
-    "foo.WIG" :wig)
+    "foo.WIG" :wig
+    "foo.bigWig" :bigwig
+    "foo.BIGWIG" :bigwig
+    "foo.bw" :bigwig
+    "foo.BW" :bigwig)
   (are [?dir]
       (are [?path] (thrown? Exception (io-util/file-type (str ?dir ?path)))
         "foo.bam.gz"
@@ -85,7 +90,8 @@
         io-util/twobit-reader? false
         io-util/fastq-reader? false
         io-util/bed-reader? false
-        io-util/wig-reader? false)))
+        io-util/wig-reader? false
+        io-util/bigwig-reader? false)))
   (testing "bam reader"
     (with-open [r (sam/reader small-bam-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -100,7 +106,8 @@
         io-util/twobit-reader? false
         io-util/fastq-reader? false
         io-util/bed-reader? false
-        io-util/wig-reader? false))
+        io-util/wig-reader? false
+        io-util/bigwig-reader? false))
     (with-open [r (sam/reader small-bam-file)
                 cloned (sam/reader r)]
       (is (true? (io-util/bam-reader? cloned))))
@@ -120,7 +127,8 @@
         io-util/twobit-reader? false
         io-util/fastq-reader? false
         io-util/bed-reader? false
-        io-util/wig-reader? false)))
+        io-util/wig-reader? false
+        io-util/bigwig-reader? false)))
   (testing "bcf reader"
     (with-open [r (vcf/reader test-bcf-v4_3-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -135,7 +143,8 @@
         io-util/twobit-reader? false
         io-util/fastq-reader? false
         io-util/bed-reader? false
-        io-util/wig-reader? false)))
+        io-util/wig-reader? false
+        io-util/bigwig-reader? false)))
   (testing "fasta reader"
     (with-open [r (cseq/reader test-fa-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -150,7 +159,8 @@
         io-util/twobit-reader? false
         io-util/fastq-reader? false
         io-util/bed-reader? false
-        io-util/wig-reader? false)))
+        io-util/wig-reader? false
+        io-util/bigwig-reader? false)))
   (testing "twobit reader"
     (with-open [r (cseq/reader test-twobit-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -165,7 +175,8 @@
         io-util/twobit-reader? true
         io-util/fastq-reader? false
         io-util/bed-reader? false
-        io-util/wig-reader? false)))
+        io-util/wig-reader? false
+        io-util/bigwig-reader? false)))
   (testing "fastq reader"
     (with-open [r (fastq/reader test-fq-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -180,7 +191,8 @@
         io-util/twobit-reader? false
         io-util/fastq-reader? true
         io-util/bed-reader? false
-        io-util/wig-reader? false)))
+        io-util/wig-reader? false
+        io-util/bigwig-reader? false)))
   (testing "bed reader"
     (with-open [r (bed/reader test-bed-file1)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -195,7 +207,8 @@
         io-util/twobit-reader? false
         io-util/fastq-reader? false
         io-util/bed-reader? true
-        io-util/wig-reader? false)))
+        io-util/wig-reader? false
+        io-util/bigwig-reader? false)))
   (testing "wig reader"
     (with-open [r (wig/reader test-wig-file1)]
       (are [?pred ?expected] (= (?pred r) ?expected)
@@ -210,7 +223,24 @@
         io-util/twobit-reader? false
         io-util/fastq-reader? false
         io-util/bed-reader? false
-        io-util/wig-reader? true))))
+        io-util/wig-reader? true
+        io-util/bigwig-reader? false)))
+  (testing "bigwig reader"
+    (with-open [r (bigwig/reader test-bigwig-fixed-file)]
+      (are [?pred ?expected] (= (?pred r) ?expected)
+        io-util/alignment-reader? false
+        io-util/sam-reader? false
+        io-util/bam-reader? false
+        io-util/variant-reader? false
+        io-util/vcf-reader? false
+        io-util/bcf-reader? false
+        io-util/sequence-reader? false
+        io-util/fasta-reader? false
+        io-util/twobit-reader? false
+        io-util/fastq-reader? false
+        io-util/bed-reader? false
+        io-util/wig-reader? false
+        io-util/bigwig-reader? true))))
 
 (deftest writer-predicates-test
   (testing "sam writer"

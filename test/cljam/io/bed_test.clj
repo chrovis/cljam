@@ -24,27 +24,9 @@
     (.flush ^BufferedWriter (.writer bw))
     (.toString bao)))
 
-(defn- raw-str->bed [^String s]
-  (with-open [bais (ByteArrayInputStream. (.getBytes s))
-              isr (InputStreamReader. bais)
-              br (BufferedReader. isr)]
-    (doall (bed/read-raw-fields (bed/BEDReader. br nil)))))
-
-(defn- bed->raw-str [xs]
-  (with-open [bao (ByteArrayOutputStream.)
-              osw (OutputStreamWriter. bao)
-              bw (BufferedWriter. osw)]
-    (bed/write-raw-fields (bed/BEDWriter. bw nil) xs)
-    (.flush bw)
-    (.toString bao)))
-
 (deftest bed-file-reader-1
-  (is (= (raw-str->bed "1 0 100 N 0 + 0 0 255,0,0 2 10,90 0,10")
-         [{:chr "1" :start 0 :end 100 :name "N" :score 0 :strand :forward :thick-start 0 :thick-end 0
-           :item-rgb "255,0,0" :block-count 2 :block-sizes [10 90] :block-starts [0 10]}]))
-
   (is (= (str->bed "1 0 100 N 0 + 0 0 255,0,0 2 10,90 0,10")
-         [{:chr "chr1" :start 1 :end 100 :name "N" :score 0 :strand :forward :thick-start 1 :thick-end 0
+         [{:chr "1" :start 1 :end 100 :name "N" :score 0 :strand :forward :thick-start 1 :thick-end 0
            :item-rgb "255,0,0" :block-count 2 :block-sizes [10 90] :block-starts [0 10]}]))
 
   (with-open [r (bed/reader test-bed-file1)]
@@ -121,17 +103,17 @@
     "#"               []
     "track name=foo"  []
     "browser"         []
-    "1 0 1"           [{:chr "chr1" :start 1 :end 1}]
-    "1 0 1\n"         [{:chr "chr1" :start 1 :end 1}]
-    "1\t0\t1"         [{:chr "chr1" :start 1 :end 1}]
-    "1\t0\t1\n"       [{:chr "chr1" :start 1 :end 1}]
+    "1 0 1"           [{:chr "1" :start 1 :end 1}]
+    "1 0 1\n"         [{:chr "1" :start 1 :end 1}]
+    "1\t0\t1"         [{:chr "1" :start 1 :end 1}]
+    "1\t0\t1\n"       [{:chr "1" :start 1 :end 1}]
     "chr1 0 1"        [{:chr "chr1" :start 1 :end 1}]
-    "1 0 1\n1 1 2"    [{:chr "chr1" :start 1 :end 1} {:chr "chr1" :start 2 :end 2}]
-    "1 0 1 Name"      [{:chr "chr1" :start 1 :end 1 :name "Name"}]
-    "1 0 1 N 0"       [{:chr "chr1" :start 1 :end 1 :name "N" :score 0}]
-    "1 0 1 N 0 +"     [{:chr "chr1" :start 1 :end 1 :name "N" :score 0 :strand :forward}]
-    "1 0 1 N 0 + 0"   [{:chr "chr1" :start 1 :end 1 :name "N" :score 0 :strand :forward :thick-start 1}]
-    "1 0 1 N 0 + 0 1" [{:chr "chr1" :start 1 :end 1 :name "N" :score 0 :strand :forward :thick-start 1 :thick-end 1}]))
+    "1 0 1\n1 1 2"    [{:chr "1" :start 1 :end 1} {:chr "1" :start 2 :end 2}]
+    "1 0 1 Name"      [{:chr "1" :start 1 :end 1 :name "Name"}]
+    "1 0 1 N 0"       [{:chr "1" :start 1 :end 1 :name "N" :score 0}]
+    "1 0 1 N 0 +"     [{:chr "1" :start 1 :end 1 :name "N" :score 0 :strand :forward}]
+    "1 0 1 N 0 + 0"   [{:chr "1" :start 1 :end 1 :name "N" :score 0 :strand :forward :thick-start 1}]
+    "1 0 1 N 0 + 0 1" [{:chr "1" :start 1 :end 1 :name "N" :score 0 :strand :forward :thick-start 1 :thick-end 1}]))
 
 (deftest bed-reader-assertions
   (are [?bed-str] (thrown? java.lang.AssertionError (str->bed ?bed-str))
@@ -297,15 +279,14 @@
     (comment "chr1" "TAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCC...")
     (letfn [(read-region [s] (->> (str->bed s) (map #(cseq/read-sequence fa %))))]
       (are [?region-str ?result] (= (read-region ?region-str) ?result)
-        "1 0 1" ["T"]
-        "1 0 10" ["TAACCCTAAC"]
-        "1 0 10\n1 10 20" ["TAACCCTAAC" "CCTAACCCTA"]))))
+        "chr1 0 1" ["T"]
+        "chr1 0 10" ["TAACCCTAAC"]
+        "chr1 0 10\nchr1 10 20" ["TAACCCTAAC" "CCTAACCCTA"]))))
 
 (deftest bed-writer
-  (is (= (bed->raw-str (raw-str->bed "1 0 10")) "1\t0\t10"))
-  (is (= (bed->str (str->bed "1 0 1")) "chr1\t0\t1"))
-  (is (= (bed->str (str->bed "1 0 10")) "chr1\t0\t10"))
-  (is (= (bed->str (str->bed "1 0 1\n1 1 2")) "chr1\t0\t1\nchr1\t1\t2"))
+  (is (= (bed->str (str->bed "1 0 1")) "1\t0\t1"))
+  (is (= (bed->str (str->bed "1 0 10")) "1\t0\t10"))
+  (is (= (bed->str (str->bed "1 0 1\n1 1 2")) "1\t0\t1\n1\t1\t2"))
   (is (= (with-open [r (bed/reader test-bed-file1)] (str->bed (bed->str (bed/read-fields r))))
          (with-open [r (bed/reader test-bed-file1)] (doall (bed/read-fields r)))))
   (is (= (with-open [r (bed/reader test-bed-file1-gz)] (str->bed (bed->str (bed/read-fields r))))

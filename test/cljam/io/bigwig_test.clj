@@ -273,12 +273,17 @@
 
 (deftest source-type-test
   (testing "reader"
+    (are [x] (with-open [r (bigwig/reader x)]
+               (and (same-bigwig-headers? (.headers r)
+                                          (:headers test-bigwig-fixed-fields))
+                    (same-wig? (bigwig/read-tracks r)
+                               (:tracks test-bigwig-fixed-fields))))
+         test-bigwig-fixed-file
+         (cio/file test-bigwig-fixed-file)
+         (cio/as-url (cio/file test-bigwig-fixed-file))))
+  (testing "reader (non-file URL is not supported)"
     (with-open [server (http-server)]
-      (are [x] (with-open [r (bigwig/reader x)]
-                 (and (same-bigwig-headers? (.headers r)
-                                            (:headers test-bigwig-fixed-fields))
-                      (same-wig? (bigwig/read-tracks r)
-                                 (:tracks test-bigwig-fixed-fields))))
-        test-bigwig-fixed-file
-        (cio/file test-bigwig-fixed-file)
-        (cio/as-url (cio/file test-bigwig-fixed-file))))))
+      (let [x (cio/as-url (str (:uri server) "/bigwig/test-fixed.bigWig"))]
+        (is (thrown? Exception
+                     (with-open [r (bigwig/reader x)]
+                       (bigwig/read-tracks r))))))))

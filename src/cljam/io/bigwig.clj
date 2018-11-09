@@ -79,7 +79,7 @@
 (defn- check-version
   "Ranged from [1,4]. Throws IOException if the version is out of range."
   [ushort]
-  (when-not (and (<= 1 ushort) (<= ushort 4))
+  (when-not (<= 1 ushort 4)
     (throw (IOException. "Invalid bigWig version"))))
 
 (defn- check-field-count

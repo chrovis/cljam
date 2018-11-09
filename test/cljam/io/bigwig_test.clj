@@ -128,45 +128,45 @@
              (CirTree. 256 2 0 131308806 1 117301101 500 1 548))
    ; NB: This format is a temporary structure until we support BedGraph formats.
    :tracks [{:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131308806 :end 131309339 :value 16.5}
+             :chr "chr5" :start 131308807 :end 131309339 :value 16.5}
             {:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131374791 :end 131375675 :value 19.7}
+             :chr "chr5" :start 131374792 :end 131375675 :value 19.7}
             {:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131590993 :end 131591853 :value 23.3}
+             :chr "chr5" :start 131590994 :end 131591853 :value 23.3}
             {:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131620938 :end 131621712 :value 16.5}
+             :chr "chr5" :start 131620939 :end 131621712 :value 16.5}
             {:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131634917 :end 131635788 :value 17.2}
+             :chr "chr5" :start 131634918 :end 131635788 :value 17.2}
             {:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131657129 :end 131658696 :value 17.9}
+             :chr "chr5" :start 131657130 :end 131658696 :value 17.9}
             {:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131733068 :end 131733870 :value 21.7}
+             :chr "chr5" :start 131733069 :end 131733870 :value 21.7}
             {:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131774124 :end 131774775 :value 22.1}
+             :chr "chr5" :start 131774125 :end 131774775 :value 22.1}
             {:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131853741 :end 131854834 :value 18.3}
+             :chr "chr5" :start 131853742 :end 131854834 :value 18.3}
             {:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131860254 :end 131860700 :value 20.6}
+             :chr "chr5" :start 131860255 :end 131860700 :value 20.6}
             {:track {:line nil :chr "chr5" :start 131308806 :end 131920856}
-             :chr "chr5" :start 131920463 :end 131920856 :value 21.9}
+             :chr "chr5" :start 131920464 :end 131920856 :value 21.9}
             {:track {:line nil :chr "chr7" :start 115637606 :end 117301101}
-             :chr "chr7" :start 115637606 :end 115638264 :value 22.8}
+             :chr "chr7" :start 115637607 :end 115638264 :value 22.8}
             {:track {:line nil :chr "chr7" :start 115637606 :end 117301101}
-             :chr "chr7" :start 115927010 :end 115927588 :value 21.5}
+             :chr "chr7" :start 115927011 :end 115927588 :value 21.5}
             {:track {:line nil :chr "chr7" :start 115637606 :end 117301101}
-             :chr "chr7" :start 115951939 :end 115953971 :value 14.6}
+             :chr "chr7" :start 115951940 :end 115953971 :value 14.6}
             {:track {:line nil :chr "chr7" :start 115637606 :end 117301101}
-             :chr "chr7" :start 116099060 :end 116099834 :value 20.7}
+             :chr "chr7" :start 116099061 :end 116099834 :value 20.7}
             {:track {:line nil :chr "chr7" :start 115637606 :end 117301101}
-             :chr "chr7" :start 116289663 :end 116290156 :value 23.1}
+             :chr "chr7" :start 116289664 :end 116290156 :value 23.1}
             {:track {:line nil :chr "chr7" :start 115637606 :end 117301101}
-             :chr "chr7" :start 116381116 :end 116381561 :value 22.9}
+             :chr "chr7" :start 116381117 :end 116381561 :value 22.9}
             {:track {:line nil :chr "chr7" :start 115637606 :end 117301101}
-             :chr "chr7" :start 116750077 :end 116752039 :value 15.1}
+             :chr "chr7" :start 116750078 :end 116752039 :value 15.1}
             {:track {:line nil :chr "chr7" :start 115637606 :end 117301101}
-             :chr "chr7" :start 116854639 :end 116854902 :value 25.1}
+             :chr "chr7" :start 116854640 :end 116854902 :value 25.1}
             {:track {:line nil :chr "chr7" :start 115637606 :end 117301101}
-             :chr "chr7" :start 117300178 :end 117301101 :value 20.6}]})
+             :chr "chr7" :start 117300179 :end 117301101 :value 20.6}]})
 
 (def ^:private ^BigWigHeaders test-non-leaf-blocks-fields
   {:headers (BigWigHeaders.

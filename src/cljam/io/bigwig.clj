@@ -351,7 +351,7 @@
      (max (:start a) (:start b))))
 
 (defn- ->bedgraph
-  "Converts bigWig tracks into BedGraph format (0-based, half-open)."
+  "Converts bigWig tracks into BedGraph format (1-based, fully-closed)."
   [^ByteBuffer bb track-start track-end item-count chrom rng]
   (->> (repeatedly item-count
                    (fn []
@@ -361,7 +361,7 @@
                        (when (pos? (range-intersection rng {:start start :end end}))
                          {:track {:line nil :chr chrom :start track-start
                                   :end track-end}
-                          :chr chrom :start start :end end :value value}))))
+                          :chr chrom :start (inc start) :end end :value value}))))
        (remove nil?)
        doall))
 

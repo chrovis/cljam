@@ -154,7 +154,6 @@
   This function converts the coordinate into cljam style: 1-origin and inclusive-start / inclusive-end."
   [m]
   (-> m
-      (update :chr chr/normalize-chromosome-key)
       (update :start inc)
       (update-some :thick-start inc)))
 
@@ -165,14 +164,6 @@
   (-> m
       (update :start dec)
       (update-some :thick-start dec)))
-
-(defn read-raw-fields
-  "Returns a lazy sequence of unnormalized BED fields."
-  [^BEDReader rdr]
-  (sequence
-   (comp (remove header-or-comment?)
-         (map deserialize-bed))
-   (line-seq (.reader rdr))))
 
 (defn read-fields
   "Returns a lazy sequence of normalized BED fields."
@@ -296,15 +287,6 @@
                        (< pos len)
                        (cons {:chr chr :start pos :end len})))))))]
       (complement (merge-fields xs) chrs 1))))
-
-(defn write-raw-fields
-  "Write sequence of BED fields to writer without converting :start and :thick-start values."
-  [^BEDWriter wtr xs]
-  (let [w ^BufferedWriter (.writer wtr)]
-    (->> xs
-         (map serialize-bed)
-         (cstr/join \newline)
-         (.write w))))
 
 (defn write-fields
   "Write sequence of BED fields to writer."

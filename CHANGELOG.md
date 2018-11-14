@@ -2,9 +2,32 @@
 
 ## [Unreleased]
 
+### BREAKING
+
+* Strand representation is changed to keyword (`:forward`, `:reverse`).
+* Chromosome name normalization is decoupled from BED i/o.
+* Pileup module is entirely rewritten. See [#140](https://github.com/chrovis/cljam/pull/140) for more information.
+
 ### Added
 
 * Support extra fields for VCF/BCF meta info. [#135](https://github.com/chrovis/cljam/pull/135)
+* Character escaping support for string fields in VCF meta info. [#138](https://github.com/chrovis/cljam/pull/138)
+* GFF3 I/O. [#143](https://github.com/chrovis/cljam/pull/143)
+* Add basic reader/writer support for WIG. [#145](https://github.com/chrovis/cljam/pull/145)
+* Add a reader for bigWig format. [#149](https://github.com/chrovis/cljam/pull/149)
+
+### Changed
+
+* Rewrite pileup module. [#140](https://github.com/chrovis/cljam/pull/140)
+* Use :forward/:reverse/nil as values for the key ':strand'. [#144](https://github.com/chrovis/cljam/pull/144)
+* Improve performance of TwoBitReader. [#153](https://github.com/chrovis/cljam/pull/153)
+* Remove normalization of chromosome names from BED reader. [#154](https://github.com/chrovis/cljam/pull/154)
+
+### Fixed
+
+* Fix options of cljam.algo.pileup/pileup. [#146](https://github.com/chrovis/cljam/pull/146)
+* Fix a bug in `cljam.algo.pileup/pileup`. [#148](https://github.com/chrovis/cljam/pull/148)
+* Fix some fields of cljam.io.pileup LocusPile and PileupBase. [#151](https://github.com/chrovis/cljam/pull/151)
 
 ## [0.6.0] - 2018-06-22
 

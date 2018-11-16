@@ -1,8 +1,7 @@
 (ns cljam.io.vcf.util-test
-  (:require  [clojure.test :refer :all]
-             [clojure.string :as cstr]
-             [cljam.test-common :refer :all]
-             [cljam.io.vcf.util :as vcf-util]))
+  (:require [clojure.test :refer :all]
+            [cljam.test-common :refer :all]
+            [cljam.io.vcf.util :as vcf-util]))
 
 (deftest about-parse-info
   (let [parse-info (vcf-util/info-parser [{:id "NS", :number 1, :type "Integer"}
@@ -72,9 +71,11 @@
     "0/0" [[0 false] [0 false]]
     "0/1" [[0 false] [1 false]]
     "1/1" [[1 false] [1 false]]
+    "./." [[nil false] [nil false]]
     "0|0" [[0 true] [0 true]]
     "0|1" [[0 true] [1 true]]
     "1|1" [[1 true] [1 true]]
+    ".|." [[nil true] [nil true]]
     "0/1/2" [[0 false] [1 false] [2 false]]
     "0/1|2" [[0 false] [1 false] [2 true]]))
 
@@ -89,11 +90,84 @@
     [[0 true] [0 true]] "0|0"
     [[0 true] [1 true]] "0|1"
     [[1 true] [1 true]] "1|1"
+    [[nil true] [nil true]] ".|."
     [[0 false] [0 false]] "0/0"
     [[0 false] [1 false]] "0/1"
     [[1 false] [1 false]] "1/1"
+    [[nil false] [nil false]] "./."
     [[0 false] [1 false] [2 false]] "0/1/2"
     [[0 false] [1 false] [2 true]] "0/1|2"))
+
+(deftest genotype-seq
+  (are [?ploidy ?n-alt-alleles ?expected]
+      (= ?expected (vcf-util/genotype-seq ?ploidy ?n-alt-alleles))
+    1 1 [[0] [1]]
+    1 2 [[0] [1] [2]]
+    2 1 [[0 0] [0 1] [1 1]]
+    2 2 [[0 0] [0 1] [1 1] [0 2] [1 2] [2 2]]
+    2 3 [[0 0] [0 1] [1 1] [0 2] [1 2] [2 2] [0 3] [1 3] [2 3] [3 3]]
+    3 1 [[0 0 0] [0 0 1] [0 1 1] [1 1 1]]
+    3 2 [[0 0 0] [0 0 1] [0 1 1] [1 1 1] [0 0 2] [0 1 2] [1 1 2] [0 2 2] [1 2 2] [2 2 2]]))
+
+(deftest genotype-index
+  (are [?genotype ?expected]
+      (= ?expected (vcf-util/genotype-index ?genotype))
+    [0] 0
+    [1] 1
+    [0 0] 0
+    [0 1] 1
+    [1 1] 2
+    [0 2] 3
+    [1 2] 4
+    [2 2] 5
+    [3 3] 9
+    [0 0 0] 0
+    [1 1 2] 6
+    [1 2 2] 8))
+
+(deftest about-genotypes
+  (are [?ploidy ?n-alt-alleles]
+      (let [x (vcf-util/genotype-seq ?ploidy ?n-alt-alleles)]
+        (= (range (count x)) (map vcf-util/genotype-index x)))
+    1 0
+    1 1
+    1 2
+    1 3
+    2 0
+    2 1
+    2 2
+    2 3
+    2 4
+    3 0
+    3 1
+    3 2
+    3 3
+    3 4
+    4 0
+    4 1
+    4 2
+    4 3
+    4 4))
+
+(deftest biallelic-genotype
+  (are [?genotype ?target-allele ?expected]
+      (= ?expected (vcf-util/biallelic-genotype ?genotype ?target-allele))
+    "0/0" 1 "0/0"
+    "0/1" 1 "0/1"
+    "0/2" 1 "0/0"
+    "1/2" 1 "1/0"
+    "2|2" 1 "0|0"
+    "0/1" 2 "0/0"
+    "0|2" 2 "0|1"
+    "1/2" 2 "0/1"))
+
+(deftest biallelic-coll
+  (are [?ploidy ?n-alt-alleles ?target-allele ?coll ?expected]
+      (= ?expected (vcf-util/biallelic-coll ?ploidy ?n-alt-alleles ?target-allele ?coll))
+    2 1 1 [10 20 30] [10 20 30]
+    2 2 1 [10 20 30 40 50 60] [10 20 30]
+    2 2 2 [10 20 30 40 50 60] [10 40 60]
+    3 2 2 [1 2 3 4 5 6 7 8 9 10] [1 5 8 10]))
 
 (deftest about-parse-variant-v4_3
   (let [parse-variant (vcf-util/variant-parser test-vcf-v4_3-meta-info test-vcf-v4_3-header)]
@@ -151,3 +225,103 @@
       ;; trailing fields can be dropped. Result differs but it's OK.
       ;; (nth test-vcf-v4_0-variants 10) (nth test-vcf-v4_0-variants-deep 10)
       (nth test-vcf-v4_0-variants 11) (nth test-vcf-v4_0-variants-deep 11))))
+
+(deftest parse-breakend
+  (are [?alt ?expected]
+      (= ?expected (vcf-util/parse-breakend ?alt))
+    "]13:123456]T" {:chr "13", :pos 123456, :strand :forward, :join :before, :bases "T"}
+    "]13:123456]AGTNNNNNCAT" {:chr "13", :pos 123456, :strand :forward, :join :before, :bases "AGTNNNNNCAT"}
+    "AGTNNNNNCA[2:321682[" {:chr "2", :pos 321682, :strand :forward, :join :after, :bases "AGTNNNNNCA"}
+    "C[<ctg1>:1[" {:chr "<ctg1>", :pos 1, :strand :forward, :join :after, :bases "C"}
+    "[13:123457[C" {:chr "13", :pos 123457, :strand :reverse, :join :before, :bases "C"}
+    "G]17:198982]" {:chr "17", :pos 198982, :strand :reverse, :join :after, :bases "G"}
+    ".[13:123457[" {:chr "13", :pos 123457, :strand :forward, :join :after, :bases "."}
+    "]2:321681]A" {:chr "2", :pos 321681, :strand :forward, :join :before, :bases "A"}
+    "C[1:1[" {:chr "1", :pos 1, :strand :forward, :join :after, :bases "C"}
+    "]1:0]A" {:chr "1", :pos 0, :strand :forward, :join :before, :bases "A"}
+    ".A" {:join :before, :bases "A"}
+    ".TGCA" {:join :before, :bases "TGCA"}
+    "G." {:join :after, :bases "G"}
+    "TCC." {:join :after, :bases "TCC"}
+    "G" nil
+    "ATT" nil
+    "[1:12T" nil
+    "[1:2[T[" nil
+    "[1:[T" nil
+    "[:1[T" nil
+    "[:[T" nil
+    "[1:1e[T" nil
+    "[1:2]T[" nil
+    "]1:1]" nil
+    "]1:1[T" nil
+    "]1:1T" nil
+    "]12]T" nil ;; maybe legal?
+    "C[<ct[g1:123>:1[" nil ;; legal, but not supported
+    "N[<[>[>[" nil ;; legal, but not supported
+    "." nil
+    "*" nil
+    ".G." nil
+    "..G" nil
+    "<>" nil
+    "C<ctg1>" nil ;; INS
+    "<ctg1>C" nil ;; INS
+    "<DUP>" nil
+    "<INV>" nil))
+
+(deftest parse-alt
+  (are [?ref ?alt ?expected]
+      (= ?expected (vcf-util/parse-alt ?ref ?alt))
+
+    "A" "."   {:type :ref}
+    "A" "*"   {:type :ref}
+    "A" "X"   {:type :ref}
+    "A" "A"   {:type :ref}
+    "A" "a"   {:type :ref}
+    "AA" "AA" {:type :ref}
+    "AA" "Aa" {:type :ref}
+    "A" "<*>" {:type :ref} ;; conventional
+    "A" "<X>" {:type :ref} ;; conventional
+
+    "A" "<DUP>"     {:type :id, :id "DUP"}
+    "A" "<INV>"     {:type :id, :id "INV"}
+    "A" "<NON_REF>" {:type :id, :id "NON_REF"} ;; not :ref
+
+    "A"  "T"      {:type :snp, :ref \A, :alt \T, :offset 0}
+    "TC" "TG"     {:type :snp, :ref \C, :alt \G, :offset 1}
+    "TC" "GC"     {:type :snp, :ref \T, :alt \G, :offset 0}
+    "TCA" "TAA"   {:type :snp, :ref \C, :alt \A, :offset 1}
+    "TCAG" "tcAC" {:type :snp, :ref \G, :alt \C, :offset 3}
+
+    "TG"   "Gc"   {:type :mnp, :ref "TG",  :alt "Gc",  :offset 0}
+    "TCG"  "tGA"  {:type :mnp, :ref "CG",  :alt "GA",  :offset 1}
+    "TGCA" "TCCC" {:type :mnp, :ref "GCA", :alt "CCC", :offset 1} ;; two snvs?
+
+    "TC"  "T"     {:type :deletion, :n-bases -1, :offset 0, :deleted "C"}
+    "GTC" "G"     {:type :deletion, :n-bases -2, :offset 0, :deleted "TC"}
+    "TCG" "TG"    {:type :deletion, :n-bases -1, :offset 0, :deleted "C"}
+    "TGCA" "TGC"  {:type :deletion, :n-bases -1, :offset 2, :deleted "A"}
+    "TCGCG" "TCG" {:type :deletion, :n-bases -2, :offset 2, :deleted "CG"} ;; ambiguous
+    "TAAACCCTAAA" "TAA" {:type :deletion, :n-bases -8, :offset 2, :deleted "ACCCTAAA"} ;; ambiguous
+
+    "C"   "CTAG"  {:type :insertion, :n-bases 3, :offset 0, :inserted "TAG"}
+    "GTC" "GTCT"  {:type :insertion, :n-bases 1, :offset 2, :inserted "T"}
+    "TCG" "TCAG"  {:type :insertion, :n-bases 1, :offset 1, :inserted "A"}
+    "GCG" "GCGCG" {:type :insertion, :n-bases 2, :offset 2, :inserted "CG"} ;; ambiguous
+    "ATTTTTTTTTTTTT" "ATTTTTTTTTTTTTTT" {:type :insertion, :n-bases 2, :offset 13, :inserted "TT"} ;; ambiguous
+
+    "T" "<ctg1>C" {:type :complete-insertion, :join :before, :base \C, :id "ctg1"}
+    "T" "C<ctg1>" {:type :complete-insertion, :join :after, :base \C, :id "ctg1"}
+
+    "G" "G."    {:type :breakend, :join :after, :bases "G"}
+    "A" ".A"    {:type :breakend, :join :before, :bases "A"}
+    "T" "TCC."  {:type :breakend, :join :after, :bases "TCC"}
+    "A" ".TGCA" {:type :breakend, :join :before, :bases "TGCA"}
+    "T" "]13:123456]T" {:type :breakend, :join :before, :strand :forward, :chr "13", :pos 123456, :bases "T"}
+
+    "T" "<ctg1>CT" {:type :other} ;; invalid
+    "T" "<CT" {:type :other} ;; invalid
+
+    "TAC" "GC" {:type :other, :n-bases -1}
+    "TG" "TAC" {:type :other, :n-bases 1}
+    "TCA" "GGGG" {:type :other, :n-bases 4}
+    "AAAA" "CAC" {:type :other, :n-bases -4}))

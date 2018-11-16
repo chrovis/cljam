@@ -26,3 +26,32 @@
            (.put cb)))
     (.flip cb)
     (.toString cb)))
+
+(defn atgcn?
+  "Checks if a given string contains only [ATGCNatgcn]."
+  [^String s]
+  (let [l (.length s)]
+    (loop [i 0]
+      (if (< i l)
+        (let [c' (unchecked-long (unchecked-int (.charAt s (unchecked-int i))))
+              c (if (<= 97 c') (- c' 32) c')]
+          (if (or (= c 65) (= c 67) (= c 71) (= c 78) (= c 84))
+            (recur (unchecked-inc i))
+            false))
+        true))))
+
+(defn ^String ->atgcn
+  "Replaces all characters other than [ATGCatgc] with N."
+  [^String s]
+  (when s
+    (let [l (.length s)
+          cb (CharBuffer/allocate l)]
+      (dotimes [i l]
+        (let [c'' (.charAt s i)
+              c' (unchecked-long (unchecked-int c''))
+              c (if (<= 97 c') (- c' 32) c')]
+          (if (or (= c 65) (= c 67) (= c 71) (= c 78) (= c 84))
+            (.put cb c'')
+            (.put cb \N))))
+      (.rewind cb)
+      (.toString cb))))

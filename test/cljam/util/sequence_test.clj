@@ -18,3 +18,34 @@
     "ACGTGT" "ACACGT"
     "GAANTGGN" "NCCANTTC"
     "aacacacnnnnacacTTTAGAGCNNacacnttg" "caangtgtNNGCTCTAAAgtgtnnnngtgtgtt"))
+
+(deftest atgcn?
+  (are [?seq ?expected]
+      (= ?expected (util-seq/atgcn? ?seq))
+    "" true
+    "A" true
+    "t" true
+    "n" true
+    "N" true
+    "U" false
+    "*" false
+    "AT" true
+    "At" true
+    "AtN" true
+    "ACM" false
+    "AoT" false
+    "aacacacnnnnacacTTTAGAGCNNacacnttg" true))
+
+(deftest ->atgcn
+  (are [?seq ?expected]
+      (= ?expected (util-seq/->atgcn ?seq))
+    nil nil
+    "" ""
+    "A" "A"
+    "a" "a"
+    "N" "N"
+    "n" "n"
+    "U" "N"
+    "u" "N"
+    "ATGCNatgcn" "ATGCNatgcn"
+    "*AT>gc" "NATNgc"))

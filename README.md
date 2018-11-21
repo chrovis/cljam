@@ -156,6 +156,7 @@ Sorted by first commit.
 - Atsuo Yamada ([@ayamada](https://github.com/ayamada))
 - Jun Imura ([@alumi](https://github.com/alumi))
 - Shogo Ohta ([@athos](https://github.com/athos))
+- Shunya Kawabata ([@r6eve](https://github.com/r6eve))
 
 ## License
 

@@ -12,26 +12,23 @@ A DNA Sequence Alignment/Map (SAM) library for Clojure. [[API Reference]][api-re
 
 cljam is available as a Maven artifact from [Clojars](https://clojars.org/cljam).
 
-To use with Leiningen/Boot, add the following dependency.
+Clojure CLI/deps.edn:
 
 ```clojure
-[cljam "0.6.0"]
+cljam {:mvn/version "0.7.0"}
 ```
 
-To use with Maven, add the following dependency.
+Leiningen/Boot:
 
-```xml
-<dependency>
-  <groupId>cljam</groupId>
-  <artifactId>cljam</artifactId>
-  <version>0.6.0</version>
-</dependency>
+```clojure
+[cljam "0.7.0"]
 ```
 
-## Breaking changes in 0.6.0
+## Breaking changes in 0.7.0
 
-* N padding for out-of-range bases is **not** appended. See [#120 comment](https://github.com/chrovis/cljam/pull/120#issuecomment-343369370) and [#121](https://github.com/chrovis/cljam/pull/121) for more information.
-* `cljam.io.protocols/{reader,writer}-path` were renamed to `cljam.io.protocols/{reader,writer}-url`. Their return values are `java.net.URL`.
+* Strand representation is changed to keyword (`:forward`, `:reverse`).
+* Chromosome name normalization is decoupled from BED i/o.
+* Pileup module is entirely rewritten. See [#140](https://github.com/chrovis/cljam/pull/140) for more information.
 
 ## Getting started
 
@@ -162,7 +159,7 @@ Sorted by first commit.
 
 Copyright 2013-2018 [Xcoo, Inc.](https://xcoo.jp/)
 
-Licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+Licensed under the [Apache License, Version 2.0](LICENSE).
 
 [api-reference]: https://chrovis.github.io/cljam/docs
 [annotated-source]: https://chrovis.github.io/cljam/literate

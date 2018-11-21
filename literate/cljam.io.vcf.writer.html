@@ -2869,7 +2869,7 @@ net.brehaut.ClojureTools = (function (SH) {
   https://samtools.github.io/hts-specs/ for the detail VCF specifications.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.vcf.writer
   (:require [clojure.string :as cstr]
-            [camel-snake-kebab.core :refer [-&gt;camelCaseString]]
+            [camel-snake-kebab.core :refer [-&gt;camelCaseString -&gt;PascalCaseString]]
             [cljam.io.protocols :as protocols]
             [cljam.io.vcf.util :as vcf-util])
   (:import [java.io Closeable BufferedWriter]))</pre></td></tr><tr><td class="docs">
@@ -2902,57 +2902,80 @@ net.brehaut.ClojureTools = (function (SH) {
   (if (#{:info :filter :format :alt :sample :pedigree} k)
     (cstr/upper-case (name k))
     (-&gt;camelCaseString k)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- escape-special-chars [s]
+  (-&gt; s (cstr/replace &quot;\\&quot; &quot;\\\\&quot;) (cstr/replace &quot;\ &quot;\\\)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- add-extra-fields
+  [fields m required-keys]
+  (reduce-kv (fn [fields k v]
+               (conj fields
+                     (str (-&gt;PascalCaseString k) &quot;=\
+                          (escape-special-chars v) &quot;\)))
+             fields
+             (apply dissoc m required-keys)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- pack-meta-info
+  [fields m required-keys]
+  (cstr/join \, (add-extra-fields fields m required-keys)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-contig
   [m]
-  (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
-                (str &quot;length=&quot; (:length m))
-                (str &quot;assembly=&quot; (:assembly m))
-                (str &quot;md5=&quot; (:md-5 m))]
-         (:species m) (conj (str &quot;species=\ (:species m) &quot;\))
-         (:taxonomy m) (conj (str &quot;taxonomy=&quot; (:taxonomy m)))
-         (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
-       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
+  (-&gt; [(str &quot;ID=&quot; (:id m))]
+      (cond-&gt;
+        (:length m) (conj (str &quot;length=&quot; (:length m)))
+        (:assembly m) (conj (str &quot;assembly=&quot; (:assembly m)))
+        (:md-5 m) (conj (str &quot;md5=&quot; (:md-5 m)))
+        (:url m) (conj (str &quot;URL=&quot; (:url m)))
+        (:species m) (conj (str &quot;species=\ (escape-special-chars (:species m)) &quot;\))
+        (:taxonomy m) (conj (str &quot;taxonomy=&quot; (:taxonomy m)))
+        (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
+      (pack-meta-info m [:id :length :assembly :md-5 :url :species :taxonomy :idx])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-info
   [m]
-  (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
-                (str &quot;Number=&quot; (nil-&gt;dot (:number m)))
-                (str &quot;Type=&quot; (nil-&gt;dot (:type m)))
-                (str &quot;Description=\ (:description m) &quot;\)]
-         (:source m) (conj (str &quot;Source=&quot; (:source m)))
-         (:version m) (conj (str &quot;Version=&quot; (:version m)))
-         (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
-       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
+  (-&gt; [(str &quot;ID=&quot; (:id m))
+       (str &quot;Number=&quot; (nil-&gt;dot (:number m)))
+       (str &quot;Type=&quot; (nil-&gt;dot (:type m)))
+       (str &quot;Description=\ (escape-special-chars (:description m)) &quot;\)]
+      (cond-&gt;
+        (:source m) (conj (str &quot;Source=\ (escape-special-chars (:source m)) &quot;\))
+        (:version m) (conj (str &quot;Version=\ (escape-special-chars (:version m)) &quot;\))
+        (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
+      (pack-meta-info m [:id :number :type :description :source :version :idx])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-filter
   [m]
-  (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
-                (str &quot;Description=\ (:description m) &quot;\)]
-         (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
-       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
+  (-&gt; [(str &quot;ID=&quot; (:id m))
+       (str &quot;Description=\ (escape-special-chars (:description m)) &quot;\)]
+      (cond-&gt;
+        (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
+      (pack-meta-info m [:id :description :idx])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-format
   [m]
-  (-&gt;&gt; (cond-&gt; [(str &quot;ID=&quot; (:id m))
-                (str &quot;Number=&quot; (nil-&gt;dot (:number m)))
-                (str &quot;Type=&quot; (nil-&gt;dot (:type m)))
-                (str &quot;Description=\ (:description m) &quot;\)]
-         (:idx m) (conj (str &quot;idx=&quot; (:idx m))))
-       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
+  (-&gt; [(str &quot;ID=&quot; (:id m))
+       (str &quot;Number=&quot; (nil-&gt;dot (:number m)))
+       (str &quot;Type=&quot; (nil-&gt;dot (:type m)))
+       (str &quot;Description=\ (escape-special-chars (:description m)) &quot;\)]
+      (cond-&gt;
+        (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
+      (pack-meta-info m [:id :number :type :description :idx])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-alt
   [m]
-  (-&gt;&gt; [(str &quot;ID=&quot; (:id m))
-        (str &quot;Description=\ (:description m) &quot;\)]
-       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
+  (-&gt; [(str &quot;ID=&quot; (:id m))
+       (str &quot;Description=\ (escape-special-chars (:description m)) &quot;\)]
+      (pack-meta-info m [:id :description])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-sample
   [m]
-  (-&gt;&gt; [(str &quot;ID=&quot; (:id m))
-        (str &quot;Genomes=&quot; (:genomes m))
-        (str &quot;Mixture=&quot; (:mixture m))
-        (str &quot;Description=\ (:description m) &quot;\)]
-       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
+  (-&gt; [(str &quot;ID=&quot; (:id m))]
+      (cond-&gt;
+        (:genomes m) (conj (str &quot;Genomes=&quot; (:genomes m)))
+        (:mixture m) (conj (str &quot;Mixture=&quot; (:mixture m))))
+      (conj (str &quot;Description=\ (escape-special-chars (:description m)) &quot;\))
+      (pack-meta-info m [:id :genomes :mixture :description])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-pedigree
   [m]
-  (-&gt;&gt; (range (count m))
-       (map (fn [i]
-              (str &quot;Name_&quot; i &quot;=&quot; (get m (keyword (str &quot;name-&quot; i))))))
+  (-&gt;&gt; (reduce-kv (fn [fields k v]
+                    (conj fields
+                          (if-let [[_ i] (re-matches #&quot;name-(\d+)&quot; (name k))]
+                            (str &quot;Name_&quot; i &quot;=&quot; v)
+                            (str (-&gt;PascalCaseString k) &quot;=&quot; v))))
+                  [(str &quot;ID=&quot; (:id m))]
+                  (dissoc m :id))
        (cstr/join \,)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn stringify-structured-line
   [k m]

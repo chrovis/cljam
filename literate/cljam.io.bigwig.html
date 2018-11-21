@@ -2865,96 +2865,381 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.cigar" name="cljam.io.sam.util.cigar"><h1 class="project-name">cljam.io.sam.util.cigar</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Parser of CIGAR strings.</p>
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam.util.cigar
-  (:import [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs"><p>Parses CIGAR string, returning a sequence of lengths and operations.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn parse
-  [^String s]
-  (for [[_ n op] (re-seq #&quot;([0-9]*)([MIDNSHP=X])&quot; s)]
-    [(Integer/parseInt n) (first op)]))</pre></td></tr><tr><td class="docs"><p>Merge contiguous same operations of parsed CIGAR.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn simplify
-  [cigs]
-  (loop [[[^long l op :as x] &amp; xs] cigs result (transient [])]
-    (if (and l op)
-      (let [[^long nl nop] (first xs)]
-        (if (= op nop)
-          (recur (cons [(+ l nl) op] (next xs)) result)
-          (recur xs (conj! result x))))
-      (persistent! result))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- concat! [v coll]
-  (reduce conj! v coll))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- update-last! [coll f]
-  (let [c (dec (count coll))]
-    (if (neg? c)
-      coll
-      (let [[op x] (get coll c)]
-        (if (= :m op)
-          (assoc! coll c (f x))
-          coll)))))</pre></td></tr><tr><td class="docs"><p>Convert CIGAR string to sequence of indices.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn to-index*
-  [^String s]
-  (let [cigs (simplify (remove (comp #{\P \H} second) (parse s)))]
-    (loop [[[^long l op] &amp; xs] cigs r 0 s 0 idx (transient [])]
-      (if (and l op)
-        (condp get op
-          #{\M \= \X} (recur xs (+ l r) (+ l s) (concat! idx (map (fn [x] [:m x]) (range s (+ l s)))))
-          #{\D} (recur xs (+ r l) s (concat! (update-last! idx (fn [x] [:d x l])) (repeat l [:m \*])))
-          #{\N} (recur xs (+ r l) s (concat! idx (repeat l [:m \&gt;])))
-          #{\S} (recur xs r (+ s l) idx)
-          #{\I} (recur xs r (+ s l) (update-last! idx (fn [x] [:i x [s (+ l s)]]))))
-        (persistent! idx)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def to-index (memoize to-index*))</pre></td></tr><tr><td class="docs"><p>Returns length of CIGAR operations.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn count-op
-  [^String s]
-  (count (parse s)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- count-ref-str*
-  [^String s]
-  (-&gt;&gt; (parse s)
-       (filter (comp #{\M \D \N \= \X} peek))
-       (map first)
-       (reduce +)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private count-ref-str
-  (memoize count-ref-str*))</pre></td></tr><tr><td class="docs"><p>Count covering length in reference from encoded CIGAR byte-array.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn count-ref-bytes
-  [cigar-bytes]
-  (let [buf (ByteBuffer/wrap cigar-bytes)]
-    (.order buf ByteOrder/LITTLE_ENDIAN)
-    (loop [ref-length 0]
-      (if (.hasRemaining buf)
-        (let [b (.getInt buf)
-              op (bit-and b 0xF)
-              n (bit-shift-right b 4)]
-          (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
-        ref-length))))</pre></td></tr><tr><td class="docs"><p>Decode CIGAR string and length of alignment in reference.
-  Returns a vector of [cigar, ref-length].</p>
-</td><td class="codes"><pre class="brush: clojure">(defn decode-cigar-and-ref-length
-  [cigar-bytes]
-  (let [buf (ByteBuffer/wrap cigar-bytes)
-        sb (StringBuilder.)]
-    (.order buf ByteOrder/LITTLE_ENDIAN)
-    (loop [ref-length 0]
-      (if (.hasRemaining buf)
-        (let [b (.getInt buf)
-              op (bit-and b 0xF)
-              n  (bit-shift-right b 4)]
-          (doto sb
-            (.append n)
-            (.append (case op 0 \M 1 \I 2 \D 3 \N 4 \S 5 \H 6 \P 7 \= 8 \X)))
-          (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
-        [(.toString sb) ref-length]))))</pre></td></tr><tr><td class="docs"><p>Encodes CIGAR string into a sequence of longs.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn encode-cigar
-  [cigar]
-  (mapv #(bit-or (bit-shift-left (first %) 4)
-                 (case (second %) \M 0 \I 1 \D 2 \N 3 \S 4 \H 5 \P 6 \= 7 \X 8))
-        (parse cigar)))</pre></td></tr><tr><td class="docs"><p>Returns length of reference bases.</p>
-</td><td class="codes"><pre class="brush: clojure">(defmulti count-ref
-  class)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmethod count-ref String
-  [s]
-  (count-ref-str s))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmethod count-ref (Class/forName &quot;[B&quot;)
-  [b]
-  (count-ref-bytes b))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bigwig" name="cljam.io.bigwig"><h1 class="project-name">cljam.io.bigwig</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to read the bigWig format. See https://genome.ucsc.edu/goldenpath/help/bigWig.html
+  and https://github.com/ucscGenomeBrowser/kent for the detail bigWig
+  specifications.</p>
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bigwig
+  (:require [clojure.java.io :as cio]
+            [cljam.io.protocols :as protocols]
+            [cljam.io.util.lsb :as lsb]
+            [cljam.util :as util])
+  (:import [java.net URL]
+           [java.io Closeable IOException RandomAccessFile]
+           [java.nio ByteBuffer ByteOrder]
+           [java.util.zip Inflater]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private bigwig-magic 0x888ffc26)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private bpt-magic 0x78CA8C91)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private cir-tree-magic 0x2468ACE0)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(declare read-tracks read-all-headers read-bbi-chrom-info read-cir-tree)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord FixedWidthHeader [magic version zoom-levels chromosome-tree-offset
+                             full-data-offset full-index-offset
+                             total-summary-offset uncompress-buf-size
+                             extension-offset])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord ZoomHeader [reduction-level data-offset index-offset])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord TotalSummary [bases-covered min-val max-val sum-data sum-squared])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord ExtendedHeader [extension-size extra-index-count
+                           extra-index-list-offset])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord BptHeader [block-size key-size val-size item-count root-offset])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord BbiChromInfo [name id size])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord CirTree [block-size item-count start-chrom-ix start-base
+                    end-chrom-ix end-base file-size items-per-slot
+                    root-offset])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord BigWigHeaders [^FixedWidthHeader fixed-width-header
+                          zoom-headers
+                          ^TotalSummary total-summary
+                          ^ExtendedHeader extended-header
+                          ^BptHeader bpt-header
+                          bbi-chrom-info
+                          ^CirTree cir-tree])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord BIGWIGReader [^RandomAccessFile reader ^URL url ^BigWigHeaders headers]
+  Closeable
+  (close [this]
+    (.close ^Closeable (.reader this)))
+  protocols/IReader
+  (reader-url [this] (.url this))
+  (read [this] (read-tracks this))
+  (read [this option] (read-tracks this))
+  (indexed? [_] false))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bigwig.BIGWIGReader of f. Should be used inside with-open
+  to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn ^BIGWIGReader reader
+  [f]
+  (let [f (.getAbsolutePath (cio/file f))
+        reader (RandomAccessFile. f &quot;r&quot;)
+        headers (read-all-headers reader)]
+    (BIGWIGReader. reader (util/as-url f) headers)))</pre></td></tr><tr><td class="docs"><p>Checks if the magic is right for bigWig format. Otherwise, throws IOException.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- check-bigwig-magic
+  [uint]
+  (when-not (= uint bigwig-magic)
+    (throw (IOException. &quot;Invalid bigWig magic&quot;))))</pre></td></tr><tr><td class="docs"><p>Ranged from [1,4]. Throws IOException if the version is out of range.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- check-version
+  [ushort]
+  (when-not (&lt;= 1 ushort 4)
+    (throw (IOException. &quot;Invalid bigWig version&quot;))))</pre></td></tr><tr><td class="docs"><p>For bigWig 0. Throws IOException if the fieldCount is invalid.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- check-field-count
+  [ushort]
+  (when-not (zero? ushort)
+    (throw (IOException. &quot;Invalid bigWig fieldCount&quot;))))</pre></td></tr><tr><td class="docs"><p>For bigWig 0. Throws IOException if the definedFieldCount is invalid.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- check-defined-field-count
+  [ushort]
+  (when-not (zero? ushort)
+    (throw (IOException. &quot;Invalid bigWig definedFieldCount&quot;))))</pre></td></tr><tr><td class="docs"><p>For bigWig 0. Throws IOException if the autoSqlOffset is invalid.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- check-auto-sql-offset
+  [^long long]
+  (when-not (zero? long)
+    (throw (IOException. &quot;Invalid bigWig autoSqlOffset&quot;))))</pre></td></tr><tr><td class="docs"><p>Returns a FixedWidthHeader.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-fixed-width-header
+  [^RandomAccessFile r]
+  (let [magic (lsb/read-uint r)
+        version (lsb/read-ushort r)
+        zoom-levels (lsb/read-ushort r)
+        chromosome-tree-offset (lsb/read-long r)
+        full-data-offset (lsb/read-long r)
+        full-index-offset (lsb/read-long r)
+        field-count (lsb/read-ushort r)
+        defined-field-count (lsb/read-ushort r)
+        auto-sql-offset (lsb/read-long r)
+        total-summary-offset (lsb/read-long r)
+        uncompress-buf-size (lsb/read-uint r)
+        extension-offset (lsb/read-long r)]
+    (check-bigwig-magic magic)
+    (check-version version)
+    (check-field-count field-count)
+    (check-defined-field-count defined-field-count)
+    (check-auto-sql-offset auto-sql-offset)
+    (FixedWidthHeader.
+     magic version zoom-levels chromosome-tree-offset full-data-offset
+     full-index-offset total-summary-offset uncompress-buf-size
+     extension-offset)))</pre></td></tr><tr><td class="docs"><p>Returns a vector of ZoomHeader from reader.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-zoom-headers
+  [^RandomAccessFile r {:keys [zoom-levels]}]
+  (letfn [(read-zoom-header [n acc]
+            (if (zero? n)
+              acc
+              (let [reduction-level (lsb/read-uint r)
+                    _reserved (lsb/read-uint r)
+                    data-offset (lsb/read-long r)
+                    index-offset (lsb/read-long r)]
+                (recur (dec n)
+                       (conj acc
+                             (ZoomHeader.
+                              reduction-level data-offset index-offset))))))]
+    (read-zoom-header zoom-levels [])))</pre></td></tr><tr><td class="docs"><p>Returns a totalSummay. If it isn't present, returns nil.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-total-summary
+  [^RandomAccessFile r {:keys [total-summary-offset]}]
+  (when-not (zero? total-summary-offset)
+    (.seek r total-summary-offset)
+    (let [bases-covered (lsb/read-long r)
+          min-val (lsb/read-double r)
+          max-val (lsb/read-double r)
+          sum-data (lsb/read-double r)
+          sum-squared (lsb/read-double r)]
+      (TotalSummary.
+       bases-covered min-val max-val sum-data sum-squared))))</pre></td></tr><tr><td class="docs"><p>Returns an extendedHeader. It it isn't present, returns nil.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-extended-header
+  [^RandomAccessFile r {:keys [extension-offset]}]
+  (when-not (zero? extension-offset)
+    (.seek r extension-offset)
+    (let [extension-size (lsb/read-ushort r)
+          extra-index-count (lsb/read-ushort r)
+          extra-index-list-offset (lsb/read-long r)]
+      (ExtendedHeader.
+       extension-size extra-index-count extra-index-list-offset))))</pre></td></tr><tr><td class="docs"><p>Checks if the magic is right for bpt format. Otherwise, throws IOException.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- check-bpt-magic
+  [uint]
+  (when-not (= uint bpt-magic)
+    (throw (IOException. &quot;Invalid bpt magic&quot;))))</pre></td></tr><tr><td class="docs"><p>Returns B+ tree data.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-bpt-header
+  [^RandomAccessFile r {:keys [chromosome-tree-offset]}]
+  (.seek r chromosome-tree-offset)
+  (let [magic (lsb/read-uint r)
+        block-size (lsb/read-uint r)
+        key-size (lsb/read-uint r)
+        val-size (lsb/read-uint r)
+        item-count (lsb/read-long r)]
+    (check-bpt-magic magic)
+    (lsb/skip r 8)
+    (let [root-offset (.getFilePointer r)]
+      (BptHeader.
+       block-size key-size val-size item-count root-offset))))</pre></td></tr><tr><td class="docs"><p>Returns the all headers of bigWig format.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-all-headers
+  [^RandomAccessFile r]
+  (.seek r 0)
+  (let [fixed-width-header (read-fixed-width-header r)
+        zoom-headers (read-zoom-headers r fixed-width-header)
+        total-summary (read-total-summary r fixed-width-header)
+        extended-header (read-extended-header r fixed-width-header)
+        bpt-header (read-bpt-header r fixed-width-header)
+        bbi-chrom-info (read-bbi-chrom-info r bpt-header)
+        cir-tree (read-cir-tree r fixed-width-header)]
+    (BigWigHeaders.
+     fixed-width-header zoom-headers total-summary extended-header bpt-header
+     bbi-chrom-info cir-tree)))</pre></td></tr><tr><td class="docs"><p>Reads <code>length</code> bytes and returns a string. This function is useful for
+  handling c-style null-terminated string.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-c-style-string
+  [^RandomAccessFile r ^long length]
+  (-&gt;&gt; (lsb/read-bytes r length)
+       (reduce
+        (fn [cs c]
+          (if (zero? c)
+            (reduced cs)
+            (conj cs c)))
+        [])
+       (map char)
+       (apply str)))</pre></td></tr><tr><td class="docs"><p>Returns the BbiChromInfo data of leaves.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-bbi-chrom-info-leaves
+  [^RandomAccessFile r key-size child-count]
+  (repeatedly child-count
+              (fn []
+                (let [name (read-c-style-string r key-size)
+                      id (lsb/read-uint r)
+                      size (lsb/read-uint r)]
+                  (BbiChromInfo.
+                   name id size)))))</pre></td></tr><tr><td class="docs"><p>Skips offsets and returns the file offsets of children.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-bbi-chrom-info-file-offsets
+  [^RandomAccessFile r key-size child-count]
+  (repeatedly child-count
+              (fn []
+                (lsb/skip r key-size)
+                (lsb/read-long r))))</pre></td></tr><tr><td class="docs"><p>Returns a sequence of BbiChromInfo data.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-bbi-chrom-info
+  [^RandomAccessFile r {:keys [key-size root-offset]}]
+  (letfn [(traverse [block-start]
+            (.seek r block-start)
+            (let [leaf? (-&gt; r lsb/read-ubyte zero? not)
+                  _reversed (lsb/read-ubyte r)
+                  child-count (lsb/read-ushort r)]
+              (if leaf?
+                (doall (read-bbi-chrom-info-leaves r key-size child-count))
+                (let [file-offsets (read-bbi-chrom-info-file-offsets r
+                                                                     key-size
+                                                                     child-count)]
+                  (map traverse file-offsets)))))]
+    (vec (traverse root-offset))))</pre></td></tr><tr><td class="docs"><p>Checks if the magic is right for chromosome id r-tree index format.
+  Otherwise, throws IOException.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- check-cir-tree-magic
+  [uint]
+  (when-not (= uint cir-tree-magic)
+    (throw (IOException. &quot;Invalid cir-tree magic&quot;))))</pre></td></tr><tr><td class="docs"><p>Returns a CirTree data.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-cir-tree
+  [^RandomAccessFile r {:keys [full-index-offset]}]
+  (.seek r full-index-offset)
+  (let [magic (lsb/read-uint r)
+        block-size (lsb/read-uint r)
+        item-count (lsb/read-long r)
+        start-chrom-ix (lsb/read-uint r)
+        start-base (lsb/read-uint r)
+        end-chrom-ix (lsb/read-uint r)
+        end-base (lsb/read-uint r)
+        file-size (lsb/read-long r)
+        items-per-slot (lsb/read-uint r)]
+    (check-cir-tree-magic magic)
+    (lsb/skip r 4)
+    (let [root-offset (.getFilePointer r)]
+      (CirTree.
+       block-size item-count start-chrom-ix start-base end-chrom-ix
+       end-base file-size items-per-slot root-offset))))</pre></td></tr><tr><td class="docs"><p>Returns true if the given blocks are overlapped.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- cir-tree-overlaps?
+  [id start end start-chrom-ix start-base end-chrom-ix end-base]
+  (letfn [(cmp [a-hi a-lo b-hi b-lo]
+            (cond
+              (&lt; a-hi b-hi) 1
+              (&gt; a-hi b-hi) -1
+              (&lt; a-lo b-lo) 1
+              (&gt; a-lo b-lo) -1
+              :else 0))]
+    (and (pos? (cmp id start end-chrom-ix end-base))
+         (neg? (cmp id end start-chrom-ix start-base)))))</pre></td></tr><tr><td class="docs"><p>Convert CirTree leaves into blocks that contain a flat map including offset and size.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- cir-tree-leaves-&gt;blocks
+  [^RandomAccessFile r id start end child-count]
+  (-&gt;&gt; (repeatedly child-count
+                   (fn []
+                     (let [start-chrom-ix (lsb/read-uint r)
+                           start-base (lsb/read-uint r)
+                           end-chrom-ix (lsb/read-uint r)
+                           end-base (lsb/read-uint r)
+                           offset (lsb/read-long r)
+                           size (lsb/read-long r)]
+                       (if (cir-tree-overlaps? id start end start-chrom-ix
+                                               start-base end-chrom-ix end-base)
+                         {:offset offset, :size size}))))
+       (remove nil?)))</pre></td></tr><tr><td class="docs"><p>Returns a sequence that contains overlapping blocks describing CirTree leaves.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- fetch-overlapping-blocks
+  [^RandomAccessFile r id start end {:keys [root-offset]}]
+  (letfn [(make-blocks [index-file-offset]
+            (.seek r index-file-offset)
+            (let [leaf? (-&gt; r lsb/read-ubyte zero? not)
+                  _reserved (lsb/read-ubyte r)
+                  child-count (lsb/read-ushort r)]
+              (if leaf?
+                (doall (cir-tree-leaves-&gt;blocks r id start end child-count))
+                (-&gt;&gt; (repeatedly child-count
+                                 (fn []
+                                   (let [start-chrom-ix (lsb/read-uint r)
+                                         start-base (lsb/read-uint r)
+                                         end-chrom-ix (lsb/read-uint r)
+                                         end-base (lsb/read-uint r)
+                                         offset (lsb/read-long r)]
+                                     {:start-chrom-ix start-chrom-ix
+                                      :start-base start-base
+                                      :end-chrom-ix end-chrom-ix
+                                      :end-base end-base
+                                      :offset offset})))
+                     doall
+                     (sequence
+                      (comp
+                       (filter (fn [{:keys [start-chrom-ix start-base
+                                            end-chrom-ix end-base]}]
+                                 (cir-tree-overlaps? id start end
+                                                     start-chrom-ix start-base
+                                                     end-chrom-ix end-base)))
+                       (mapcat (fn [{:keys [offset]}] (make-blocks offset)))))))))]
+    (make-blocks root-offset)))</pre></td></tr><tr><td class="docs"><p>Returns a sequence of blocks that describe overlapping chrom range.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- fetch-overlapping-blocks-group
+  [^RandomAccessFile r ^BbiChromInfo chrom-info ^CirTree cir-tree]
+  (fetch-overlapping-blocks r (:id chrom-info) 0 (:size chrom-info) cir-tree))</pre></td></tr><tr><td class="docs"><p>Returns a range intersection of two ranges that include <code>start</code> and <code>end</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- range-intersection
+  [a b]
+  (- (min (:end a) (:end b))
+     (max (:start a) (:start b))))</pre></td></tr><tr><td class="docs"><p>Converts bigWig tracks into BedGraph format (1-based, fully-closed).</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- -&gt;bedgraph
+  [^ByteBuffer bb track-start track-end item-count chrom rng]
+  (-&gt;&gt; (repeatedly item-count
+                   (fn []
+                     (let [start (.getInt bb)
+                           end (.getInt bb)
+                           value (.getFloat bb)]
+                       (when (pos? (range-intersection rng {:start start :end end}))
+                         {:track {:line nil :chr chrom :start track-start
+                                  :end track-end}
+                          :chr chrom :start (inc start) :end end :value value}))))
+       (remove nil?)
+       doall))</pre></td></tr><tr><td class="docs"><p>Converts bigWig tracks into variableStep tracks of wig format
+  (1-start, fully-closed).</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- -&gt;variable-step
+  [^ByteBuffer bb item-span item-count chrom rng]
+  (-&gt;&gt; (repeatedly item-count
+                   (fn []
+                     (let [start (.getInt bb)
+                           value (.getFloat bb)]
+                       (when (pos? (range-intersection rng {:start start
+                                                            :end (+ start item-span)}))
+                         {:track {:line nil :format :variable-step :chr chrom
+                                  :step nil :span item-span}
+                          :chr chrom :start (inc start)
+                          :end (+ start item-span) :value value}))))
+       (remove nil?)
+       doall))</pre></td></tr><tr><td class="docs"><p>Converts bigWig tracks into fixedStep tracks of wig format
+  (1-start, fully-closed).</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- -&gt;fixed-step
+  [^ByteBuffer bb start item-step item-span item-count chrom rng]
+  (reduce
+   (fn [acc i]
+     (let [value (.getFloat bb)
+           cur-start (+ start (* i item-step))
+           cur-end (+ cur-start item-span)]
+       (if (pos? (range-intersection rng {:start cur-start :end cur-end}))
+         (conj acc {:track {:line nil :format :fixed-step :chr chrom
+                            :step item-step :span item-span}
+                    :chr chrom :value value :start (inc cur-start) :end cur-end})
+         acc)))
+   []
+   (range item-count)))</pre></td></tr><tr><td class="docs"><p>Reads blocks according to BbiChromInfo data and returns tracks described
+  Wig or BedGraph format.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- read-blocks
+  [^RandomAccessFile r ^BbiChromInfo chrom-info {:keys [fixed-width-header cir-tree]}]
+  (let [blocks (fetch-overlapping-blocks-group r chrom-info cir-tree)
+        rng {:start 0, :end (:size chrom-info)}]
+    (-&gt;&gt; blocks
+         (map
+          (fn [{:keys [offset size]}]
+            (.seek r offset)
+            (lsb/read-bytes r size)))
+         (map
+          (fn [^bytes block]
+            (let [inf (doto (Inflater.)
+                        (.setInput block))
+                  ba (byte-array (:uncompress-buf-size fixed-width-header))
+                  uncompress-size (.inflate inf ba)]
+              (.end inf)
+              (doto (ByteBuffer/wrap ba 0 uncompress-size)
+                (.order
+                 (case (:magic fixed-width-header)
+                   0x888ffc26 ByteOrder/LITTLE_ENDIAN
+                   0x26fc8f88 ByteOrder/BIG_ENDIAN))))))
+         (mapcat
+          (fn [^ByteBuffer bb]
+            (let [_chrom-id (.getInt bb)
+                  start (.getInt bb)
+                  end (.getInt bb)
+                  item-step (.getInt bb)
+                  item-span (.getInt bb)
+                  typ (int (.get bb))
+                  _reserved (int (.get bb))
+                  item-count (.getShort bb)]
+              (case typ
+                1 (-&gt;bedgraph bb start end item-count (:name chrom-info) rng)
+                2 (-&gt;variable-step bb item-span item-count (:name chrom-info) rng)
+                3 (-&gt;fixed-step bb start item-step item-span item-count
+                                (:name chrom-info) rng)
+                (throw (IOException.
+                        &quot;Invalid type of bigWig section header.&quot;)))))))))</pre></td></tr><tr><td class="docs"><p>Reads a bigWig tracks from reader and returns a sequence of tracks
+  representing Wig (fixedStep or variableStep) or BedGraph format.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-tracks
+  [^BIGWIGReader rdr]
+  (let [r ^RandomAccessFile (.reader rdr)]
+    (mapcat (fn [chrom-info]
+              (read-blocks r chrom-info (.headers rdr)))
+            (:bbi-chrom-info (.headers rdr)))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

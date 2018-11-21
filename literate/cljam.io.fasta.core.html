@@ -2907,7 +2907,13 @@ net.brehaut.ClojureTools = (function (SH) {
   (try
     (fai/get-headers @(.index-delay rdr))
     (catch FileNotFoundException _
-      (reader/load-headers (.reader rdr)))))</pre></td></tr><tr><td class="docs">
+      (reader/load-headers (.reader rdr)))))</pre></td></tr><tr><td class="docs"><p>Read summaries of sequences in this FASTA file.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-seq-summaries
+  [^FASTAReader rdr]
+  (mapv
+   (fn [{:keys [name len]}]
+     {:name name, :len len})
+   (fai/get-indices @(.index-delay rdr))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-indices
   [^FASTAReader rdr]
   (fai/get-indices @(.index-delay rdr)))</pre></td></tr><tr><td class="docs"><p>Reads sequences by line, returning the line-separated sequences
@@ -2948,6 +2954,8 @@ net.brehaut.ClojureTools = (function (SH) {
     ([this region option]
      (protocols/read-sequence this region option)))
   protocols/ISequenceReader
+  (read-seq-summaries
+    [this] (read-seq-summaries this))
   (read-indices
     [this] (read-indices this))
   (read-all-sequences

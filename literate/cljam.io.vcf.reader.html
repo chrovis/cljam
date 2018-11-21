@@ -2912,15 +2912,34 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- meta-line?
   [line]
-  (= (subs line 0 2) &quot;##&quot;))</pre></td></tr><tr><td class="docs"><p>e.g. (parse-structured-line "ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data"")
+  (= (subs line 0 2) &quot;##&quot;))</pre></td></tr><tr><td class="docs"><p>e.g. (parse-structured-line "ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\"")
         => {:id "NS" :number "1" :type "Integer"
             :description "Number of Samples With Data"}</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-structured-line
+  &quot;e.g. (parse-structured-line \&quot;ID=NS,Number=1,Type=Integer,Description=\\\&quot;Number of Samples With Data\\\&quot;\&quot;)
+        =&gt; {:id \&quot;NS\&quot; :number \&quot;1\&quot; :type \&quot;Integer\&quot;
+            :description \&quot;Number of Samples With Data\&quot;}&quot;
   [s]
-  (-&gt;&gt; (re-seq #&quot;([\w:/\.\?\-]*)=((?:\&quot;(.*)\&quot;)|([\w:/\.\?\-]*))&quot; s)
-       (map (fn [[_ k v1 v2 _]]
-              {(-&gt;kebab-case-keyword k) (dot-&gt;nil (or v2 v1))}))
-       (apply merge)))</pre></td></tr><tr><td class="docs">
+  (letfn [(parse-string-field [s]
+            (loop [s s, acc []]
+              (if-let [[_ pre c post] (re-matches #&quot;([^\\\&quot;]*?)([\\\&quot;])(.*)&quot; s)]
+                (if (= c &quot;\\&quot;)
+                  ;; expecting one of the special characters occurs immediately after \\
+                  (if (#{\\ \&quot;} (first post))
+                    (recur (subs post 1) (conj acc pre (first post)))
+                    (let [msg (str &quot;Either '\\' or '\&quot;' was expected immediately after '\\', &quot;
+                                   &quot;but got '&quot; (first post) &quot;'&quot;)]
+                      (throw (RuntimeException. msg))))
+                  ;; c == \&quot;, that is, we are now at the end of the string field
+                  [nil (cstr/join (conj acc pre)) (cstr/replace post #&quot;^,&quot; &quot;&quot;)])
+                (throw (RuntimeException. &quot;Unexpected end of string field&quot;)))))]
+    (loop [s s, m {}]
+      (if-let [[_ k more] (some-&gt;&gt; s (re-matches #&quot;([^=]+?)=(.*)&quot;))]
+        (let [[_ v more] (if (= (first more) \&quot;)
+                           (parse-string-field (subs more 1))
+                           (re-matches #&quot;([^,]*?)(?:,(.*))?&quot; more))]
+          (recur more (assoc m (-&gt;kebab-case-keyword k) (dot-&gt;nil v))))
+        m))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-meta-info-contig
   [m]
   (update m :length as-long))</pre></td></tr><tr><td class="docs">

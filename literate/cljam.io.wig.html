@@ -2865,153 +2865,201 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.algo.pileup.mpileup" name="cljam.algo.pileup.mpileup"><h1 class="project-name">cljam.algo.pileup.mpileup</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.algo.pileup.mpileup
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.wig" name="cljam.io.wig"><h1 class="project-name">cljam.io.wig</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to read and write the WIG (Wiggle) format. See
+  https://genome.ucsc.edu/goldenpath/help/wiggle.html for the detail WIG
+  specifications.</p>
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.wig
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
-            [clojure.tools.logging :as logging]
-            [cljam.io.sam :as sam]
-            [cljam.io.sam.util.cigar :as cigar]
-            [cljam.io.sam.util.flag :as flag]
-            [cljam.io.sam.util.refs :as refs]
-            [cljam.io.sequence :as cseq]))</pre></td></tr><tr><td class="docs"><p>Stringify mpileup sequence.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn to-mpileup
-  [x]
-  (if (vector? x)
-    (let [[y op xs] x] (apply str y op (count xs) xs))
-    (str x)))</pre></td></tr><tr><td class="docs"><p>Substitute sequence with mpileup index.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn substitute-seq
-  [[^Character r &amp; refs] ^String s [op x xs]]
-  (letfn [(get-char [i] (if (number? i) (let [c (.charAt s i)] (if (= c r) \. c)) i))]
-    (case op
-      :m (get-char x)
-      :d [(get-char x) \- (take (count xs) refs)]
-      :i [(get-char x) \+ (map #(.charAt s %) xs)]
-      x)))</pre></td></tr><tr><td class="docs"><p>Substitute base quality with mpileup index.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn substitute-qual
-  [^String q [op x]]
-  (if (and (number? x) (not= q &quot;*&quot;)) (.charAt q x) \~))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence that each element contains reads piled-up at the locus.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn pileup-seq
-  [^long start ^long end reads]
-  (letfn [(cover-locus? [pos aln]
-            (&lt;= (:pos aln) pos (:end aln)))
-          (step [pos buf alns]
+            [proton.core :refer [as-long as-double]]
+            [cljam.io.protocols :as protocols]
+            [cljam.util :as util]
+            [cljam.util.chromosome :as chr])
+  (:import [java.net URL]
+           [java.io BufferedReader BufferedWriter Closeable]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(declare read-fields write-fields)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord WIGReader [^BufferedReader reader ^URL url]
+  Closeable
+  (close [this]
+    (.close ^Closeable (.reader this)))
+  protocols/IReader
+  (reader-url [this] (.url this))
+  (read [this] (read-fields this))
+  (read [this option] (read-fields this))
+  (indexed? [_] false))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord WIGWriter [^BufferedWriter writer ^URL url]
+  Closeable
+  (close [this]
+    (.close ^Closeable (.writer this)))
+  protocols/IWriter
+  (writer-url [this] (.url this)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.wig.WIGReader of f. Should be used inside with-open
+  to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn ^WIGReader reader
+  [f]
+  (WIGReader. (cio/reader (util/compressor-input-stream f)) (util/as-url f)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.wig.WIGWriter of f. Should be used inside with-open
+  to ensure the writer is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn ^WIGWriter writer
+  [f]
+  (WIGWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const wig-fields [:track :chr :start :end :value])</pre></td></tr><tr><td class="docs"><p>Returns true if given string is a blank, header, or comment line.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- header-or-comment?
+  [^String s]
+  (or (empty? s)
+      (.startsWith s &quot;browser&quot;)
+      (.startsWith s &quot;#&quot;)))</pre></td></tr><tr><td class="docs"><p>Normalize WIG lines.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- normalize
+  [m]
+  (update m :chr chr/normalize-chromosome-key))</pre></td></tr><tr><td class="docs"><p>Convert vector ["key1=value1" "key2=value2" ...] to map
+  {:key1 "value1" :key2 "value2" ...}.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- fields-&gt;map
+  [fields]
+  (into {}
+        (map (fn [field]
+               (let [[k v] (cstr/split field #&quot;=&quot;)]
+                 [(keyword k) v])))
+        fields))</pre></td></tr><tr><td class="docs"><p>Convert string to Wiggle track data values which can be integer or real,
+  positive or negative values.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- str-&gt;wiggle-track-data
+  [^String s]
+  (if-let [l (as-long s)]
+    l
+    (as-double s)))</pre></td></tr><tr><td class="docs"><p>Parse WIG lines and return a lazy sequence of flat map.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- deserialize-wigs
+  [lines]
+  (letfn [(deserialize [lines pre-start track]
             (lazy-seq
-             (when (&lt; pos end)
-               (let [[i o] (split-with (partial cover-locus? (inc pos)) alns)
-                     b (doall (concat (filter #(&lt;= (inc pos) (:end %)) buf) i))]
-                 (cons b (step (inc pos) b o))))))]
-    (-&gt;&gt; reads
-         (sequence
-          (comp
-           (remove #(empty? (:cigar %)))
-           (drop-while #(&lt; (:end %) start))))
-         (step (dec start) []))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord MPileupElement [^String rname ^long pos ^Character ref pile])</pre></td></tr><tr><td class="docs"><p>Compute mpileup info from piled-up reads and reference.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn gen-mpileup
-  [^String rname ^long locus [^Character ref-base :as refs] reads]
-  (-&gt;&gt; reads
-       (map (fn gen-mpileup-seq [{:keys [^long pos seq qual cig-index] :as aln}]
-              {:qual (- (int (substitute-qual qual (nth cig-index (- locus pos)))) 33)
-               :seq (substitute-seq refs seq (nth cig-index (- locus pos)))
-               :read aln}))
-       (MPileupElement. rname locus ref-base)))</pre></td></tr><tr><td class="docs"><p>Internal mpileup function independent from I/O.
-   Can take multiple alignments seqs.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn pileup*
-  [refseq {:keys [chr start end]} &amp; aln-seqs]
-  (-&gt;&gt; aln-seqs
-       (map
-        (fn [alns]
-          (-&gt;&gt; alns
-               (map (fn [a] (assoc a :cig-index (cigar/to-index (:cigar a)))))
-               (pileup-seq start end))))
-       (apply map
-              (fn [index refs &amp; plps]
-                (map (fn [plp] (gen-mpileup chr index refs plp)) plps))
-              (range start (inc end))
-              (partition 100 1 (concat refseq (repeat \N))))))</pre></td></tr><tr><td class="docs"><p>Basic predicate function for filtering alignments for mpileup.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn basic-mpileup-pred
-  [{:keys [flag]}]
-  (and flag
-       (zero? (bit-and (flag/encoded #{:unmapped :filtered-out :duplicated :supplementary :secondary}) flag))
-       (or (not (flag/multiple? flag)) (flag/properly-aligned? flag))))</pre></td></tr><tr><td class="docs"><p>Correct quality of two overlapped mate reads by setting zero quality for one of the base.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- correct-qual
-  [{s1 :seq q1 :qual :as r1} {s2 :seq q2 :qual :as r2}]
-  (if (= s1 s2)
-    [(assoc r1 :qual (min 200 (+ q1 q2))) (assoc r2 :qual 0)]
-    (if (&lt;= q2 q1)
-      [(assoc r1 :qual (int (* 0.8 q1))) (assoc r2 :qual 0)]
-      [(assoc r1 :qual 0) (assoc r2 :qual (int (* 0.8 q2)))])))</pre></td></tr><tr><td class="docs"><p>Correct quality of two overlapped mate reads in piled-up reads.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn correct-overlapped-reads
-  [pile]
-  (if (&lt;= (count (:pile pile)) 1)
-    pile
-    (-&gt;&gt; (:pile pile)
-         (group-by (comp :qname :read))
-         (mapcat
-          (fn [[qname xs]]
-            (if (&lt;= (count xs) 1) xs (apply correct-qual xs))))
-         (assoc pile :pile))))</pre></td></tr><tr><td class="docs"><p>Returns a predicate for filtering piled-up reads by base quality at its position.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn filter-by-base-quality
-  [min-base-quality]
-  (fn [p] (update p :pile (fn [pp] (filter #(&lt;= min-base-quality (:qual %)) pp)))))</pre></td></tr><tr><td class="docs"><p>Converts a pile {:pile [{:seq SEQ, :qual QUAL, :read READ}]}
-  into {:seq [], :qual [], :reads []}.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn transpose-pile
-  [p]
-  (if (zero? (count (:pile p)))
-    (assoc p :seq [] :qual [] :reads [] :count 0)
-    (-&gt;&gt; (:pile p)
-         (map (juxt :seq #(char (+ (:qual %) 33)) :read))
-         (apply map vector)
-         (zipmap [:seq :qual :reads])
-         (merge p {:count (count (:pile p))}))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of MPileupElement calculated from FASTA and BAM.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn pileup
-  ([bam-reader region]
-   (pileup nil bam-reader region))
-  ([ref-reader bam-reader {:keys [chr start end] :or {start -1 end -1}}]
-   (try
-     (if-let [r (refs/ref-by-name (sam/read-refs bam-reader) chr)]
-       (let [s (if (neg? start) 1 start)
-             e (if (neg? end) (:len r) end)
-             refseq (if ref-reader
-                      (cseq/read-sequence ref-reader {:chr chr :start s :end e})
-                      (repeat \N))]
-         (-&gt;&gt; (sam/read-alignments bam-reader {:chr chr :start s :end e})
-              (sequence
-               (comp
-                (filter basic-mpileup-pred)
-                (filter (fn [a] (&lt;= 0 (:mapq a))))))
-              (pileup* refseq {:chr chr :start s :end e})
-              (sequence
-               (comp (map first)
-                     (map correct-overlapped-reads)
-                     (map (filter-by-base-quality 13))
-                     (map transpose-pile)
-                     (map (fn [p] (update p :seq (fn [s] (map to-mpileup s))))))))))
-     (catch bgzf4j.BGZFException _
-       (throw (RuntimeException. &quot;Invalid file format&quot;))))))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- write-line!
-  [^java.io.BufferedWriter w line]
-  (.write w (cstr/join \tab [(:rname line)
-                             (:pos line)
-                             (:ref line)
-                             (:count line)
-                             (cstr/join (:seq line))
-                             (cstr/join (:qual line))]))
-  (.newLine w))</pre></td></tr><tr><td class="docs"><p>Creates a mpileup file from the BAM file.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn create-mpileup
-  [f fa-rdr bam-reader]
-  (try
-    (with-open [w (cio/writer f)]
-      (doseq [rname (map :name (sam/read-refs bam-reader))]
-        (doseq [line (pileup fa-rdr bam-reader {:chr rname})]
-          (when-not (zero? (:count line))
-            (write-line! w line)))))
-    (catch Exception e (do
-                         (cio/delete-file f)
-                         (logging/error &quot;Failed to create mpileup&quot;)
-                         (throw e)))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+             (when-first [line lines]
+               (let [fields (-&gt; line cstr/trim (cstr/split #&quot;\s+&quot;))]
+                 (case (first fields)
+                   ; track definition line
+                   &quot;track&quot;
+                   (let [type (-&gt;&gt; fields rest fields-&gt;map :type)]
+                     (if (= type &quot;wiggle_0&quot;)
+                       (deserialize (rest lines) pre-start {:line line})
+                       (throw &quot;The track type with version must be `wiggle_0`&quot;)))
+                   ; declaration line of variableStep
+                   &quot;variableStep&quot;
+                   (let [{:keys [chrom span]
+                          :or {span 1}} (-&gt;&gt; fields rest fields-&gt;map)
+                         span (as-long span)
+                         track (assoc track :format :variable-step
+                                            :chr chrom
+                                            :span span
+                                            :step nil)]
+                     (deserialize (rest lines) nil track))
+                   ; declaration line of fixedStep
+                   &quot;fixedStep&quot;
+                   (let [{:keys [chrom start span step]
+                          :or {span 1, step 1}} (-&gt;&gt; fields rest fields-&gt;map)
+                         step (as-long step)
+                         pre-start (- (as-long start) step)
+                         span (as-long span)
+                         track (assoc track :format :fixed-step
+                                            :chr chrom
+                                            :span span
+                                            :step step)]
+                     (deserialize (rest lines) pre-start track))
+                   ; data line
+                   (let [m (case (:format track)
+                             :variable-step
+                             (let [{:keys [chr span]} track
+                                   [start value] fields
+                                   start (as-long start)
+                                   end (dec (+ start span))
+                                   value (str-&gt;wiggle-track-data value)]
+                               {:track track
+                                :chr chr
+                                :start start
+                                :end end
+                                :value value})
+                             :fixed-step
+                             (let [{:keys [chr span step]} track
+                                   start (+ pre-start step)
+                                   end (dec (+ start span))
+                                   value (-&gt; fields first str-&gt;wiggle-track-data)]
+                               {:track track
+                                :chr chr
+                                :start start
+                                :end end
+                                :value value})
+                             (throw
+                              (IllegalArgumentException.
+                               &quot;Invalid wiggle format&quot;)))]
+                     (cons m (deserialize (rest lines)
+                                          (:start m)
+                                          track))))))))]
+    (deserialize lines nil {:line nil
+                            :format nil
+                            :chr nil
+                            :step nil
+                            :span nil})))</pre></td></tr><tr><td class="docs"><p>Serialize a sequence of WIG fields into a lazy sequence of string.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- serialize-wigs
+  [wigs]
+  {:pre [;; These fields are required.
+         (map (fn [wig] (every? some? ((apply juxt wig-fields) wig))) wigs)
+         ;; There are two options for formatting wiggle data.
+         (map (fn [wig]
+                (let [format (-&gt; wig :track :format)]
+                  (or (= format :fixed-step)
+                      (= format :variable-step))))
+              wigs)]}
+  (letfn [(serialize [wigs]
+            (-&gt;&gt; wigs
+                 (sequence
+                  (comp
+                   (partition-by (juxt (comp :format :track)
+                                       #(- (:end %) (:start %))))
+                   (map
+                    (fn [[{{:keys [line format span step]} :track
+                           chr :chr
+                           start :start
+                           end :end} :as xs]]
+                      (case format
+                        :variable-step
+                        (let [declaration-line (-&gt;&gt; (cond-&gt; [&quot;variableStep&quot;
+                                                             (str &quot;chrom=&quot; chr)]
+                                                      (not= span 1)
+                                                      (conj (str &quot;span=&quot; span)))
+                                                    (cstr/join \space))
+                              data-lines (-&gt;&gt; xs
+                                              (map (fn [{:keys [start value]}]
+                                                     (cstr/join \space
+                                                                [start value])))
+                                              (cstr/join \newline))]
+                          (cstr/join \newline
+                                     (cond-&gt;&gt; [declaration-line data-lines]
+                                       line (cons line))))
+                        :fixed-step
+                        (let [declaration-line (-&gt;&gt; (cond-&gt; [&quot;fixedStep&quot;
+                                                             (str &quot;chrom=&quot; chr)
+                                                             (str &quot;start=&quot; start)]
+                                                      (not= step 1)
+                                                      (conj (str &quot;step=&quot; step))
+                                                      (not= span 1)
+                                                      (conj (str &quot;span=&quot; span)))
+                                                    (cstr/join \space))
+                              data-lines (-&gt;&gt; xs
+                                              (map (fn [{:keys [value]}] value))
+                                              (cstr/join \newline))]
+                          (cstr/join \newline
+                                     (cond-&gt;&gt; [declaration-line data-lines]
+                                       line (cons line)))))))))))]
+    (serialize wigs)))</pre></td></tr><tr><td class="docs"><p>Read sequence of WIG fields from reader</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-fields
+  [^WIGReader rdr]
+  (-&gt;&gt; rdr
+       .reader
+       line-seq
+       (remove header-or-comment?)
+       deserialize-wigs
+       (map normalize)))</pre></td></tr><tr><td class="docs"><p>Write sequence of WIG fields to writer.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn write-fields
+  [^WIGWriter wtr xs]
+  (let [w ^BufferedWriter (.writer wtr)]
+    (-&gt;&gt; xs
+         serialize-wigs
+         (interpose \newline)
+         (run! #(.write w (str %))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

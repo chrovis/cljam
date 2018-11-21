@@ -2865,96 +2865,310 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.cigar" name="cljam.io.sam.util.cigar"><h1 class="project-name">cljam.io.sam.util.cigar</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Parser of CIGAR strings.</p>
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam.util.cigar
-  (:import [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs"><p>Parses CIGAR string, returning a sequence of lengths and operations.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn parse
-  [^String s]
-  (for [[_ n op] (re-seq #&quot;([0-9]*)([MIDNSHP=X])&quot; s)]
-    [(Integer/parseInt n) (first op)]))</pre></td></tr><tr><td class="docs"><p>Merge contiguous same operations of parsed CIGAR.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn simplify
-  [cigs]
-  (loop [[[^long l op :as x] &amp; xs] cigs result (transient [])]
-    (if (and l op)
-      (let [[^long nl nop] (first xs)]
-        (if (= op nop)
-          (recur (cons [(+ l nl) op] (next xs)) result)
-          (recur xs (conj! result x))))
-      (persistent! result))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- concat! [v coll]
-  (reduce conj! v coll))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- update-last! [coll f]
-  (let [c (dec (count coll))]
-    (if (neg? c)
-      coll
-      (let [[op x] (get coll c)]
-        (if (= :m op)
-          (assoc! coll c (f x))
-          coll)))))</pre></td></tr><tr><td class="docs"><p>Convert CIGAR string to sequence of indices.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn to-index*
-  [^String s]
-  (let [cigs (simplify (remove (comp #{\P \H} second) (parse s)))]
-    (loop [[[^long l op] &amp; xs] cigs r 0 s 0 idx (transient [])]
-      (if (and l op)
-        (condp get op
-          #{\M \= \X} (recur xs (+ l r) (+ l s) (concat! idx (map (fn [x] [:m x]) (range s (+ l s)))))
-          #{\D} (recur xs (+ r l) s (concat! (update-last! idx (fn [x] [:d x l])) (repeat l [:m \*])))
-          #{\N} (recur xs (+ r l) s (concat! idx (repeat l [:m \&gt;])))
-          #{\S} (recur xs r (+ s l) idx)
-          #{\I} (recur xs r (+ s l) (update-last! idx (fn [x] [:i x [s (+ l s)]]))))
-        (persistent! idx)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def to-index (memoize to-index*))</pre></td></tr><tr><td class="docs"><p>Returns length of CIGAR operations.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn count-op
-  [^String s]
-  (count (parse s)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- count-ref-str*
-  [^String s]
-  (-&gt;&gt; (parse s)
-       (filter (comp #{\M \D \N \= \X} peek))
-       (map first)
-       (reduce +)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private count-ref-str
-  (memoize count-ref-str*))</pre></td></tr><tr><td class="docs"><p>Count covering length in reference from encoded CIGAR byte-array.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn count-ref-bytes
-  [cigar-bytes]
-  (let [buf (ByteBuffer/wrap cigar-bytes)]
-    (.order buf ByteOrder/LITTLE_ENDIAN)
-    (loop [ref-length 0]
-      (if (.hasRemaining buf)
-        (let [b (.getInt buf)
-              op (bit-and b 0xF)
-              n (bit-shift-right b 4)]
-          (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
-        ref-length))))</pre></td></tr><tr><td class="docs"><p>Decode CIGAR string and length of alignment in reference.
-  Returns a vector of [cigar, ref-length].</p>
-</td><td class="codes"><pre class="brush: clojure">(defn decode-cigar-and-ref-length
-  [cigar-bytes]
-  (let [buf (ByteBuffer/wrap cigar-bytes)
-        sb (StringBuilder.)]
-    (.order buf ByteOrder/LITTLE_ENDIAN)
-    (loop [ref-length 0]
-      (if (.hasRemaining buf)
-        (let [b (.getInt buf)
-              op (bit-and b 0xF)
-              n  (bit-shift-right b 4)]
-          (doto sb
-            (.append n)
-            (.append (case op 0 \M 1 \I 2 \D 3 \N 4 \S 5 \H 6 \P 7 \= 8 \X)))
-          (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
-        [(.toString sb) ref-length]))))</pre></td></tr><tr><td class="docs"><p>Encodes CIGAR string into a sequence of longs.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn encode-cigar
-  [cigar]
-  (mapv #(bit-or (bit-shift-left (first %) 4)
-                 (case (second %) \M 0 \I 1 \D 2 \N 3 \S 4 \H 5 \P 6 \= 7 \X 8))
-        (parse cigar)))</pre></td></tr><tr><td class="docs"><p>Returns length of reference bases.</p>
-</td><td class="codes"><pre class="brush: clojure">(defmulti count-ref
-  class)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmethod count-ref String
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.gff" name="cljam.io.gff"><h1 class="project-name">cljam.io.gff</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.gff
+  (:require [clojure.string :as cstr]
+            [clojure.java.io :as cio]
+            [proton.core :as p]
+            [cljam.util :as util])
+  (:import [java.io Closeable BufferedReader BufferedWriter]
+           java.nio.CharBuffer))</pre></td></tr><tr><td class="docs"><h2>Encoder / Decoder</h2>
+</td><td class="codes"></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- escape-in-column? [^long i]
+  (or (&lt;= i 0x1F)
+      (= i 0x25)
+      (= i 0x7F)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- escape-in-attr? [^long i]
+  (or (&lt;= i 0x1F)
+      (= i 0x25)
+      (= i 0x26)
+      (= i 0x2C)
+      (= i 0x3B)
+      (= i 0x3D)
+      (= i 0x7F)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- escape-in-target? [^long i]
+  (or (&lt;= i 0x1F)
+      (= i 0x20)
+      (= i 0x25)
+      (= i 0x26)
+      (= i 0x2C)
+      (= i 0x3B)
+      (= i 0x3D)
+      (= i 0x7F)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode [pred ^String s]
+  (let [cb (CharBuffer/wrap s)
+        sb (StringBuilder. (.length s))]
+    (while (.hasRemaining cb)
+      (let [c (.get cb)
+            i (int c)]
+        (if (pred i)
+          (let [upper (bit-and 0xf (unsigned-bit-shift-right i 4))
+                lower (bit-and 0xf i)]
+            (.append sb \%)
+            (.append sb (unchecked-char
+                         (if (&lt;= upper 9) (+ 48 upper) (+ 55 upper))))
+            (.append sb (unchecked-char
+                         (if (&lt;= lower 9) (+ 48 lower) (+ 55 lower)))))
+          (.append sb c))))
+    (str sb)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode-in-attr [s]
+  (encode escape-in-attr? s))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- ^String decode [pred ^String s]
+  (when s
+    (let [cb (CharBuffer/wrap s)
+          sb (StringBuilder. (.length s))]
+      (while (.hasRemaining cb)
+        (let [c (.get cb)]
+          (if (= \% c)
+            (let [upper (.get cb)
+                  lower (.get cb)
+                  i (bit-or
+                     (bit-shift-left
+                      (unchecked-int (Character/digit upper 16)) 4)
+                     (unchecked-int (Character/digit lower 16)))]
+              (if (pred i)
+                (.append sb (unchecked-char i))
+                (throw
+                 (ex-info
+                  &quot;Found an invalid character encoding while decoding GFF3 file&quot;
+                  {:input s, :invalid-string (str c upper lower)}))))
+            (.append sb c))))
+      (str sb))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- ^String decode-in-attr [s]
+  (decode escape-in-attr? s))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode-multiple [xs]
+  (cstr/join \, (map encode-in-attr xs)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- decode-multiple [s]
+  (map (partial decode escape-in-attr?) (cstr/split s #&quot;,&quot;)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private
+  target-regexp
+  #&quot;(\S+) ([1-9]\d*) ([1-9]\d*)(?: ([+-]))?&quot;)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode-target [{:keys [chr start end strand]}]
+  (cstr/join \space (cond-&gt; [(encode escape-in-target? chr) start end]
+                      strand (conj (case strand :forward \+ :reverse \-)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- decode-target [s]
+  (when-let [[_ target-id start end strand] (re-matches target-regexp s)]
+    (cond-&gt; {:chr (decode escape-in-target? target-id)
+             :start (p/as-long start)
+             :end (p/as-long end)}
+      strand (assoc :strand (case (first strand) \+ :forward \- :reverse)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode-gap [xs]
+  (cstr/join \space (map (fn [[op len]] (str op len)) xs)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- decode-gap [s]
+  (-&gt;&gt; s
+       (re-seq #&quot;(?:^|\s)([MIDFR])([1-9]\d*)&quot;)
+       (map
+        (fn [[_ [op] len]]
+          [op (p/as-long len)]))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode-db [xs]
+  (-&gt;&gt; xs
+       (map
+        (fn [{:keys [db-tag id]}]
+          (str
+           (encode escape-in-attr? db-tag)
+           \:
+           (encode escape-in-attr? id))))
+       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- decode-db [s]
+  (-&gt;&gt; (cstr/split s #&quot;,&quot;)
+       (map (fn [x]
+              (let [[db-tag id] (cstr/split x #&quot;:&quot; 2)]
+                {:db-tag (decode escape-in-attr? db-tag),
+                 :id (decode escape-in-attr? id)})))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- dot-&gt;nil [^String s]
+  (when-not (and s
+                 (zero? (dec (.length s)))
+                 (= \. (.charAt s 0)))
+    s))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private
+  predefined-tags
+  ;; `:index` is not defined in the spec, can be ignored
+  {&quot;ID&quot; {:index 0, :key :id,
+         :encoder encode-in-attr, :decoder decode-in-attr},
+   &quot;Name&quot; {:index 2, :key :name,
+           :encoder encode-in-attr, :decoder decode-in-attr},
+   &quot;Alias&quot; {:index 3, :key :alias,
+            :encoder encode-multiple, :decoder decode-multiple},
+   &quot;Parent&quot; {:index 1, :key :parent,
+             :encoder encode-multiple, :decoder decode-multiple},
+   &quot;Target&quot; {:index 4, :key :target,
+             :encoder encode-target, :decoder decode-target},
+   &quot;Gap&quot; {:index 5, :key :gap,
+          :encoder encode-gap, :decoder decode-gap},
+   &quot;Derives_from&quot; {:index 6, :key :derives-from,
+                   :encoder encode-in-attr, :decoder decode-in-attr},
+   &quot;Note&quot; {:index 7, :key :note,
+           :encoder encode-multiple, :decoder decode-multiple},
+   &quot;Dbxref&quot; {:index 8, :key :db-xref,
+             :encoder encode-db, :decoder decode-db},
+   &quot;Ontology_term&quot; {:index 9, :key :ontology-term,
+                    :encoder encode-db, :decoder decode-db},
+   &quot;Is_circular&quot; {:index 10, :key :circular?,
+                  :encoder str, :decoder #(Boolean/parseBoolean %)}})</pre></td></tr><tr><td class="docs"><h2>Reader</h2>
+</td><td class="codes"></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(deftype GFFReader [reader version]
+  Closeable
+  (close [this]
+    (.close ^Closeable (.reader this))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private
+  version-regexp
+  #&quot;##gff-version ([1-9]\d*)(?:\.([1-9]\d*)(?:\.([1-9]\d*))?)?&quot;)</pre></td></tr><tr><td class="docs"><p>Returns a file format version of the given <code>reader</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn version
+  [^GFFReader reader]
+  (.version reader))</pre></td></tr><tr><td class="docs"><p>Returns an open <code>cljam.io.gff.GFFReader</code> instance of <code>f</code>. Should be used
+  inside <code>with-open</code> to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn ^GFFReader reader
+  [f]
+  (let [r ^BufferedReader (cio/reader (util/compressor-input-stream f))]
+    (try
+      (let [version-line (.readLine r)
+            [version-directive &amp; xs] (re-matches version-regexp version-line)
+            {:keys [version] :as v} (-&gt; [:version
+                                         :major-revision
+                                         :minor-revision]
+                                        (zipmap (map p/as-long xs)))]
+        (when-not version-directive
+          (throw
+           (ex-info
+            &quot;GFF3 must start with the `##gff-version 3.#.#` directive&quot;
+            {:url (try (util/as-url f) (catch Exception _ nil)),
+             :version-directive version-line})))
+        (when-not (= version 3)
+          (throw
+           (ex-info
+            &quot;Only GFF version 3 is supported&quot;
+            (assoc v :url (try (util/as-url f) (catch Exception _ nil))))))
+        (GFFReader. r v))
+      (catch Exception e
+        (.close r)
+        (throw e)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- parse-attr [s]
+  (let [[raw-tag value] (cstr/split s #&quot;=&quot; 2)
+        tag' (decode-in-attr raw-tag)
+        {:keys [key decoder]
+         :or {key tag'
+              decoder decode-multiple}} (predefined-tags tag')]
+    [key (decoder value)]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- parse-attrs
   [s]
-  (count-ref-str s))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmethod count-ref (Class/forName &quot;[B&quot;)
-  [b]
-  (count-ref-bytes b))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (into {} (map parse-attr) (some-&gt; s (cstr/split #&quot;;&quot;))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- parse-gff-line
+  [s]
+  (let [[seq-id src typ start end
+         score strand phase attrs] (cstr/split s #&quot;\t&quot; 9)]
+    {:chr (-&gt;&gt; seq-id dot-&gt;nil (decode escape-in-column?))
+     :source (-&gt;&gt; src dot-&gt;nil (decode escape-in-column?))
+     :type (-&gt;&gt; typ dot-&gt;nil (decode escape-in-column?))
+     :start (p/as-long start)
+     :end (p/as-long end)
+     :score (p/as-double score)
+     ;; +: forward, -: reverse, ?: unknown, nil: not-stranded
+     :strand (some-&gt; strand dot-&gt;nil first (case \+ :forward \- :reverse \? :unknown))
+     :phase (some-&gt; phase dot-&gt;nil first (case \0 0 \1 1 \2 2))
+     :attributes (-&gt; attrs dot-&gt;nil parse-attrs)}))</pre></td></tr><tr><td class="docs"><p>Reads features of the GFF file, returning them as a lazy sequence. <code>reader</code>
+  must be an instance of <code>cljam.io.gff.GFFReader</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-features
+  [^GFFReader reader]
+  (-&gt;&gt; reader
+       .reader
+       line-seq
+       (sequence
+        (comp
+         ;; TODO: handle FASTA sequences
+         (take-while #(not (or (cstr/starts-with? % &quot;##FASTA&quot;)
+                               (cstr/starts-with? % &quot;&gt;&quot;))))
+         (comp
+          ;; TODO: handle other directives
+          (remove #(cstr/starts-with? % &quot;#&quot;))
+          ;; TODO: construct tree structures
+          (map parse-gff-line))))))</pre></td></tr><tr><td class="docs"><h2>Writer</h2>
+</td><td class="codes"></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(deftype GFFWriter [writer version]
+  Closeable
+  (close [this]
+    (.close ^Closeable (.writer this))))</pre></td></tr><tr><td class="docs"><p>Returns an open <code>cljam.io.gff.GFFWriter</code> instance of <code>f</code>. Should be used
+  inside <code>with-open</code> to ensure the writer is properly closed. Can take an
+  optional argument <code>options</code>, a map containing <code>:version</code>, <code>:major-revision</code>,
+  <code>:minor-revision</code> and <code>:encoding</code>. Currently supporting only <code>:version</code> 3.
+  To compress outputs, set <code>:encoding</code> to <code>:gzip</code> or <code>:bzip2</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn ^GFFWriter writer
+  ([f]
+   (writer f {}))
+  ([f options]
+   (let [{:keys [encoding version] :as opts} (merge {:version 3} options)
+         url (try (util/as-url f) (catch Exception _ nil))]
+     (when-not (= 3 version)
+       (throw (ex-info &quot;Only GFF3 is supported&quot; (assoc opts :url url))))
+     (-&gt; (cond
+           encoding (util/compressor-output-stream f encoding)
+           url (util/compressor-output-stream f)
+           :else f)
+         cio/writer
+         (GFFWriter. opts)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private
+  inv-predefined-tags
+  (-&gt;&gt; predefined-tags
+       (map (fn [[key-str {:keys [key] :as x}]]
+              [key (assoc x :key-str key-str)]))
+       (into {})))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private
+  predefined-keys
+  (map (comp :key val) (sort-by (comp :index val) predefined-tags)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- write-attrs!
+  [^BufferedWriter w attrs]
+  (let [first? (volatile! true)]
+    (doseq [key (concat predefined-keys
+                        (apply disj (set (keys attrs)) predefined-keys))
+            :let [value (get attrs key)]
+            :when value
+            :let [{:keys [^String key-str encoder]
+                   :or {key-str key
+                        encoder encode-multiple}} (inv-predefined-tags key)]]
+      (if @first?
+        (vreset! first? false)
+        (.append w \;))
+      (.write w key-str)
+      (.append w \=)
+      (.write w ^String (encoder value)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- write-feature!
+  [^BufferedWriter w {:keys [chr ^String source ^String type ^long start
+                             ^long end score ^Character strand phase
+                             attributes]}]
+  (.write w (encode escape-in-column? chr))
+  (.append w \tab)
+  (.write w (or (some-&gt;&gt; source (encode escape-in-column?)) &quot;.&quot;))
+  (.append w \tab)
+  (.write w (or (some-&gt;&gt; type (encode escape-in-column?)) &quot;.&quot;))
+  (.append w \tab)
+  (.write w (String/valueOf start))
+  (.append w \tab)
+  (.write w (String/valueOf end))
+  (.append w \tab)
+  (.write w (or (some-&gt;&gt; score String/valueOf cstr/lower-case) &quot;.&quot;))
+  (.append w \tab)
+  (.append w (case strand :forward \+ :reverse \- :unknown \? nil \.))
+  (.append w \tab)
+  (.append w (if (nil? phase) \. (case (byte phase) 0 \0 1 \1 2 \2)))
+  (.append w \tab)
+  (if (seq attributes)
+    (write-attrs! w attributes)
+    (.append w \.)))</pre></td></tr><tr><td class="docs"><p>Writes <code>features</code> to the GFF file. <code>writer</code> must be an instance of
+  <code>cljam.io.gff.GFFWriter</code>. <code>features</code> must be a sequence of feature maps.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn write-features
+  [^GFFWriter writer features]
+  (let [w ^BufferedWriter (.writer writer)
+        {:keys [^long version major-revision minor-revision]} (.version writer)]
+    (.write w &quot;##gff-version &quot;)
+    (.write w (String/valueOf version))
+    (when major-revision
+      (.append w \.)
+      (.write w (String/valueOf major-revision))
+      (when minor-revision
+        (.append w \.)
+        (.write w (String/valueOf minor-revision))))
+    (doseq [f features]
+      (.newLine w)
+      (write-feature! w f))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

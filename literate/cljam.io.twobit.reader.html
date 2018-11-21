@@ -2867,117 +2867,122 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.twobit.reader" name="cljam.io.twobit.reader"><h1 class="project-name">cljam.io.twobit.reader</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.twobit.reader
-  (:require [clojure.java.io :as cio]
-            [cljam.io.protocols :as protocols]
-            [cljam.io.util.lsb :as lsb]
+  (:require [cljam.io.protocols :as protocols]
             [cljam.util :as util])
-  (:import [java.io Closeable DataInput RandomAccessFile]
-           [java.net URL]
-           [java.nio CharBuffer]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord TwoBitReader [^RandomAccessFile reader ^URL url endian file-index seq-index]
+  (:import [java.io Closeable]
+           [java.util TreeMap HashMap]
+           [java.nio CharBuffer ByteBuffer ByteOrder]
+           [java.nio.channels FileChannel FileChannel$MapMode]
+           [java.nio.file Paths OpenOption StandardOpenOption]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(deftype TwoBitReader [buf url index]
   Closeable
-  (close [this]
-    (.close ^Closeable (.reader this))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-file-header!
-  [^DataInput rdr]
-  (let [sig (.readInt rdr)
-        endian (case sig
-                 0x1A412743 :big
-                 0x4327411A :little
-                 :else nil)]
-    (when endian
-      (let [read-fn (case endian :big #(.readInt ^DataInput %) :little lsb/read-int)
-            ver (read-fn rdr)
-            nseq (read-fn rdr)
-            zero (read-fn rdr)]
-        (when (and (zero? ver) (zero? zero))
-          [endian nseq])))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-index!
-  [^DataInput rdr endian]
-  (let [name-size (case endian
-                    :little (lsb/read-ubyte rdr)
-                    :big (.readUnsignedByte rdr))
-        name-str (case endian
-                   :little (lsb/read-string rdr name-size)
-                   :big (let [ba (byte-array name-size)]
-                          (.readFully rdr ba)
-                          (String. ba)))
-        offset (case endian
-                 :little (lsb/read-int rdr)
-                 :big (.readInt rdr))]
-    {:name name-str
-     :offset offset}))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- read-sequence-header!
-  [^DataInput rdr endian]
-  (let [read-fn (case endian :little lsb/read-int :big #(.readInt ^DataInput %))
-        dna-size (read-fn rdr)
-        n-block-count (read-fn rdr)
-        n-block-starts (doall (repeatedly n-block-count #(inc (read-fn rdr))))
-        n-block-sizes (doall (repeatedly n-block-count #(read-fn rdr)))
-        mask-block-count (read-fn rdr)
-        mask-block-starts (doall (repeatedly mask-block-count #(inc (read-fn rdr))))
-        mask-block-sizes (doall (repeatedly mask-block-count #(read-fn rdr)))
-        zero (read-fn rdr)]
-    {:len dna-size
-     :ambs (mapv vector n-block-starts n-block-sizes)
-     :masks (mapv vector mask-block-starts mask-block-sizes)
-     :header-offset (+ 16 (* n-block-count 4 2) (* mask-block-count 4 2))}))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:const twobit-to-str
+  (close [this]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord ChromHeader [ambs masks ^long header-offset])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defrecord Chrom [name ^int len ^int offset ^int index header])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- ^TreeMap read-header-block! [^ByteBuffer buf]
+  (let [n-blocks (.getInt buf)
+        starts (doto (.slice buf) (.order (.order buf)))
+        _ (.position buf (+ (.position buf) (* Integer/BYTES n-blocks)))
+        m (TreeMap.)]
+    (dotimes [_ n-blocks]
+      (.put m (unchecked-inc-int (.getInt starts)) (.getInt buf)))
+    (assert (= (.size m) n-blocks))
+    m))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- read-sequence-header! [buf]
+  (let [amb-blocks (read-header-block! buf)
+        mask-blocks (read-header-block! buf)]
+    (ChromHeader.
+     amb-blocks
+     mask-blocks
+     (* Integer/BYTES
+        (+ 4 (* (.size amb-blocks) 2) (* (.size mask-blocks) 2))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- read-file-index! [^ByteBuffer buf ^long n-seqs]
+  (let [m (HashMap.)
+        ba (byte-array 255)]
+    (dotimes [i n-seqs]
+      (let [chr-len (Byte/toUnsignedInt (.get buf))
+            _ (.get buf ba 0 chr-len)
+            chr (String. ba 0 chr-len)
+            offset (.getInt buf)
+            _ (.mark buf)
+            _ (.position buf offset)
+            len (.getInt buf)
+            _ (.reset buf)
+            header (delay
+                    (let [buf' (.duplicate buf)]
+                      (.order buf' (.order buf))
+                      (.position buf' (+ offset Integer/BYTES))
+                      (read-sequence-header! buf')))]
+        (.put m chr (Chrom. chr len offset i header))))
+    m))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^&quot;[[C&quot; twobit-to-str
   (let [table &quot;TCAG&quot;]
-    (mapv
-     (fn [j] (let [i (byte (- j 128))
-                   n4 (bit-and i 2r11)
-                   n3 (bit-and (unsigned-bit-shift-right i 2) 2r11)
-                   n2 (bit-and (unsigned-bit-shift-right i 4) 2r11)
-                   n1 (bit-and (unsigned-bit-shift-right i 6) 2r11)]
-               (str (.charAt table n1) (.charAt table n2) (.charAt table n3) (.charAt table n4))))
-     (range 256))))</pre></td></tr><tr><td class="docs"><p>Replace regions of charbuffer with Ns.</p>
+    (-&gt;&gt; 256
+         range
+         (map
+          (fn [j] (let [i (byte (- j 128))
+                        n4 (bit-and i 2r11)
+                        n3 (bit-and (unsigned-bit-shift-right i 2) 2r11)
+                        n2 (bit-and (unsigned-bit-shift-right i 4) 2r11)
+                        n1 (bit-and (unsigned-bit-shift-right i 6) 2r11)]
+                    (char-array [(.charAt table n1)
+                                 (.charAt table n2)
+                                 (.charAt table n3)
+                                 (.charAt table n4)]))))
+         (into-array (Class/forName &quot;[C&quot;)))))</pre></td></tr><tr><td class="docs"><p>Replace regions of charbuffer with Ns.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn replace-ambs!
-  [^CharBuffer cb ambs ^long start ^long end]
-  (doseq [[^long n-start ^long n-size] ambs]
-    (when-not (or (&lt; end n-start) (&lt; (+ n-start n-size -1) start))
-      (.position cb (max 0 (- n-start start)))
-      (dotimes [_ (- (min end (+ n-start n-size -1)) (max start n-start) -1)]
-        (.put cb \N)))))</pre></td></tr><tr><td class="docs"><p>Mask regions of given charbuffer.</p>
+  [^CharBuffer cb ^TreeMap ambs ^long start ^long end]
+  (let [floor (or (.floorKey ambs (int start)) (int 1))]
+    (doseq [[^long n-start ^long n-size] (.subMap ambs floor (int (inc end)))]
+      (when-not (or (&lt; end n-start) (&lt; (+ n-start n-size -1) start))
+        (.position cb (max 0 (- n-start start)))
+        (dotimes [_ (- (min end (+ n-start n-size -1)) (max start n-start) -1)]
+          (.put cb \N))))))</pre></td></tr><tr><td class="docs"><p>Mask regions of given charbuffer.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn mask!
-  [^CharBuffer cb masks ^long start ^long end]
-  (doseq [[^long m-start ^long m-size] masks]
-    (when-not (or (&lt; end m-start) (&lt; (+ m-start m-size -1) start))
-      (.position cb (max 0 (- m-start start)))
-      (.mark cb)
-      (let [ca (char-array (- (min end (+ m-start m-size -1)) (max start m-start) -1))]
-        (.get cb ca)
-        (.reset cb)
-        (dotimes [i (alength ca)]
-          (.put cb (char (+ (int (aget ca i)) 32)))))))) ;; lower case character</pre></td></tr><tr><td class="docs"><p>lower case character</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Reads sequence at the given region from reader.
+  [^CharBuffer cb ^TreeMap masks ^long start ^long end]
+  (let [floor (or (.floorKey masks (int start)) (int 1))]
+    (doseq [[^long m-start ^long m-size] (.subMap masks floor (int (inc end)))]
+      (when-not (or (&lt; end m-start) (&lt; (+ m-start m-size -1) start))
+        (.position cb (max 0 (- m-start start)))
+        (.mark cb)
+        (let [ca (char-array
+                  (- (min end (+ m-start m-size -1))
+                     (max start m-start) -1))]
+          (.get cb ca)
+          (.reset cb)
+          (dotimes [i (alength ca)]
+            ;; to lower case character
+            (.put cb (unchecked-char
+                      (unchecked-add-int
+                       (unchecked-int (aget ca i)) 32)))))))))</pre></td></tr><tr><td class="docs"><p>Reads sequence at the given region from reader.
    Pass {:mask? true} to enable masking of sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^String read-sequence
   ([rdr region]
    (read-sequence rdr region {}))
   ([^TwoBitReader rdr {:keys [chr start end]} {:keys [mask?] :or {mask? false}}]
-   (when-let [[n {:keys [offset]}]
-              (first (filter (fn [[i {:keys [name]}]] (= name chr)) (map vector (range) (.file-index rdr))))]
-     (let [{:keys [len ambs masks header-offset]} @(nth (.seq-index rdr) n) ;; Potential seek &amp; read.
-           start' (max 1 (or start 1))
-           end' (min len (or end len))]
+   (when-let [^Chrom c (get (.index rdr) chr)]
+     (let [start' (long (max 1 (or start 1)))
+           end' (long (min (.len c) (or end (.len c))))]
        (when (&lt;= start' end')
-         (let [start-offset (quot (dec start') 4)
+         ;; Potential seek &amp; read.
+         (let [^ChromHeader h @(.header c)
+               start-offset (quot (dec start') 4)
                end-offset (quot (dec end') 4)
-               ba (byte-array (- end-offset start-offset -1))
-               cb (CharBuffer/allocate (inc (- end' start')))]
-           (.seek ^RandomAccessFile (.reader rdr) (+ offset header-offset start-offset))
-           (.readFully ^RandomAccessFile (.reader rdr) ba)
-           (dotimes [out-pos (inc (- end' start'))]
-             (let [ref-pos (+ out-pos start')
-                   ba-pos (- (quot (dec ref-pos) 4) start-offset)
-                   bit-pos (mod (dec ref-pos) 4)]
-               (when (&lt;= 1 ref-pos len)
-                 (.put cb (.charAt ^String (twobit-to-str (+ (aget ba ba-pos) 128)) bit-pos)))))
-           (replace-ambs! cb ambs start' end')
-           (when mask? (mask! cb masks start' end'))
-           (.rewind cb)
-           (.toString cb)))))))</pre></td></tr><tr><td class="docs">
+               buf ^ByteBuffer (.buf rdr)
+               cb (CharBuffer/allocate (* 4 (inc (- end-offset start-offset))))]
+           (.position buf (+ (.offset c) (.header-offset h) start-offset))
+           (while (.hasRemaining cb)
+             (-&gt;&gt; (unchecked-add-int 128 (.get buf))
+                  ^chars (aget twobit-to-str)
+                  (.put cb)))
+           (let [cb' (-&gt; cb
+                         ^CharBuffer (.position (rem (dec start') 4))
+                         ^CharBuffer .slice
+                         (.limit (int (inc (- end' start')))))]
+             (replace-ambs! cb' (.ambs h) start' end')
+             (when mask? (mask! cb' (.masks h) start' end'))
+             (.rewind cb')
+             (.toString cb'))))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-all-sequences*
   [rdr chrs option]
   (when (seq chrs)
@@ -2990,13 +2995,22 @@ net.brehaut.ClojureTools = (function (SH) {
   ([rdr]
    (read-all-sequences rdr {}))
   ([^TwoBitReader rdr option]
-   (read-all-sequences* rdr (.file-index rdr) option)))</pre></td></tr><tr><td class="docs"><p>Reads metadata of indexed sequences.</p>
+   (read-all-sequences* rdr (sort-by :index (vals (.index rdr))) option)))</pre></td></tr><tr><td class="docs"><p>Reads summaries of sequences in this 2bit file.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-seq-summaries
+  [^TwoBitReader rdr]
+  (mapv
+   (fn [^Chrom c]
+     {:name (.name c), :len (.len c)})
+   (sort-by :index (vals (.index rdr)))))</pre></td></tr><tr><td class="docs"><p>Reads metadata of indexed sequences. Forces loading all indices.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-indices
   [^TwoBitReader rdr]
   (mapv
-   (fn [fi si] (merge fi @si))
-   (.file-index rdr)
-   (.seq-index rdr)))</pre></td></tr><tr><td class="docs">
+   (fn [{:keys [name len offset header]}]
+     (let [{:keys [ambs header-offset masks]} @header]
+       {:name name, :len len, :offset offset,
+        :ambs (into {} ambs), :masks (into {} masks)
+        :header-offset header-offset}))
+   (sort-by :index (vals (.index rdr)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(extend-type TwoBitReader
   protocols/IReader
   (reader-url [this] (.url this))
@@ -3005,6 +3019,8 @@ net.brehaut.ClojureTools = (function (SH) {
     ([this option] (protocols/read-all-sequences this option)))
   (indexed? [_] true)
   protocols/ISequenceReader
+  (read-seq-summaries
+    [this] (read-seq-summaries this))
   (read-indices
     [this] (read-indices this))
   (read-all-sequences
@@ -3021,26 +3037,34 @@ net.brehaut.ClojureTools = (function (SH) {
     (^String [this region]
      (protocols/read-in-region this region {}))
     (^String [this {:keys [chr start end] :as region} option]
-     (read-sequence this region option))))</pre></td></tr><tr><td class="docs"><p>Returns .2bit file reader of f.</p>
+     (read-sequence this region option))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^TwoBitReader reader
-  [^String f]
-  (let [abs-f (.getAbsolutePath (cio/file f))
-        rdr (RandomAccessFile. abs-f &quot;r&quot;)
-        [endian nseq] (read-file-header! rdr)]
-    (when (and endian nseq)
-      (let [indices (vec (repeatedly nseq #(read-index! rdr endian)))
-            seq-indices (mapv (fn [{:keys [offset] :as m}]
-                                (delay
-                                 (with-open [raf (RandomAccessFile. abs-f &quot;r&quot;)]
-                                   (.seek raf offset)
-                                   (read-sequence-header! raf endian))))
-                              indices)]
-        (TwoBitReader. rdr (util/as-url abs-f) endian indices seq-indices)))))</pre></td></tr><tr><td class="docs"><p>Clones .2bit reader sharing persistent objects.</p>
+  [f]
+  (let [url (util/as-url f)]
+    (with-open [ch (-&gt; url
+                       .toURI
+                       Paths/get
+                       (FileChannel/open
+                        (into-array OpenOption [StandardOpenOption/READ])))]
+      (let [buf (.map ch FileChannel$MapMode/READ_ONLY 0 (.size ch))
+            _ (.order buf (case (.getInt buf)
+                            0x1A412743 ByteOrder/BIG_ENDIAN
+                            0x4327411A ByteOrder/LITTLE_ENDIAN))
+            version (.getInt buf)
+            n-seqs (.getInt buf)
+            zero (.getInt buf)]
+        (when-not (zero? version)
+          (throw (ex-info &quot;Version number must be zero.&quot;
+                          {:input f, :url url, :version version})))
+        (when-not (zero? zero)
+          (throw (ex-info &quot;sequenceCount must be followed by zero.&quot;
+                          {:input f, :url url, :zero zero})))
+        (TwoBitReader. buf url (read-file-index! buf n-seqs))))))</pre></td></tr><tr><td class="docs"><p>Clones .2bit reader sharing persistent objects.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^TwoBitReader clone-reader
   [^TwoBitReader rdr]
-  (let [url (.url rdr)
-        raf (RandomAccessFile. (cio/as-file url) &quot;r&quot;)]
-    (TwoBitReader. raf url (.endian rdr) (.file-index rdr) (.seq-index rdr))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (let [buf (doto (.duplicate ^ByteBuffer (.buf rdr))
+              (.order (.order ^ByteBuffer (.buf rdr))))]
+    (TwoBitReader. buf (.url rdr) (.index rdr))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

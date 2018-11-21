@@ -2906,8 +2906,12 @@ net.brehaut.ClojureTools = (function (SH) {
   ([rdr region option] (protocols/read-sequence rdr region option)))</pre></td></tr><tr><td class="docs"><p>Reads all sequences of FASTA/TwoBit file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-all-sequences
   ([rdr] (protocols/read-all-sequences rdr))
-  ([rdr option] (protocols/read-all-sequences rdr option)))</pre></td></tr><tr><td class="docs"><p>Reads metadata of indexed sequences. Returns a vector of maps containing
-  :name, :len and other format-specific keys.</p>
+  ([rdr option] (protocols/read-all-sequences rdr option)))</pre></td></tr><tr><td class="docs"><p>Returns summaries of sequences in FASTA/TwoBit file. Returns a vector of maps
+  containing <code>:name</code> and <code>:len</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-seq-summaries
+  [rdr]
+  (protocols/read-seq-summaries rdr))</pre></td></tr><tr><td class="docs"><p>Reads metadata of indexed sequences. Returns a vector of maps containing
+  <code>:name</code>, <code>:len</code> and other format-specific keys. Forces loading all indices.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-indices
   [rdr]
   (protocols/read-indices rdr))</pre></td></tr><tr><td class="docs"><p>Returns true if the reader can be randomly accessed, false if not. Note this

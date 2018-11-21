@@ -2874,17 +2874,17 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]
             [cljam.io.sam.util.header :as header]
-            [cljam.io.sequence :as cseq]
             [cljam.algo.bam-indexer :as bai]
             [cljam.algo.normal :as normal]
             [cljam.algo.sorter :as sorter]
             [cljam.algo.fasta-indexer :as fai]
             [cljam.algo.dict :as dict]
             [cljam.algo.depth :as depth]
-            [cljam.algo.pileup :as plp]
             [cljam.algo.convert :as convert]
             [cljam.algo.level :as level]
-            [cljam.util.region :as region])
+            [cljam.algo.pileup :as plp]
+            [cljam.util.region :as region]
+            [clojure.java.io :as cio])
   (:import [java.io Closeable BufferedWriter OutputStreamWriter]))</pre></td></tr><tr><td class="docs"><h2>CLI functions</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Exits the program with the status after printing the message.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- exit
@@ -2895,7 +2895,12 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- error-msg
   [errors]
   (str &quot;The following errors occurred while parsing your command:\n\n&quot;
-       (cstr/join \newline errors)))</pre></td></tr><tr><td class="docs"><h2>Sub-commands</h2>
+       (cstr/join \newline errors)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- parse-region [region-str]
+  (when region-str
+    (if-let [reg (region/parse-region region-str)]
+      reg
+      (exit 1 (str &quot;Invalid region format: &quot; region-str)))))</pre></td></tr><tr><td class="docs"><h2>Sub-commands</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><h3>view command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private view-cli-options
@@ -2923,12 +2928,10 @@ net.brehaut.ClojureTools = (function (SH) {
                                  &quot;bam&quot;  (sam/bam-reader f))]
         (when (:header options)
           (println (header/stringify-header (sam/read-header r))))
-        (doseq [aln (if (:region options)
-                      (if-let [region (region/parse-region (:region options))]
-                        (if (sam/indexed? r)
-                          (sam/read-alignments r region)
-                          (exit 1 &quot;Random alignment retrieval only works for indexed BAM.&quot;))
-                        (exit 1 &quot;Invalid region format&quot;))
+        (doseq [aln (if-let [region (parse-region (:region options))]
+                      (if (sam/indexed? r)
+                        (sam/read-alignments r region)
+                        (exit 1 &quot;Random alignment retrieval only works for indexed BAM.&quot;))
                       (sam/read-alignments r))]
           (println (sam-util/stringify-alignment aln))))))
   nil)</pre></td></tr><tr><td class="docs"><h3>convert command</h3>
@@ -3037,74 +3040,33 @@ net.brehaut.ClojureTools = (function (SH) {
         &quot;Options:&quot;
         options-summary]
        (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- pileup-simple
-  ([rdr n-threads]
-   (doseq [rname (map :name (sam/read-refs rdr))]
-     (pileup-simple rdr n-threads {:chr rname})))
-  ([rdr n-threads region]
-   (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
-             *flush-on-newline* false]
-     (doseq [line (depth/lazy-depth rdr region {:n-threads n-threads})]
-       (println line))
-     (flush))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- pileup-with-ref
-  ([rdr ref-fa]
-   (with-open [fa-rdr (cseq/reader ref-fa)]
-     (doseq [rname (map :name (sam/read-refs rdr))
-             line  (plp/mpileup fa-rdr rdr {:chr rname})]
-       (if-not (zero? (:count line))
-         (println (cstr/join \tab (map #(case %
-                                          :qual (cstr/join (% line))
-                                          :seq (cstr/join (% line))
-                                          (% line)) [:rname :pos :ref :count :seq :qual])))))))
-  ([rdr ref-fa region]
-   (with-open [fa-rdr (cseq/reader ref-fa)]
-     (doseq [line  (plp/mpileup fa-rdr rdr region)]
-       (if-not (zero? (:count line))
-         (println (cstr/join \tab (map #(case %
-                                          :qual (cstr/join (% line))
-                                          :seq (cstr/join (% line))
-                                          (% line)) [:rname :pos :ref :count :seq :qual]))))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- pileup-without-ref
-  ([rdr]
-   (doseq [rname (map :name (sam/read-refs rdr))
-           line  (plp/mpileup rdr {:chr rname})]
-     (if-not (zero? (:count line))
-       (println (cstr/join \tab (map #(case %
-                                        :qual (cstr/join (% line))
-                                        :seq (cstr/join (% line))
-                                        (% line)) [:rname :pos :ref :count :seq :qual]))))))
-  ([rdr region]
-   (doseq [line  (plp/mpileup nil rdr region)]
-     (if-not (zero? (:count line))
-       (println (cstr/join \tab (map #(case %
-                                        :qual (cstr/join (% line))
-                                        :seq (cstr/join (% line))
-                                        (% line)) [:rname :pos :ref :count :seq :qual])))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- depth
+  [f region n-threads]
+  (with-open [r (sam/reader f)]
+    (when-not (sam/indexed? r)
+      (exit 1 &quot;Random alignment retrieval only works for indexed BAM.&quot;))
+    (when-not (sorter/sorted? r)
+      (exit 1 &quot;Not sorted&quot;))
+    (let [regs (or (some-&gt; region parse-region vector)
+                   (map (fn [{:keys [name len]}] {:chr name :start 1 :end len}) (sam/read-refs r)))]
+      (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
+                *flush-on-newline* false]
+        (doseq [reg regs
+                line (depth/lazy-depth r reg {:n-threads n-threads})]
+          (println line))
+        (flush)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn pileup [args]
-  (let [{:keys [options arguments errors summary]} (parse-opts args pileup-cli-options)]
+  (let [{:keys [arguments errors summary]
+         {:keys [help region simple ref thread]} :options} (parse-opts args pileup-cli-options)]
     (cond
-     (:help options) (exit 0 (pileup-usage summary))
-     (not= (count arguments) 1) (exit 1 (pileup-usage summary))
-     errors (exit 1 (error-msg errors)))
+      help (exit 0 (pileup-usage summary))
+      (not= (count arguments) 1) (exit 1 (pileup-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
-      (with-open [r (sam/reader f)]
-        (when (= (type r) cljam.io.sam.reader.SAMReader)
-          (exit 1 &quot;Not support SAM file&quot;))
-        (when-not (sorter/sorted? r)
-          (exit 1 &quot;Not sorted&quot;))
-        (if (:region options)
-          (if-let [region (region/parse-region (:region options))]
-            (cond
-              (:simple options) (pileup-simple r (:thread options) region)
-              (:ref options) (pileup-with-ref r (:ref options) region)
-              :else (pileup-without-ref r region))
-            (exit 1 &quot;Invalid region format&quot;))
-          (cond
-            (:simple options) (pileup-simple r (:thread options))
-            (:ref options) (pileup-with-ref r (:ref options))
-            :else (pileup-without-ref r))))))
-  nil)</pre></td></tr><tr><td class="docs"><h3>faidx command</h3>
+      (if simple
+        (depth f region thread)
+        (with-open [w (cio/writer (cio/output-stream System/out))]
+          (plp/create-mpileup f ref w (parse-region region)))))))</pre></td></tr><tr><td class="docs"><h3>faidx command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private faidx-cli-options
   [[&quot;-h&quot; &quot;--help&quot;]])</pre></td></tr><tr><td class="docs">

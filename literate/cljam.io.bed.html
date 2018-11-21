@@ -2955,7 +2955,7 @@ net.brehaut.ClojureTools = (function (SH) {
    {:start as-long
     :end as-long
     :score as-long
-    :strand #(case % &quot;.&quot; :no-strand &quot;+&quot; :plus &quot;-&quot; :minus)
+    :strand #(case % &quot;.&quot; nil &quot;+&quot; :forward &quot;-&quot; :reverse)
     :thick-start as-long
     :thick-end as-long
     :block-count as-long
@@ -2982,7 +2982,7 @@ net.brehaut.ClojureTools = (function (SH) {
          ;; Blocks may not overlap.
          (if-let [xs (:block-starts m)] (apply &lt;= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes m))) true)]}
   (-&gt;&gt; (-&gt; m
-           (update-some :strand #(case % :plus &quot;+&quot; :minus &quot;-&quot; :no-strand &quot;.&quot;))
+           (update-some :strand #(case % :forward &quot;+&quot; :reverse &quot;-&quot; nil &quot;.&quot;))
            (update-some :block-sizes long-list-&gt;str)
            (update-some :block-starts long-list-&gt;str))
        ((apply juxt bed-columns))
@@ -2999,7 +2999,6 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- normalize
   [m]
   (-&gt; m
-      (update :chr chr/normalize-chromosome-key)
       (update :start inc)
       (update-some :thick-start inc)))</pre></td></tr><tr><td class="docs"><p>De-normalize BED fields.
   This is an inverse function of normalize.</p>
@@ -3007,13 +3006,7 @@ net.brehaut.ClojureTools = (function (SH) {
   [m]
   (-&gt; m
       (update :start dec)
-      (update-some :thick-start dec)))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of unnormalized BED fields.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn read-raw-fields
-  [^BEDReader rdr]
-  (sequence
-   (comp (remove header-or-comment?)
-         (map deserialize-bed))
-   (line-seq (.reader rdr))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of normalized BED fields.</p>
+      (update-some :thick-start dec)))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence of normalized BED fields.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-fields
   [^BEDReader rdr]
   (sequence
@@ -3122,14 +3115,7 @@ net.brehaut.ClojureTools = (function (SH) {
                      (cond-&gt;&gt; (complement xs (next chrs) 1)
                        (&lt; pos len)
                        (cons {:chr chr :start pos :end len})))))))]
-      (complement (merge-fields xs) chrs 1))))</pre></td></tr><tr><td class="docs"><p>Write sequence of BED fields to writer without converting :start and :thick-start values.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn write-raw-fields
-  [^BEDWriter wtr xs]
-  (let [w ^BufferedWriter (.writer wtr)]
-    (-&gt;&gt; xs
-         (map serialize-bed)
-         (cstr/join \newline)
-         (.write w))))</pre></td></tr><tr><td class="docs"><p>Write sequence of BED fields to writer.</p>
+      (complement (merge-fields xs) chrs 1))))</pre></td></tr><tr><td class="docs"><p>Write sequence of BED fields to writer.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-fields
   [^BEDWriter wtr xs]
   (let [w ^BufferedWriter (.writer wtr)]

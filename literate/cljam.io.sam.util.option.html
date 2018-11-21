@@ -2958,7 +2958,10 @@ net.brehaut.ClojureTools = (function (SH) {
                     (zipmap rests)
                     (update :pos p/as-long)
                     (update :mapq p/as-long)
-                    (update :strand first)
+                    (update :strand (fn [^String strand]
+                                      (case (.charAt strand 0)
+                                        \+ :forward
+                                        \- :reverse)))
                     (update :edit-distance p/as-long)))))))</pre></td></tr><tr><td class="docs"><p>List of supplementary alignments.</p>
 </td><td class="codes"><pre class="brush: clojure">(def
   ^{:doc 

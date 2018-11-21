@@ -2868,10 +2868,10 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.quality" name="cljam.io.sam.util.quality"><h1 class="project-name">cljam.io.sam.util.quality</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utility functions for phred quality strings.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam.util.quality
   (:import [java.nio ByteBuffer CharBuffer]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro fastq-char-&gt;phred-byte [ch]
+</td><td class="codes"><pre class="brush: clojure">(definline fastq-char-&gt;phred-byte [ch]
   `(byte (- (int ~ch) 33)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmacro phred-byte-&gt;fastq-char [b]
-  `(unchecked-char (unchecked-add ~b 33)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(definline phred-byte-&gt;fastq-char [b]
+  `(unchecked-char (unchecked-add (Math/min 93 (Math/max (long ~b) 0)) 33)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn fastq-&gt;phred ^bytes [^String fastq]
   (let [b (.getBytes fastq)
         in-bb (ByteBuffer/wrap b)

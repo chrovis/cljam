@@ -2915,6 +2915,8 @@ net.brehaut.ClojureTools = (function (SH) {
   (write-variants [this variants]
     &quot;Writes variants to thee VCF/BCF file.&quot;))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defprotocol ISequenceReader
+  (read-seq-summaries [this]
+    &quot;Reads summaries of sequences in the file.&quot;)
   (read-indices [this]
     &quot;Reads metadata of indexed sequences in FASTA/2BIT file.&quot;)
   (read-all-sequences [this] [this option]

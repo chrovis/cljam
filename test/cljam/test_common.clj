@@ -181,6 +181,7 @@
 
 (def test-vcf-v4_0-file "test-resources/vcf/test-v4_0.vcf")
 (def test-vcf-v4_3-file "test-resources/vcf/test-v4_3.vcf")
+(def test-vcf-no-samples-file "test-resources/vcf/test-no-samples.vcf")
 
 ;; ### pileup files
 
@@ -191,6 +192,7 @@
 
 (def test-bcf-v4_3-file "test-resources/bcf/test-v4_3.bcf")
 (def test-bcf-invalid-file "test-resources/bcf/invalid.bcf")
+(def test-bcf-no-samples-file "test-resources/bcf/test-no-samples.bcf")
 
 ;; ### GFF3 files
 
@@ -698,6 +700,9 @@
      :FORMAT [:GT :GQ :DP :HQ], :NA00001 {:GT "0|0", :GQ 54, :DP 7, :HQ [56 60]}, :NA00002 {:GT "0|0", :GQ 48, :DP 4, :HQ [51 51]}, :NA00003 {:GT "0/0", :GQ 61, :DP 2}}
     {:chr "20", :pos 1234567, :id "microsat1", :ref "GTC", :alt ["G" "GTCT"], :qual 50.0, :filter [:PASS], :info {:NS 3, :DP 9, :AA "G"},
      :FORMAT [:GT :GQ :DP], :NA00001 {:GT "0/1", :GQ 35, :DP 4}, :NA00002 {:GT "0/2", :GQ 17, :DP 2}, :NA00003 {:GT "1/1", :GQ 40, :DP 3}}))
+
+(def test-vcf-no-samples-variants-deep
+  [{:chr "1", :pos 10, :id nil, :ref "A", :alt ["T"], :qual nil, :filter [:PASS], :info {:DP 10}}])
 
 ;; http server
 

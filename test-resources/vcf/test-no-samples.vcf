@@ -1,0 +1,6 @@
+##fileformat=VCFv4.3
+##FILTER=<ID=PASS,Description="All filters passed">
+##contig=<ID=1,length=100>
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total depth">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	10	.	A	T	.	PASS	DP=10

@@ -71,7 +71,10 @@
       (is (= (vcf/read-variants rdr) test-vcf-v4_0-variants-deep))))
   (testing "VCF v4.3"
     (with-open [rdr (vcf/reader test-vcf-v4_3-file)]
-      (is (= (vcf/read-variants rdr) test-vcf-v4_3-variants-deep)))))
+      (is (= (vcf/read-variants rdr) test-vcf-v4_3-variants-deep))))
+  (testing "no samples"
+    (with-open [rdr (vcf/reader test-vcf-no-samples-file)]
+      (is (= (vcf/read-variants rdr) test-vcf-no-samples-variants-deep)))))
 
 (deftest read-variants-bcf-test
   (testing "default"
@@ -96,7 +99,10 @@
       (doseq [[v1 v2] (map vector
                            (map (juxt :chr :pos :id :ref :alt) (vcf/read-variants r {:depth :bcf}))
                            (map (fn [v] [0 (:pos v) (:id v) (:ref v) (:alt v)]) test-vcf-v4_3-variants-deep))]
-        (is (= v1 v2))))))
+        (is (= v1 v2)))))
+  (testing "no samples"
+    (with-open [rdr (vcf/reader test-bcf-no-samples-file)]
+      (is (= (vcf/read-variants rdr) test-vcf-no-samples-variants-deep)))))
 
 (deftest writer-test
   (testing "vcf"

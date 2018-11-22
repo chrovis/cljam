@@ -171,7 +171,7 @@
     {:chr chrom-id
      :pos pos
      :ref-length rlen
-     :qual qual
+     :qual (when-not (= (Float/floatToRawIntBits qual) 0x7F800001) qual)
      :id id
      :ref refseq
      :alt (if (empty? altseq) nil altseq)
@@ -197,18 +197,19 @@
                                   (= (:kw tag) :GT) (vcf-util/ints->genotype v)
                                   (and (= (:number tag) 1) (sequential? v)) (first v)
                                   :else v)])))) gts))
-               (range (:n-sample variant)))]
-    (-> (dissoc variant :genotype)
-        (dissoc :ref-length)
-        (dissoc :n-sample)
-        (update :chr (comp :id contigs))
-        (update :filter #(map (comp :kw filters) %))
-        (update :info #(into {} (map (fn [[k v]] [(:kw (info k))
-                                                  (if (and (= (:number (info k)) 1) (sequential? v))
-                                                    (first v)
-                                                    v)])) %))
-        (assoc fmt-kw (map (comp :kw formats first) gts))
-        (merge (zipmap indiv-kws indiv)))))
+               (range (:n-sample variant)))
+        v (-> (dissoc variant :genotype)
+              (dissoc :ref-length)
+              (dissoc :n-sample)
+              (update :chr (comp :id contigs))
+              (update :filter #(map (comp :kw filters) %))
+              (update :info #(into {} (map (fn [[k v]] [(:kw (info k))
+                                                        (if (and (= (:number (info k)) 1) (sequential? v))
+                                                          (first v)
+                                                          v)])) %)))]
+    (cond-> v
+      fmt-kw (assoc fmt-kw (map (comp :kw formats first) gts))
+      indiv-kws (merge (zipmap indiv-kws indiv)))))
 
 (defn- read-data-lines
   "Reads data from BCF file and returns them as a lazy-sequence of maps."

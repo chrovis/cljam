@@ -157,11 +157,11 @@
         parse-info (info-parser (:info meta-info))
         parse-sample (sample-parser (:format meta-info))]
     (fn [v]
-      (-> v
-          (update :filter parse-filter)
-          (update :info parse-info)
-          (update fmt-kw parse-format)
-          (merge (into {} (for [k sample-kws] [k (parse-sample (v fmt-kw) (v k))])))))))
+      (cond-> v
+        true (update :filter parse-filter)
+        true (update :info parse-info)
+        fmt-kw (update fmt-kw parse-format)
+        sample-kws (into (for [k sample-kws] [k (parse-sample (v fmt-kw) (v k))]))))))
 
 (defn variant-vals-stringifier
   "Returns a stringifier function to stringify :filter, :info, :FORMAT and sample columns of VCF.

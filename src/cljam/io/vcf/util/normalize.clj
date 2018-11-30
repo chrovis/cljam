@@ -58,7 +58,7 @@
     (and ref-seq (.equalsIgnoreCase ^String ref-seq ref))))
 
 (defn- trim-right-m
-  "trim-right implementation for general veriants."
+  "trim-right implementation for general variants."
   [seq-reader {:keys [chr pos ^String ref alt] :as v} ^long window]
   (let [n (inc (count alt))
         a (->> alt

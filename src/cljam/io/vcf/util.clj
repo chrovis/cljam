@@ -297,44 +297,50 @@
         eq (fn [^long r ^long a]
              (= (Character/toUpperCase (.charAt ref r))
                 (Character/toUpperCase (.charAt alt a))))
-        [^long r ^long a] (loop [r 0 a 0]
-                            (if (and (< r r-len) (< a a-len) (eq r a))
-                              (recur (inc r) (inc a))
-                              [r a]))]
-    (if (and (< a a-len) (= r r-len))
-      {:type :insertion, :n-bases (- a-len r),
-       :offset (dec a), :inserted (.substring alt a)}
-      (if (and (= a a-len) (< r r-len))
-        {:type :deletion, :n-bases (- a r-len),
-         :offset (dec r), :deleted (.substring ref r)}
-        (if (= r r-len a a-len)
+        left-match (long
+                    (loop [i 0]
+                      (if (and (< i r-len) (< i a-len) (eq i i))
+                        (recur (inc i))
+                        i)))]
+    (if (and (< left-match a-len) (= left-match r-len))
+      {:type :insertion, :n-bases (- a-len left-match),
+       :offset (dec left-match), :inserted (.substring alt left-match)}
+      (if (and (= left-match a-len) (< left-match r-len))
+        {:type :deletion, :n-bases (- left-match r-len),
+         :offset (dec left-match), :deleted (.substring ref left-match)}
+        (if (= left-match r-len a-len)
           {:type :ref}
           (let [[^long re ^long ae] (loop [re (dec r-len)
                                            ae (dec a-len)]
-                                      (if (and (< r re) (< a ae) (eq re ae))
+                                      (if (and (< left-match re)
+                                               (< left-match ae)
+                                               (eq re ae))
                                         (recur (dec re) (dec ae))
                                         [re ae]))]
-            (if (= ae a)
-              (if (= re r)
-                {:type :snp, :ref (.charAt ref a),
-                 :alt (.charAt alt a), :offset a}
-                (let [n (- r re)]
+            (if (= ae left-match)
+              (if (= re left-match)
+                {:type :snp, :ref (.charAt ref left-match),
+                 :alt (.charAt alt left-match), :offset left-match}
+                (let [n (- left-match re)]
                   (if (eq re ae)
                     {:type :deletion, :n-bases n,
-                     :offset (dec r), :deleted (.substring ref r re)}
+                     :offset (dec left-match),
+                     :deleted (.substring ref left-match re)}
                     {:type :other, :n-bases n})))
-              (if (= re r)
-                (let [n (- ae a)]
+              (if (= re left-match)
+                (let [n (- ae left-match)]
                   (if (eq re ae)
                     {:type :insertion, :n-bases n,
-                     :offset (dec a), :inserted (.substring alt a ae)}
+                     :offset (dec left-match),
+                     :inserted (.substring alt left-match ae)}
                     {:type :other, :n-bases n}))
-                (let [n (if (< (- ae a) (- re r))
-                          (- r re 1)
-                          (- ae a -1))]
-                  (if (= (- re r) (- ae a))
-                    {:type :mnp, :ref (.substring ref r (inc re)),
-                     :alt (.substring alt a (inc ae)), :offset a}
+                (let [n (if (< (- ae left-match) (- re left-match))
+                          (- left-match re 1)
+                          (- ae left-match -1))]
+                  (if (= (- re left-match) (- ae left-match))
+                    {:type :mnp, :ref (.substring ref left-match (inc re)),
+                     :alt (.substring alt left-match (inc ae)),
+                     :offset left-match}
                     {:type :other, :n-bases n}))))))))))
 
 (defn parse-alt

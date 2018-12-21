@@ -1,7 +1,7 @@
 (ns cljam.io.sam.util.sequence
   "Utility functions for base sequences."
   (:require [clojure.string :as cstr])
-  (:import [java.nio ByteBuffer CharBuffer]))
+  (:import [java.nio Buffer ByteBuffer CharBuffer]))
 
 (def ^:private ^:const nibble-to-base-table
   ;; Index: nibble of a compressed base.
@@ -55,13 +55,13 @@
   [^long length ^bytes compressed-bases ^long compressed-offset]
   (let [cb (CharBuffer/allocate (inc length))
         bb (ByteBuffer/wrap compressed-bases)]
-    (.position bb compressed-offset)
+    (.position ^Buffer bb compressed-offset)
     (dotimes [_ (quot (inc length) 2)]
       (let [i (-> (.get bb) (bit-and 0xff) (* 2))]
         (.put cb (.charAt compressed-bases-to-bases-table i))
         (.put cb (.charAt compressed-bases-to-bases-table (inc i)))))
-    (.limit cb length)
-    (.flip cb)
+    (.limit ^Buffer cb length)
+    (.flip ^Buffer cb)
     (.toString cb)))
 
 (defn normalize-bases

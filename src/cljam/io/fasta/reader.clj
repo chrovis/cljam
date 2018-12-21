@@ -4,7 +4,7 @@
             [cljam.io.fasta.util :refer [header-line? parse-header-line]]
             [cljam.io.fasta-index.core :as fasta-index])
   (:import [java.io RandomAccessFile InputStream]
-           [java.nio ByteBuffer CharBuffer]
+           [java.nio Buffer ByteBuffer CharBuffer]
            [java.nio.channels FileChannel$MapMode]))
 
 ;; FASTAReader
@@ -94,7 +94,7 @@
                       (when-not (or (= 10 c) (= 13 c))
                         ;; toUpperCase works only for ASCII chars.
                         (.put buf (unchecked-char (bit-and c 0x5f))))))))
-              (.flip buf)
+              (.flip ^Buffer buf)
               (.toString buf))))))))
 
 (defn read
@@ -111,9 +111,9 @@
 (definline create-ba [^ByteBuffer buffer]
   `(when (pos? (.position ~buffer))
        (let [ba# (byte-array (.position ~buffer))]
-         (.clear ~buffer)
+         (.clear ~(with-meta buffer {:tag `Buffer}))
          (.get ~buffer ba#)
-         (.clear ~buffer)
+         (.clear ~(with-meta buffer {:tag `Buffer}))
          ba#)))
 
 (def ^:private ^:const gt-byte (byte \>))

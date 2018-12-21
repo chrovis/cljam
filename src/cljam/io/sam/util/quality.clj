@@ -1,6 +1,6 @@
 (ns cljam.io.sam.util.quality
   "Utility functions for phred quality strings."
-  (:import [java.nio ByteBuffer CharBuffer]))
+  (:import [java.nio Buffer ByteBuffer CharBuffer]))
 
 (definline fastq-char->phred-byte [ch]
   `(byte (- (int ~ch) 33)))
@@ -27,7 +27,7 @@
         (when (.hasRemaining bb)
           (.put cb (phred-byte->fastq-char (.get bb)))
           (recur)))
-      (.flip cb)
+      (.flip ^Buffer cb)
       (.toString cb))))
 
 (defmethod phred->fastq (class (byte-array nil))

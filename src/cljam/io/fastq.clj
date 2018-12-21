@@ -5,7 +5,7 @@
             [cljam.io.protocols :as protocols]
             [cljam.util :as util])
   (:import [java.io Closeable]
-           [java.nio CharBuffer]))
+           [java.nio Buffer CharBuffer]))
 
 (declare read-sequences write-sequences)
 
@@ -110,7 +110,7 @@
                          :phred64 (+ q 64)
                          q)))))
     (.put cb \newline)
-    (.flip cb)
+    (.flip ^Buffer cb)
     (.toString cb)))
 
 (defn write-sequences

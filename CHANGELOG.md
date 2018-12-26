@@ -4,6 +4,7 @@
 
 ### Fixed
 
+* Remove useless nil entries in variants. [#156](https://github.com/chrovis/cljam/pull/156)
 * Fix ByteBuffer/CharBuffer methods incompatibility. [#159](https://github.com/chrovis/cljam/pull/159)
 
 ## [0.7.0] - 2018-11-21

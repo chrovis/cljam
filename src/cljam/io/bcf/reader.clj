@@ -10,7 +10,7 @@
             [cljam.util :as util])
   (:import [java.io Closeable IOException]
            [java.net URL]
-           [java.nio ByteBuffer]
+           [java.nio Buffer ByteBuffer]
            [bgzf4j BGZFInputStream]))
 
 (declare read-variants meta-info)
@@ -146,7 +146,7 @@
   (let [chrom-id (lsb/read-int shared)
         pos (inc (lsb/read-int shared))
         rlen (lsb/read-int shared)]
-    (.position shared 0)
+    (.position ^Buffer shared 0)
     (assoc m :chr (:id (contigs chrom-id)) :pos pos :rlen rlen)))
 
 (defn- parse-data-line-deep

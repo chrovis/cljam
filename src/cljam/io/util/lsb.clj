@@ -3,7 +3,7 @@
   (:refer-clojure :exclude [read-string])
   (:require [cljam.util :refer [string->bytes bytes->string]])
   (:import [java.io DataInput InputStream DataOutputStream EOFException ByteArrayOutputStream]
-           [java.nio ByteBuffer ByteOrder]))
+           [java.nio Buffer ByteBuffer ByteOrder]))
 
 (defn ^ByteBuffer gen-byte-buffer
   "Generates a new `java.nio.ByteBuffer` instance with little-endian byte order.
@@ -36,7 +36,7 @@
 (extend-type ByteBuffer
   LSBReadable
   (skip [this ^long length]
-    (.position this (+ (.position this) length)))
+    (.position ^Buffer this (+ (.position this) length)))
   (read-byte [this]
     (.get this))
   (read-ubyte [this]
@@ -269,36 +269,36 @@
 (extend-type java.nio.channels.FileChannel
   LSBWritable
   (write-ubyte [w b]
-    (let [bb (gen-byte-buffer 1)]
-      (.. bb (put (unchecked-byte b)) clear)
+    (let [bb (-> (gen-byte-buffer 1) (.put (unchecked-byte b)))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-char [w b]
-    (let [bb (gen-byte-buffer 1)]
-      (.. bb (putChar b) clear)
+    (let [bb (-> (gen-byte-buffer 1) (.putChar b))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-short [w n]
-    (let [bb (gen-byte-buffer 2)]
-      (.. bb (putShort n) clear)
+    (let [bb (-> (gen-byte-buffer 2) (.putShort n))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-ushort [w n]
-    (let [bb (gen-byte-buffer 2)]
-      (.. bb (putShort (unchecked-short n)) clear)
+    (let [bb (-> (gen-byte-buffer 2) (.putShort (unchecked-short n)))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-int [w n]
-    (let [bb (gen-byte-buffer 4)]
-      (.. bb (putInt n) clear)
+    (let [bb (-> (gen-byte-buffer 4) (.putInt n))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-uint [w n]
-    (let [bb (gen-byte-buffer 4)]
-      (.. bb (putInt (unchecked-int n)) clear)
+    (let [bb (-> (gen-byte-buffer 4) (.putInt (unchecked-int n)))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-long [w n]
-    (let [bb (gen-byte-buffer 8)]
-      (.. bb (putLong n) clear)
+    (let [bb (-> (gen-byte-buffer 8) (.putLong n))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-float [w n]
-    (let [bb (gen-byte-buffer 4)]
-      (.. bb (putFloat n) clear)
+    (let [bb (-> (gen-byte-buffer 4) (.putFloat n))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-bytes [w ^bytes b]
     (.write w (ByteBuffer/wrap b)))

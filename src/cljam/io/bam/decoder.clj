@@ -10,7 +10,7 @@
             [cljam.io.bam.common :as common]
             [cljam.io.util.lsb :as lsb])
   (:import [java.util Arrays]
-           [java.nio ByteBuffer ByteOrder CharBuffer]
+           [java.nio Buffer ByteBuffer ByteOrder CharBuffer]
            [cljam.io.protocols SAMAlignment SAMRegionBlock SAMCoordinateBlock SAMQuerynameBlock]))
 
 (definline validate-tag-type
@@ -57,10 +57,10 @@
   (lazy-seq
    (when (.hasRemaining bb)
      (cons
-      (let [cb (doto (CharBuffer/allocate 2)
-                 (.put (unchecked-char (.get bb)))
-                 (.put (unchecked-char (.get bb)))
-                 (.flip))
+      (let [cb (as-> (CharBuffer/allocate 2) cb
+                 (.put cb (unchecked-char (.get bb)))
+                 (.put cb (unchecked-char (.get bb)))
+                 (.flip ^Buffer cb))
             typ (.get bb)]
         {(keyword (.toString cb))
          {:type  (str (validate-tag-type typ))

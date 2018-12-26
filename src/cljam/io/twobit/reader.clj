@@ -3,7 +3,7 @@
             [cljam.util :as util])
   (:import [java.io Closeable]
            [java.util TreeMap HashMap]
-           [java.nio CharBuffer ByteBuffer ByteOrder]
+           [java.nio Buffer CharBuffer ByteBuffer ByteOrder]
            [java.nio.channels FileChannel FileChannel$MapMode]
            [java.nio.file Paths OpenOption StandardOpenOption]))
 
@@ -18,7 +18,7 @@
 (defn- ^TreeMap read-header-block! [^ByteBuffer buf]
   (let [n-blocks (.getInt buf)
         starts (doto (.slice buf) (.order (.order buf)))
-        _ (.position buf (+ (.position buf) (* Integer/BYTES n-blocks)))
+        _ (.position ^Buffer buf (+ (.position buf) (* Integer/BYTES n-blocks)))
         m (TreeMap.)]
     (dotimes [_ n-blocks]
       (.put m (unchecked-inc-int (.getInt starts)) (.getInt buf)))
@@ -42,14 +42,14 @@
             _ (.get buf ba 0 chr-len)
             chr (String. ba 0 chr-len)
             offset (.getInt buf)
-            _ (.mark buf)
-            _ (.position buf offset)
+            _ (.mark ^Buffer buf)
+            _ (.position ^Buffer buf offset)
             len (.getInt buf)
-            _ (.reset buf)
+            _ (.reset ^Buffer buf)
             header (delay
                     (let [buf' (.duplicate buf)]
                       (.order buf' (.order buf))
-                      (.position buf' (+ offset Integer/BYTES))
+                      (.position ^Buffer buf' (+ offset Integer/BYTES))
                       (read-sequence-header! buf')))]
         (.put m chr (Chrom. chr len offset i header))))
     m))
@@ -76,7 +76,7 @@
   (let [floor (or (.floorKey ambs (int start)) (int 1))]
     (doseq [[^long n-start ^long n-size] (.subMap ambs floor (int (inc end)))]
       (when-not (or (< end n-start) (< (+ n-start n-size -1) start))
-        (.position cb (max 0 (- n-start start)))
+        (.position ^Buffer cb (max 0 (- n-start start)))
         (dotimes [_ (- (min end (+ n-start n-size -1)) (max start n-start) -1)]
           (.put cb \N))))))
 
@@ -86,13 +86,13 @@
   (let [floor (or (.floorKey masks (int start)) (int 1))]
     (doseq [[^long m-start ^long m-size] (.subMap masks floor (int (inc end)))]
       (when-not (or (< end m-start) (< (+ m-start m-size -1) start))
-        (.position cb (max 0 (- m-start start)))
-        (.mark cb)
+        (.position ^Buffer cb (max 0 (- m-start start)))
+        (.mark ^Buffer cb)
         (let [ca (char-array
                   (- (min end (+ m-start m-size -1))
                      (max start m-start) -1))]
           (.get cb ca)
-          (.reset cb)
+          (.reset ^Buffer cb)
           (dotimes [i (alength ca)]
             ;; to lower case character
             (.put cb (unchecked-char
@@ -115,15 +115,15 @@
                end-offset (quot (dec end') 4)
                buf ^ByteBuffer (.buf rdr)
                cb (CharBuffer/allocate (* 4 (inc (- end-offset start-offset))))]
-           (.position buf (+ (.offset c) (.header-offset h) start-offset))
+           (.position ^Buffer buf (+ (.offset c) (.header-offset h) start-offset))
            (while (.hasRemaining cb)
              (->> (unchecked-add-int 128 (.get buf))
                   ^chars (aget twobit-to-str)
                   (.put cb)))
-           (let [cb' (-> cb
-                         ^CharBuffer (.position (rem (dec start') 4))
-                         ^CharBuffer .slice
-                         (.limit (int (inc (- end' start')))))]
+           (let [cb' (as-> cb cb
+                       (.position ^Buffer cb (rem (dec start') 4))
+                       (.slice ^CharBuffer cb)
+                       (.limit ^Buffer cb (int (inc (- end' start')))))]
              (replace-ambs! cb' (.ambs h) start' end')
              (when mask? (mask! cb' (.masks h) start' end'))
              (.rewind cb')

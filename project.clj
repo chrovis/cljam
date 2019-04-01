@@ -18,7 +18,7 @@
                                   [net.totakke/libra "0.1.1"]
                                   [se.haleby/stub-http "0.2.7"]]
                    :plugins [[lein-binplus "0.6.5" :exclusions [org.clojure/clojure]]
-                             [lein-codox "0.10.5"]
+                             [lein-codox "0.10.6"]
                              [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]
                              [lein-cloverage "1.0.13"]
                              [net.totakke/lein-libra "0.1.2"]]

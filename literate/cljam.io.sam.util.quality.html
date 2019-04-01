@@ -2865,9 +2865,9 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.quality" name="cljam.io.sam.util.quality"><h1 class="project-name">cljam.io.sam.util.quality</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utility functions for phred quality strings.</p>
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.quality" name="cljam.io.sam.util.quality"><h1 class="project-name">cljam.io.sam.util.quality</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utility functions for phred quality strings.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam.util.quality
-  (:import [java.nio ByteBuffer CharBuffer]))</pre></td></tr><tr><td class="docs">
+  (:import [java.nio Buffer ByteBuffer CharBuffer]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(definline fastq-char-&gt;phred-byte [ch]
   `(byte (- (int ~ch) 33)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(definline phred-byte-&gt;fastq-char [b]
@@ -2889,7 +2889,7 @@ net.brehaut.ClojureTools = (function (SH) {
         (when (.hasRemaining bb)
           (.put cb (phred-byte-&gt;fastq-char (.get bb)))
           (recur)))
-      (.flip cb)
+      (.flip ^Buffer cb)
       (.toString cb))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmethod phred-&gt;fastq (class (byte-array nil))
   [^bytes b]

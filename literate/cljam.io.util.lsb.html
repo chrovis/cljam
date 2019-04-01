@@ -2865,12 +2865,12 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.util.lsb" name="cljam.io.util.lsb"><h1 class="project-name">cljam.io.util.lsb</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Reading/writing functions of stream and buffer for little-endian data.</p>
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.util.lsb" name="cljam.io.util.lsb"><h1 class="project-name">cljam.io.util.lsb</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Reading/writing functions of stream and buffer for little-endian data.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.util.lsb
   (:refer-clojure :exclude [read-string])
   (:require [cljam.util :refer [string-&gt;bytes bytes-&gt;string]])
   (:import [java.io DataInput InputStream DataOutputStream EOFException ByteArrayOutputStream]
-           [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs"><p>Generates a new <code>java.nio.ByteBuffer</code> instance with little-endian byte order.
+           [java.nio Buffer ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs"><p>Generates a new <code>java.nio.ByteBuffer</code> instance with little-endian byte order.
   The default buffer size is 8.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^ByteBuffer gen-byte-buffer
   ([]
@@ -2896,7 +2896,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(extend-type ByteBuffer
   LSBReadable
   (skip [this ^long length]
-    (.position this (+ (.position this) length)))
+    (.position ^Buffer this (+ (.position this) length)))
   (read-byte [this]
     (.get this))
   (read-ubyte [this]
@@ -3120,36 +3120,36 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(extend-type java.nio.channels.FileChannel
   LSBWritable
   (write-ubyte [w b]
-    (let [bb (gen-byte-buffer 1)]
-      (.. bb (put (unchecked-byte b)) clear)
+    (let [bb (-&gt; (gen-byte-buffer 1) (.put (unchecked-byte b)))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-char [w b]
-    (let [bb (gen-byte-buffer 1)]
-      (.. bb (putChar b) clear)
+    (let [bb (-&gt; (gen-byte-buffer 1) (.putChar b))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-short [w n]
-    (let [bb (gen-byte-buffer 2)]
-      (.. bb (putShort n) clear)
+    (let [bb (-&gt; (gen-byte-buffer 2) (.putShort n))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-ushort [w n]
-    (let [bb (gen-byte-buffer 2)]
-      (.. bb (putShort (unchecked-short n)) clear)
+    (let [bb (-&gt; (gen-byte-buffer 2) (.putShort (unchecked-short n)))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-int [w n]
-    (let [bb (gen-byte-buffer 4)]
-      (.. bb (putInt n) clear)
+    (let [bb (-&gt; (gen-byte-buffer 4) (.putInt n))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-uint [w n]
-    (let [bb (gen-byte-buffer 4)]
-      (.. bb (putInt (unchecked-int n)) clear)
+    (let [bb (-&gt; (gen-byte-buffer 4) (.putInt (unchecked-int n)))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-long [w n]
-    (let [bb (gen-byte-buffer 8)]
-      (.. bb (putLong n) clear)
+    (let [bb (-&gt; (gen-byte-buffer 8) (.putLong n))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-float [w n]
-    (let [bb (gen-byte-buffer 4)]
-      (.. bb (putFloat n) clear)
+    (let [bb (-&gt; (gen-byte-buffer 4) (.putFloat n))]
+      (.clear ^Buffer bb)
       (.write w bb)))
   (write-bytes [w ^bytes b]
     (.write w (ByteBuffer/wrap b)))

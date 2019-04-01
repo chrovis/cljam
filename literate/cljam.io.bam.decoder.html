@@ -2865,7 +2865,7 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bam.decoder" name="cljam.io.bam.decoder"><h1 class="project-name">cljam.io.bam.decoder</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Decoder of BAM alignment blocks.</p>
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bam.decoder" name="cljam.io.bam.decoder"><h1 class="project-name">cljam.io.bam.decoder</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Decoder of BAM alignment blocks.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bam.decoder
   (:require [clojure.string :as cstr]
             [proton.core :as proton]
@@ -2877,7 +2877,7 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.bam.common :as common]
             [cljam.io.util.lsb :as lsb])
   (:import [java.util Arrays]
-           [java.nio ByteBuffer ByteOrder CharBuffer]
+           [java.nio Buffer ByteBuffer ByteOrder CharBuffer]
            [cljam.io.protocols SAMAlignment SAMRegionBlock SAMCoordinateBlock SAMQuerynameBlock]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(definline validate-tag-type
   [t]
@@ -2920,10 +2920,10 @@ net.brehaut.ClojureTools = (function (SH) {
   (lazy-seq
    (when (.hasRemaining bb)
      (cons
-      (let [cb (doto (CharBuffer/allocate 2)
-                 (.put (unchecked-char (.get bb)))
-                 (.put (unchecked-char (.get bb)))
-                 (.flip))
+      (let [cb (as-&gt; (CharBuffer/allocate 2) cb
+                 (.put cb (unchecked-char (.get bb)))
+                 (.put cb (unchecked-char (.get bb)))
+                 (.flip ^Buffer cb))
             typ (.get bb)]
         {(keyword (.toString cb))
          {:type  (str (validate-tag-type typ))

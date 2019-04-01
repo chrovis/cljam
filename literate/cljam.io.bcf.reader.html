@@ -2865,7 +2865,7 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bcf.reader" name="cljam.io.bcf.reader"><h1 class="project-name">cljam.io.bcf.reader</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bcf.reader" name="cljam.io.bcf.reader"><h1 class="project-name">cljam.io.bcf.reader</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bcf.reader
   (:refer-clojure :exclude [read])
   (:require [clojure.string :as cstr]
@@ -2878,7 +2878,7 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.util :as util])
   (:import [java.io Closeable IOException]
            [java.net URL]
-           [java.nio ByteBuffer]
+           [java.nio Buffer ByteBuffer]
            [bgzf4j BGZFInputStream]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare read-variants meta-info)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype BCFReader [^URL url meta-info header ^BGZFInputStream reader ^long start-pos]
@@ -2996,7 +2996,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [chrom-id (lsb/read-int shared)
         pos (inc (lsb/read-int shared))
         rlen (lsb/read-int shared)]
-    (.position shared 0)
+    (.position ^Buffer shared 0)
     (assoc m :chr (:id (contigs chrom-id)) :pos pos :rlen rlen)))</pre></td></tr><tr><td class="docs"><p>Parses full data of a variant. Returns a map containing indices for meta-info.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-data-line-deep
   [{:keys [^ByteBuffer shared ^ByteBuffer individual]}]
@@ -3019,7 +3019,7 @@ net.brehaut.ClojureTools = (function (SH) {
     {:chr chrom-id
      :pos pos
      :ref-length rlen
-     :qual qual
+     :qual (when-not (= (Float/floatToRawIntBits qual) 0x7F800001) qual)
      :id id
      :ref refseq
      :alt (if (empty? altseq) nil altseq)
@@ -3043,18 +3043,19 @@ net.brehaut.ClojureTools = (function (SH) {
                                   (= (:kw tag) :GT) (vcf-util/ints-&gt;genotype v)
                                   (and (= (:number tag) 1) (sequential? v)) (first v)
                                   :else v)])))) gts))
-               (range (:n-sample variant)))]
-    (-&gt; (dissoc variant :genotype)
-        (dissoc :ref-length)
-        (dissoc :n-sample)
-        (update :chr (comp :id contigs))
-        (update :filter #(map (comp :kw filters) %))
-        (update :info #(into {} (map (fn [[k v]] [(:kw (info k))
-                                                  (if (and (= (:number (info k)) 1) (sequential? v))
-                                                    (first v)
-                                                    v)])) %))
-        (assoc fmt-kw (map (comp :kw formats first) gts))
-        (merge (zipmap indiv-kws indiv)))))</pre></td></tr><tr><td class="docs"><p>Reads data from BCF file and returns them as a lazy-sequence of maps.</p>
+               (range (:n-sample variant)))
+        v (-&gt; (dissoc variant :genotype)
+              (dissoc :ref-length)
+              (dissoc :n-sample)
+              (update :chr (comp :id contigs))
+              (update :filter #(map (comp :kw filters) %))
+              (update :info #(into {} (map (fn [[k v]] [(:kw (info k))
+                                                        (if (and (= (:number (info k)) 1) (sequential? v))
+                                                          (first v)
+                                                          v)])) %)))]
+    (cond-&gt; v
+      fmt-kw (assoc fmt-kw (map (comp :kw formats first) gts))
+      indiv-kws (merge (zipmap indiv-kws indiv)))))</pre></td></tr><tr><td class="docs"><p>Reads data from BCF file and returns them as a lazy-sequence of maps.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-data-lines
   [^BGZFInputStream rdr read-fn]
   (when (pos? (.available rdr))

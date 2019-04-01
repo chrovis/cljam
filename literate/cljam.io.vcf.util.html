@@ -2865,7 +2865,7 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.vcf.util" name="cljam.io.vcf.util"><h1 class="project-name">cljam.io.vcf.util</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.vcf.util" name="cljam.io.vcf.util"><h1 class="project-name">cljam.io.vcf.util</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.vcf.util
   (:require [clojure.string :as cstr]
             [cljam.util :as util]))</pre></td></tr><tr><td class="docs"><p>Checks if given string is equal to "." or nil.</p>
@@ -2993,11 +2993,11 @@ net.brehaut.ClojureTools = (function (SH) {
         parse-info (info-parser (:info meta-info))
         parse-sample (sample-parser (:format meta-info))]
     (fn [v]
-      (-&gt; v
-          (update :filter parse-filter)
-          (update :info parse-info)
-          (update fmt-kw parse-format)
-          (merge (into {} (for [k sample-kws] [k (parse-sample (v fmt-kw) (v k))])))))))</pre></td></tr><tr><td class="docs"><p>Returns a stringifier function to stringify :filter, :info, :FORMAT and sample columns of VCF.
+      (cond-&gt; v
+        true (update :filter parse-filter)
+        true (update :info parse-info)
+        fmt-kw (update fmt-kw parse-format)
+        sample-kws (into (for [k sample-kws] [k (parse-sample (v fmt-kw) (v k))]))))))</pre></td></tr><tr><td class="docs"><p>Returns a stringifier function to stringify :filter, :info, :FORMAT and sample columns of VCF.
    Takes meta-info and header of VCF.
    The stringifier takes a parsed variant map and returns a map.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn variant-vals-stringifier

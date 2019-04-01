@@ -2865,10 +2865,10 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.sequence" name="cljam.io.sam.util.sequence"><h1 class="project-name">cljam.io.sam.util.sequence</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utility functions for base sequences.</p>
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.sequence" name="cljam.io.sam.util.sequence"><h1 class="project-name">cljam.io.sam.util.sequence</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utility functions for base sequences.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam.util.sequence
   (:require [clojure.string :as cstr])
-  (:import [java.nio ByteBuffer CharBuffer]))</pre></td></tr><tr><td class="docs">
+  (:import [java.nio Buffer ByteBuffer CharBuffer]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const nibble-to-base-table
   ;; Index: nibble of a compressed base.
   ;; Value: base for the nibble.
@@ -2915,13 +2915,13 @@ net.brehaut.ClojureTools = (function (SH) {
   [^long length ^bytes compressed-bases ^long compressed-offset]
   (let [cb (CharBuffer/allocate (inc length))
         bb (ByteBuffer/wrap compressed-bases)]
-    (.position bb compressed-offset)
+    (.position ^Buffer bb compressed-offset)
     (dotimes [_ (quot (inc length) 2)]
       (let [i (-&gt; (.get bb) (bit-and 0xff) (* 2))]
         (.put cb (.charAt compressed-bases-to-bases-table i))
         (.put cb (.charAt compressed-bases-to-bases-table (inc i)))))
-    (.limit cb length)
-    (.flip cb)
+    (.limit ^Buffer cb length)
+    (.flip ^Buffer cb)
     (.toString cb)))</pre></td></tr><tr><td class="docs"><p>Converts bases in given buffer to upper-case. Also converts '.' to 'N'.
    Bases are represented as buffer of ASCII characters.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn normalize-bases

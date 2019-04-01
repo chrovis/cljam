@@ -2865,14 +2865,14 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.fasta.reader" name="cljam.io.fasta.reader"><h1 class="project-name">cljam.io.fasta.reader</h1><a class="toc-link" href="toc.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.fasta.reader" name="cljam.io.fasta.reader"><h1 class="project-name">cljam.io.fasta.reader</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.fasta.reader
   (:refer-clojure :exclude [read])
   (:require [cljam.util :refer [graph?]]
             [cljam.io.fasta.util :refer [header-line? parse-header-line]]
             [cljam.io.fasta-index.core :as fasta-index])
   (:import [java.io RandomAccessFile InputStream]
-           [java.nio ByteBuffer CharBuffer]
+           [java.nio Buffer ByteBuffer CharBuffer]
            [java.nio.channels FileChannel$MapMode]))</pre></td></tr><tr><td class="docs"><h2>FASTAReader</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype FASTAReader [reader stream url index-delay]
@@ -2951,7 +2951,7 @@ net.brehaut.ClojureTools = (function (SH) {
                       (when-not (or (= 10 c) (= 13 c))
                         ;; toUpperCase works only for ASCII chars.
                         (.put buf (unchecked-char (bit-and c 0x5f))))))))
-              (.flip buf)
+              (.flip ^Buffer buf)
               (.toString buf))))))))</pre></td></tr><tr><td class="docs"><p>Reads FASTA sequence data, returning its information as a lazy sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read
   [^FASTAReader rdr]
@@ -2964,9 +2964,9 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(definline create-ba [^ByteBuffer buffer]
   `(when (pos? (.position ~buffer))
        (let [ba# (byte-array (.position ~buffer))]
-         (.clear ~buffer)
+         (.clear ~(with-meta buffer {:tag `Buffer}))
          (.get ~buffer ba#)
-         (.clear ~buffer)
+         (.clear ~(with-meta buffer {:tag `Buffer}))
          ba#)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const gt-byte (byte \&gt;))
 (def ^:private ^:const newline-byte (byte \newline))</pre></td></tr><tr><td class="docs">

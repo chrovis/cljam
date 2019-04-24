@@ -198,6 +198,31 @@
                                   [{:pos 3 :pile [{:pos 3 :end 3}]}]
                                   [])))))
 
+(deftest chunk-step-seq
+  (testing "empty"
+    (is (nil? (seq (#'plp/seq-step 1 10 2 []))))
+    (is (nil? (seq (#'plp/seq-step 2 10 2 (map ->aln [{:pos 1 :end 1}])))))
+    (is (nil? (seq (#'plp/seq-step 1 10 2 (map ->aln [{:pos 11 :end 11}]))))))
+  (testing "dense"
+    (are [?in ?out]
+        (= ?out (mapv ->pile (#'plp/seq-step 1 10 2 (mapv ->aln (map #(zipmap [:pos :end] %) ?in)))))
+      [[1 1]] [[1 [[1 1]]]]
+      [[3 5]] [[3 [[3 5]]]]
+      [[3 5] [4 4]] [[3 [[3 5] [4 4]]]]
+      [[3 5] [4 6]] [[3 [[3 5] [4 6]]] [6 [[4 6]]]]))
+  (testing "sparse"
+    (are [?in ?out]
+        (= ?out (mapv ->pile (#'plp/seq-step 1 10 2 (mapv ->aln (map #(zipmap [:pos :end] %) ?in)))))
+      [[3 5] [14 16]] [[3 [[3 5]]]]
+      [[3 5] [6 7]] [[3 [[3 5]]] [6 [[6 7]]]]
+      [[3 5] [4 5] [6 7]] [[3 [[3 5] [4 5]]] [6 [[6 7]]]]
+      [[3 5] [7 8] [10 11]] [[3 [[3 5]]] [7 [[7 8]]] [10 [[10 11]]]]))
+  (testing "wide"
+    (are [?in ?out]
+        (= ?out (mapv ->pile (#'plp/seq-step 1 10 20 (mapv ->aln (map #(zipmap [:pos :end] %) ?in)))))
+      [[1 1] [14 16]] [[1 [[1 1]]]]
+      [[3 5] [4 6] [20 21]] [[3 [[3 5] [4 6]]]])))
+
 (deftest about-pileup
   (testing "dense"
     (with-open [br (sam/bam-reader test-sorted-bam-file)
@@ -288,9 +313,9 @@
 (def ^:private reads-overlapping-for-pileup
   (mapv
    p/map->SAMAlignment
-   [{:qname "R001" :flag (int 99) :rname "seq1" :pos (int 3) :end (int 10) :seq "AATTGGCCAA" :qual "AABBCCDDz~" :cigar "2S8M"
+   [{:qname "R001" :flag (int 147) :rname "seq1" :pos (int 3) :end (int 10) :seq "AATTGGCCAA" :qual "AABBCCDDz~" :cigar "2S8M"
      :rnext "=" :pnext (int 7) :tlen (int 6) :mapq (int 60)}
-    {:qname "R001" :flag (int 147) :rname "seq1" :pos (int 8) :end (int 15) :seq "CAATTGGATT" :qual "AABBCCDDz~" :cigar "8M2S"
+    {:qname "R001" :flag (int 99) :rname "seq1" :pos (int 8) :end (int 15) :seq "CCCTTGGATT" :qual "z~AABBCCDD" :cigar "8M2S"
      :rnext "=" :pnext (int 3) :tlen (int -6) :mapq (int 20)}]))
 
 ;;     ----
@@ -301,7 +326,7 @@
    p/map->SAMAlignment
    [{:qname "R001" :flag (int 99) :rname "seq1" :pos (int 3) :end (int 10) :seq "AATTGGCCAA" :qual "AABBCCDDz~" :cigar "2S8M"
      :rnext "=" :pnext (int 5) :tlen (int 8) :mapq (int 60)}
-    {:qname "R001" :flag (int 147) :rname "seq1" :pos (int 5) :end (int 8) :seq "GGCCTT" :qual "AABBz~" :cigar "4M2S"
+    {:qname "R001" :flag (int 147) :rname "seq1" :pos (int 5) :end (int 8) :seq "GGACTT" :qual "AABBz~" :cigar "4M2S"
      :rnext "=" :pnext (int 3) :tlen (int -8) :mapq (int 20)}]))
 
 (defn- pileup* [region options xs]
@@ -320,73 +345,54 @@
         plps-gap (->> reads-gap-for-pileup
                       (pileup* {:chr "seq1" :start 1 :end 10} {}))
         plps-cont (->> reads-continal-for-pileup
-                       (pileup* {:chr "seq1" :start 1 :end 10} {}))]
+                       (pileup* {:chr "seq1" :start 1 :end 10} {}))
+        plps-overlap (->> reads-overlapping-for-pileup
+                       (pileup* {:chr "seq1" :start 1 :end 10} {}))
+        plps-include (->> reads-including-for-pileup
+                       (pileup* {:chr "seq1" :start 1 :end 10} {}))
+        plps-chunk (->> reads-overlapping-for-pileup
+                     (pileup* {:chr "seq1" :start 1 :end 15} {:chunk-size 2}))]
     (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
            (map (comp count :pile) plps)))
     (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])
            (map #(map :base (:pile %)) plps)))
     (is (= (filter seq [[] [] [65] [65] [67] [67] [69] [69] [124] [128]])
            (map #(map :qual (:pile %)) plps)))
+
     (is (= (filter pos? [0 0 1 1 1 0 1 1 1 1])
            (map (comp count :pile) plps-gap)))
     (is (= (filter seq [[] [] [\T] [\T] [\G] [] [\T] [\T] [\G] [\G]])
            (map #(map :base (:pile %)) plps-gap)))
     (is (= (filter seq [[] [] [33] [89] [93] [] [34] [34] [35] [35]])
            (map #(map :qual (:pile %)) plps-gap)))
+
     (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
            (map (comp count :pile) plps-cont)))
     (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\T] [\T] [\G] [\G]])
            (map #(map :base (:pile %)) plps-cont)))
     (is (= (filter seq [[] [] [33] [33] [89] [93] [34] [34] [35] [35]])
-           (map #(map :qual (:pile %)) plps-cont)))))
+           (map #(map :qual (:pile %)) plps-cont)))
 
-(defn- pileup-chunks*
-  [region
-   chunk-size
-   {:keys [min-base-quality min-map-quality ignore-overlaps?]
-     :or {min-base-quality 13 min-map-quality 0 ignore-overlaps? false}}
-   xs]
-  (#'plp/pileup-chunks
-   (reify p/IAlignmentReader
-     (p/read-refs [_]
-       [{:name "seq1", :len 249250621}])
-     (p/read-alignments [_ _]
-       xs))
-   region
-   chunk-size
-   min-base-quality min-map-quality ignore-overlaps?))
-
-(deftest overlap-chunks
-  (let [plps-overlap (->> reads-overlapping-for-pileup
-                          (pileup-chunks* {:chr "seq1" :start 1 :end 15}
-                                          9  ;; chunks [1 10] [11 15]
-                                          {}))
-        plps-ignore (->> reads-overlapping-for-pileup
-                         (pileup-chunks* {:chr "seq1" :start 1 :end 10}
-                                         7  ;; chunks [1 8] [9 10]
-                                         {:ignore-overlaps? true}))
-        plps-include (->> reads-including-for-pileup
-                          (pileup-chunks* {:chr "seq1" :start 1 :end 10}
-                                          4  ;; chunks [1 5] [6 10]
-                                          {}))]
-    (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1 1 1 1 1 1])
+    (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
            (map (comp count :pile) plps-overlap)))
-    (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A] [\T] [\T] [\G] [\G] [\A]])
+    (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\C] [\A]])
            (map #(map :base (:pile %)) plps-overlap)))
-    (is (= (filter seq [[] [] [33] [33] [34] [34] [35] [67] [121] [126] [33] [34] [34] [35] [35]])
+    (is (= (filter seq [[] [] [33] [33] [34] [34] [35] [124] [74] [74]])
            (map #(map :qual (:pile %)) plps-overlap)))
-    (is (= (filter pos? [0 0 1 1 1 1 1 2 2 2])
-           (map (comp count :pile) plps-ignore)))
-    (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C \C] [\A \A] [\A \A]])
-           (map #(map :base (:pile %)) plps-ignore)))
-    (is (= (filter seq [[] [] [33] [33] [34] [34] [35] [35 32] [89 32] [93 33]])
-           (map #(map :qual (:pile %)) plps-ignore)))
+
     (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
            (map (comp count :pile) plps-include)))
     (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])
            (map #(map :base (:pile %)) plps-include)))
-    (is (= (filter seq [[] [] [33] [33] [66] [66] [68] [68] [89] [93]])
-           (map #(map :qual (:pile %)) plps-include)))))
+    (is (= (filter seq [[] [] [33] [33] [66] [66] [28] [68] [89] [93]])
+           (map #(map :qual (:pile %)) plps-include)))
+
+    (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1 1 1 1 1 1])
+           (map (comp count :pile) plps-chunk)))
+    (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\C] [\A] [\T] [\T] [\G] [\G] [\A]])
+           (map #(map :base (:pile %)) plps-chunk)))
+    (is (= (filter seq [[] [] [33] [33] [34] [34] [35] [124] [74] [74] [32] [33] [33] [34] [34]])
+           (map #(map :qual (:pile %)) plps-chunk)))))
 
 (deftest overlap-correction
   (let [plps (->> reads-for-pileup

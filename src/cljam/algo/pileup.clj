@@ -9,30 +9,31 @@
   (:import [cljam.io.protocols SAMAlignment]
            [cljam.io.pileup PileupBase LocusPile]))
 
-(def ^:const base-chunk-size 5000)
-
-(defn- cover-locus? [^long pos ^SAMAlignment aln]
-  (<= (.pos aln) pos))
+(defn- seq-step
+  [^long start ^long end ^long step-size alns]
+  (letfn [(starts-before? [^long pos ^SAMAlignment aln]
+            (<= (.pos aln) pos))
+          (ends-after? [^long pos ^SAMAlignment aln]
+            (<= pos (.end aln)))
+          (step [^long s carried-over rest-alns]
+            (lazy-seq
+             (when (<= s end)
+               (let [e (Math/min (+ s step-size) end)
+                     [in out] (split-with #(starts-before? e %) rest-alns)
+                     pile (into carried-over in)
+                     carry (filterv #(ends-after? (inc e) %) pile)
+                     out-pos (some-> out ^SAMAlignment (first) .pos)
+                     next-s (if-not (seq carry) (or out-pos (inc end)) (inc e))]
+                 (cons [s pile] (step next-s carry out))))))]
+    (let [[x :as xs] (drop-while #(< (.end ^SAMAlignment %) start) alns)]
+      (when x
+        (step (max start (.pos ^SAMAlignment x)) [] xs)))))
 
 (defn pileup-seq
   "Returns a lazy sequence that each element contains [position (alignments
   piled-up at the locus)]."
   [^long start ^long end alns]
-  (letfn [(step [^long pos prev-buf rest-alns]
-            (lazy-seq
-             (when (< (dec pos) end)
-               (let [[i rests] (split-with (partial cover-locus? pos) rest-alns)
-                     p (some-> rests ^SAMAlignment first .pos)
-                     [b :as buf] (into (filterv #(<= pos (.end ^SAMAlignment %))
-                                                prev-buf) i)
-                     next-pos (if (and p (not b)) p (inc pos))]
-                 (if b
-                   (cons [pos buf] (step next-pos buf rests))
-                   (when (and p (<= p end))
-                     (step next-pos buf rests)))))))]
-    (let [[x :as xs] (drop-while #(< (.end ^SAMAlignment %) start) alns)]
-      (when x
-        (step (max start (.pos ^SAMAlignment x)) [] xs)))))
+  (seq-step start end 0 alns))
 
 (defn- quals-at-ref
   [idx ^String qual]
@@ -121,7 +122,7 @@
   (let [quals (:quals-at-ref aln)
         start (.pos aln)
         len   (count corrected-quals)]
-    (if (<= start correct-start)
+    (if (< start correct-start)
       (-> quals
           (subvec 0 (- correct-start start))
           (into corrected-quals)
@@ -131,9 +132,8 @@
 (defn- correct-pair-quals
   "Correct quals of a pair. Returns a map with corrected quals."
   [^SAMAlignment a1 ^SAMAlignment a2]
-  (if-not (and (pos? (.pnext a1))
-               (<= (max (.pos a1) (.pos a2)) (.end a1)))
-    nil
+  (when (and (pos? (.pnext a1))
+             (<= (max (.pos a1) (.pos a2)) (.end a1)))
     (let [tlen1 (.tlen a1)
           tlen2 (.tlen a2)
           quals1 (:quals-at-ref a1)
@@ -147,27 +147,29 @@
                             relative-pos2 (- pos (.pos a2))
                             q1 (quals1 relative-pos1)
                             q2 (quals2 relative-pos2)
-                            [b1 _] (seqs1 relative-pos1)
-                            [b2 _] (seqs2 relative-pos2)]
-                         (if (= b1 b2)
-                           [(min 200 (+ q1 q2)) 0]
-                           (if (<= q2 q1)
-                             [(int (* 0.8 q1)) 0]
-                             [0 (int (* 0.8 q2))]))))
-          [new1 new2] (apply map vector new-quals)]
-      [(merge-corrected-quals a1 correct-start new1)
-       (merge-corrected-quals a2 correct-start new2)])))
+                            [b1] (seqs1 relative-pos1)
+                            [b2] (seqs2 relative-pos2)]
+                        (if (= b1 b2)
+                          [(min 200 (+ q1 q2)) 0]
+                          (if (<= q2 q1)
+                            [(int (* 0.8 q1)) 0]
+                            [0 (int (* 0.8 q2))]))))
+          [new1 new2] (apply map vector new-quals)
+          new-quals1 (merge-corrected-quals a1 correct-start new1)
+          new-quals2 (merge-corrected-quals a2 correct-start new2)]
+      (if (flag/r1? (.flag a1))
+        [new-quals1 new-quals2]
+        [new-quals2 new-quals1]))))
 
 (defn- make-corrected-quals-map
   "Make a map which has corrected quals of all overlapping pairs."
   [alns]
   (->> alns
        (group-by (fn [x] (.qname ^SAMAlignment x)))
-       (into {} (map
+       (into {} (keep
                  (fn [[qname xs]]
-                   (if (<= (count xs) 1)
-                     {}
-                     {(keyword qname) (apply correct-pair-quals xs)}))))))
+                   (when (<= 2 (count xs))
+                     [qname (apply correct-pair-quals xs)]))))))
 
 (defn- correct-quals-at-ref
   "Returns an alignment with corrected quals by looking up quals
@@ -175,98 +177,12 @@
   [corrected-map ^SAMAlignment aln]
   (if-not (= (.rnext aln) "=")
     aln
-    (if-let [quals-pair ((keyword (.qname aln)) corrected-map)]
+    (if-let [quals-pair (corrected-map (.qname aln))]
       (let [new-quals (if (flag/r1? (.flag aln))
                         (first quals-pair)
                         (second quals-pair))]
         (assoc aln :quals-at-ref new-quals))
       aln)))
-
-(defn- get-max-pnext
-  "Get the maximum pnext of alignments."
-  [alns]
-  (->> alns
-       (map (fn [^SAMAlignment aln]
-              (if (= (.rnext aln) "=")
-                (.pnext aln)
-                0)))
-       (apply max)))
-
-(defn- read-chunk
-  "Read a chunk which is specified by the region."
-  [sam-reader min-map-quality region]
-  (->> region
-       (sam/read-alignments sam-reader)
-       (sequence
-         (comp
-           (filter (basic-mpileup-pred min-map-quality))
-           (map index-cigar)))))
-
-(defn- get-chunk
-  "Get a chunk in which all pairs exist.
-  Returns the end position of the chunk and alignments in the chunk.
-  It concatenates chunks when a pair overlap across multiple chunks."
-  [sam-reader min-map-quality last-end {:keys [chr start end] :as region}]
-  (loop [s    start
-         e    end
-         alns (read-chunk sam-reader min-map-quality region)]
-    (if (or (empty? alns)                ;; empty chunk
-            (= e last-end)               ;; this is the last chunk
-            (<= (get-max-pnext alns) e)) ;; all pairs are in this chunk
-      [e alns]
-      (let [next-start (inc e)
-            next-end   (min last-end (+ e (- e s) 1))]
-        (recur
-          next-start
-          next-end
-          (->> (read-chunk sam-reader
-                           min-map-quality
-                           {:chr   chr
-                            :start next-start
-                            :end   next-end})
-               (concat alns)
-               distinct))))))
-
-(defn- pileup-chunk
-  "Piles up alignments in a chunk position-by-position.
-  Returns a lazy sequence of `cljam.io.pileup.LocusPile`s."
-  [^long start ^long end ignore-overlaps? alns]
-  (->> alns
-       (sequence
-         (comp
-           (drop-while #(< (.end ^SAMAlignment %) start))
-           (if ignore-overlaps?
-             identity
-             (keep (partial correct-quals-at-ref
-                            (make-corrected-quals-map alns))))))
-       (pileup-seq start end)))
-
-(defn- pileup-chunks
-  "Piles up alignments in each chunk."
-  [sam-reader {:keys [chr start end]} chunk-size
-   min-base-quality min-map-quality ignore-overlaps?]
-  (loop [chunk-start start
-         total-piles []]
-    (if-not (<= chunk-start end)
-      total-piles
-      (let [tmp-chunk-end (min (+ chunk-start chunk-size) end)
-            [chunk-end alns] (get-chunk sam-reader
-                                        min-map-quality
-                                        end
-                                        {:chr chr
-                                         :start chunk-start
-                                         :end tmp-chunk-end})
-            piles (->> alns
-                       (pileup-chunk chunk-start chunk-end ignore-overlaps?)
-                       (sequence
-                         (comp
-                           (map resolve-bases)
-                           (if (pos? min-base-quality)
-                             (map (filter-by-base-quality min-base-quality))
-                             identity)
-                           (keep (partial ->locus-pile chr)))))]
-        (recur (inc chunk-end)
-               (concat total-piles piles))))))
 
 (defn pileup
   "Piles up alignments in given region and returns a lazy sequence of
@@ -275,23 +191,38 @@
   The following options are available:
   - `min-base-quality` Minimum quality of called bases [13]
   - `min-map-quality` Minimum quality of alignments [0]
-  - `ignore-overlaps?` Disable detecting overlapped bases of PE reads [false]"
+  - `ignore-overlaps?` Disable detecting overlapped bases of PE reads [false]
+  - `chunk-size` Size of a chunk to pile up at once [5000]"
   ([sam-reader region]
    (pileup sam-reader region {}))
   ([sam-reader
     {:keys [chr start end] :or {start 1 end Integer/MAX_VALUE}}
-    {:keys [min-base-quality min-map-quality ignore-overlaps?]
-     :or {min-base-quality 13 min-map-quality 0 ignore-overlaps? false}}]
+    {:keys [min-base-quality min-map-quality ignore-overlaps? chunk-size]
+     :or {min-base-quality 13 min-map-quality 0 ignore-overlaps? false
+          chunk-size 5000}}]
    (when-let [len (:len (refs/ref-by-name (sam/read-refs sam-reader) chr))]
      (let [s (max 1 start)
            e (min len end)
            region {:chr chr :start s :end e}]
-       (pileup-chunks sam-reader
-                      region
-                      base-chunk-size
-                      min-base-quality
-                      min-map-quality
-                      ignore-overlaps?)))))
+       (->> (sam/read-alignments sam-reader region)
+            (sequence
+             (comp
+              (filter (basic-mpileup-pred min-map-quality))
+              (map index-cigar)))
+            (seq-step start end chunk-size)
+            (sequence
+             (comp
+              (mapcat (fn [[pos alns]]
+                        (->> (if ignore-overlaps?
+                               alns
+                               (keep (partial correct-quals-at-ref
+                                              (make-corrected-quals-map alns)) alns))
+                             (pileup-seq pos (min end (+ pos chunk-size))))))
+              (map resolve-bases)
+              (if (pos? min-base-quality)
+                (map (filter-by-base-quality min-base-quality))
+                identity)
+              (keep (partial ->locus-pile chr)))))))))
 
 (defn align-pileup-seqs
   "Align multiple piled-up seqs."

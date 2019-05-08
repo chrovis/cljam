@@ -347,11 +347,11 @@
         plps-cont (->> reads-continal-for-pileup
                        (pileup* {:chr "seq1" :start 1 :end 10} {}))
         plps-overlap (->> reads-overlapping-for-pileup
-                       (pileup* {:chr "seq1" :start 1 :end 10} {}))
+                          (pileup* {:chr "seq1" :start 1 :end 10} {}))
         plps-include (->> reads-including-for-pileup
-                       (pileup* {:chr "seq1" :start 1 :end 10} {}))
+                          (pileup* {:chr "seq1" :start 1 :end 10} {}))
         plps-chunk (->> reads-overlapping-for-pileup
-                     (pileup* {:chr "seq1" :start 1 :end 15} {:chunk-size 2}))]
+                        (pileup* {:chr "seq1" :start 1 :end 15} {:chunk-size 2}))]
     (is (= (filter pos? [0 0 1 1 1 1 1 1 1 1])
            (map (comp count :pile) plps)))
     (is (= (filter seq [[] [] [\T] [\T] [\G] [\G] [\C] [\C] [\A] [\A]])

@@ -30,7 +30,8 @@
       "NS=3;DP=9;AA=G" {:NS 3, :DP 9, :AA "G"}
       "NS=3;DP=14;AF=0.5;DB;H2" {:NS 3, :DP 14, :AF [0.5], :DB :exists :H2 :exists}
       "NS=3;DP=11;AF=0.017" {:NS 3, :DP 11, :AF [(float 0.017)]}
-      "NS=2;DP=10;AF=0.333,0.667;AA=T;DB" {:NS 2, :DP 10, :AF [(float 0.333) (float 0.667)] :AA "T", :DB :exists})))
+      "NS=2;DP=10;AF=0.333,0.667;AA=T;DB" {:NS 2, :DP 10, :AF [(float 0.333) (float 0.667)] :AA "T", :DB :exists}
+      "NS;DP=12" {:NS nil, :DP 12})))
 
 (deftest about-parse-filter
   (are [?filter-str ?expected]

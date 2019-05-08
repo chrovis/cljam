@@ -6,6 +6,7 @@
   "Checks if given string is equal to \".\" or nil."
   [^String s]
   `(or (nil? ~s)
+       (empty? ~s)
        (and (= 1 (.length ~s))
             (= \. (.charAt ~s 0)))))
 

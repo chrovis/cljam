@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Changed
+
+* Improve pileup by chunking alignments. [#160](https://github.com/chrovis/cljam/pull/160)
+
 ## [0.7.1] - 2019-04-01
 
 ### Fixed

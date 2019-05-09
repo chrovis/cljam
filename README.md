@@ -154,6 +154,7 @@ Sorted by first commit.
 - Jun Imura ([@alumi](https://github.com/alumi))
 - Shogo Ohta ([@athos](https://github.com/athos))
 - Shunya Kawabata ([@r6eve](https://github.com/r6eve))
+- Yuji Ito ([@yito88](https://github.com/yito88))
 
 ## License
 

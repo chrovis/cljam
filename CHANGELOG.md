@@ -6,6 +6,10 @@
 
 * Improve pileup by chunking alignments. [#160](https://github.com/chrovis/cljam/pull/160)
 
+### Fixed
+
+* Skip INFO value parsing if it's empty. [#161](https://github.com/chrovis/cljam/pull/161)
+
 ## [0.7.1] - 2019-04-01
 
 ### Fixed

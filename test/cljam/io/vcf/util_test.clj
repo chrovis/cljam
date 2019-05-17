@@ -336,3 +336,73 @@
     ".A" {:bases "A", :join :before, :chr "1", :pos 1}
     ".A" {:bases "A", :join :before, :chr "1", :strand :forward}
     ".A" {:bases "A", :join :before, :pos 1, :strand :forward}))
+
+(deftest inspect-allele
+  (are [?ref ?alt ?expected]
+      (= ?expected (vcf-util/inspect-allele ?ref ?alt))
+
+    "A" "."   {:type :ref}
+    "A" "*"   {:type :ref}
+    "A" "X"   {:type :ref}
+    "A" "A"   {:type :ref}
+    "A" "a"   {:type :ref}
+    "AA" "AA" {:type :ref}
+    "AA" "Aa" {:type :ref}
+    "A" "<*>" {:type :ref} ;; conventional
+    "A" "<X>" {:type :ref} ;; conventional
+
+    "A" "<DUP>"     {:type :id, :id "DUP"}
+    "A" "<INV>"     {:type :id, :id "INV"}
+    "A" "<NON_REF>" {:type :id, :id "NON_REF"} ;; not :ref
+
+    "A"  "T"      {:type :snv, :ref \A, :alt \T, :offset 0}
+    "TC" "TG"     {:type :snv, :ref \C, :alt \G, :offset 1}
+    "TC" "GC"     {:type :snv, :ref \T, :alt \G, :offset 0}
+    "TCA" "TAA"   {:type :snv, :ref \C, :alt \A, :offset 1}
+    "TCAG" "tcAC" {:type :snv, :ref \G, :alt \C, :offset 3}
+    "TGTAT" "TGcAT" {:type :snv, :ref \T, :alt \c, :offset 2}
+
+    "TG"   "Gc"   {:type :mnv, :ref "TG",  :alt "Gc",  :offset 0}
+    "TCG"  "tGA"  {:type :mnv, :ref "CG",  :alt "GA",  :offset 1}
+    "TGCA" "TCCC" {:type :mnv, :ref "GCA", :alt "CCC", :offset 1} ;; two snvs?
+    "TGGTA" "TCcAA" {:type :mnv, :ref "GGT", :alt "CcA", :offset 1}
+
+    "TC"  "T"     {:type :deletion, :n-bases -1, :offset 0, :deleted "C"}
+    "GTC" "G"     {:type :deletion, :n-bases -2, :offset 0, :deleted "TC"}
+    "TCG" "TG"    {:type :deletion, :n-bases -1, :offset 0, :deleted "C"}
+    "TGCA" "TGC"  {:type :deletion, :n-bases -1, :offset 2, :deleted "A"}
+    ;; ambiguous
+    "TCGCG" "TCG" {:type :deletion, :n-bases -2, :offset 2, :deleted "CG"}
+    ;; ambiguous
+    "TAAACCCTAAA" "TAA" {:type :deletion, :n-bases -8,
+                         :offset 2, :deleted "ACCCTAAA"}
+
+    "C"   "CTAG"  {:type :insertion, :n-bases 3, :offset 0, :inserted "TAG"}
+    "GTC" "GTCT"  {:type :insertion, :n-bases 1, :offset 2, :inserted "T"}
+    "TCG" "TCAG"  {:type :insertion, :n-bases 1, :offset 1, :inserted "A"}
+    ;; ambiguous
+    "GCG" "GCGCG" {:type :insertion, :n-bases 2, :offset 2, :inserted "CG"}
+    ;; ambiguous
+    "ATTTTTTTTTTTTT" "ATTTTTTTTTTTTTTT" {:type :insertion, :n-bases 2,
+                                         :offset 13, :inserted "TT"}
+
+    "T" "<ctg1>C" {:type :complete-insertion, :join :before,
+                   :base \C, :id "ctg1"}
+    "T" "c<ctg1>" {:type :complete-insertion, :join :after,
+                   :base \c, :id "ctg1"}
+
+    "G" "G."    {:type :breakend, :join :after, :bases "G"}
+    "A" ".A"    {:type :breakend, :join :before, :bases "A"}
+    "T" "TCC."  {:type :breakend, :join :after, :bases "TCC"}
+    "A" ".TGCA" {:type :breakend, :join :before, :bases "TGCA"}
+    "T" "]13:123456]T" {:type :breakend, :join :before,
+                        :strand :forward, :chr "13", :pos 123456, :bases "T"}
+
+    "T" "<ctg1>CT" {:type :other} ;; invalid
+    "T" "<CT" {:type :other} ;; invalid
+
+    "." "A" {:type :other}
+    "TAC" "GC" {:type :other}
+    "TG" "TAC" {:type :other}
+    "TCA" "GGGG" {:type :other}
+    "AAAA" "CAC" {:type :other}))

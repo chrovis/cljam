@@ -241,3 +241,98 @@
       ;; trailing fields can be dropped. Result differs but it's OK.
       ;; (nth test-vcf-v4_0-variants 10) (nth test-vcf-v4_0-variants-deep 10)
       (nth test-vcf-v4_0-variants 11) (nth test-vcf-v4_0-variants-deep 11))))
+
+(deftest parse-breakend
+  (are [?alt ?expected]
+      (= ?expected (vcf-util/parse-breakend ?alt))
+
+    "]13:123456]T" {:chr "13", :pos 123456, :strand :forward,
+                    :join :before, :bases "T"}
+    "]13:123456]AGTNNNNNCAT" {:chr "13", :pos 123456, :strand :forward,
+                              :join :before, :bases "AGTNNNNNCAT"}
+    "AGTNNNNNCA[2:321682[" {:chr "2", :pos 321682, :strand :forward,
+                            :join :after, :bases "AGTNNNNNCA"}
+    "C[<ctg1>:1[" {:chr "<ctg1>", :pos 1, :strand :forward,
+                   :join :after, :bases "C"}
+    "[13:123457[C" {:chr "13", :pos 123457, :strand :reverse,
+                    :join :before, :bases "C"}
+    "G]17:198982]" {:chr "17", :pos 198982, :strand :reverse,
+                    :join :after, :bases "G"}
+    ".[13:123457[" {:chr "13", :pos 123457, :strand :forward,
+                    :join :after, :bases "."}
+    "]2:321681]A" {:chr "2", :pos 321681, :strand :forward,
+                   :join :before, :bases "A"}
+    "C[1:1[" {:chr "1", :pos 1, :strand :forward,
+              :join :after, :bases "C"}
+    "]1:0]A" {:chr "1", :pos 0, :strand :forward,
+              :join :before, :bases "A"}
+    "C[<ct[g1:123>:1[" {:chr "<ct[g1:123>", :pos 1, :strand :forward,
+                        :join :after, :bases "C"}
+
+    ".A" {:join :before, :bases "A"}
+    ".TGCA" {:join :before, :bases "TGCA"}
+    "G." {:join :after, :bases "G"}
+    "TCC." {:join :after, :bases "TCC"}
+
+    "G" nil
+    "ATT" nil
+    "[1:12T" nil
+    "[1:2[T[" nil
+    "[1:[T" nil
+    "[:1[T" nil
+    "[:[T" nil
+    "[1:1e[T" nil
+    "[1:2]T[" nil
+    "]1:1]" nil
+    "]1:1[T" nil
+    "]1:1T" nil
+    "]12]T" nil ;; possibly not malformed
+    "N[<[>[>[" nil ;; possibly not malformed
+    "." nil
+    "*" nil
+    ".G." nil
+    "..G" nil
+    "<>" nil
+    "C<ctg1>" nil ;; INS
+    "<ctg1>C" nil ;; INS
+    "<DUP>" nil
+    "<INV>" nil))
+
+(deftest stringify-breakend
+  (are [?expected ?bnd]
+      (= ?expected (vcf-util/stringify-breakend ?bnd))
+    "]13:123456]T" {:chr "13", :pos 123456, :strand :forward,
+                    :join :before, :bases "T"}
+    "]13:123456]AGTNNNNNCAT" {:chr "13", :pos 123456, :strand :forward,
+                              :join :before, :bases "AGTNNNNNCAT"}
+    "AGTNNNNNCA[2:321682[" {:chr "2", :pos 321682, :strand :forward,
+                            :join :after, :bases "AGTNNNNNCA"}
+    "C[<ctg1>:1[" {:chr "<ctg1>", :pos 1, :strand :forward,
+                   :join :after, :bases "C"}
+    "[13:123457[C" {:chr "13", :pos 123457, :strand :reverse,
+                    :join :before, :bases "C"}
+    "G]17:198982]" {:chr "17", :pos 198982, :strand :reverse,
+                    :join :after, :bases "G"}
+    ".[13:123457[" {:chr "13", :pos 123457, :strand :forward,
+                    :join :after, :bases "."}
+    "]2:321681]A" {:chr "2", :pos 321681, :strand :forward,
+                   :join :before, :bases "A"}
+    "C[1:1[" {:chr "1", :pos 1, :strand :forward,
+              :join :after, :bases "C"}
+    "]1:0]A" {:chr "1", :pos 0, :strand :forward,
+              :join :before, :bases "A"}
+    "C[<ct[g1:123>:1[" {:chr "<ct[g1:123>", :pos 1, :strand :forward,
+                        :join :after, :bases "C"}
+
+    ".A" {:join :before, :bases "A"}
+    ".TGCA" {:join :before, :bases "TGCA"}
+    "G." {:join :after, :bases "G"}
+    "TCC." {:join :after, :bases "TCC"}
+
+    nil nil
+    nil {}
+    nil {:bases "A"}
+
+    ".A" {:bases "A", :join :before, :chr "1", :pos 1}
+    ".A" {:bases "A", :join :before, :chr "1", :strand :forward}
+    ".A" {:bases "A", :join :before, :pos 1, :strand :forward}))

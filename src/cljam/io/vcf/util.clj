@@ -1,5 +1,6 @@
 (ns cljam.io.vcf.util
-  (:require [clojure.string :as cstr]))
+  (:require [clojure.string :as cstr]
+            [proton.core :as p]))
 
 (definline dot-or-nil?
   "Checks if given string is equal to \".\" or nil."
@@ -233,3 +234,54 @@
           (update :info stringify-info)
           (update fmt-kw stringify-format)
           (merge (into {} (for [k sample-kws] [k (stringify-sample (v fmt-kw) (v k))])))))))
+
+(def ^:private long-breakend-regexp
+  ;;     pre-seq      [ or ]  chr      pos   [ or ]    post-seq
+  #"((?:[ACGTN]*|\.))([\[\]])(.+?)(?::(\d+))([\[\]])((?:[ACGTN]*|\.))")
+
+(def ^:private short-breakend-regexp
+  #"(\.?)([ATGCN]+)(\.?)")
+
+(defn parse-breakend
+  "Parses an ALT allele string of SVTYPE=BND.
+  Returns a map with mandatory keys:
+  - `:bases` bases that replaces the reference place
+  - `:join` `:before` or `:after`
+  and optional keys for a mate:
+  - `:chr` chromosome name of the mate sequence
+  - `:pos` genomic position of the mate sequence
+  - `:strand` strand of the mate sequence
+  Returns `nil` if input `alt` is not a breakend."
+  [alt]
+  (if-let [[_ pre-seq [left-bracket] chr pos [right-bracket] post-seq]
+           (re-matches long-breakend-regexp alt)]
+    (let [pre (not-empty pre-seq)
+          post (not-empty post-seq)]
+      (when (and (= left-bracket right-bracket)
+                 (or pre post)
+                 (not (and pre post)))
+        (when-let [p (p/as-long pos)]
+          {:chr chr,
+           :pos p,
+           :join (if post :before :after),
+           :bases (or pre post),
+           :strand (if (= left-bracket \])
+                     (if post :forward :reverse)
+                     (if post :reverse :forward))})))
+    (when-let [[_ [pre-dot] bases [post-dot]]
+               (re-matches short-breakend-regexp alt)]
+      (when (and (or pre-dot post-dot)
+                 (not (and pre-dot post-dot)))
+        {:bases bases, :join (if pre-dot :before :after)}))))
+
+(defn stringify-breakend
+  "Returns a string representation of a breakend."
+  [{:keys [chr pos strand join] s :bases}]
+  (when (and (not-empty s) (#{:before :after} join))
+    (if (and chr pos (#{:forward :reverse} strand))
+      (let [before? (= join :before)
+            bracket (if (= strand :forward)
+                      (if before? \] \[)
+                      (if before? \[ \]))]
+        (str (when-not before? s) bracket chr \: pos bracket (when before? s)))
+      (str (when (= :before join) \.) s (when (= :after join) \.)))))

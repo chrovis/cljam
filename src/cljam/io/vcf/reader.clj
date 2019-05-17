@@ -27,7 +27,7 @@
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
-  (read-in-region [this {:keys [chr start end]} {:keys [depth] :as option}]
+  (read-in-region [this {:keys [chr start end]} option]
     (logging/warn "May cause degradation of performance.")
     (filter
      (fn [v] (and (if chr (= (:chr v) chr) true)
@@ -141,7 +141,7 @@
 ;; ------------------
 
 (defn- parse-data-line
-  [line header kws]
+  [line kws]
   ;; When splitting a string with single-character delimiter,
   ;; `java.lang.String#split` is slightly faster than `clojure.string/split`.
   ;; For more details, please refer to https://github.com/chrovis/cljam/pull/29.
@@ -165,7 +165,7 @@
   [^java.io.BufferedReader rdr header kws]
   (when-let [line (.readLine rdr)]
     (if-not (or (meta-line? line) (header-line? line))
-      (cons (parse-data-line line header kws)
+      (cons (parse-data-line line kws)
             (lazy-seq (read-data-lines rdr header kws)))
       (read-data-lines rdr header kws))))
 

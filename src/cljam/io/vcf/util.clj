@@ -329,7 +329,7 @@
        :ref (subs ref left-match (- ref-length right-match)),
        :alt (subs alt left-match (- alt-length right-match))}
 
-      :else {:type :other})))
+      :else {:type :complex})))
 
 (defn inspect-allele
   "Inspects an `alt` allele by comparing to a `ref` allele string.
@@ -343,7 +343,8 @@
   - `:deletion` Deletion of a short base sequence
   - `:complete-insertion` Complete insertion of a long sequence
   - `:breakend` Breakend of a complex rearrangement
-  - `:other` The variant is too complex or malformed"
+  - `:complex` Complex nucleotide variants other than snv/mnv/indel
+  - `:other` Can't categorize the allele, might be malformed"
   [ref alt]
   (let [alt-length (count alt)]
     (cond

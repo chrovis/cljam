@@ -400,9 +400,9 @@
 
     "T" "<ctg1>CT" {:type :other} ;; invalid
     "T" "<CT" {:type :other} ;; invalid
-
     "." "A" {:type :other}
-    "TAC" "GC" {:type :other}
-    "TG" "TAC" {:type :other}
-    "TCA" "GGGG" {:type :other}
-    "AAAA" "CAC" {:type :other}))
+
+    "TAC" "GC" {:type :complex}
+    "TG" "TAC" {:type :complex}
+    "TCA" "GGGG" {:type :complex}
+    "AAAA" "CAC" {:type :complex}))

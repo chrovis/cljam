@@ -236,8 +236,8 @@
           (merge (into {} (for [k sample-kws] [k (stringify-sample (v fmt-kw) (v k))])))))))
 
 (def ^:private long-breakend-regexp
-  ;;     pre-seq      [ or ]  chr      pos   [ or ]    post-seq
-  #"((?:[ACGTN]*|\.))([\[\]])(.+?)(?::(\d+))([\[\]])((?:[ACGTN]*|\.))")
+  ;;   pre-seq    [ or ]  chr    pos     [ or ]    post-seq
+  #"([ACGTN]*|\.)([\[\]])(.+?)(?::(\d+))([\[\]])([ACGTN]*|\.)")
 
 (def ^:private short-breakend-regexp
   #"(\.?)([ATGCN]+)(\.?)")

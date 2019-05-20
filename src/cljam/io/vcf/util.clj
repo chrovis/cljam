@@ -1,6 +1,5 @@
 (ns cljam.io.vcf.util
-  (:require [clojure.string :as cstr]
-            [cljam.util :as util]))
+  (:require [clojure.string :as cstr]))
 
 (definline dot-or-nil?
   "Checks if given string is equal to \".\" or nil."
@@ -90,9 +89,9 @@
   [^String gt]
   (when-not (dot-or-nil? gt)
     (->> gt
-         (re-seq #"([\||/])?(\d+)")
-         (map (fn [[_ phase allele]]
-                [(Integer/parseInt allele)
+         (re-seq #"([\||/])?(.|\d+)")
+         (map (fn [[_ phase ^String allele]]
+                [(when-not (dot-or-nil? allele) (Integer/parseInt allele))
                  (if phase
                    (= phase "|")
                    (neg? (.indexOf ^String gt "/")))])))))
@@ -101,7 +100,64 @@
   "Stringifies genotype map into VCF-style GT string."
   [gt-seq]
   (when-not (or (nil? gt-seq) (empty? gt-seq))
-    (apply str (rest (mapcat (fn [[allele phase]] [(if phase "|" "/") allele]) gt-seq)))))
+    (->> gt-seq
+         (mapcat
+          (fn [[allele phase]]
+            [(if phase "|" "/") (or allele \.)]))
+         rest
+         (apply str))))
+
+(defn genotype-seq
+  "Returns a sequence of genotypes represented as sequences of integers."
+  ([^long ploidy ^long n-alt-alleles]
+   (genotype-seq ploidy n-alt-alleles []))
+  ([^long ploidy ^long n-alt-alleles s]
+   (mapcat
+    (fn [i]
+      (if (= 1 ploidy)
+        [(cons i s)]
+        (genotype-seq (dec ploidy) i (cons i s))))
+    (range (inc n-alt-alleles)))))
+
+(defn genotype-index
+  "Returns an index for given genotype."
+  ^long [genotype]
+  {:pre [(seq genotype)
+         (every? (complement neg?) genotype)]}
+  (letfn [(combination ^long [^long n ^long k]
+            (cond
+              (< n k) 0
+              (= k n) 1
+              (or (= k 1) (= k (dec n))) n
+              (< (quot n 2) k) (recur n (- n k))
+              :else (loop [i (inc (- n k)), j 1, r 1]
+                      (if (<= j k)
+                        (recur (inc i) (inc j) (quot (* r i) j))
+                        r))))]
+    (->> genotype
+         sort
+         (map-indexed (fn [^long m ^long k] (combination (+ k m) (inc m))))
+         (apply +))))
+
+(defn biallelic-genotype
+  "Converts a multiallelic `genotype` string into a biallelic one. Ignores all
+  alleles other than the reference allele and the `target-allele`."
+  [genotype ^long target-allele]
+  (->> genotype
+       parse-genotype
+       (map (fn [[allele phased?]]
+              [(when allele (if (= target-allele allele) 1 0)) phased?]))
+       stringify-genotype))
+
+(defn biallelic-coll
+  "Picks up elements in multiallelic `coll` and make a biallelic one. Ignores
+  all alleles other than the reference allele and the `target-allele`."
+  [^long ploidy ^long n-alt-alleles ^long target-allele coll]
+  (keep-indexed
+   (fn [i gt]
+     (when (every? (fn [^long a] (or (= a 0) (= a target-allele))) gt)
+       (nth coll i)))
+   (genotype-seq ploidy n-alt-alleles)))
 
 (defn genotype->ints
   "Convert genotype to a sequence of integers."
@@ -140,8 +196,8 @@
   (->> formats
        (map (fn [k] [k (sample-map k)]))
        reverse
-       (drop-while (fn [[k v]] (or (nil? v) (= [nil] v))))
-       (map (fn [[k v]]
+       (drop-while (fn [[_ v]] (or (nil? v) (= [nil] v))))
+       (map (fn [[_ v]]
               (cond
                 (sequential? v) (cstr/join "," (map (fn [i] (if (nil? i) "." i)) v))
                 (nil? v) "."

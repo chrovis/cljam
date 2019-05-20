@@ -1,8 +1,7 @@
 (ns cljam.io.vcf.util-test
-  (:require  [clojure.test :refer :all]
-             [clojure.string :as cstr]
-             [cljam.test-common :refer :all]
-             [cljam.io.vcf.util :as vcf-util]))
+  (:require [clojure.test :refer :all]
+            [cljam.test-common :refer :all]
+            [cljam.io.vcf.util :as vcf-util]))
 
 (deftest about-parse-info
   (let [parse-info (vcf-util/info-parser [{:id "NS", :number 1, :type "Integer"}
@@ -74,9 +73,11 @@
     "0/0" [[0 false] [0 false]]
     "0/1" [[0 false] [1 false]]
     "1/1" [[1 false] [1 false]]
+    "./." [[nil false] [nil false]]
     "0|0" [[0 true] [0 true]]
     "0|1" [[0 true] [1 true]]
     "1|1" [[1 true] [1 true]]
+    ".|." [[nil true] [nil true]]
     "0/1/2" [[0 false] [1 false] [2 false]]
     "0/1|2" [[0 false] [1 false] [2 true]]))
 
@@ -91,11 +92,98 @@
     [[0 true] [0 true]] "0|0"
     [[0 true] [1 true]] "0|1"
     [[1 true] [1 true]] "1|1"
+    [[nil true] [nil true]] ".|."
     [[0 false] [0 false]] "0/0"
     [[0 false] [1 false]] "0/1"
     [[1 false] [1 false]] "1/1"
+    [[nil false] [nil false]] "./."
     [[0 false] [1 false] [2 false]] "0/1/2"
     [[0 false] [1 false] [2 true]] "0/1|2"))
+
+(deftest genotype-seq
+  (are [?ploidy ?n-alt-alleles ?expected]
+      (= ?expected (vcf-util/genotype-seq ?ploidy ?n-alt-alleles))
+    1 1 [[0] [1]]
+    1 2 [[0] [1] [2]]
+    2 1 [[0 0] [0 1] [1 1]]
+    2 2 [[0 0] [0 1] [1 1] [0 2] [1 2] [2 2]]
+    2 3 [[0 0] [0 1] [1 1] [0 2] [1 2] [2 2] [0 3] [1 3] [2 3] [3 3]]
+    3 1 [[0 0 0] [0 0 1] [0 1 1] [1 1 1]]
+    3 2 [[0 0 0] [0 0 1] [0 1 1] [1 1 1] [0 0 2]
+         [0 1 2] [1 1 2] [0 2 2] [1 2 2] [2 2 2]]))
+
+(deftest genotype-index
+  (are [?genotype ?expected]
+      (= ?expected (vcf-util/genotype-index ?genotype))
+    [0] 0
+    [1] 1
+    [0 0] 0
+    [0 1] 1
+    [1 1] 2
+    [0 2] 3
+    [1 2] 4
+    [2 2] 5
+    [3 3] 9
+    [0 0 0] 0
+    [1 1 2] 6
+    [1 2 2] 8))
+
+(deftest about-genotypes
+  (are [?ploidy ?n-alt-alleles]
+      (let [x (vcf-util/genotype-seq ?ploidy ?n-alt-alleles)]
+        (= (range (count x)) (map vcf-util/genotype-index x)))
+    1 0
+    1 1
+    1 2
+    1 3
+    2 0
+    2 1
+    2 2
+    2 3
+    2 4
+    3 0
+    3 1
+    3 2
+    3 3
+    3 4
+    4 0
+    4 1
+    4 2
+    4 3
+    4 4))
+
+(deftest biallelic-genotype
+  (are [?genotype ?target-allele ?expected]
+      (= ?expected (vcf-util/biallelic-genotype ?genotype ?target-allele))
+    "0" 1 "0"
+    "1" 1 "1"
+    "2" 1 "0"
+    "0/0" 1 "0/0"
+    "0/1" 1 "0/1"
+    "0/2" 1 "0/0"
+    "1/2" 1 "1/0"
+    "2|2" 1 "0|0"
+    "0/1" 2 "0/0"
+    "0|2" 2 "0|1"
+    "1/2" 2 "0/1"
+    "0/1/2" 2 "0/0/1"
+    "2|3|4" 3 "0|1|0"
+    ;; a call cannot be made
+    nil 0 nil
+    "./." 1 "./."
+    ;; hemizygous
+    "./1" 1 "./1"
+    "./2" 2 "./1"
+    "./1" 2 "./0"))
+
+(deftest biallelic-coll
+  (are [?ploidy ?n-alt-alleles ?target-allele ?coll ?expected]
+      (= ?expected
+         (vcf-util/biallelic-coll ?ploidy ?n-alt-alleles ?target-allele ?coll))
+    2 1 1 [10 20 30] [10 20 30]
+    2 2 1 [10 20 30 40 50 60] [10 20 30]
+    2 2 2 [10 20 30 40 50 60] [10 40 60]
+    3 2 2 [1 2 3 4 5 6 7 8 9 10] [1 5 8 10]))
 
 (deftest about-parse-variant-v4_3
   (let [parse-variant (vcf-util/variant-parser test-vcf-v4_3-meta-info test-vcf-v4_3-header)]

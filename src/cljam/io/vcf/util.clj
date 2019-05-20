@@ -235,11 +235,11 @@
           (update fmt-kw stringify-format)
           (merge (into {} (for [k sample-kws] [k (stringify-sample (v fmt-kw) (v k))])))))))
 
-(def ^:private long-breakend-regexp
+(def ^:private ^:const long-breakend-regexp
   ;;   pre-seq    [ or ]  chr    pos     [ or ]    post-seq
   #"([ACGTN]*|\.)([\[\]])(.+?)(?::(\d+))([\[\]])([ACGTN]*|\.)")
 
-(def ^:private short-breakend-regexp
+(def ^:private ^:const short-breakend-regexp
   #"(\.?)([ATGCN]+)(\.?)")
 
 (defn parse-breakend

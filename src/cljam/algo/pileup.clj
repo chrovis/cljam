@@ -35,34 +35,34 @@
   [^long start ^long end alns]
   (seq-step start end 0 alns))
 
-(defn- quals-at-ref
-  [idx ^String qual]
-  (let [empty-qual? (and (= (.length qual) 1)
-                         (= (.charAt qual 0) \*))]
-    (if empty-qual?
-      (vec (repeat (count idx) 93)) ;; \~
-      (mapv (fn [[_ x]]
-              (if (number? x)
-                (qual/fastq-char->phred-byte (.charAt qual x))
-                93))
-            idx))))
-
-(defn- seqs-at-ref
-  [idx ^String s]
-  (mapv (fn [[op x xs]]
-          (let [c (if (number? x) (.charAt s x) x)]
-            (case op
-              :m [c]
-              :d [c xs]
-              :i [c (subs s (first xs) (last xs))]))) idx))
-
 (defn index-cigar
   "Align bases and base quality scores with the reference coordinate."
   [^SAMAlignment aln]
-  (let [idx (cigar/to-index (.cigar aln))]
-    (assoc aln
-           :seqs-at-ref (seqs-at-ref idx (:seq aln))
-           :quals-at-ref (quals-at-ref idx (.qual aln)))))
+  (let [idx (cigar/to-index (.cigar aln))
+        ^String seqs (:seq aln)
+        ^String quals (.qual aln)
+        empty-qual? (and (= (.length quals) 1)
+                         (= (.charAt quals 0) \*))]
+    (loop [i idx
+           seqs-at-ref (transient [])
+           quals-at-ref (transient [])]
+      (let [[op x xs] (first i)]
+        (if op
+          (let [c (if (number? x) (.charAt seqs x) x)
+                q (if (or empty-qual? (char? x))
+                    93
+                    (qual/fastq-char->phred-byte (.charAt quals x)))]
+            (recur (rest i)
+                   (conj! seqs-at-ref
+                          (if (= op :m)
+                            [c]
+                            (if (= op :d)
+                              [c xs]
+                              [c (subs seqs (first xs) (last xs))])))
+                   (conj! quals-at-ref q)))
+          (assoc aln
+                 :seqs-at-ref (persistent! seqs-at-ref)
+                 :quals-at-ref (persistent! quals-at-ref)))))))
 
 (defn basic-mpileup-pred
   "Basic predicate function for filtering alignments for mpileup."
@@ -84,18 +84,19 @@
   [^long ref-pos ^SAMAlignment aln]
   (let [relative-pos (- ref-pos (.pos aln))
         qual ((:quals-at-ref aln) relative-pos)
-        [base indel] ((:seqs-at-ref aln) relative-pos)]
-    (-> (PileupBase.
-         (zero? relative-pos)
-         (.mapq aln)
-         base
-         qual
-         (flag/reversed? (.flag aln))
-         (= ref-pos (.end aln))
-         (when-not (number? indel) indel)
-         (when (number? indel) indel)
-         (.qname aln))
-        (assoc :alignment aln))))
+        [base indel] ((:seqs-at-ref aln) relative-pos)
+        deletion? (number? indel)]
+    (PileupBase.
+     (zero? relative-pos)
+     (.mapq aln)
+     base
+     qual
+     (flag/reversed? (.flag aln))
+     (= ref-pos (.end aln))
+     (when-not deletion? indel)
+     (when deletion? indel)
+     (.qname aln)
+     aln)))
 
 (defn- resolve-bases
   [[ref-pos alns]]
@@ -110,7 +111,7 @@
 (defn filter-by-base-quality
   "Returns a predicate for filtering piled-up reads by base quality at its
   position."
-  [min-base-quality]
+  [^long min-base-quality]
   (fn [p]
     (->> #(<= min-base-quality (.qual ^PileupBase %))
          (partial filterv)
@@ -134,32 +135,44 @@
   [^SAMAlignment a1 ^SAMAlignment a2]
   (when (and (pos? (.pnext a1))
              (<= (max (.pos a1) (.pos a2)) (.end a1)))
-    (let [tlen1 (.tlen a1)
-          tlen2 (.tlen a2)
+    (let [pos1 (.pos a1)
+          pos2 (.pos a2)
           quals1 (:quals-at-ref a1)
           quals2 (:quals-at-ref a2)
           seqs1  (:seqs-at-ref a1)
           seqs2  (:seqs-at-ref a2)
-          correct-start (max (.pos a1) (.pos a2))
-          new-quals (for [pos (range correct-start
-                                     (inc (min (.end a1) (.end a2))))]
-                      (let [relative-pos1 (- pos (.pos a1))
-                            relative-pos2 (- pos (.pos a2))
-                            q1 (quals1 relative-pos1)
-                            q2 (quals2 relative-pos2)
-                            [b1] (seqs1 relative-pos1)
-                            [b2] (seqs2 relative-pos2)]
-                        (if (= b1 b2)
-                          [(min 200 (+ q1 q2)) 0]
-                          (if (<= q2 q1)
-                            [(int (* 0.8 q1)) 0]
-                            [0 (int (* 0.8 q2))]))))
-          [new1 new2] (apply map vector new-quals)
-          new-quals1 (merge-corrected-quals a1 correct-start new1)
-          new-quals2 (merge-corrected-quals a2 correct-start new2)]
-      (if (flag/r1? (.flag a1))
-        [new-quals1 new-quals2]
-        [new-quals2 new-quals1]))))
+          correct-start (max pos1 pos2)
+          correct-end (min (.end a1) (.end a2))]
+      (loop [p correct-start
+             new1 (transient [])
+             new2 (transient [])]
+        (if (<= p correct-end)
+          (let [relative-pos1 (- p pos1)
+                relative-pos2 (- p pos2)
+                ^int q1 (quals1 relative-pos1)
+                ^int q2 (quals2 relative-pos2)
+                [b1] (seqs1 relative-pos1)
+                [b2] (seqs2 relative-pos2)]
+            (if (= b1 b2)
+              (recur (inc p)
+                     (conj! new1 (min 200 (+ q1 q2)))
+                     (conj! new2 0))
+              (if (<= q2 q1)
+                (recur (inc p)
+                       (conj! new1 (int (* 0.8 q1)))
+                       (conj! new2 0))
+                (recur (inc p)
+                       (conj! new1 0)
+                       (conj! new2 (int (* 0.8 q2)))))))
+          (let [new-quals1 (merge-corrected-quals a1
+                                                  correct-start
+                                                  (persistent! new1))
+                new-quals2 (merge-corrected-quals a2
+                                                  correct-start
+                                                  (persistent! new2))]
+            (if (flag/r1? (.flag a1))
+              [new-quals1 new-quals2]
+              [new-quals2 new-quals1])))))))
 
 (defn- make-corrected-quals-map
   "Make a map which has corrected quals of all overlapping pairs."
@@ -196,11 +209,11 @@
   ([sam-reader region]
    (pileup sam-reader region {}))
   ([sam-reader
-    {:keys [chr start end] :or {start 1 end Integer/MAX_VALUE}}
-    {:keys [min-base-quality min-map-quality ignore-overlaps? chunk-size]
+    {:keys [chr ^long start ^long end] :or {start 1 end Integer/MAX_VALUE}}
+    {:keys [^long min-base-quality ^long min-map-quality ignore-overlaps? ^long chunk-size]
      :or {min-base-quality 13 min-map-quality 0 ignore-overlaps? false
           chunk-size 5000}}]
-   (when-let [len (:len (refs/ref-by-name (sam/read-refs sam-reader) chr))]
+   (when-let [^long len (:len (refs/ref-by-name (sam/read-refs sam-reader) chr))]
      (let [s (max 1 start)
            e (min len end)
            region {:chr chr :start s :end e}]
@@ -212,7 +225,7 @@
             (seq-step start end chunk-size)
             (sequence
              (comp
-              (mapcat (fn [[pos alns]]
+              (mapcat (fn [[^long pos alns]]
                         (->> (if ignore-overlaps?
                                alns
                                (keep (partial correct-quals-at-ref

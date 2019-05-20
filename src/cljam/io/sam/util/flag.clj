@@ -19,10 +19,14 @@
 (def ^:const flag-keywords
   (vec (map vector (map key (sort-by val flags)) (range))))
 
+(defn- long-bit-test
+  [^long x ^long n]
+  (. clojure.lang.Numbers testBit x n))
+
 (defn decode
   "Returns a set of keywords for a given flag integer."
   [^long f]
-  (into #{} (for [[k i] flag-keywords :when (bit-test f i)] k)))
+  (into #{} (for [[k i] flag-keywords :when (long-bit-test f i)] k)))
 
 (defn encode
   "Returns a flag integer encoding set of keywords."
@@ -43,17 +47,17 @@
 (defn multiple?
   "Tests if the template has multiple segments."
   [^long f]
-  (bit-test f 0))
+  (long-bit-test f 0))
 
 (defn properly-aligned?
   "Tests if the paired-end segments are properly aligned."
   [^long f]
-  (bit-test f 1))
+  (long-bit-test f 1))
 
 (defn unmapped?
   "Tests if the segment is unmapped."
   [^long f]
-  (bit-test f 2))
+  (long-bit-test f 2))
 
 (defn both-unmapped?
   "Tests if both the segment and its mate segment are unmapped."
@@ -63,17 +67,17 @@
 (defn reversed?
   "Tests if the segment is reversed."
   [^long f]
-  (bit-test f 4))
+  (long-bit-test f 4))
 
 (defn r1?
   "Tests if the segment is the first in the template."
   [^long f]
-  (bit-test f 6))
+  (long-bit-test f 6))
 
 (defn r2?
   "Tests if the segment is the last in the template."
   [^long f]
-  (bit-test f 7))
+  (long-bit-test f 7))
 
 (defn r1r2
   "Returns 0 for single-end, 1 for R1 and 2 for R2."
@@ -85,4 +89,4 @@
 (defn secondary?
   "Tests if the alignment is secondary."
   [^long f]
-  (bit-test f 8))
+  (long-bit-test f 8))

@@ -17,7 +17,8 @@
                        ^boolean end?
                        insertion ;; String?
                        deletion ;; int?
-                       qname]) ;; String?
+                       qname ;; String?
+                       alignment]) ;; SAMAlignment?
 
 (defrecord LocusPile [rname
                       ^int pos
@@ -67,7 +68,7 @@
           (when (zero? upper-base-int)
             (throw (ex-info (format "Invalid character %s in %s" base column) {:column column :base base})))
           (if (= len (+ i (if mapq 3 1)))
-            (persistent! (conj! results (PileupBase. start? mapq upper-base -1 reverse? false nil nil nil)))
+            (persistent! (conj! results (PileupBase. start? mapq upper-base -1 reverse? false nil nil nil nil)))
             (let [x (.charAt column (+ i (if mapq 3 1)))
                   ins? (= x \+)
                   del? (= x \-)
@@ -90,7 +91,7 @@
                                     (if indel-num (+ 1 indel-num-chars indel-num) 0)
                                     (if end? 1 0)))]
               (recur next-pos
-                     (conj! results (PileupBase. start? mapq upper-base -1 reverse? end? (when ins? indel-seq) (when del? indel-num) nil))))))
+                     (conj! results (PileupBase. start? mapq upper-base -1 reverse? end? (when ins? indel-seq) (when del? indel-num) nil nil))))))
         (persistent! results)))))
 
 (defn- parse-pileup-line

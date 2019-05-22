@@ -275,7 +275,8 @@
         {:bases bases, :join (if pre-dot :before :after)}))))
 
 (defn stringify-breakend
-  "Returns a string representation of a breakend."
+  "Returns a string representation of a breakend. If the input is malformed,
+  returns `nil`. See the docstring of `parse-breakend` for the format."
   [{:keys [chr pos strand join] s :bases}]
   (when (and (not-empty s) (#{:before :after} join))
     (if (and chr pos (#{:forward :reverse} strand))

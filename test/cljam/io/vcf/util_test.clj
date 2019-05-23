@@ -367,15 +367,15 @@
     "TGCA" "TCCC" {:type :mnv, :ref "GCA", :alt "CCC", :offset 1} ;; two snvs?
     "TGGTA" "TCcAA" {:type :mnv, :ref "GGT", :alt "CcA", :offset 1}
 
-    "TC"  "T"     {:type :deletion, :n-bases -1, :offset 0, :deleted "C"}
-    "TTC" "TC"    {:type :deletion, :n-bases -1, :offset 0, :deleted "T"}
-    "GTC" "G"     {:type :deletion, :n-bases -2, :offset 0, :deleted "TC"}
-    "TCG" "TG"    {:type :deletion, :n-bases -1, :offset 0, :deleted "C"}
-    "TGCA" "TGC"  {:type :deletion, :n-bases -1, :offset 2, :deleted "A"}
+    "TC"  "T"     {:type :deletion, :n-bases 1, :offset 0, :deleted "C"}
+    "TTC" "TC"    {:type :deletion, :n-bases 1, :offset 0, :deleted "T"}
+    "GTC" "G"     {:type :deletion, :n-bases 2, :offset 0, :deleted "TC"}
+    "TCG" "TG"    {:type :deletion, :n-bases 1, :offset 0, :deleted "C"}
+    "TGCA" "TGC"  {:type :deletion, :n-bases 1, :offset 2, :deleted "A"}
     ;; ambiguous
-    "TCGCG" "TCG" {:type :deletion, :n-bases -2, :offset 2, :deleted "CG"}
+    "TCGCG" "TCG" {:type :deletion, :n-bases 2, :offset 2, :deleted "CG"}
     ;; ambiguous
-    "TAAACCCTAAA" "TAA" {:type :deletion, :n-bases -8,
+    "TAAACCCTAAA" "TAA" {:type :deletion, :n-bases 8,
                          :offset 2, :deleted "ACCCTAAA"}
 
     "C"   "CTAG"  {:type :insertion, :n-bases 3, :offset 0, :inserted "TAG"}

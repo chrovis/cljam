@@ -312,7 +312,7 @@
 
       (and (< left-match ref-length) (= left-match alt-length))
       {:type :deletion, :offset (dec left-match),
-       :n-bases (- left-match ref-length), :deleted (subs ref left-match)}
+       :n-bases (- ref-length left-match), :deleted (subs ref left-match)}
 
       (= (inc matched-length) ref-length alt-length)
       {:type :snv, :ref (nth ref left-match),
@@ -320,7 +320,7 @@
 
       (= matched-length alt-length)
       {:type :deletion, :offset (dec left-match),
-       :n-bases (- left-match (- ref-length right-match)),
+       :n-bases (- ref-length right-match left-match),
        :deleted (subs ref left-match (- ref-length right-match))}
 
       (= matched-length ref-length)

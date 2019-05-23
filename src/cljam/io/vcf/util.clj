@@ -291,14 +291,18 @@
   [ref alt]
   (let [ref-length (count ref)
         alt-length (count alt)
-        u-ref (cstr/upper-case ref)
-        u-alt (cstr/upper-case alt)
-        left-match (->> (map vector u-ref u-alt)
-                        (take-while #(apply = %))
+        upper-ref (cstr/upper-case ref)
+        upper-alt (cstr/upper-case alt)
+        left-match (->> (map = upper-ref upper-alt)
+                        (take-while true?)
                         count)
-        right-match (->> (map vector (cstr/reverse u-ref) (cstr/reverse u-alt))
-                         (take-while #(apply = %))
-                         count)
+        right-match (->> (cstr/reverse upper-alt)
+                         (map = (cstr/reverse upper-ref))
+                         (take-while true?)
+                         count
+                         long
+                         (Math/min (- (Math/min ref-length alt-length)
+                                      left-match)))
         matched-length (+ left-match right-match)]
     ;; Note that `{:type :ref}` is handled in the caller
     (cond

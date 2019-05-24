@@ -341,19 +341,24 @@
   (are [?ref ?alt ?expected]
       (= ?expected (vcf-util/inspect-allele ?ref ?alt))
 
-    "A" "."   {:type :ref}
-    "A" "*"   {:type :ref}
-    "A" "X"   {:type :ref}
+    "A" ""    {:type :no-call} ;; malformed
+    "A" "."   {:type :no-call}
+    "A" nil   {:type :no-call}
+
+    "A" "*"   {:type :spanning-deletion}
+
+    "A" "X"   {:type :unspecified}
+    "A" "<*>" {:type :unspecified}
+    "A" "<X>" {:type :unspecified}
+
     "A" "A"   {:type :ref}
     "A" "a"   {:type :ref}
     "AA" "AA" {:type :ref}
     "AA" "Aa" {:type :ref}
-    "A" "<*>" {:type :ref} ;; conventional
-    "A" "<X>" {:type :ref} ;; conventional
 
     "A" "<DUP>"     {:type :id, :id "DUP"}
     "A" "<INV>"     {:type :id, :id "INV"}
-    "A" "<NON_REF>" {:type :id, :id "NON_REF"} ;; not :ref
+    "A" "<NON_REF>" {:type :id, :id "NON_REF"} ;; not :unspecified
 
     "A"  "T"      {:type :snv, :ref \A, :alt \T, :offset 0}
     "TC" "TG"     {:type :snv, :ref \C, :alt \G, :offset 1}
@@ -400,9 +405,14 @@
     "T" "]13:123456]T" {:type :breakend, :join :before,
                         :strand :forward, :chr "13", :pos 123456, :bases "T"}
 
-    "T" "<ctg1>CT" {:type :other} ;; invalid
-    "T" "<CT" {:type :other} ;; invalid
-    "." "A" {:type :other}
+    "T" "<ctg1>CT" {:type :other} ;; malformed
+    "T" "<CT"      {:type :other} ;; malformed
+    "T" "C,A"      {:type :other}
+    "." "A"        {:type :other} ;; malformed
+    "" "A"         {:type :other} ;; malformed
+    nil "A"        {:type :other} ;; malformed
+    nil nil        {:type :other} ;; malformed
+    "R" "A"        {:type :other} ;; malformed
 
     "TAC" "GC" {:type :complex}
     "TG" "TAC" {:type :complex}

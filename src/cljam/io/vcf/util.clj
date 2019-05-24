@@ -286,3 +286,88 @@
                       (if before? \[ \]))]
         (str (when-not before? s) bracket chr \: pos bracket (when before? s)))
       (str (when (= :before join) \.) s (when (= :after join) \.)))))
+
+(defn- inspect-nucleotides-allele
+  [ref alt]
+  (let [ref-length (count ref)
+        alt-length (count alt)
+        upper-ref (cstr/upper-case ref)
+        upper-alt (cstr/upper-case alt)
+        left-match (->> (map = upper-ref upper-alt)
+                        (take-while true?)
+                        count)
+        right-match (->> (cstr/reverse upper-alt)
+                         (map = (cstr/reverse upper-ref))
+                         (take-while true?)
+                         count
+                         long
+                         (Math/min (- (Math/min ref-length alt-length)
+                                      left-match)))
+        matched-length (+ left-match right-match)]
+    (cond
+      (= left-match ref-length alt-length)
+      {:type :ref}
+
+      (and (= left-match ref-length) (< left-match alt-length))
+      {:type :insertion, :offset (dec left-match),
+       :n-bases (- alt-length left-match), :inserted (subs alt left-match)}
+
+      (and (< left-match ref-length) (= left-match alt-length))
+      {:type :deletion, :offset (dec left-match),
+       :n-bases (- ref-length left-match), :deleted (subs ref left-match)}
+
+      (= (inc matched-length) ref-length alt-length)
+      {:type :snv, :ref (nth ref left-match),
+       :alt (nth alt left-match), :offset left-match}
+
+      (= matched-length alt-length)
+      {:type :deletion, :offset (dec left-match),
+       :n-bases (- ref-length right-match left-match),
+       :deleted (subs ref left-match (- ref-length right-match))}
+
+      (= matched-length ref-length)
+      {:type :insertion, :offset (dec left-match),
+       :n-bases (- alt-length right-match left-match),
+       :inserted (subs alt left-match (- alt-length right-match))}
+
+      (= ref-length alt-length)
+      {:type :mnv, :offset left-match,
+       :ref (subs ref left-match (- ref-length right-match)),
+       :alt (subs alt left-match (- alt-length right-match))}
+
+      :else {:type :complex})))
+
+(defn inspect-allele
+  "Inspects an `alt` allele by comparing to a `ref` allele string.
+  Returns a map containing `:type` and other detailed information.
+  A value of the key `:type` can be one of the followings:
+  - `:no-call`            No variant called
+  - `:spanning-deletion`  Placeholder to signify an absent sequence
+  - `:unspecified`        Unspecified non-ref allele
+  - `:ref`                Duplicated allele of REF
+  - `:id`                 Symbolic reference
+  - `:snv`                Single nucleotide variant
+  - `:mnv`                Multiple nucleotide variants
+  - `:insertion`          Insertion of a short base sequence
+  - `:deletion`           Deletion of a short base sequence
+  - `:complete-insertion` Complete insertion of a long sequence
+  - `:breakend`           Breakend of a complex rearrangement
+  - `:complex`            Complex nucleotide variants other than snv/mnv/indel
+  - `:other`              Can't categorize the allele, might be malformed"
+  [ref alt]
+  (or
+   (when (re-matches #"(?i)[ACGTN]+" (or ref ""))
+     (condp re-matches (or (not-empty alt) ".")
+       #"\." {:type :no-call}
+       #"\*" {:type :spanning-deletion}
+       #"(X|<\*>|<X>)" {:type :unspecified}
+       #"<(.+)>" :>> (fn [[_ id]] {:type :id, :id id})
+       #"(?i)([ACGTN])<(.+)>" :>> (fn [[_ [base] id]]
+                                    {:type :complete-insertion,
+                                     :join :after, :base base, :id id})
+       #"(?i)<(.+)>([ACGTN])" :>> (fn [[_ id [base]]]
+                                    {:type :complete-insertion,
+                                     :join :before, :base base, :id id})
+       #"(?i)[ACGTN]+" (inspect-nucleotides-allele ref alt)
+       (some-> (parse-breakend alt) (assoc :type :breakend))))
+   {:type :other}))

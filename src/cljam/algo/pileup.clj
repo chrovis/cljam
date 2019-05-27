@@ -35,6 +35,23 @@
   [^long start ^long end alns]
   (seq-step start end 0 alns))
 
+(defn- two-vec-transducer
+  [transform-fn]
+  (fn [rf]
+    (let [va (volatile! (transient []))
+          vb (volatile! (transient []))]
+      (fn
+        ([] (rf))
+        ([acc]
+         (-> acc
+             (rf (persistent! @va))
+             (rf (persistent! @vb))))
+        ([acc x]
+         (let [[a b] (transform-fn x)]
+           (vswap! va conj! a)
+           (vswap! vb conj! b)
+           acc))))))
+
 (defn- index-to-seq-qual
   [^String seqs ^String quals]
   (let [empty-qual? (and (= (.length quals) 1)
@@ -50,23 +67,6 @@
             [[c xs] q]
             [[c (subs seqs (first xs) (last xs))] q]))))))
 
-(defn- index-transducer
-  [convert-fn]
-  (fn [rf]
-    (let [seqs-at-ref (volatile! (transient []))
-          quals-at-ref (volatile! (transient []))]
-      (fn
-        ([] (rf))
-        ([acc]
-         (-> acc
-             (rf (persistent! @seqs-at-ref))
-             (rf (persistent! @quals-at-ref))))
-        ([acc idx]
-         (let [[s q] (convert-fn idx)]
-           (vswap! seqs-at-ref conj! s)
-           (vswap! quals-at-ref conj! q)
-           acc))))))
-
 (defn index-cigar
   "Align bases and base quality scores with the reference coordinate."
   [^SAMAlignment aln]
@@ -74,7 +74,7 @@
         ^String seqs (:seq aln)
         ^String quals (.qual aln)
         [seqs-at-ref quals-at-ref] (into []
-                                         (index-transducer
+                                         (two-vec-transducer
                                           (index-to-seq-qual seqs quals))
                                          idx)]
     (assoc aln
@@ -168,23 +168,6 @@
             [(int (* 0.8 q1)) 0]
             [0 (int (* 0.8 q2))]))))))
 
-(defn- correct-pair-transducer
-  [correct-fn]
-  (fn [rf]
-    (let [quals1 (volatile! (transient []))
-          quals2 (volatile! (transient []))]
-      (fn
-        ([] (rf))
-        ([acc]
-         (-> acc
-             (rf (persistent! @quals1))
-             (rf (persistent! @quals2))))
-        ([acc pos]
-         (let [[q1 q2] (correct-fn pos)]
-           (vswap! quals1 conj! q1)
-           (vswap! quals2 conj! q2)
-           acc))))))
-
 (defn- correct-pair-quals
   "Correct quals of a pair. Returns a map with corrected quals."
   [^SAMAlignment a1 ^SAMAlignment a2]
@@ -193,7 +176,7 @@
     (when (and (pos? (.pnext a1))
                (<= correct-start (.end a1)))
       (let [[quals1 quals2] (into []
-                                  (correct-pair-transducer
+                                  (two-vec-transducer
                                    (correct-pair-qual a1 a2))
                                   (range correct-start (inc correct-end)))
             new-quals1 (merge-corrected-quals a1

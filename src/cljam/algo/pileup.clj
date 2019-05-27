@@ -43,26 +43,25 @@
         ^String quals (.qual aln)
         empty-qual? (and (= (.length quals) 1)
                          (= (.charAt quals 0) \*))]
-    (loop [i idx
+    (loop [[[op x xs] & idx] idx
            seqs-at-ref (transient [])
            quals-at-ref (transient [])]
-      (let [[op x xs] (first i)]
-        (if op
-          (let [c (if (number? x) (.charAt seqs x) x)
-                q (if (or empty-qual? (char? x))
-                    93
-                    (qual/fastq-char->phred-byte (.charAt quals x)))]
-            (recur (rest i)
-                   (conj! seqs-at-ref
-                          (if (= op :m)
-                            [c]
-                            (if (= op :d)
-                              [c xs]
-                              [c (subs seqs (first xs) (last xs))])))
-                   (conj! quals-at-ref q)))
-          (assoc aln
-                 :seqs-at-ref (persistent! seqs-at-ref)
-                 :quals-at-ref (persistent! quals-at-ref)))))))
+      (if op
+        (let [c (if (number? x) (.charAt seqs x) x)
+              q (if (or empty-qual? (char? x))
+                  93
+                  (qual/fastq-char->phred-byte (.charAt quals x)))]
+          (recur idx
+                 (conj! seqs-at-ref
+                        (if (= op :m)
+                          [c]
+                          (if (= op :d)
+                            [c xs]
+                            [c (subs seqs (first xs) (last xs))])))
+                 (conj! quals-at-ref q)))
+        (assoc aln
+               :seqs-at-ref (persistent! seqs-at-ref)
+               :quals-at-ref (persistent! quals-at-ref))))))
 
 (defn basic-mpileup-pred
   "Basic predicate function for filtering alignments for mpileup."
@@ -86,7 +85,7 @@
         qual ((:quals-at-ref aln) relative-pos)
         [base indel] ((:seqs-at-ref aln) relative-pos)
         deletion? (number? indel)]
-    (PileupBase.
+    (plpio/->PileupBase
      (zero? relative-pos)
      (.mapq aln)
      base

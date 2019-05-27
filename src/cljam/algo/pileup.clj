@@ -35,33 +35,51 @@
   [^long start ^long end alns]
   (seq-step start end 0 alns))
 
+(defn- index-to-seq-qual
+  [^String seqs ^String quals]
+  (let [empty-qual? (and (= (.length quals) 1)
+                         (= (.charAt quals 0) \*))]
+    (fn [[op x xs]]
+      (let [c (if (number? x) (.charAt seqs x) x)
+            q (if (or empty-qual? (char? x))
+                93
+                (qual/fastq-char->phred-byte (.charAt quals x)))]
+        (if (= op :m)
+          [[c] q]
+          (if (= op :d)
+            [[c xs] q]
+            [[c (subs seqs (first xs) (last xs))] q]))))))
+
+(defn- index-transducer
+  [convert-fn]
+  (fn [rf]
+    (let [seqs-at-ref (volatile! (transient []))
+          quals-at-ref (volatile! (transient []))]
+      (fn
+        ([] (rf))
+        ([acc]
+         (-> acc
+             (rf (persistent! @seqs-at-ref))
+             (rf (persistent! @quals-at-ref))))
+        ([acc idx]
+         (let [[s q] (convert-fn idx)]
+           (vswap! seqs-at-ref conj! s)
+           (vswap! quals-at-ref conj! q)
+           acc))))))
+
 (defn index-cigar
   "Align bases and base quality scores with the reference coordinate."
   [^SAMAlignment aln]
   (let [idx (cigar/to-index (.cigar aln))
         ^String seqs (:seq aln)
         ^String quals (.qual aln)
-        empty-qual? (and (= (.length quals) 1)
-                         (= (.charAt quals 0) \*))]
-    (loop [[[op x xs] & idx] idx
-           seqs-at-ref (transient [])
-           quals-at-ref (transient [])]
-      (if op
-        (let [c (if (number? x) (.charAt seqs x) x)
-              q (if (or empty-qual? (char? x))
-                  93
-                  (qual/fastq-char->phred-byte (.charAt quals x)))]
-          (recur idx
-                 (conj! seqs-at-ref
-                        (if (= op :m)
-                          [c]
-                          (if (= op :d)
-                            [c xs]
-                            [c (subs seqs (first xs) (last xs))])))
-                 (conj! quals-at-ref q)))
-        (assoc aln
-               :seqs-at-ref (persistent! seqs-at-ref)
-               :quals-at-ref (persistent! quals-at-ref))))))
+        [seqs-at-ref quals-at-ref] (into []
+                                         (index-transducer
+                                          (index-to-seq-qual seqs quals))
+                                         idx)]
+    (assoc aln
+           :seqs-at-ref seqs-at-ref
+           :quals-at-ref quals-at-ref)))
 
 (defn basic-mpileup-pred
   "Basic predicate function for filtering alignments for mpileup."
@@ -129,49 +147,64 @@
           (into (subvec quals (+ (- correct-start start) len))))
       (into corrected-quals (subvec quals len)))))
 
+(defn- correct-pair-qual
+  [^SAMAlignment a1 ^SAMAlignment a2]
+  (let [pos1 (.pos a1)
+        pos2 (.pos a2)
+        quals1 (:quals-at-ref a1)
+        quals2 (:quals-at-ref a2)
+        seqs1  (:seqs-at-ref a1)
+        seqs2  (:seqs-at-ref a2)]
+    (fn [^long pos]
+      (let [relative-pos1 (- pos pos1)
+            relative-pos2 (- pos pos2)
+            ^int q1 (quals1 relative-pos1)
+            ^int q2 (quals2 relative-pos2)
+            [b1] (seqs1 relative-pos1)
+            [b2] (seqs2 relative-pos2)]
+        (if (= b1 b2)
+          [(min 200 (+ q1 q2)) 0]
+          (if (<= q2 q1)
+            [(int (* 0.8 q1)) 0]
+            [0 (int (* 0.8 q2))]))))))
+
+(defn- correct-pair-transducer
+  [correct-fn]
+  (fn [rf]
+    (let [quals1 (volatile! (transient []))
+          quals2 (volatile! (transient []))]
+      (fn
+        ([] (rf))
+        ([acc]
+         (-> acc
+             (rf (persistent! @quals1))
+             (rf (persistent! @quals2))))
+        ([acc pos]
+         (let [[q1 q2] (correct-fn pos)]
+           (vswap! quals1 conj! q1)
+           (vswap! quals2 conj! q2)
+           acc))))))
+
 (defn- correct-pair-quals
   "Correct quals of a pair. Returns a map with corrected quals."
   [^SAMAlignment a1 ^SAMAlignment a2]
-  (when (and (pos? (.pnext a1))
-             (<= (max (.pos a1) (.pos a2)) (.end a1)))
-    (let [pos1 (.pos a1)
-          pos2 (.pos a2)
-          quals1 (:quals-at-ref a1)
-          quals2 (:quals-at-ref a2)
-          seqs1  (:seqs-at-ref a1)
-          seqs2  (:seqs-at-ref a2)
-          correct-start (max pos1 pos2)
-          correct-end (min (.end a1) (.end a2))]
-      (loop [p correct-start
-             new1 (transient [])
-             new2 (transient [])]
-        (if (<= p correct-end)
-          (let [relative-pos1 (- p pos1)
-                relative-pos2 (- p pos2)
-                ^int q1 (quals1 relative-pos1)
-                ^int q2 (quals2 relative-pos2)
-                [b1] (seqs1 relative-pos1)
-                [b2] (seqs2 relative-pos2)]
-            (if (= b1 b2)
-              (recur (inc p)
-                     (conj! new1 (min 200 (+ q1 q2)))
-                     (conj! new2 0))
-              (if (<= q2 q1)
-                (recur (inc p)
-                       (conj! new1 (int (* 0.8 q1)))
-                       (conj! new2 0))
-                (recur (inc p)
-                       (conj! new1 0)
-                       (conj! new2 (int (* 0.8 q2)))))))
-          (let [new-quals1 (merge-corrected-quals a1
-                                                  correct-start
-                                                  (persistent! new1))
-                new-quals2 (merge-corrected-quals a2
-                                                  correct-start
-                                                  (persistent! new2))]
-            (if (flag/r1? (.flag a1))
-              [new-quals1 new-quals2]
-              [new-quals2 new-quals1])))))))
+  (let [correct-start (max (.pos a1) (.pos a2))
+        correct-end (min (.end a1) (.end a2))]
+    (when (and (pos? (.pnext a1))
+               (<= correct-start (.end a1)))
+      (let [[quals1 quals2] (into []
+                                  (correct-pair-transducer
+                                   (correct-pair-qual a1 a2))
+                                  (range correct-start (inc correct-end)))
+            new-quals1 (merge-corrected-quals a1
+                                              correct-start
+                                              quals1)
+            new-quals2 (merge-corrected-quals a2
+                                              correct-start
+                                              quals2)]
+        (if (flag/r1? (.flag a1))
+          [new-quals1 new-quals2]
+          [new-quals2 new-quals1])))))
 
 (defn- make-corrected-quals-map
   "Make a map which has corrected quals of all overlapping pairs."

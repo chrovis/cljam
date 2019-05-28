@@ -35,51 +35,34 @@
   [^long start ^long end alns]
   (seq-step start end 0 alns))
 
-(defn- two-vec-transducer
-  [transform-fn]
-  (fn [rf]
-    (let [va (volatile! (transient []))
-          vb (volatile! (transient []))]
-      (fn
-        ([] (rf))
-        ([acc]
-         (-> acc
-             (rf (persistent! @va))
-             (rf (persistent! @vb))))
-        ([acc x]
-         (let [[a b] (transform-fn x)]
-           (vswap! va conj! a)
-           (vswap! vb conj! b)
-           acc))))))
+(defn- quals-at-ref
+  [idx ^String qual]
+  (let [empty-qual? (and (= (.length qual) 1)
+                         (= (.charAt qual 0) \*))]
+    (if empty-qual?
+      (vec (repeat (count idx) 93)) ;; \~
+      (mapv (fn [[_ x]]
+              (if (number? x)
+                (qual/fastq-char->phred-byte (.charAt qual x))
+                93))
+            idx))))
 
-(defn- index-to-seq-qual
-  [^String seqs ^String quals]
-  (let [empty-qual? (and (= (.length quals) 1)
-                         (= (.charAt quals 0) \*))]
-    (fn [[op x xs]]
-      (let [c (if (number? x) (.charAt seqs x) x)
-            q (if (or empty-qual? (char? x))
-                93
-                (qual/fastq-char->phred-byte (.charAt quals x)))]
-        (if (= op :m)
-          [[c] q]
-          (if (= op :d)
-            [[c xs] q]
-            [[c (subs seqs (first xs) (last xs))] q]))))))
+(defn- seqs-at-ref
+  [idx ^String s]
+  (mapv (fn [[op x xs]]
+          (let [c (if (number? x) (.charAt s x) x)]
+            (case op
+              :m [c]
+              :d [c xs]
+              :i [c (subs s (first xs) (last xs))]))) idx))
 
 (defn index-cigar
   "Align bases and base quality scores with the reference coordinate."
   [^SAMAlignment aln]
-  (let [idx (cigar/to-index (.cigar aln))
-        ^String seqs (:seq aln)
-        ^String quals (.qual aln)
-        [seqs-at-ref quals-at-ref] (into []
-                                         (two-vec-transducer
-                                          (index-to-seq-qual seqs quals))
-                                         idx)]
+  (let [idx (cigar/to-index (.cigar aln))]
     (assoc aln
-           :seqs-at-ref seqs-at-ref
-           :quals-at-ref quals-at-ref)))
+           :seqs-at-ref (seqs-at-ref idx (:seq aln))
+           :quals-at-ref (quals-at-ref idx (.qual aln)))))
 
 (defn basic-mpileup-pred
   "Basic predicate function for filtering alignments for mpileup."
@@ -134,6 +117,23 @@
          (partial filterv)
          (update p 1))))
 
+(defn- unzip-2
+  [transform-fn]
+  (fn [rf]
+    (let [va (volatile! (transient []))
+          vb (volatile! (transient []))]
+      (fn
+        ([] (rf))
+        ([acc]
+         (-> acc
+             (rf (persistent! @va))
+             (rf (persistent! @vb))))
+        ([acc x]
+         (let [[a b] (transform-fn x)]
+           (vswap! va conj! a)
+           (vswap! vb conj! b)
+           acc))))))
+
 (defn- merge-corrected-quals
   "Merge corrected quals with the uncorrected part."
   [^SAMAlignment aln ^long correct-start corrected-quals]
@@ -176,8 +176,7 @@
     (when (and (pos? (.pnext a1))
                (<= correct-start (.end a1)))
       (let [[quals1 quals2] (into []
-                                  (two-vec-transducer
-                                   (correct-pair-qual a1 a2))
+                                  (unzip-2 (correct-pair-qual a1 a2))
                                   (range correct-start (inc correct-end)))
             new-quals1 (merge-corrected-quals a1
                                               correct-start

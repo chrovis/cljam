@@ -127,7 +127,8 @@
         ([acc]
          (-> acc
              (rf (persistent! @va))
-             (rf (persistent! @vb))))
+             (rf (persistent! @vb))
+             rf))
         ([acc x]
          (let [[a b] (transform-fn x)]
            (vswap! va conj! a)

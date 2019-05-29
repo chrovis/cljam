@@ -111,9 +111,7 @@
         (-> (if (integer? END)
               (assoc-in v [:info :END] (dec (+ pos' (count ref'))))
               v)
-            (assoc :pos pos')
-            (assoc :ref ref')
-            (assoc :alt alt')))
+            (assoc :pos pos' :ref ref' :alt alt')))
       v)))
 
 (defn- trim-left

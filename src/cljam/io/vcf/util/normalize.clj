@@ -62,15 +62,15 @@
            :start (Math/max 1 (- e (dec window))),
            :end (dec e)}))))
 
-(defn- char-equals-ignore-case
+(defn- char-equals-ignore-case?
   ([_]
    true)
   ([x y]
    (= (Character/toUpperCase ^char x)
       (Character/toUpperCase ^char y)))
   ([x y & z]
-   (and (char-equals-ignore-case x y)
-        (apply char-equals-ignore-case y z))))
+   (and (char-equals-ignore-case? x y)
+        (apply char-equals-ignore-case? y z))))
 
 (defn- trim-right
   "Trims all duplicated allele sequences from right. If reached the start,
@@ -90,7 +90,7 @@
                   regs)
         allele-seqs (map #(concat (cstr/reverse %) ref-seqs) alleles)
         matched-length (->> allele-seqs
-                            (apply map char-equals-ignore-case)
+                            (apply map char-equals-ignore-case?)
                             (take-while true?)
                             count
                             long
@@ -121,8 +121,7 @@
   [{:keys [ref alt] :as v}]
   (let [alleles (cons ref alt)
         n-trim-left (->> alleles
-                         (map cstr/upper-case)
-                         (apply map =)
+                         (apply map char-equals-ignore-case?)
                          (take-while true?)
                          count)
         min-len (long (apply min (map count alleles)))

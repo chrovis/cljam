@@ -34,7 +34,8 @@
      :end? true,
      :insertion nil,
      :deletion nil,
-     :qname nil}]})
+     :qname nil,
+     :alignment nil}]})
 
 ;; Reader
 ;; ------
@@ -42,8 +43,8 @@
 (deftest parse-bases-col
   (testing "without-ref"
     (are [?in ?out]
-        (= (mapv #(into {:qname nil} %) ?out)
-           (mapv rec->map (#'plpio/parse-bases-col nil ?in)))
+         (= (mapv #(into {:qname nil :alignment nil} %) ?out)
+            (mapv rec->map (#'plpio/parse-bases-col nil ?in)))
       "" []
       "A" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? false, :end? false, :insertion nil, :deletion nil}]
       "a" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? true, :end? false, :insertion nil, :deletion nil}]
@@ -70,8 +71,8 @@
                    {:start? true, :mapq 34, :base \A, :qual -1, :reverse? true, :end? false, :insertion nil, :deletion nil}]))
   (testing "with-ref"
     (are [?in ?out]
-        (= (mapv #(into {:qname nil} %) ?out)
-           (mapv rec->map (#'plpio/parse-bases-col \T ?in)))
+         (= (mapv #(into {:qname nil :alignment nil} %) ?out)
+            (mapv rec->map (#'plpio/parse-bases-col \T ?in)))
       "" []
       "A" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? false, :end? false, :insertion nil, :deletion nil}]
       "a$" [{:start? false, :mapq nil, :base \A, :qual -1, :reverse? true, :end? true, :insertion nil, :deletion nil}]
@@ -86,7 +87,7 @@
                    {:start? true, :mapq 34, :base \A, :qual -1, :reverse? true, :end? false, :insertion nil, :deletion nil}]))
   (testing "invalid arguments"
     (are [?in]
-        (thrown? Exception (#'plpio/parse-bases-col nil ?in))
+         (thrown? Exception (#'plpio/parse-bases-col nil ?in))
       "A+"
       "^"
       "^A"
@@ -105,30 +106,30 @@
 (deftest parse-pileup-line
   (testing "without-ref"
     (are [?in ?out]
-        (= ?out (rec->map (#'plpio/parse-pileup-line ?in)))
+         (= ?out (rec->map (#'plpio/parse-pileup-line ?in)))
       "chr1\t10\tN\t0\t\t" {:rname "chr1", :pos 10, :ref \N, :count 0,
                             :pile []}
       "chr1\t10\tN\t1\tA\tI" {:rname "chr1", :pos 10, :ref \N, :count 1,
-                              :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? false, :end? false, :insertion nil, :deletion nil, :qname nil}]}
+                              :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? false, :end? false, :insertion nil, :deletion nil, :qname nil, :alignment nil}]}
       "chr1\t10\tN\t2\taA\tIB" {:rname "chr1", :pos 10, :ref \N, :count 2,
-                                :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :qname nil}
-                                       {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? false, :insertion nil, :deletion nil, :qname nil}]}
+                                :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :qname nil, :alignment nil}
+                                       {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? false, :insertion nil, :deletion nil, :qname nil, :alignment nil}]}
       "chr1\t10\tN\t2\taA-2NN$\tIB" {:rname "chr1", :pos 10, :ref \N, :count 2,
-                                     :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :qname nil}
-                                            {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? true, :insertion nil, :deletion 2, :qname nil}]}))
+                                     :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :qname nil, :alignment nil}
+                                            {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? true, :insertion nil, :deletion 2, :qname nil, :alignment nil}]}))
   (testing "with-ref"
     (are [?in ?out]
-        (= ?out (rec->map (#'plpio/parse-pileup-line ?in)))
+         (= ?out (rec->map (#'plpio/parse-pileup-line ?in)))
       "chr1\t10\tA\t0\t\t" {:rname "chr1", :pos 10, :ref \A, :count 0,
                             :pile []}
       "chr1\t10\ta\t1\t.\tI" {:rname "chr1", :pos 10, :ref \a, :count 1,
-                              :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? false, :end? false, :insertion nil, :deletion nil, :qname nil}]}
+                              :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? false, :end? false, :insertion nil, :deletion nil, :qname nil, :alignment nil}]}
       "chr1\t10\tA\t2\t,.\tIB" {:rname "chr1", :pos 10, :ref \A, :count 2,
-                                :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :qname nil}
-                                       {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? false, :insertion nil, :deletion nil, :qname nil}]}
+                                :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :qname nil, :alignment nil}
+                                       {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? false, :insertion nil, :deletion nil, :qname nil, :alignment nil}]}
       "chr1\t10\tA\t2\t,.-2CA$\tIB" {:rname "chr1", :pos 10, :ref \A, :count 2,
-                                     :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :qname nil}
-                                            {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? true, :insertion nil, :deletion 2, :qname nil}]})))
+                                     :pile [{:start? false, :mapq nil, :base \A, :qual 40, :reverse? true, :end? false, :insertion nil, :deletion nil, :qname nil, :alignment nil}
+                                            {:start? false, :mapq nil, :base \A, :qual 33, :reverse? false, :end? true, :insertion nil, :deletion 2, :qname nil, :alignment nil}]})))
 
 (deftest reader
   (with-open [r (plpio/reader test-pileup-file)]
@@ -152,8 +153,8 @@
 (deftest write-mpileup-alignment!
   (testing "without-ref"
     (are [?in ?out]
-        (= ?out (with-string-writer w
-                  (#'plpio/write-mpileup-alignment! w nil "chr1" 10 nil ?in)))
+         (= ?out (with-string-writer w
+                   (#'plpio/write-mpileup-alignment! w nil "chr1" 10 nil ?in)))
       {:base \A :reverse? false :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "A"
       {:base \N :reverse? false :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "N"
       {:base \A :reverse? true :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} "a"
@@ -179,8 +180,8 @@
               (p/read-sequence [this {:keys [start end]}]
                 (subs "ATGCATGCATGCATGCATGCATGCATGC" (dec start) end)))]
       (are [?in ?out]
-          (= ?out (with-string-writer w
-                    (#'plpio/write-mpileup-alignment! w r "chr1" 10 \T ?in)))
+           (= ?out (with-string-writer w
+                     (#'plpio/write-mpileup-alignment! w r "chr1" 10 \T ?in)))
         {:base \A :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "A"
         {:base \T :alignment {:flag 0 :mapq 60 :pos 5 :end 15}} "."
         {:base \T :reverse? true :alignment {:flag 16 :mapq 60 :pos 5 :end 15}} ","
@@ -215,10 +216,10 @@
 (deftest write-mpileup-line!
   (testing "without-ref"
     (are [?in ?out]
-        (= ?out (with-string-writer w
-                  (#'plpio/write-mpileup-line! w nil {:rname (first ?in)
-                                                      :pos (second ?in)
-                                                      :pile (last ?in)})))
+         (= ?out (with-string-writer w
+                   (#'plpio/write-mpileup-line! w nil {:rname (first ?in)
+                                                       :pos (second ?in)
+                                                       :pile (last ?in)})))
       ["chr1" 10 []] "chr1\t10\tN\t0\t\t"
       ["chr1" 10 [{:base \A :qual 40 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tN\t1\tA\tI"
       ["chr1" 10 [{:base \A :qual 93 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tN\t1\tA\t~"
@@ -228,10 +229,10 @@
   (testing "with-ref"
     (let [r (string-sequence-reader "NNNNNNNNNAtGCATGCAT")]
       (are [?in ?out]
-          (= ?out (with-string-writer w
-                    (#'plpio/write-mpileup-line! w r {:rname (first ?in)
-                                                      :pos (second ?in)
-                                                      :pile (last ?in)})))
+           (= ?out (with-string-writer w
+                     (#'plpio/write-mpileup-line! w r {:rname (first ?in)
+                                                       :pos (second ?in)
+                                                       :pile (last ?in)})))
         ["chr1" 10 []] "chr1\t10\tA\t0\t\t"
         ["chr1" 10 [{:base \A :qual 40 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tA\t1\t.\tI"
         ["chr1" 10 [{:base \A :qual 93 :alignment {:flag 0 :pos 5}}]] "chr1\t10\tA\t1\t.\t~"
@@ -264,35 +265,36 @@
 ;; Read & Write
 ;; ------------
 
+
 (deftest regression
   (testing "without-ref"
     (are [?input]
-        (= ?input
-           (with-open [r (plpio/reader (StringReader. ?input))
-                       sw (StringWriter.)
-                       w (plpio/writer sw)]
-             (plpio/write-piles w (plpio/read-piles r))
-             (str sw)))
+         (= ?input
+            (with-open [r (plpio/reader (StringReader. ?input))
+                        sw (StringWriter.)
+                        w (plpio/writer sw)]
+              (plpio/write-piles w (plpio/read-piles r))
+              (str sw)))
       "chr1\t10\tN\t1\tA\tI\n"
       "chr1\t10\tN\t4\tAaTt\tIABC\n"
       "chr1\t10\tN\t4\t^]A+3TTTa-2nn$Tt\tIABC\n"))
   (testing "with-ref"
     (are [?input]
-        (= ?input
-           (let [tmp (File/createTempFile "pileup-regression" ".fa")
-                 idx (File/createTempFile "pileup-regression" ".fai")]
-             (try
-               (with-open [w (cseq/writer (.getCanonicalPath tmp))]
-                 (cseq/write-sequences w [{:name "chr1" :sequence "NNNNNNNNNATGC"}]))
-               (fai/create-index tmp idx)
-               (with-open [r (plpio/reader (StringReader. ?input))
-                           sw (StringWriter.)
-                           w (plpio/writer sw tmp)]
-                 (plpio/write-piles w (plpio/read-piles r))
-                 (str sw))
-               (finally
-                 (when (.isFile (cio/file tmp))
-                   (cio/delete-file (cio/file tmp)))))))
+         (= ?input
+            (let [tmp (File/createTempFile "pileup-regression" ".fa")
+                  idx (File/createTempFile "pileup-regression" ".fai")]
+              (try
+                (with-open [w (cseq/writer (.getCanonicalPath tmp))]
+                  (cseq/write-sequences w [{:name "chr1" :sequence "NNNNNNNNNATGC"}]))
+                (fai/create-index tmp idx)
+                (with-open [r (plpio/reader (StringReader. ?input))
+                            sw (StringWriter.)
+                            w (plpio/writer sw tmp)]
+                  (plpio/write-piles w (plpio/read-piles r))
+                  (str sw))
+                (finally
+                  (when (.isFile (cio/file tmp))
+                    (cio/delete-file (cio/file tmp)))))))
       "chr1\t10\tA\t1\t.\tI\n"
       "chr1\t10\tA\t4\t.,Tt\tIABC\n"
       "chr1\t10\tA\t4\t^].+3TTT,-2tg$Tt\tIABC\n")))

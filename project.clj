@@ -31,7 +31,7 @@
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
-             :1.10 {:dependencies [[org.clojure/clojure "1.10.1-beta1"]]}
+             :1.10 {:dependencies [[org.clojure/clojure "1.10.1-RC1"]]}
              :uberjar {:dependencies [[org.clojure/clojure "1.9.0"]
                                       [org.apache.logging.log4j/log4j-api "2.11.2"]
                                       [org.apache.logging.log4j/log4j-core "2.11.2"]]

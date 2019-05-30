@@ -131,8 +131,6 @@
           (assoc :alt (map #(subs % n-trim-left) alt)))
       v)))
 
-(def ^:private ^:const nucleotides-regexp #"(?i)[ATGCN]+")
-
 (defn realign
   "Left-align and trim REF/ALT alleles."
   ([seq-reader variant]
@@ -141,16 +139,10 @@
     {:keys [ref alt] :as variant}
     {:keys [window] :or {window 100}}]
    (cond
-     (and
-      ref
-      (seq alt)
-      (re-matches nucleotides-regexp ref)
-      (every?
-       (comp
-        #{:snv :mnv :insertion :deletion :complex}
-        :type
-        (partial vcf-util/inspect-allele ref))
-       alt))
+     (some->> (seq alt)
+              (every? (comp #{:snv :mnv :insertion :deletion :complex}
+                            :type
+                            (partial vcf-util/inspect-allele ref))))
      (trim-left (trim-right seq-reader variant window))
 
      (and ref (nil? (seq alt)))

@@ -2,9 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+* Add utility functions for manipulating genotypes. [#162](https://github.com/chrovis/cljam/pull/162)
+* Add support for breakends in VCF. [#163](https://github.com/chrovis/cljam/pull/163)
+* Add a function to inspect an ALT allele of VCF. [#164](https://github.com/chrovis/cljam/pull/164)
+* Normalize variants in a VCF file. [#166](https://github.com/chrovis/cljam/pull/166)
+
 ### Changed
 
 * Improve pileup by chunking alignments. [#160](https://github.com/chrovis/cljam/pull/160)
+* Improve pileup more. [#165](https://github.com/chrovis/cljam/pull/165)
 
 ### Fixed
 

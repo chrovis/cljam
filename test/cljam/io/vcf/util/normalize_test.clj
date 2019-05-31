@@ -137,23 +137,23 @@
 
     "AATGACCGACCGACCTTGA"
     11 "CGAC" ["TCGAC" "ACGAC" "GCGAC"]
-    {:pos 9, :ref "AC", :alt ["ACT" "ACA" "ACG"]}
+    {:pos 8, :ref "GAC", :alt ["GACT" "GACA" "GACG"]}
 
     "ATGCACTCCGTTGCATCCCCCTG"
     17 "C" ["CC"]
-    {:pos 15, :ref "AT", :alt ["ATC"]}
+    {:pos 14, :ref "CAT", :alt ["CATC"]}
 
     "ATGCACTCCGTTGCATCCCCCTG"
     18 "C" ["CC"]
-    {:pos 16, :ref "T", :alt ["TC"]}
-
-    "ATGCACTCCGTTGCATCCCCCTG"
-    19 "C" ["CC"]
     {:pos 15, :ref "AT", :alt ["ATC"]}
 
     "ATGCACTCCGTTGCATCCCCCTG"
-    20 "C" ["CC"]
+    19 "C" ["CC"]
     {:pos 16, :ref "T", :alt ["TC"]}
+
+    "ATGCACTCCGTTGCATCCCCCTG"
+    20 "C" ["CC"]
+    {:pos 14, :ref "CAT", :alt ["CATC"]}
 
     "ATGCACTCCGTTGCATCCCCCTG"
     21 "C" ["CC"]
@@ -161,7 +161,7 @@
 
     "ATGATGATGATG"
     11 "TG" ["TATG" "TATGATG"]
-    {:pos 9, :ref "G", :alt ["GAT" "GATATG"]}
+    {:pos 8, :ref "TG", :alt ["TGAT" "TGATATG"]}
 
     "ACCCCCCCCC"
     9 "CC" ["C"]
@@ -177,15 +177,15 @@
 
     "GTACCCCCCCCC"
     10 "CCC" ["C" "CC" "CCCC"]
-    {:pos 2, :ref "TACC", :alt ["TA" "TAC" "TACCC"]}
+    {:pos 1, :ref "GTACC", :alt ["GTA" "GTAC" "GTACCC"]}
 
     "CGTACCCCCCCCC"
     11 "CCC" ["C" "CC" "CCCC"]
-    {:pos 3, :ref "TACC", :alt ["TA" "TAC" "TACCC"]}
+    {:pos 2, :ref "GTACC", :alt ["GTA" "GTAC" "GTACCC"]}
 
     "TCGTACCCCCCCCC"
     12 "CCC" ["C" "CC" "CCCC"]
-    {:pos 4, :ref "TACC", :alt ["TA" "TAC" "TACCC"]}
+    {:pos 3, :ref "GTACC", :alt ["GTA" "GTAC" "GTACCC"]}
 
     "CCCCC"
     5 "C" ["CC"]

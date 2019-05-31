@@ -55,11 +55,11 @@
     (and ref-seq (.equalsIgnoreCase ^String ref-seq ref))))
 
 (defn- regions-before [chr ^long pos ^long window]
-  (->> (range pos 1 (- (dec window)))
+  (->> (range pos 1 (- window))
        (map
         (fn [^long e]
           {:chr chr,
-           :start (Math/max 1 (- e (dec window))),
+           :start (Math/max 1 (- e window)),
            :end (dec e)}))))
 
 (defn- char-equals-ignore-case?

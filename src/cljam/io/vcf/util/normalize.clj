@@ -108,10 +108,8 @@
                                  cstr/join)
                            alleles
                            allele-seqs)]
-        (-> (if (integer? END)
-              (assoc-in v [:info :END] (dec (+ pos' (count ref'))))
-              v)
-            (assoc :pos pos' :ref ref' :alt alt')))
+        (cond-> (assoc v :pos pos' :ref ref' :alt alt')
+          (integer? END) (assoc-in [:info :END] (dec (+ pos' (count ref'))))))
       v)))
 
 (defn- trim-left

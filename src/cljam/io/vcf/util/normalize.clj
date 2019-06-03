@@ -46,14 +46,6 @@
                           [s (biallelic-map (v s) format-id->number i n)]))
                        samples))))))))))
 
-(defn same-ref?
-  "Checks if a REF allele matches the reference sequence."
-  [seq-reader {:keys [chr ^long pos ^String ref]}]
-  (let [ref-len (.length ref)
-        ref-region {:chr chr :start pos :end (dec (+ pos ref-len))}
-        ref-seq (io-seq/read-sequence seq-reader ref-region {:mask? false})]
-    (and ref-seq (.equalsIgnoreCase ^String ref-seq ref))))
-
 (defn- regions-before [chr ^long pos ^long window]
   (->> (range pos 1 (- window))
        (map

@@ -109,14 +109,6 @@
     (read-sequence [_ {:keys [^long start ^long end]} _]
       (subs s (dec start) end))))
 
-(deftest same-ref?
-  (are [?seq ?variant ?expected]
-       (= ?expected (norm/same-ref? (seq-reader ?seq) ?variant))
-    "A" {:pos 1, :ref "A"} true
-    "ATT" {:pos 2, :ref "tt"} true
-    "TTT" {:pos 3, :ref "A"} false
-    "ATGC" {:pos 4, :ref "N"} false))
-
 (deftest trim-right
   (are [?seq ?pos ?ref ?alts ?expected]
        (= ?expected

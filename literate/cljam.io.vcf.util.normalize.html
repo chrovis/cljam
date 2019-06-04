@@ -2865,277 +2865,146 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.algo.pileup" name="cljam.algo.pileup"><h1 class="project-name">cljam.algo.pileup</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to calculate pileup from the BAM.</p>
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.algo.pileup
-  (:require [cljam.io.sam :as sam]
-            [cljam.io.sam.util.cigar :as cigar]
-            [cljam.io.sam.util.flag :as flag]
-            [cljam.io.sam.util.quality :as qual]
-            [cljam.io.sam.util.refs :as refs]
-            [cljam.io.pileup :as plpio])
-  (:import [cljam.io.protocols SAMAlignment]
-           [cljam.io.pileup PileupBase LocusPile]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- seq-step
-  [^long start ^long end ^long step-size alns]
-  (letfn [(starts-before? [^long pos ^SAMAlignment aln]
-            (&lt;= (.pos aln) pos))
-          (ends-after? [^long pos ^SAMAlignment aln]
-            (&lt;= pos (.end aln)))
-          (step [^long s carried-over rest-alns]
-            (lazy-seq
-             (when (&lt;= s end)
-               (let [e (Math/min (+ s step-size) end)
-                     [in out] (split-with #(starts-before? e %) rest-alns)
-                     pile (into carried-over in)
-                     carry (filterv #(ends-after? (inc e) %) pile)
-                     out-pos (some-&gt; out ^SAMAlignment (first) .pos)
-                     next-s (if-not (seq carry) (or out-pos (inc end)) (inc e))]
-                 (cons [s pile] (step next-s carry out))))))]
-    (let [[x :as xs] (drop-while #(&lt; (.end ^SAMAlignment %) start) alns)]
-      (when x
-        (step (max start (.pos ^SAMAlignment x)) [] xs)))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence that each element contains [position (alignments
-  piled-up at the locus)].</p>
-</td><td class="codes"><pre class="brush: clojure">(defn pileup-seq
-  [^long start ^long end alns]
-  (seq-step start end 0 alns))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- quals-at-ref
-  [idx ^String qual]
-  (let [empty-qual? (and (= (.length qual) 1)
-                         (= (.charAt qual 0) \*))]
-    (if empty-qual?
-      (vec (repeat (count idx) 93)) ;; \~
-      (mapv (fn [[_ x]]
-              (if (number? x)
-                (qual/fastq-char-&gt;phred-byte (.charAt qual x))
-                93))
-            idx))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- seqs-at-ref
-  [idx ^String s]
-  (mapv (fn [[op x xs]]
-          (let [c (if (number? x) (.charAt s x) x)]
-            (case op
-              :m [c]
-              :d [c xs]
-              :i [c (subs s (first xs) (last xs))]))) idx))</pre></td></tr><tr><td class="docs"><p>Align bases and base quality scores with the reference coordinate.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn index-cigar
-  [^SAMAlignment aln]
-  (let [idx (cigar/to-index (.cigar aln))]
-    (assoc aln
-           :seqs-at-ref (seqs-at-ref idx (:seq aln))
-           :quals-at-ref (quals-at-ref idx (.qual aln)))))</pre></td></tr><tr><td class="docs"><p>Basic predicate function for filtering alignments for mpileup.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn basic-mpileup-pred
-  [^long min-mapq]
-  (fn [^SAMAlignment aln]
-    (let [flag (.flag aln)]
-      (and flag
-           (zero? (bit-and (flag/encoded #{:unmapped
-                                           :filtered-out
-                                           :duplicated
-                                           :supplementary
-                                           :secondary}) flag))
-           (or (not (flag/multiple? flag)) (flag/properly-aligned? flag))
-           (not-empty (.cigar aln))
-           (&lt;= min-mapq (.mapq aln))))))</pre></td></tr><tr><td class="docs"><p>Find a piled-up base and an indel from an alignment.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn resolve-base
-  [^long ref-pos ^SAMAlignment aln]
-  (let [relative-pos (- ref-pos (.pos aln))
-        qual ((:quals-at-ref aln) relative-pos)
-        [base indel] ((:seqs-at-ref aln) relative-pos)
-        deletion? (number? indel)]
-    (plpio/-&gt;PileupBase
-     (zero? relative-pos)
-     (.mapq aln)
-     base
-     qual
-     (flag/reversed? (.flag aln))
-     (= ref-pos (.end aln))
-     (when-not deletion? indel)
-     (when deletion? indel)
-     (.qname aln)
-     aln)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- resolve-bases
-  [[ref-pos alns]]
-  [ref-pos (mapv (partial resolve-base ref-pos) alns)])</pre></td></tr><tr><td class="docs"><p>Convert a pile into <code>cljam.io.pileup.LocusPile</code>.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn -&gt;locus-pile
-  [chr [pos pile]]
-  (when (seq pile)
-    (LocusPile. chr pos pile)))</pre></td></tr><tr><td class="docs"><p>Returns a predicate for filtering piled-up reads by base quality at its
-  position.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn filter-by-base-quality
-  [^long min-base-quality]
-  (fn [p]
-    (-&gt;&gt; #(&lt;= min-base-quality (.qual ^PileupBase %))
-         (partial filterv)
-         (update p 1))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- unzip-2
-  [transform-fn]
-  (fn [rf]
-    (let [va (volatile! (transient []))
-          vb (volatile! (transient []))]
-      (fn
-        ([] (rf))
-        ([acc]
-         (-&gt; acc
-             (rf (persistent! @va))
-             (rf (persistent! @vb))
-             rf))
-        ([acc x]
-         (let [[a b] (transform-fn x)]
-           (vswap! va conj! a)
-           (vswap! vb conj! b)
-           acc))))))</pre></td></tr><tr><td class="docs"><p>Merge corrected quals with the uncorrected part.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- merge-corrected-quals
-  [^SAMAlignment aln ^long correct-start corrected-quals]
-  (let [quals (:quals-at-ref aln)
-        start (.pos aln)
-        len   (count corrected-quals)]
-    (if (&lt; start correct-start)
-      (-&gt; quals
-          (subvec 0 (- correct-start start))
-          (into corrected-quals)
-          (into (subvec quals (+ (- correct-start start) len))))
-      (into corrected-quals (subvec quals len)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- correct-pair-qual
-  [^SAMAlignment a1 ^SAMAlignment a2]
-  (let [pos1 (.pos a1)
-        pos2 (.pos a2)
-        quals1 (:quals-at-ref a1)
-        quals2 (:quals-at-ref a2)
-        seqs1  (:seqs-at-ref a1)
-        seqs2  (:seqs-at-ref a2)]
-    (fn [^long pos]
-      (let [relative-pos1 (- pos pos1)
-            relative-pos2 (- pos pos2)
-            ^int q1 (quals1 relative-pos1)
-            ^int q2 (quals2 relative-pos2)
-            [b1] (seqs1 relative-pos1)
-            [b2] (seqs2 relative-pos2)]
-        (if (= b1 b2)
-          [(min 200 (+ q1 q2)) 0]
-          (if (&lt;= q2 q1)
-            [(int (* 0.8 q1)) 0]
-            [0 (int (* 0.8 q2))]))))))</pre></td></tr><tr><td class="docs"><p>Correct quals of a pair. Returns a map with corrected quals.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- correct-pair-quals
-  [^SAMAlignment a1 ^SAMAlignment a2]
-  (let [correct-start (max (.pos a1) (.pos a2))
-        correct-end (min (.end a1) (.end a2))]
-    (when (and (pos? (.pnext a1))
-               (&lt;= correct-start (.end a1)))
-      (let [[quals1 quals2] (into []
-                                  (unzip-2 (correct-pair-qual a1 a2))
-                                  (range correct-start (inc correct-end)))
-            new-quals1 (merge-corrected-quals a1
-                                              correct-start
-                                              quals1)
-            new-quals2 (merge-corrected-quals a2
-                                              correct-start
-                                              quals2)]
-        (if (flag/r1? (.flag a1))
-          [new-quals1 new-quals2]
-          [new-quals2 new-quals1])))))</pre></td></tr><tr><td class="docs"><p>Make a map which has corrected quals of all overlapping pairs.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- make-corrected-quals-map
-  [alns]
-  (-&gt;&gt; alns
-       (group-by (fn [x] (.qname ^SAMAlignment x)))
-       (into {} (keep
-                 (fn [[qname xs]]
-                   (when (&lt;= 2 (count xs))
-                     [qname (apply correct-pair-quals xs)]))))))</pre></td></tr><tr><td class="docs"><p>Returns an alignment with corrected quals by looking up quals
-  in the corrected quals map.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- correct-quals-at-ref
-  [corrected-map ^SAMAlignment aln]
-  (if-not (= (.rnext aln) &quot;=&quot;)
-    aln
-    (if-let [quals-pair (corrected-map (.qname aln))]
-      (let [new-quals (if (flag/r1? (.flag aln))
-                        (first quals-pair)
-                        (second quals-pair))]
-        (assoc aln :quals-at-ref new-quals))
-      aln)))</pre></td></tr><tr><td class="docs"><p>Piles up alignments in given region and returns a lazy sequence of
-  <code>cljam.io.pileup.LocusPile</code>s.</p>
-
-<p>  The following options are available:
-  - <code>min-base-quality</code> Minimum quality of called bases [13]
-  - <code>min-map-quality</code> Minimum quality of alignments [0]
-  - <code>ignore-overlaps?</code> Disable detecting overlapped bases of PE reads [false]
-  - <code>chunk-size</code> Size of a chunk to pile up at once [5000]</p>
-</td><td class="codes"><pre class="brush: clojure">(defn pileup
-  ([sam-reader region]
-   (pileup sam-reader region {}))
-  ([sam-reader
-    {:keys [chr ^long start ^long end] :or {start 1 end Integer/MAX_VALUE}}
-    {:keys [^long min-base-quality ^long min-map-quality ignore-overlaps? ^long chunk-size]
-     :or {min-base-quality 13 min-map-quality 0 ignore-overlaps? false
-          chunk-size 5000}}]
-   (when-let [^long len (:len (refs/ref-by-name (sam/read-refs sam-reader) chr))]
-     (let [s (max 1 start)
-           e (min len end)
-           region {:chr chr :start s :end e}]
-       (-&gt;&gt; (sam/read-alignments sam-reader region)
-            (sequence
-             (comp
-              (filter (basic-mpileup-pred min-map-quality))
-              (map index-cigar)))
-            (seq-step start end chunk-size)
-            (sequence
-             (comp
-              (mapcat (fn [[^long pos alns]]
-                        (-&gt;&gt; (if ignore-overlaps?
-                               alns
-                               (keep (partial correct-quals-at-ref
-                                              (make-corrected-quals-map alns)) alns))
-                             (pileup-seq pos (min end (+ pos chunk-size))))))
-              (map resolve-bases)
-              (if (pos? min-base-quality)
-                (map (filter-by-base-quality min-base-quality))
-                identity)
-              (keep (partial -&gt;locus-pile chr)))))))))</pre></td></tr><tr><td class="docs"><p>Align multiple piled-up seqs.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn align-pileup-seqs
-  [&amp; xs]
-  (if (&lt;= (count xs) 1)
-    (map (fn [{:keys [pos] :as m}] [pos [m]]) (first xs))
-    (letfn [(step [xs]
-              (lazy-seq
-               (when (some seq xs)
-                 (let [min-pos (apply min (keep (comp :pos first) xs))]
-                   (cons [min-pos (mapv
-                                   (fn [[{:keys [pos] :as m}]]
-                                     (when (= pos min-pos) m)) xs)]
-                         (step (mapv
-                                (fn [[{:keys [pos]} :as ys]]
-                                  (if (= pos min-pos) (next ys) ys)) xs)))))))]
-      (step xs))))</pre></td></tr><tr><td class="docs"><p>Pile up alignments from multiple sources.</p>
-
-<p>  The following <code>options</code> are available:
-  - <code>min-base-quality</code> Minimum quality of called bases [13]
-  - <code>min-map-quality</code> Minimum quality of alignments [0]
-  - <code>ignore-overlaps?</code> Disable detecting overlapped bases of PE reads [false]</p>
-</td><td class="codes"><pre class="brush: clojure">(defn mpileup
-  [region options &amp; sam-readers]
-  (apply align-pileup-seqs (map #(pileup % region options) sam-readers)))</pre></td></tr><tr><td class="docs"><p>Creates a mpileup file from the BAM file.</p>
-
-<p>  The following <code>options</code> are available:
-  - <code>min-base-quality</code> Minimum quality of called bases [13]
-  - <code>min-map-quality</code> Minimum quality of alignments [0]
-  - <code>ignore-overlaps?</code> Disable detecting overlapped bases of PE reads [false]</p>
-</td><td class="codes"><pre class="brush: clojure">(defn create-mpileup
-  ([in-sam out-mplp]
-   (create-mpileup in-sam nil out-mplp))
-  ([in-sam in-ref out-mplp]
-   (create-mpileup in-sam in-ref out-mplp nil))
-  ([in-sam in-ref out-mplp region]
-   (create-mpileup in-sam in-ref out-mplp region nil))
-  ([in-sam in-ref out-mplp region options]
-   (with-open [s (sam/reader in-sam)
-               w (plpio/writer out-mplp in-ref)]
-     (let [regs (if region
-                  [region]
-                  (map
-                   (fn [{:keys [name len]}]
-                     {:chr name :start 1 :end len})
-                   (sam/read-refs s)))]
-       (doseq [reg regs]
-         (plpio/write-piles w (pileup s reg options)))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.vcf.util.normalize" name="cljam.io.vcf.util.normalize"><h1 class="project-name">cljam.io.vcf.util.normalize</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.vcf.util.normalize
+  (:require [clojure.string :as cstr]
+            [cljam.io.vcf.util :as vcf-util]
+            [cljam.io.sequence :as io-seq]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- biallelic-map
+  [m id-&gt;number ^long i ^long n-allele]
+  (let [ploidy (or (some-&gt; m :GT vcf-util/parse-genotype count) 2)]
+    (into
+     {}
+     (map
+      (fn [[k v]]
+        (let [n (id-&gt;number k)]
+          [k (cond
+               (= k :GT) (vcf-util/biallelic-genotype v (inc i))
+               (= n &quot;A&quot;) [(nth v i)]
+               (= n &quot;R&quot;) [(first v) (nth v (inc i))]
+               (= n &quot;G&quot;) (vcf-util/biallelic-coll ploidy n-allele (inc i) v)
+               :else v)])))
+     m)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- get-id-&gt;number
+  [coll]
+  (into {} (map (juxt (comp keyword :id) :number)) coll))</pre></td></tr><tr><td class="docs"><p>Returns a function that splits a multiallelic variant into a sequence of
+  biallelic variants.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn make-splitter
+  [{:keys [info format]} header]
+  (let [info-id-&gt;number (get-id-&gt;number info)
+        format-id-&gt;number (get-id-&gt;number format)
+        samples (map keyword (drop 9 header))]
+    (fn split [{:keys [alt] :as v}]
+      (let [n (count alt)]
+        (if (&lt;= n 1)
+          [v]
+          (-&gt;&gt; alt
+               (map-indexed
+                (fn sample-ith-alt [i allele]
+                  (-&gt; v
+                      (assoc :alt [allele])
+                      (update :info biallelic-map info-id-&gt;number i n)
+                      (into
+                       (map
+                        (fn [s]
+                          [s (biallelic-map (v s) format-id-&gt;number i n)]))
+                       samples))))))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- regions-before [chr ^long pos ^long window]
+  (-&gt;&gt; (range pos 1 (- window))
+       (map
+        (fn [^long e]
+          {:chr chr,
+           :start (Math/max 1 (- e window)),
+           :end (dec e)}))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- char-equals-ignore-case?
+  ([_]
+   true)
+  ([x y]
+   (= (Character/toUpperCase ^char x)
+      (Character/toUpperCase ^char y)))
+  ([x y &amp; z]
+   (and (char-equals-ignore-case? x y)
+        (apply char-equals-ignore-case? y z))))</pre></td></tr><tr><td class="docs"><p>Trims all duplicated allele sequences from right. If reached the start,
+  reference sequences of length <code>window</code> will be read from <code>seq-reader</code> and
+  be prepended to the alleles.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- trim-right
+  [seq-reader {:keys [chr ^long pos ref alt]
+               {:keys [END]} :info :as v} ^long window]
+  (let [alleles (cons ref alt)
+        min-end (long (dec (+ pos (apply min (map count alleles)))))
+        regs (regions-before chr pos window)
+        ref-seqs (sequence ;; unchunk
+                  (mapcat
+                   (fn [r]
+                     (-&gt; seq-reader
+                         (io-seq/read-sequence r {:mask? false})
+                         cstr/reverse)))
+                  regs)
+        allele-seqs (map #(concat (cstr/reverse %) ref-seqs) alleles)
+        matched-length (-&gt;&gt; allele-seqs
+                            (apply map char-equals-ignore-case?)
+                            (take-while true?)
+                            count
+                            long
+                            (Math/min (dec min-end)))]
+    (if (pos? matched-length)
+      (let [pos' (or (some (fn [{:keys [start end]}]
+                             (when (&lt;= start (- min-end matched-length) end)
+                               start)) regs)
+                     pos)
+            [ref' &amp; alt'] (map
+                           #(-&gt;&gt; %2
+                                 (take (inc (- (dec (+ pos (count %1))) pos')))
+                                 (drop matched-length)
+                                 reverse
+                                 cstr/join)
+                           alleles
+                           allele-seqs)]
+        (cond-&gt; (assoc v :pos pos' :ref ref' :alt alt')
+          (integer? END) (assoc-in [:info :END] (dec (+ pos' (count ref'))))))
+      v)))</pre></td></tr><tr><td class="docs"><p>Trims all duplicated allele sequences from left.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- trim-left
+  [{:keys [ref alt] :as v}]
+  (let [alleles (cons ref alt)
+        n-trim-left (-&gt;&gt; alleles
+                         (apply map char-equals-ignore-case?)
+                         (take-while true?)
+                         count)
+        min-len (long (apply min (map count alleles)))
+        n-trim-left (min (dec min-len) n-trim-left)]
+    (if (pos? n-trim-left)
+      (-&gt; v
+          (update :pos + n-trim-left)
+          (update :ref subs n-trim-left)
+          (assoc :alt (map #(subs % n-trim-left) alt)))
+      v)))</pre></td></tr><tr><td class="docs"><p>Left-align and trim REF/ALT alleles.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn realign
+  ([seq-reader variant]
+   (realign seq-reader variant {}))
+  ([seq-reader
+    {:keys [ref alt] :as variant}
+    {:keys [window] :or {window 100}}]
+   (cond
+     (some-&gt;&gt; (seq alt)
+              (every? (comp #{:snv :mnv :insertion :deletion :complex}
+                            :type
+                            (partial vcf-util/inspect-allele ref))))
+     (trim-left (trim-right seq-reader variant window))
+     (and ref (nil? (seq alt)))
+     (cond-&gt; (update variant :ref subs 0 1)
+       (integer? (:END (:info variant)))
+       (assoc-in [:info :END] (:pos variant)))
+     :else variant)))</pre></td></tr><tr><td class="docs"><p>Splits multiallelic variants and realigns all alleles. Returns a lazy
+  sequence of normalized variants. Note that the result may be unsorted due to
+  the realignment. Returns a transducer when no variant is provided. The
+  transducer does not guarantee thread safety of <code>ref-reader</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn normalize
+  ([ref-reader meta-info header]
+   (comp
+    (mapcat (make-splitter meta-info header))
+    (map (partial realign ref-reader))))
+  ([ref-reader meta-info header variants]
+   (sequence (normalize ref-reader meta-info header) variants)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

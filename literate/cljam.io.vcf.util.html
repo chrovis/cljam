@@ -2868,10 +2868,11 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.vcf.util" name="cljam.io.vcf.util"><h1 class="project-name">cljam.io.vcf.util</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.vcf.util
   (:require [clojure.string :as cstr]
-            [cljam.util :as util]))</pre></td></tr><tr><td class="docs"><p>Checks if given string is equal to "." or nil.</p>
+            [proton.core :as p]))</pre></td></tr><tr><td class="docs"><p>Checks if given string is equal to "." or nil.</p>
 </td><td class="codes"><pre class="brush: clojure">(definline dot-or-nil?
   [^String s]
   `(or (nil? ~s)
+       (empty? ~s)
        (and (= 1 (.length ~s))
             (= \. (.charAt ~s 0)))))</pre></td></tr><tr><td class="docs"><p>Returns a parser function for given type idenfier.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- value-parser
@@ -2937,16 +2938,65 @@ net.brehaut.ClojureTools = (function (SH) {
   [^String gt]
   (when-not (dot-or-nil? gt)
     (-&gt;&gt; gt
-         (re-seq #&quot;([\||/])?(\d+)&quot;)
-         (map (fn [[_ phase allele]]
-                [(Integer/parseInt allele)
+         (re-seq #&quot;([\||/])?(.|\d+)&quot;)
+         (map (fn [[_ phase ^String allele]]
+                [(when-not (dot-or-nil? allele) (Integer/parseInt allele))
                  (if phase
                    (= phase &quot;|&quot;)
                    (neg? (.indexOf ^String gt &quot;/&quot;)))])))))</pre></td></tr><tr><td class="docs"><p>Stringifies genotype map into VCF-style GT string.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn stringify-genotype
   [gt-seq]
   (when-not (or (nil? gt-seq) (empty? gt-seq))
-    (apply str (rest (mapcat (fn [[allele phase]] [(if phase &quot;|&quot; &quot;/&quot;) allele]) gt-seq)))))</pre></td></tr><tr><td class="docs"><p>Convert genotype to a sequence of integers.</p>
+    (-&gt;&gt; gt-seq
+         (mapcat
+          (fn [[allele phase]]
+            [(if phase &quot;|&quot; &quot;/&quot;) (or allele \.)]))
+         rest
+         (apply str))))</pre></td></tr><tr><td class="docs"><p>Returns a sequence of genotypes represented as sequences of integers.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn genotype-seq
+  ([^long ploidy ^long n-alt-alleles]
+   (genotype-seq ploidy n-alt-alleles []))
+  ([^long ploidy ^long n-alt-alleles s]
+   (mapcat
+    (fn [i]
+      (if (= 1 ploidy)
+        [(cons i s)]
+        (genotype-seq (dec ploidy) i (cons i s))))
+    (range (inc n-alt-alleles)))))</pre></td></tr><tr><td class="docs"><p>Returns an index for given genotype.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn genotype-index
+  ^long [genotype]
+  {:pre [(seq genotype)
+         (every? (complement neg?) genotype)]}
+  (letfn [(combination ^long [^long n ^long k]
+            (cond
+              (&lt; n k) 0
+              (= k n) 1
+              (or (= k 1) (= k (dec n))) n
+              (&lt; (quot n 2) k) (recur n (- n k))
+              :else (loop [i (inc (- n k)), j 1, r 1]
+                      (if (&lt;= j k)
+                        (recur (inc i) (inc j) (quot (* r i) j))
+                        r))))]
+    (-&gt;&gt; genotype
+         sort
+         (map-indexed (fn [^long m ^long k] (combination (+ k m) (inc m))))
+         (apply +))))</pre></td></tr><tr><td class="docs"><p>Converts a multiallelic <code>genotype</code> string into a biallelic one. Ignores all
+  alleles other than the reference allele and the <code>target-allele</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn biallelic-genotype
+  [genotype ^long target-allele]
+  (-&gt;&gt; genotype
+       parse-genotype
+       (map (fn [[allele phased?]]
+              [(when allele (if (= target-allele allele) 1 0)) phased?]))
+       stringify-genotype))</pre></td></tr><tr><td class="docs"><p>Picks up elements in multiallelic <code>coll</code> and make a biallelic one. Ignores
+  all alleles other than the reference allele and the <code>target-allele</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn biallelic-coll
+  [^long ploidy ^long n-alt-alleles ^long target-allele coll]
+  (keep-indexed
+   (fn [i gt]
+     (when (every? (fn [^long a] (or (= a 0) (= a target-allele))) gt)
+       (nth coll i)))
+   (genotype-seq ploidy n-alt-alleles)))</pre></td></tr><tr><td class="docs"><p>Convert genotype to a sequence of integers.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn genotype-&gt;ints
   [gt]
   (let [parsed-gt (if (string? gt) (parse-genotype gt) gt)]
@@ -2977,8 +3027,8 @@ net.brehaut.ClojureTools = (function (SH) {
   (-&gt;&gt; formats
        (map (fn [k] [k (sample-map k)]))
        reverse
-       (drop-while (fn [[k v]] (or (nil? v) (= [nil] v))))
-       (map (fn [[k v]]
+       (drop-while (fn [[_ v]] (or (nil? v) (= [nil] v))))
+       (map (fn [[_ v]]
               (cond
                 (sequential? v) (cstr/join &quot;,&quot; (map (fn [i] (if (nil? i) &quot;.&quot; i)) v))
                 (nil? v) &quot;.&quot;
@@ -3009,7 +3059,128 @@ net.brehaut.ClojureTools = (function (SH) {
           (update :filter stringify-filter)
           (update :info stringify-info)
           (update fmt-kw stringify-format)
-          (merge (into {} (for [k sample-kws] [k (stringify-sample (v fmt-kw) (v k))])))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+          (merge (into {} (for [k sample-kws] [k (stringify-sample (v fmt-kw) (v k))])))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const long-breakend-regexp
+  ;;   pre-seq    [ or ]  chr    pos     [ or ]    post-seq
+  #&quot;([ACGTN]*|\.)([\[\]])(.+?)(?::(\d+))([\[\]])([ACGTN]*|\.)&quot;)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const short-breakend-regexp
+  #&quot;(\.?)([ATGCN]+)(\.?)&quot;)</pre></td></tr><tr><td class="docs"><p>Parses an ALT allele string of SVTYPE=BND.
+  Returns a map with mandatory keys:
+  - <code>:bases</code> bases that replaces the reference place
+  - <code>:join</code> <code>:before</code> or <code>:after</code>
+  and optional keys for a mate:
+  - <code>:chr</code> chromosome name of the mate sequence
+  - <code>:pos</code> genomic position of the mate sequence
+  - <code>:strand</code> strand of the mate sequence
+  Returns <code>nil</code> if input <code>alt</code> is not a breakend.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn parse-breakend
+  [alt]
+  (if-let [[_ pre-seq [left-bracket] chr pos [right-bracket] post-seq]
+           (re-matches long-breakend-regexp alt)]
+    (let [pre (not-empty pre-seq)
+          post (not-empty post-seq)]
+      (when (and (= left-bracket right-bracket)
+                 (or pre post)
+                 (not (and pre post)))
+        (when-let [p (p/as-long pos)]
+          {:chr chr,
+           :pos p,
+           :join (if post :before :after),
+           :bases (or pre post),
+           :strand (if (= left-bracket \])
+                     (if post :forward :reverse)
+                     (if post :reverse :forward))})))
+    (when-let [[_ [pre-dot] bases [post-dot]]
+               (re-matches short-breakend-regexp alt)]
+      (when (and (or pre-dot post-dot)
+                 (not (and pre-dot post-dot)))
+        {:bases bases, :join (if pre-dot :before :after)}))))</pre></td></tr><tr><td class="docs"><p>Returns a string representation of a breakend. If the input is malformed,
+  returns <code>nil</code>. See the docstring of <code>parse-breakend</code> for the format.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn stringify-breakend
+  [{:keys [chr pos strand join] s :bases}]
+  (when (and (not-empty s) (#{:before :after} join))
+    (if (and chr pos (#{:forward :reverse} strand))
+      (let [before? (= join :before)
+            bracket (if (= strand :forward)
+                      (if before? \] \[)
+                      (if before? \[ \]))]
+        (str (when-not before? s) bracket chr \: pos bracket (when before? s)))
+      (str (when (= :before join) \.) s (when (= :after join) \.)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- inspect-nucleotides-allele
+  [ref alt]
+  (let [ref-length (count ref)
+        alt-length (count alt)
+        upper-ref (cstr/upper-case ref)
+        upper-alt (cstr/upper-case alt)
+        left-match (-&gt;&gt; (map = upper-ref upper-alt)
+                        (take-while true?)
+                        count)
+        right-match (-&gt;&gt; (cstr/reverse upper-alt)
+                         (map = (cstr/reverse upper-ref))
+                         (take-while true?)
+                         count
+                         long
+                         (Math/min (- (Math/min ref-length alt-length)
+                                      left-match)))
+        matched-length (+ left-match right-match)]
+    (cond
+      (= left-match ref-length alt-length)
+      {:type :ref}
+      (and (= left-match ref-length) (&lt; left-match alt-length))
+      {:type :insertion, :offset (dec left-match),
+       :n-bases (- alt-length left-match), :inserted (subs alt left-match)}
+      (and (&lt; left-match ref-length) (= left-match alt-length))
+      {:type :deletion, :offset (dec left-match),
+       :n-bases (- ref-length left-match), :deleted (subs ref left-match)}
+      (= (inc matched-length) ref-length alt-length)
+      {:type :snv, :ref (nth ref left-match),
+       :alt (nth alt left-match), :offset left-match}
+      (= matched-length alt-length)
+      {:type :deletion, :offset (dec left-match),
+       :n-bases (- ref-length right-match left-match),
+       :deleted (subs ref left-match (- ref-length right-match))}
+      (= matched-length ref-length)
+      {:type :insertion, :offset (dec left-match),
+       :n-bases (- alt-length right-match left-match),
+       :inserted (subs alt left-match (- alt-length right-match))}
+      (= ref-length alt-length)
+      {:type :mnv, :offset left-match,
+       :ref (subs ref left-match (- ref-length right-match)),
+       :alt (subs alt left-match (- alt-length right-match))}
+      :else {:type :complex})))</pre></td></tr><tr><td class="docs"><p>Inspects an <code>alt</code> allele by comparing to a <code>ref</code> allele string.
+  Returns a map containing <code>:type</code> and other detailed information.
+  A value of the key <code>:type</code> can be one of the followings:
+  - <code>:no-call</code>            No variant called
+  - <code>:spanning-deletion</code>  Placeholder to signify an absent sequence
+  - <code>:unspecified</code>        Unspecified non-ref allele
+  - <code>:ref</code>                Duplicated allele of REF
+  - <code>:id</code>                 Symbolic reference
+  - <code>:snv</code>                Single nucleotide variant
+  - <code>:mnv</code>                Multiple nucleotide variants
+  - <code>:insertion</code>          Insertion of a short base sequence
+  - <code>:deletion</code>           Deletion of a short base sequence
+  - <code>:complete-insertion</code> Complete insertion of a long sequence
+  - <code>:breakend</code>           Breakend of a complex rearrangement
+  - <code>:complex</code>            Complex nucleotide variants other than snv/mnv/indel
+  - <code>:other</code>              Can't categorize the allele, might be malformed</p>
+</td><td class="codes"><pre class="brush: clojure">(defn inspect-allele
+  [ref alt]
+  (or
+   (when (re-matches #&quot;(?i)[ACGTN]+&quot; (or ref &quot;&quot;))
+     (condp re-matches (or (not-empty alt) &quot;.&quot;)
+       #&quot;\.&quot; {:type :no-call}
+       #&quot;\*&quot; {:type :spanning-deletion}
+       #&quot;(X|&lt;\*&gt;|&lt;X&gt;)&quot; {:type :unspecified}
+       #&quot;&lt;(.+)&gt;&quot; :&gt;&gt; (fn [[_ id]] {:type :id, :id id})
+       #&quot;(?i)([ACGTN])&lt;(.+)&gt;&quot; :&gt;&gt; (fn [[_ [base] id]]
+                                    {:type :complete-insertion,
+                                     :join :after, :base base, :id id})
+       #&quot;(?i)&lt;(.+)&gt;([ACGTN])&quot; :&gt;&gt; (fn [[_ id [base]]]
+                                    {:type :complete-insertion,
+                                     :join :before, :base base, :id id})
+       #&quot;(?i)[ACGTN]+&quot; (inspect-nucleotides-allele ref alt)
+       (some-&gt; (parse-breakend alt) (assoc :type :breakend))))
+   {:type :other}))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

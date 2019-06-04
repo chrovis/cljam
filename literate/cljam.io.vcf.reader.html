@@ -2890,7 +2890,7 @@ net.brehaut.ClojureTools = (function (SH) {
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
-  (read-in-region [this {:keys [chr start end]} {:keys [depth] :as option}]
+  (read-in-region [this {:keys [chr start end]} option]
     (logging/warn &quot;May cause degradation of performance.&quot;)
     (filter
      (fn [v] (and (if chr (= (:chr v) chr) true)
@@ -2985,7 +2985,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (recur (.readLine rdr)))))</pre></td></tr><tr><td class="docs"><h2>Reading data lines</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-data-line
-  [line header kws]
+  [line kws]
   ;; When splitting a string with single-character delimiter,
   ;; `java.lang.String#split` is slightly faster than `clojure.string/split`.
   ;; For more details, please refer to https://github.com/chrovis/cljam/pull/29.
@@ -3008,7 +3008,7 @@ net.brehaut.ClojureTools = (function (SH) {
   [^java.io.BufferedReader rdr header kws]
   (when-let [line (.readLine rdr)]
     (if-not (or (meta-line? line) (header-line? line))
-      (cons (parse-data-line line header kws)
+      (cons (parse-data-line line kws)
             (lazy-seq (read-data-lines rdr header kws)))
       (read-data-lines rdr header kws))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-variants

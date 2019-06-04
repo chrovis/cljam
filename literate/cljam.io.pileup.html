@@ -2882,7 +2882,8 @@ net.brehaut.ClojureTools = (function (SH) {
                        ^boolean end?
                        insertion ;; String?
                        deletion ;; int?
-                       qname]) ;; String?</pre></td></tr><tr><td class="docs"><p>String?</p>
+                       qname ;; String?
+                       alignment]) ;; SAMAlignment?</pre></td></tr><tr><td class="docs"><p>SAMAlignment?</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord LocusPile [rname
                       ^int pos
@@ -2925,7 +2926,7 @@ net.brehaut.ClojureTools = (function (SH) {
           (when (zero? upper-base-int)
             (throw (ex-info (format &quot;Invalid character %s in %s&quot; base column) {:column column :base base})))
           (if (= len (+ i (if mapq 3 1)))
-            (persistent! (conj! results (PileupBase. start? mapq upper-base -1 reverse? false nil nil nil)))
+            (persistent! (conj! results (PileupBase. start? mapq upper-base -1 reverse? false nil nil nil nil)))
             (let [x (.charAt column (+ i (if mapq 3 1)))
                   ins? (= x \+)
                   del? (= x \-)
@@ -2948,7 +2949,7 @@ net.brehaut.ClojureTools = (function (SH) {
                                     (if indel-num (+ 1 indel-num-chars indel-num) 0)
                                     (if end? 1 0)))]
               (recur next-pos
-                     (conj! results (PileupBase. start? mapq upper-base -1 reverse? end? (when ins? indel-seq) (when del? indel-num) nil))))))
+                     (conj! results (PileupBase. start? mapq upper-base -1 reverse? end? (when ins? indel-seq) (when del? indel-num) nil nil))))))
         (persistent! results)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-pileup-line
   [line]

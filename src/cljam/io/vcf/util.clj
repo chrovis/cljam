@@ -39,7 +39,7 @@
              (into
               {}
               (map (fn [ss]
-                     (let [[k vs] (cstr/split ss #"\=")]
+                     (let [[k vs] (cstr/split ss #"\=" 2)]
                        [(keyword k) ((parser-map k) vs)])))))))))
 
 (defn info-stringifier
@@ -50,7 +50,7 @@
   (let [id-ordered (mapv :id info-meta)
         info-type (into {} (map (juxt :id :type)) info-meta)]
     (fn [info]
-      (when (some? info)
+      (when info
         (->> id-ordered
              (keep
               (fn [k]
@@ -58,7 +58,8 @@
                   (if (or (= v :exists) (= (info-type k) "Flag"))
                     k
                     (str k "=" (if (sequential? v) (cstr/join "," v) v))))))
-             (cstr/join ";"))))))
+             (cstr/join ";")
+             not-empty)))))
 
 (defn parse-filter
   "Parses FILTER field and returns a sequence of keywords."
@@ -184,7 +185,10 @@
     (fn [^String format-line sample-line]
       (when-not (dot-or-nil? format-line)
         (let [ks (cstr/split format-line #":")
-              vs (cstr/split sample-line #":")]
+              vs (concat
+                  (when (not-empty sample-line)
+                    (cstr/split sample-line #":"))
+                  (repeat nil))]
           (into
            {}
            (map (fn [[k ^String v]]
@@ -195,7 +199,7 @@
   "Converts sample map into string. formats must be a seqeunce of keys in sample-map."
   [formats sample-map]
   (->> formats
-       (map (fn [k] [k (sample-map k)]))
+       (map (fn [k] [k (get sample-map k)]))
        reverse
        (drop-while (fn [[_ v]] (or (nil? v) (= [nil] v))))
        (map (fn [[_ v]]
@@ -204,7 +208,8 @@
                 (nil? v) "."
                 :else v)))
        reverse
-       (cstr/join ":")))
+       (cstr/join ":")
+       not-empty))
 
 (defn variant-parser
   "Returns a parser function to parse :filter, :info, :FORMAT and sample columns of VCF.

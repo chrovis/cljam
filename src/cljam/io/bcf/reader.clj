@@ -187,16 +187,16 @@
         indiv (map
                (fn [i] (into
                         {}
-                        (keep
+                        (map
                          (fn [[k vs]]
                            (let [tag (formats k)
                                  v (nth vs i)]
-                             (when-not (or (nil? v) (= [nil] v))
-                               [(:kw tag)
+                             [(:kw tag)
+                              (when-not (or (nil? v) (= [nil] v))
                                 (cond
                                   (= (:kw tag) :GT) (vcf-util/ints->genotype v)
                                   (and (= (:number tag) 1) (sequential? v)) (first v)
-                                  :else v)])))) gts))
+                                  :else v))]))) gts))
                (range (:n-sample variant)))
         v (-> (dissoc variant :genotype)
               (dissoc :ref-length)

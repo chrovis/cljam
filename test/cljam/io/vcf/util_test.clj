@@ -14,7 +14,7 @@
                                           {:id "HOMLEN", :number ".", :type "Integer"}
                                           {:id "CC", :number 1, :type "Character"}])]
     (are [?info-str ?expected]
-        (= (parse-info ?info-str) ?expected)
+         (= (parse-info ?info-str) ?expected)
       "." nil
       "NS=3" {:NS 3}
       "DP=0" {:DP 0}
@@ -35,7 +35,7 @@
 
 (deftest about-parse-filter
   (are [?filter-str ?expected]
-      (= (vcf-util/parse-filter ?filter-str) ?expected)
+       (= (vcf-util/parse-filter ?filter-str) ?expected)
     "." nil
     "PASS" [:PASS]
     "q10" [:q10]
@@ -50,7 +50,7 @@
                                               {:id "AF", :number 1, :type "Float"}
                                               {:id "CC", :number 1, :type "Character"}])]
     (are [?format-str ?sample-str ?expected]
-        (= (parse-sample ?format-str ?sample-str) ?expected)
+         (= (parse-sample ?format-str ?sample-str) ?expected)
       "." "." nil
       "GT" "0/0" {:GT "0/0"}
       "GQ" "48" {:GQ 48}
@@ -62,11 +62,11 @@
       "HQ" ".,." {:HQ [nil nil]}
       "HQ" "." {:HQ nil}
       "GT:GQ:DP:HQ" "2|1:2:0:18,2" {:GT "2|1", :GQ 2, :DP 0, :HQ [18 2]}
-      "GT:GQ:DP:HQ" "2/2:35:4" {:GT "2/2", :GQ 35, :DP 4})))
+      "GT:GQ:DP:HQ" "2/2:35:4" {:GT "2/2", :GQ 35, :DP 4, :HQ nil})))
 
 (deftest about-parse-genotype
   (are [?gt-str ?expected]
-      (= (vcf-util/parse-genotype ?gt-str) ?expected)
+       (= (vcf-util/parse-genotype ?gt-str) ?expected)
     "." nil
     "0" [[0 true]]
     "1" [[1 true]]
@@ -83,7 +83,7 @@
 
 (deftest about-stringify-genotype
   (are [?gt ?expected]
-      (= (vcf-util/stringify-genotype ?gt) ?expected)
+       (= (vcf-util/stringify-genotype ?gt) ?expected)
     nil nil
     [[0 true]] "0"
     [[1 true]] "1"
@@ -102,7 +102,7 @@
 
 (deftest genotype-seq
   (are [?ploidy ?n-alt-alleles ?expected]
-      (= ?expected (vcf-util/genotype-seq ?ploidy ?n-alt-alleles))
+       (= ?expected (vcf-util/genotype-seq ?ploidy ?n-alt-alleles))
     1 1 [[0] [1]]
     1 2 [[0] [1] [2]]
     2 1 [[0 0] [0 1] [1 1]]
@@ -114,7 +114,7 @@
 
 (deftest genotype-index
   (are [?genotype ?expected]
-      (= ?expected (vcf-util/genotype-index ?genotype))
+       (= ?expected (vcf-util/genotype-index ?genotype))
     [0] 0
     [1] 1
     [0 0] 0
@@ -130,8 +130,8 @@
 
 (deftest about-genotypes
   (are [?ploidy ?n-alt-alleles]
-      (let [x (vcf-util/genotype-seq ?ploidy ?n-alt-alleles)]
-        (= (range (count x)) (map vcf-util/genotype-index x)))
+       (let [x (vcf-util/genotype-seq ?ploidy ?n-alt-alleles)]
+         (= (range (count x)) (map vcf-util/genotype-index x)))
     1 0
     1 1
     1 2
@@ -154,7 +154,7 @@
 
 (deftest biallelic-genotype
   (are [?genotype ?target-allele ?expected]
-      (= ?expected (vcf-util/biallelic-genotype ?genotype ?target-allele))
+       (= ?expected (vcf-util/biallelic-genotype ?genotype ?target-allele))
     "0" 1 "0"
     "1" 1 "1"
     "2" 1 "0"
@@ -178,8 +178,8 @@
 
 (deftest biallelic-coll
   (are [?ploidy ?n-alt-alleles ?target-allele ?coll ?expected]
-      (= ?expected
-         (vcf-util/biallelic-coll ?ploidy ?n-alt-alleles ?target-allele ?coll))
+       (= ?expected
+          (vcf-util/biallelic-coll ?ploidy ?n-alt-alleles ?target-allele ?coll))
     2 1 1 [10 20 30] [10 20 30]
     2 2 1 [10 20 30 40 50 60] [10 20 30]
     2 2 2 [10 20 30 40 50 60] [10 40 60]
@@ -188,7 +188,7 @@
 (deftest about-parse-variant-v4_3
   (let [parse-variant (vcf-util/variant-parser test-vcf-v4_3-meta-info test-vcf-v4_3-header)]
     (are [?variant ?expected]
-        (= (parse-variant ?variant) ?expected)
+         (= (parse-variant ?variant) ?expected)
       (nth test-vcf-v4_3-variants 0) (nth test-vcf-v4_3-variants-deep 0)
       (nth test-vcf-v4_3-variants 1) (nth test-vcf-v4_3-variants-deep 1)
       (nth test-vcf-v4_3-variants 2) (nth test-vcf-v4_3-variants-deep 2)
@@ -198,7 +198,7 @@
 (deftest about-parse-variant-v4_0
   (let [parse-variant (vcf-util/variant-parser test-vcf-v4_0-meta-info test-vcf-v4_0-header)]
     (are [?variant ?expected]
-        (= (parse-variant ?variant) ?expected)
+         (= (parse-variant ?variant) ?expected)
       (nth test-vcf-v4_0-variants 0) (nth test-vcf-v4_0-variants-deep 0)
       (nth test-vcf-v4_0-variants 1) (nth test-vcf-v4_0-variants-deep 1)
       (nth test-vcf-v4_0-variants 2) (nth test-vcf-v4_0-variants-deep 2)
@@ -215,7 +215,7 @@
 (deftest about-stringify-variant-vals-v4_3
   (let [stringify-variant-vals (vcf-util/variant-vals-stringifier test-vcf-v4_3-meta-info test-vcf-v4_3-header)]
     (are [?expected ?variant]
-        (= (stringify-variant-vals ?variant) ?expected)
+         (= (stringify-variant-vals ?variant) ?expected)
       (nth test-vcf-v4_3-variants 0) (nth test-vcf-v4_3-variants-deep 0)
       (nth test-vcf-v4_3-variants 1) (nth test-vcf-v4_3-variants-deep 1)
       (nth test-vcf-v4_3-variants 2) (nth test-vcf-v4_3-variants-deep 2)
@@ -225,7 +225,7 @@
 (deftest about-stringify-variant-vals-v4_0
   (let [stringify-variant-vals (vcf-util/variant-vals-stringifier test-vcf-v4_0-meta-info test-vcf-v4_0-header)]
     (are [?expected ?variant]
-        (= (stringify-variant-vals ?variant) ?expected)
+         (= (stringify-variant-vals ?variant) ?expected)
       (nth test-vcf-v4_0-variants 0) (nth test-vcf-v4_0-variants-deep 0)
       (nth test-vcf-v4_0-variants 1) (nth test-vcf-v4_0-variants-deep 1)
       (nth test-vcf-v4_0-variants 2) (nth test-vcf-v4_0-variants-deep 2)
@@ -244,7 +244,7 @@
 
 (deftest parse-breakend
   (are [?alt ?expected]
-      (= ?expected (vcf-util/parse-breakend ?alt))
+       (= ?expected (vcf-util/parse-breakend ?alt))
 
     "]13:123456]T" {:chr "13", :pos 123456, :strand :forward,
                     :join :before, :bases "T"}
@@ -300,7 +300,7 @@
 
 (deftest stringify-breakend
   (are [?expected ?bnd]
-      (= ?expected (vcf-util/stringify-breakend ?bnd))
+       (= ?expected (vcf-util/stringify-breakend ?bnd))
     "]13:123456]T" {:chr "13", :pos 123456, :strand :forward,
                     :join :before, :bases "T"}
     "]13:123456]AGTNNNNNCAT" {:chr "13", :pos 123456, :strand :forward,
@@ -339,7 +339,7 @@
 
 (deftest inspect-allele
   (are [?ref ?alt ?expected]
-      (= ?expected (vcf-util/inspect-allele ?ref ?alt))
+       (= ?expected (vcf-util/inspect-allele ?ref ?alt))
 
     "A" ""    {:type :no-call} ;; malformed
     "A" "."   {:type :no-call}

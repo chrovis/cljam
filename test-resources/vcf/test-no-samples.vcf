@@ -1,6 +1,11 @@
 ##fileformat=VCFv4.3
 ##FILTER=<ID=PASS,Description="All filters passed">
 ##contig=<ID=1,length=100>
+##ALT=<ID=INV,Description="Inversion of reference sequence">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Total depth">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 1	10	.	A	T	.	PASS	DP=10
+1	20	.	C	G,T	.	.	.
+1	30	.	T	<INV>	.	.	END=35;SVTYPE=INV

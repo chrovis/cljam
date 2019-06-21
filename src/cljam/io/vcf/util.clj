@@ -164,9 +164,12 @@
 (defn genotype->ints
   "Convert genotype to a sequence of integers."
   [gt]
-  (let [parsed-gt (if (string? gt) (parse-genotype gt) gt)]
+  (let [parsed-gt (or (cond-> gt (string? gt) parse-genotype) [[nil]])]
     (->> (assoc-in (vec parsed-gt) [0 1] false)
-         (map (fn [[allele phased]] (bit-or (bit-shift-left (inc allele) 1) (if phased 1 0)))))))
+         (map (fn [[allele phased]]
+                (bit-or
+                 (bit-shift-left (if allele (inc allele) 0) 1)
+                 (if phased 1 0)))))))
 
 (defn ints->genotype
   "Convert a sequence of integers to genotype string."
@@ -174,7 +177,8 @@
   (->> vs
        (mapcat (fn [i] [(if (odd? i) \| \/) (if (zero? (quot i 2)) "." (dec (quot i 2)))]))
        rest
-       (apply str)))
+       (apply str)
+       (#(when-not (dot-or-nil? ^String %) %))))
 
 (defn sample-parser
   "Returns a parser function defined by meta-formats.

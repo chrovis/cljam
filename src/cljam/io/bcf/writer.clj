@@ -47,6 +47,7 @@
                     (concat
                      (stringify-meta (.meta-info w))
                      [(vw/stringify-header (.header w))]))
+                   (str \newline) ;; newline at the end of the header
                    (str (char 0)) ;; NULL-terminated
                    .getBytes)
         hlen (alength hdr-ba)]

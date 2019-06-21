@@ -26,6 +26,8 @@
   [:fileformat :file-date :source :reference :contig :phasing :info :filter :format :alt :sample :pedigree])
 (def ^:private ^:const meta-info-prefix "##")
 (def ^:private ^:const header-prefix "#")
+(def ^:private ^:const default-pass-filter
+  {:id "PASS", :description "All filters passed"})
 
 (defn- stringify-meta
   "Converts meta-info rows to a sequence of strings."
@@ -55,6 +57,21 @@
     (lsb/write-int wtr hlen)
     (lsb/write-bytes wtr hdr-ba)))
 
+(defn- index-meta
+  [meta-info]
+  (let [m (update meta-info :filter
+                  (fn [xs]
+                    (let [{[p] true, f false} (group-by #(= "PASS" (:id %)) xs)]
+                      (cons (or p default-pass-filter) f))))
+        fif (->> [:filter :info :format]
+                 (map #(map vector (repeat %) (% m)))
+                 (apply concat)
+                 (map-indexed (fn [i [k v]] [k (assoc v :idx (str i))]))
+                 (reduce (fn [r [k v]] (update r k (fnil conj []) v)) {}))]
+    (-> meta-info
+        (update :contig #(map-indexed (fn [i c] (assoc c :idx (str i))) %))
+        (merge fif))))
+
 (defn ^BCFWriter writer
   "Returns an open cljam.bcf.BCFWriter of f.
    Meta-information lines and a header line will be written in this function.
@@ -66,19 +83,9 @@
        (WRITING-BCF))"
   [f meta-info header]
   (let [bos (bgzf/bgzf-output-stream f)
-        dos (DataOutputStream. bos)
-        indexed-meta (-> meta-info
-                         (update :contig (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
-                         (update :filter (fn [xs]
-                                           (let [{pass true
-                                                  others false} (group-by #(= "PASS" (:id %)) (:filter meta-info))]
-                                             (concat (when pass (assoc (first pass) :idx "0"))
-                                                     (map-indexed (fn [i m] (assoc m :idx (str (inc i)))) others)))))
-                         (update :info (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
-                         (update :format (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs))))
-        w (BCFWriter. (util/as-url f) indexed-meta header dos)]
-    (write-file-header w)
-    w))
+        dos (DataOutputStream. bos)]
+    (doto (BCFWriter. (util/as-url f) (index-meta meta-info) header dos)
+      (write-file-header))))
 
 (defn- value-type
   "Returns an integer indicating type of input value."

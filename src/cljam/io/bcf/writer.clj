@@ -245,7 +245,9 @@
                   fmts)]
     (-> (apply dissoc variant kws)
         (assoc :n-sample (count indiv-kws)
-               :ref-length (count (:ref variant))
+               :ref-length (if-let [e (get-in variant [:info :END])]
+                             (inc (- e (:pos variant)))
+                             (count (:ref variant)))
                :format (map (comp :idx second) fmts)
                :genotype genotype)
         (update :chr (comp :idx contigs))

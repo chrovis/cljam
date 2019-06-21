@@ -198,6 +198,20 @@
           (is (= (vcf/meta-info r2) (vcf/meta-info r1)))
           (doseq [[x2 x1] (map vector (vcf/read-variants r2) (vcf/read-variants r1))]
             (is (= x2 x1))))))
+    (testing "no samples"
+      (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_no_samples.bcf"))]
+        (with-open [v (vcf/reader test-vcf-no-samples-file)]
+          (let [xs (vcf/read-variants v)
+                m (vcf/meta-info v)
+                h (vcf/header v)]
+            (with-open [b (vcf/writer temp-file m h)]
+              (vcf/write-variants b xs))
+            (with-open [b (vcf/reader temp-file)]
+              (is (= xs (vcf/read-variants b))))
+            (with-open [b1 (vcf/reader test-bcf-no-samples-file)
+                        b2 (vcf/reader temp-file)]
+              (is (= (vcf/read-variants b1 {:depth :bcf})
+                     (vcf/read-variants b2 {:depth :bcf}))))))))
     (testing "v4.3 complex"
       (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_v4_3_complex.bcf"))]
         (with-open [v (vcf/reader test-vcf-complex-file)]

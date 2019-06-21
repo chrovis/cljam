@@ -107,7 +107,7 @@
 (def ^:private ^:const int32-special-map
   {nil 0x80000000 :eov 0x80000001 :exists 1})
 (def ^:private ^:const float32-special-map
-  {nil (Float/intBitsToFloat 0x7F800001) :eov (Float/intBitsToFloat 0x7F800002) :exists 1})
+  {nil 0x7F800001 :eov 0x7F800002 :exists 1})
 
 (defn- encode-typed-value
   "Encodes given value and returns as a byte-array.
@@ -132,7 +132,8 @@
          1 (.put bb (unchecked-byte (get int8-special-map b b)))
          2 (.putShort bb (unchecked-short (get int16-special-map b b)))
          3 (.putInt bb (unchecked-int (get int32-special-map b b)))
-         5 (.putFloat bb (float (get float32-special-map b b)))
+         5 (.putInt bb (unchecked-int (or (get float32-special-map b)
+                                          (Float/floatToRawIntBits b))))
          7 (.put bb (byte b))))
      (.array bb))))
 
@@ -155,7 +156,10 @@
   (let [chrom-id (:chr v)
         pos (dec (:pos v))
         rlen (:ref-length v)
-        qual (if-let [qual-val (:qual v)] qual-val (byte-array [(float32-special-map nil)]))
+        qual (unchecked-int
+              (if-let [qual-val (:qual v)]
+                (Float/floatToRawIntBits qual-val)
+                (float32-special-map nil)))
         n-allele (inc (count (:alt v)))
         n-info (count (:info v))
         n-allele-info (bit-or (bit-shift-left n-allele 16) n-info)
@@ -178,7 +182,7 @@
       (.putInt chrom-id)
       (.putInt pos)
       (.putInt rlen)
-      (.putFloat qual)
+      (.putInt qual)
       (.putInt n-allele-info)
       (.putInt n-fmt-sample)
       (.put ^bytes id)

@@ -89,15 +89,15 @@
 
 (defn- value-type
   "Returns an integer indicating type of input value."
-  [v]
+  ^long [v]
   (cond
     (nil? v) 1
     (keyword? v) 1
     (float? v) 5
     (char? v) 7
-    (<= Byte/MIN_VALUE v Byte/MAX_VALUE) 1
-    (<= Short/MIN_VALUE v Short/MAX_VALUE) 2
-    (<= Integer/MIN_VALUE v Integer/MAX_VALUE) 3))
+    (<= (+ Byte/MIN_VALUE 8) v Byte/MAX_VALUE) 1
+    (<= (+ Short/MIN_VALUE 8) v Short/MAX_VALUE) 2
+    (<= (+ Integer/MIN_VALUE 8) v Integer/MAX_VALUE) 3))
 
 (def ^:private ^:const int8-special-map
   {nil 0x80 :eov 0x81 :exists 1})

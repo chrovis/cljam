@@ -23,7 +23,8 @@
     (write-variants this variants)))
 
 (def ^:private ^:const bcf-meta-keys
-  [:fileformat :file-date :source :reference :contig :phasing :info :filter :format :alt :sample :pedigree])
+  [:fileformat :file-date :source :reference :contig :phasing :info :filter
+   :format :alt :sample :pedigree])
 (def ^:private ^:const meta-info-prefix "##")
 (def ^:private ^:const header-prefix "#")
 (def ^:private ^:const default-pass-filter
@@ -32,13 +33,13 @@
 (defn- stringify-meta
   "Converts meta-info rows to a sequence of strings."
   [meta-info]
-  (->>
+  (apply
+   concat
    (for [k bcf-meta-keys :let [v (meta-info k)] :when v]
      (if (sequential? v)
        (for [x v]
          (str meta-info-prefix (vw/stringify-key k) "=<" (vw/stringify-structured-line k x) ">"))
-       [(str meta-info-prefix (vw/stringify-key k) "=" v)]))
-   (apply concat)))
+       [(str meta-info-prefix (vw/stringify-key k) "=" v)]))))
 
 (defn- write-file-header
   "Writes BCF file header, meta-info and header row to writer."
@@ -243,7 +244,9 @@
   (into {} (map (fn [m] [(f (:id m)) (update m :idx #(Integer/parseInt %))])) meta))
 
 (defn write-variants
-  "Writes data lines on writer, returning nil. variants must be a sequence of parsed or VCF-style maps. e.g.
+  "Writes data lines on writer. Returns nil. `variants` must be a sequence of
+  parsed or VCF-style maps.
+  e.g.
 
     (write-variants [{:chr \"19\", :pos 111, :id nil, :ref \"A\",
                       :alt [\"C\"], :qual 9.6, :filter [:PASS], :info {:DP 4},
@@ -256,6 +259,8 @@
         info (meta->map (:info (.meta-info w)) keyword)
         parse-variant (vcf-util/variant-parser (.meta-info w) (.header w))]
     (doseq [v variants]
-      (->> (if (some string? ((apply juxt :filter :info kws) v)) (parse-variant v) v)
+      (->> (if (some string? ((apply juxt :filter :info kws) v))
+             (parse-variant v)
+             v)
            (parsed-variant->bcf-map kws contigs filters formats info)
            (write-variant (.writer w))))))

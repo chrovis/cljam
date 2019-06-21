@@ -71,7 +71,7 @@
     (if (= (seq magic) (map byte "BCF\2\2"))
       (let [hlen (lsb/read-int rdr)
             header-buf (lsb/read-bytes rdr hlen)]
-        (if (= (aget ^bytes header-buf (dec hlen)) 0) ;; NULL-terminated
+        (if (zero? (aget ^bytes header-buf (dec hlen))) ;; NULL-terminated
           (let [{:keys [header meta]} (->> (String. ^bytes header-buf 0 (int (dec hlen)))
                                            cstr/split-lines
                                            parse-meta-and-header)]
@@ -216,8 +216,7 @@
   [^BGZFInputStream rdr read-fn]
   (when (pos? (.available rdr))
     (let [data (read-fn rdr)]
-      (cons data
-            (lazy-seq (read-data-lines rdr read-fn))))))
+      (cons data (lazy-seq (read-data-lines rdr read-fn))))))
 
 (defn- meta->map
   "Creates a map for searching meta-info with indices."

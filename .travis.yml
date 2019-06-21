@@ -1,11 +1,10 @@
 language: clojure
-lein: 2.8.1
+lein: 2.9.1
 cache:
   directories:
     - $HOME/.m2
 jdk:
-  - oraclejdk9
-  - oraclejdk8
+  - openjdk12
   - openjdk11
   - openjdk10
   - openjdk9
@@ -14,18 +13,18 @@ env:
 before_install:
   - if [ -f "${JAVA_HOME}/lib/security/cacerts" -a -w  "${JAVA_HOME}/lib/security/cacerts" ]; then rm "${JAVA_HOME}/lib/security/cacerts" && ln -s /etc/ssl/certs/java/cacerts "${JAVA_HOME}/lib/security/cacerts"; fi;
 script:
-    - lein with-profile +dev:+1.8:+1.10 test
-    - lein with-profile dev,1.9 bin
+    - lein with-profile +dev:+1.8:+1.9 test
+    - lein with-profile dev bin
     - target/cljam version
 jobs:
   include:
     - stage: coverage
-      jdk: oraclejdk8
+      jdk: openjdk8
       script:
         - lein cloverage --codecov
         - bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
     - stage: deploy
-      jdk: oraclejdk8
+      jdk: openjdk8
       script: skip
       deploy:
         provider: script

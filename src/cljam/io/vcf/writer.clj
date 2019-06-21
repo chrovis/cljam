@@ -32,7 +32,7 @@
 
 (defn- nil->dot
   [s]
-  (or s "."))
+  (if (nil? s) "." s))
 
 (defn- write-line
   [^BufferedWriter bwtr ^String s]

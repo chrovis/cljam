@@ -98,6 +98,8 @@
     (keyword? v) 1
     (float? v) 5
     (char? v) 7
+    ;; 0x80-0x87, 0x8000-0x8007 and 0x80000000-0x80000007
+    ;; are reserved for future use in the BCF2 spec.
     (<= (+ Byte/MIN_VALUE 8) v Byte/MAX_VALUE) 1
     (<= (+ Short/MIN_VALUE 8) v Short/MAX_VALUE) 2
     (<= (+ Integer/MIN_VALUE 8) v Integer/MAX_VALUE) 3))

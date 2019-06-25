@@ -1,0 +1,65 @@
+##fileformat=VCFv4.3
+##source=Source string with whitespaces
+##reference=GRCh38
+##fileDate=20190601
+##comment="Foo bar baz"
+##contig=<ID=1,length=248956422>
+##contig=<ID=2,length=242193529>
+##contig=<ID=3,length=198295559>
+##contig=<ID=4,length=190214555>
+##phasing=partial
+##ALT=<ID=CNV,Description="Copy Number Variation">
+##ALT=<ID=DEL,Description="Deletion">
+##ALT=<ID=DUP,Description="Duplication">
+##ALT=<ID=INS,Description="Insertion">
+##ALT=<ID=INV,Description="Inversion">
+##FILTER=<ID=q10,Description="Quality below 10">
+##FILTER=<ID=s50,Description="Less than 50% of samples have data">
+##INFO=<ID=CIEND,Number=2,Type=Integer,Description="Confidence interval around END for imprecise variants">
+##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="Confidence interval around POS for imprecise variants">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End coordinate of this variant">
+##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="Difference in length between REF and ALT alleles">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele frequency for each ALT allele in the same order as listed">
+##INFO=<ID=XAS,Number=A,Type=String,Description="INFO A String">
+##INFO=<ID=XAC,Number=A,Type=Character,Description="INFO A Character">
+##INFO=<ID=AD,Number=R,Type=Integer,Description="Total read depth for each allele">
+##INFO=<ID=XRF,Number=R,Type=Float,Description="INFO R Float">
+##INFO=<ID=XRS,Number=R,Type=String,Description="INFO R String">
+##INFO=<ID=XRC,Number=R,Type=Character,Description="INFO R Character">
+##INFO=<ID=XGI,Number=G,Type=Integer,Description="INFO G Integer">
+##INFO=<ID=XGF,Number=G,Type=Float,Description="INFO G Float">
+##INFO=<ID=XGS,Number=G,Type=String,Description="INFO G String">
+##INFO=<ID=XGC,Number=G,Type=Character,Description="INFO G Character">
+##INFO=<ID=XVI,Number=.,Type=Integer,Description="INFO . Integer">
+##INFO=<ID=XVF,Number=.,Type=Float,Description="INFO . Float">
+##INFO=<ID=XVS,Number=.,Type=String,Description="INFO . String">
+##INFO=<ID=XVC,Number=.,Type=Character,Description="INFO . Character">
+##INFO=<ID=SB,Number=4,Type=Integer,Description="Strand bias">
+##INFO=<ID=SOMATIC,Number=0,Type=Flag,Description="Somatic mutation (for cancer genomic)">
+##INFO=<ID=1000G,Number=0,Type=Flag,Description="1000 Genomes membership">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=HQ,Number=2,Type=Integer,Description="Haplotype quality">
+##FORMAT=<ID=YAI,Number=A,Type=Integer,Description="FORMAT A Integer">
+##FORMAT=<ID=YAF,Number=A,Type=Float,Description="FORMAT A Float">
+##FORMAT=<ID=YAS,Number=A,Type=String,Description="FORMAT A String">
+##FORMAT=<ID=YAC,Number=A,Type=Character,Description="FORMAT A Character">
+##FORMAT=<ID=YRI,Number=R,Type=Integer,Description="FORMAT R Integer">
+##FORMAT=<ID=YRF,Number=R,Type=Float,Description="FORMAT R Float">
+##FORMAT=<ID=YRS,Number=R,Type=String,Description="FORMAT R String">
+##FORMAT=<ID=YRC,Number=R,Type=Character,Description="FORMAT R Character">
+##FORMAT=<ID=YGI,Number=G,Type=Integer,Description="FORMAT G Integer">
+##FORMAT=<ID=GL,Number=G,Type=Float,Description="Genotype likelihoods">
+##FORMAT=<ID=YGS,Number=G,Type=String,Description="FORMAT G String">
+##FORMAT=<ID=YGC,Number=G,Type=Character,Description="FORMAT G Character">
+##FORMAT=<ID=YVI,Number=.,Type=Integer,Description="FORMAT . Integer">
+##FORMAT=<ID=YVF,Number=.,Type=Float,Description="FORMAT . Float">
+##FORMAT=<ID=YVS,Number=.,Type=String,Description="FORMAT . String">
+##FORMAT=<ID=YVC,Number=.,Type=Character,Description="FORMAT . Character">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE01	SAMPLE02	SAMPLE03
+1	1	Semicolon;separated;list;of;unique;identifiers	N	.	.	.	.	.	.	.	.
+2	35416	.	A	G	.	PASS	AC=3;AF=0.5;END=35416	GT	0/0	1|0	0/1
+3	114708552	.	G	C,A	1.5	q10;s50	AC=10,20;AF=0.5,1.0;XAS=FOO,BAR;XAC=F,B;AD=10,10,20;XRF=1.0,2.0,3.0;XRS=REF0,ALT1,ALT2;XRC=R,A,A;XGI=0,1,2,3,4,5,6;XGF=0.1,0.2,0.3,0.4,0.5,0.6;XGS=00,01,11,02,12,22;XGC=A,B,C,D,E,F;XVI=1,2,3;XVF=10.0,100.0,1000.0,10000.0;XVS=List,of,String;XVC=L,o,C;SB=1,2,3,4;SOMATIC;1000G	GT:DP:HQ:YAI:YAF:YAS:YAC:YRI:YRF:YRS:YRC:YGI:GL:YGS:YGC:YVI:YVF:YVS:YVC	.:.:.:.:.:.:.:.:.:.:.:.:.:.:.:.:.:.:.	1/2:10:1,2:10,20:1.0,2.0:ALT1,ALT2:A,B:10,10,1:3.0,2.0,1.0:FORMAT-REF0,FORMAT-ALT1,FORMAT-ALT2:F,G,H:10,20,30,40,50,60:10.0,9.0,8.0,7.0,6.0,5.0:REF-REF,REF-ALT1,ALT1-ALT1,REF-ALT2,ALT1-ALT2,ALT2-ALT2:U,V,W,X,Y,Z:12345:123.0,456.0,789.0:ListOfStringWithASingleElement:Y,V,C	.:.:.,.:.,.:.,.:.:.:.,.,.:.:.:.:.:.,.,.,.,.,.:.:.:.:.:.,.,.:.
+4	444	.	T	G,TCAAA	10	.	AC=.;AF=.;XAS=.;XAC=.;AD=.;XRF=.;XRS=.;XRC=.;XGI=.;XGF=.;XGS=.;XGC=.;XVI=.;XVF=.;XVS=.;XVC=.;SB=.;SOMATIC	GT:DP:HQ:YAI:YAF:YAS:YAC:YRI:YRF:YRS:YRC:YGI:GL:YGS:YGC:YVI:YVF:YVS:YVC	.	.	.

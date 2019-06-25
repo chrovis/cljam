@@ -185,6 +185,35 @@
     2 2 2 [10 20 30 40 50 60] [10 40 60]
     3 2 2 [1 2 3 4 5 6 7 8 9 10] [1 5 8 10]))
 
+(deftest genotype->ints
+  (are [?gt ?ints]
+       (= ?ints (vcf-util/genotype->ints ?gt))
+    nil [0x00]
+    "." [0x00]
+    "0" [0x02]
+    "1" [0x04]
+    "0/0" [0x02 0x02]
+    "0/1" [0x02 0x04]
+    "1/1" [0x04 0x04]
+    "0|1" [0x02 0x05]
+    "./." [0x00 0x00]
+    "0/1/2" [0x02 0x04 0x06]
+    "0/1|2" [0x02 0x04 0x07]))
+
+(deftest ints->genotype
+  (are [?ints ?gt]
+       (= ?gt (vcf-util/ints->genotype ?ints))
+    [0x00] nil
+    [0x02] "0"
+    [0x04] "1"
+    [0x02 0x02] "0/0"
+    [0x02 0x04] "0/1"
+    [0x04 0x04] "1/1"
+    [0x02 0x05] "0|1"
+    [0x00 0x00] "./."
+    [0x02 0x04 0x06] "0/1/2"
+    [0x02 0x04 0x07] "0/1|2"))
+
 (deftest about-parse-variant-v4_3
   (let [parse-variant (vcf-util/variant-parser test-vcf-v4_3-meta-info test-vcf-v4_3-header)]
     (are [?variant ?expected]

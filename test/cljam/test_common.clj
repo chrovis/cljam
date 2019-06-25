@@ -182,6 +182,7 @@
 (def test-vcf-v4_0-file "test-resources/vcf/test-v4_0.vcf")
 (def test-vcf-v4_3-file "test-resources/vcf/test-v4_3.vcf")
 (def test-vcf-no-samples-file "test-resources/vcf/test-no-samples.vcf")
+(def test-vcf-complex-file "test-resources/vcf/test-v4_3-complex.vcf")
 
 ;; ### pileup files
 
@@ -193,6 +194,7 @@
 (def test-bcf-v4_3-file "test-resources/bcf/test-v4_3.bcf")
 (def test-bcf-invalid-file "test-resources/bcf/invalid.bcf")
 (def test-bcf-no-samples-file "test-resources/bcf/test-no-samples.bcf")
+(def test-bcf-complex-file "test-resources/bcf/test-v4_3-complex.bcf")
 
 ;; ### GFF3 files
 
@@ -728,7 +730,12 @@
      :NA00003 {:GT "1/1", :GQ 40, :DP 3}}))
 
 (def test-vcf-no-samples-variants-deep
-  [{:chr "1", :pos 10, :id nil, :ref "A", :alt ["T"], :qual nil, :filter [:PASS], :info {:DP 10}}])
+  [{:chr "1", :pos 10, :id nil, :ref "A", :alt ["T"],
+    :qual nil, :filter [:PASS], :info {:DP 10}}
+   {:chr "1", :pos 20, :id nil, :ref "C", :alt ["G" "T"],
+    :qual nil, :filter nil, :info nil}
+   {:chr "1", :pos 30, :id nil, :ref "T", :alt ["<INV>"],
+    :qual nil, :filter nil, :info {:END 35, :SVTYPE "INV"}}])
 
 ;; http server
 

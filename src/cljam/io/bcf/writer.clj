@@ -23,20 +23,26 @@
     (write-variants this variants)))
 
 (def ^:private ^:const bcf-meta-keys
-  [:fileformat :file-date :source :reference :contig :phasing :info :filter :format :alt :sample :pedigree])
+  [:fileformat :file-date :source :reference :contig :phasing :info :filter
+   :format :alt :sample :pedigree])
 (def ^:private ^:const meta-info-prefix "##")
 (def ^:private ^:const header-prefix "#")
+(def ^:private ^:const type-kws
+  {"String" :str, "Character" :char,
+   "Integer" :int, "Float" :float, "Flag" :flag})
+(def ^:private ^:const default-pass-filter
+  {:id "PASS", :description "All filters passed"})
 
 (defn- stringify-meta
   "Converts meta-info rows to a sequence of strings."
   [meta-info]
-  (->>
+  (apply
+   concat
    (for [k bcf-meta-keys :let [v (meta-info k)] :when v]
      (if (sequential? v)
        (for [x v]
          (str meta-info-prefix (vw/stringify-key k) "=<" (vw/stringify-structured-line k x) ">"))
-       [(str meta-info-prefix (vw/stringify-key k) "=" v)]))
-   (apply concat)))
+       [(str meta-info-prefix (vw/stringify-key k) "=" v)]))))
 
 (defn- write-file-header
   "Writes BCF file header, meta-info and header row to writer."
@@ -47,12 +53,27 @@
                     (concat
                      (stringify-meta (.meta-info w))
                      [(vw/stringify-header (.header w))]))
+                   (str \newline) ;; newline at the end of the header
                    (str (char 0)) ;; NULL-terminated
                    .getBytes)
         hlen (alength hdr-ba)]
     (lsb/write-bytes wtr (byte-array (map byte "BCF\2\2")))
     (lsb/write-int wtr hlen)
     (lsb/write-bytes wtr hdr-ba)))
+
+(defn- index-meta
+  [meta-info]
+  (let [m (update meta-info :filter
+                  (fn [xs]
+                    (let [{[p] true, f false} (group-by #(= "PASS" (:id %)) xs)]
+                      (cons (or p default-pass-filter) f))))
+        fif (->> [:filter :info :format]
+                 (mapcat #(map vector (repeat %) (% m)))
+                 (map-indexed (fn [i [k v]] [k (assoc v :idx (str i))]))
+                 (reduce (fn [r [k v]] (update r k (fnil conj []) v)) {}))]
+    (-> meta-info
+        (update :contig #(map-indexed (fn [i c] (assoc c :idx (str i))) %))
+        (merge fif))))
 
 (defn ^BCFWriter writer
   "Returns an open cljam.bcf.BCFWriter of f.
@@ -65,31 +86,23 @@
        (WRITING-BCF))"
   [f meta-info header]
   (let [bos (bgzf/bgzf-output-stream f)
-        dos (DataOutputStream. bos)
-        indexed-meta (-> meta-info
-                         (update :contig (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
-                         (update :filter (fn [xs]
-                                           (let [{pass true
-                                                  others false} (group-by #(= "PASS" (:id %)) (:filter meta-info))]
-                                             (concat (when pass (assoc (first pass) :idx "0"))
-                                                     (map-indexed (fn [i m] (assoc m :idx (str (inc i)))) others)))))
-                         (update :info (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
-                         (update :format (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs))))
-        w (BCFWriter. (util/as-url f) indexed-meta header dos)]
-    (write-file-header w)
-    w))
+        dos (DataOutputStream. bos)]
+    (doto (BCFWriter. (util/as-url f) (index-meta meta-info) header dos)
+      (write-file-header))))
 
 (defn- value-type
   "Returns an integer indicating type of input value."
-  [v]
+  ^long [v]
   (cond
     (nil? v) 1
     (keyword? v) 1
     (float? v) 5
     (char? v) 7
-    (<= Byte/MIN_VALUE v Byte/MAX_VALUE) 1
-    (<= Short/MIN_VALUE v Short/MAX_VALUE) 2
-    (<= Integer/MIN_VALUE v Integer/MAX_VALUE) 3))
+    ;; 0x80-0x87, 0x8000-0x8007 and 0x80000000-0x80000007
+    ;; are reserved for future use in the BCF2 spec.
+    (<= (+ Byte/MIN_VALUE 8) v Byte/MAX_VALUE) 1
+    (<= (+ Short/MIN_VALUE 8) v Short/MAX_VALUE) 2
+    (<= (+ Integer/MIN_VALUE 8) v Integer/MAX_VALUE) 3))
 
 (def ^:private ^:const int8-special-map
   {nil 0x80 :eov 0x81 :exists 1})
@@ -98,104 +111,117 @@
 (def ^:private ^:const int32-special-map
   {nil 0x80000000 :eov 0x80000001 :exists 1})
 (def ^:private ^:const float32-special-map
-  {nil (Float/intBitsToFloat 0x7F800001) :eov (Float/intBitsToFloat 0x7F800002) :exists 1})
+  {nil 0x7F800001 :eov 0x7F800002 :exists 1})
 
 (defn- encode-typed-value
-  "Encodes given value and returns as a byte-array.
-   Allowed input types are integer, float, character, and homogeneous sequence of them. String is also supported."
-  ([v]
+  (^bytes [element-type v]
    (if (= v :exists)
      (byte-array [0x00])
-     (encode-typed-value [v] 1)))
-  ([[v :as vs] n-sample]
-   (let [total-len (apply max 0 (map #(if (or (sequential? %) (string? %)) (count %) 1) vs))
-         type-id (long (cond (string? v) 7 (sequential? v) (apply max 1 (map value-type v)) :else (value-type v)))
-         type-byte (unchecked-byte (bit-or (bit-shift-left (min 15 total-len) 4) type-id))
-         bb (ByteBuffer/allocate (+ (* n-sample total-len (case type-id 1 1 2 2 3 4 5 4 7 1))
-                                    (if (<= 15 total-len) (case (int (value-type total-len)) 1 3 2 4 3 6) 1)))]
+     (encode-typed-value element-type [v] 1)))
+  (^bytes [element-type vs ^long n-sample]
+   (let [str? (or (= element-type :str) (= element-type :char))
+         vs (map (fn [v]
+                   (let [v (if (sequential? v) v [v])]
+                     (if str? (cstr/join \, (map #(or % ".") v)) v))) vs)
+         max-len (long (apply max 0 (map count vs)))
+         vs (map
+             (fn [v]
+               (let [l (max 1 (count v))]
+                 (if (< l max-len)
+                   (if str?
+                     (apply str v (repeat (- max-len l) (char 0)))
+                     (concat
+                      (or (seq v) [nil])
+                      (repeat (- max-len l) :eov)))
+                   v))) vs)
+         type-id (case element-type
+                   (:str :char) 7
+                   :float 5
+                   (long (apply max 1 (mapcat (partial map value-type) vs))))
+         type-byte (bit-or (bit-shift-left (min 15 max-len) 4) type-id)
+         len-bytes (when (<= 15 max-len)
+                     (encode-typed-value :int max-len))
+         n-bytes (+ (* n-sample max-len (case type-id 1 1 2 2 3 4 5 4 7 1))
+                    1 (if len-bytes (alength ^bytes len-bytes) 0))
+         bb (ByteBuffer/allocate n-bytes)]
      (.order bb ByteOrder/LITTLE_ENDIAN)
-     (.put bb type-byte)
-     (when (<= 15 total-len)
-       (.put bb ^bytes (encode-typed-value total-len)))
-     (doseq [x vs
-             b (if (or (sequential? x) (string? x)) x [x])]
+     (.put bb (unchecked-byte type-byte))
+     (when len-bytes
+       (.put bb ^bytes len-bytes))
+     (doseq [v vs
+             b v]
        (case type-id
          1 (.put bb (unchecked-byte (get int8-special-map b b)))
          2 (.putShort bb (unchecked-short (get int16-special-map b b)))
          3 (.putInt bb (unchecked-int (get int32-special-map b b)))
-         5 (.putFloat bb (float (get float32-special-map b b)))
-         7 (.put bb (byte b))))
+         5 (.putInt bb (unchecked-int (or (get float32-special-map b)
+                                          (Float/floatToRawIntBits b))))
+         7 (.put bb (byte (get {nil 0 :eov 0} b b)))))
      (.array bb))))
 
-(defn- encode-typed-kvs
-  "Encodes key-value pairs and returns as a byte-array."
-  [kvs]
-  (let [bas (->> kvs
-                 (mapcat
-                  (fn [[k v]]
-                    [(encode-typed-value k)
-                     (encode-typed-value v)])))
-        bb (ByteBuffer/allocate (reduce + (map alength bas)))]
-    (doseq [ba bas]
-      (.put bb ^bytes ba))
+(defn- concat-bytes
+  ^bytes [xs]
+  (let [l (long (transduce (map alength) + xs))
+        bb (ByteBuffer/allocate l)]
+    (doseq [x xs]
+      (.put bb ^bytes x))
     (.array bb)))
 
 (defn- encode-variant-shared
   "Encodes shared part of a variant and returns as a byte buffer."
-  [v]
-  (let [chrom-id (:chr v)
-        pos (dec (:pos v))
-        rlen (:ref-length v)
-        qual (if-let [qual-val (:qual v)] qual-val (byte-array [(float32-special-map nil)]))
-        n-allele (inc (count (:alt v)))
-        n-info (count (:info v))
+  ^ByteBuffer [{:keys [chr pos id ref-length alt qual info n-sample]
+                ref-bases :ref filters :filter formats :format}]
+  (let [chrom-id (unchecked-int chr)
+        pos (unchecked-int (dec ^long pos))
+        rlen (unchecked-int ref-length)
+        qual (unchecked-int (if qual
+                              (Float/floatToRawIntBits qual)
+                              (float32-special-map nil)))
+        n-allele (inc (count alt))
+        n-info (count info)
         n-allele-info (bit-or (bit-shift-left n-allele 16) n-info)
-        n-fmt (count (:format v))
-        n-sample (:n-sample v)
-        n-fmt-sample (bit-or (bit-shift-left n-fmt 24) n-sample)
-        id (if-let [id-str (:id v)] (encode-typed-value id-str) (byte-array [0x07]))
-        refseq ^bytes (encode-typed-value (:ref v))
-        altseq (byte-array (mapcat encode-typed-value (:alt v)))
-        flter ^bytes (encode-typed-value (:filter v))
-        info ^bytes (encode-typed-kvs (:info v))
-        l-shared (+ 4 4 4 4 4 4
-                    (alength ^bytes id)
-                    (alength refseq)
-                    (alength altseq)
-                    (alength flter)
-                    (alength info))]
+        n-fmt (count formats)
+        n-fmt-sample (bit-or (bit-shift-left n-fmt 24) ^long n-sample)
+        id (if id (encode-typed-value :str id) (byte-array [0x07]))
+        refseq ^bytes (encode-typed-value :str ref-bases)
+        altseq (concat-bytes (map (partial encode-typed-value :str) alt))
+        filters (if-let [f (seq filters)]
+                  (encode-typed-value :int f)
+                  (byte-array [0x00]))
+        info (if (pos? n-info)
+               (->> info
+                    (mapcat
+                     (fn [[k t v]]
+                       [(encode-typed-value :int k)
+                        (encode-typed-value t v)]))
+                    concat-bytes)
+               (byte-array 0))
+        l-shared (+ 24
+                    (alength id) (alength refseq) (alength altseq)
+                    (alength filters) (alength info))]
     (doto (ByteBuffer/allocate l-shared)
       (.order ByteOrder/LITTLE_ENDIAN)
       (.putInt chrom-id)
       (.putInt pos)
       (.putInt rlen)
-      (.putFloat qual)
+      (.putInt qual)
       (.putInt n-allele-info)
       (.putInt n-fmt-sample)
-      (.put ^bytes id)
+      (.put id)
       (.put refseq)
       (.put altseq)
-      (.put flter)
+      (.put filters)
       (.put info))))
 
 (defn- encode-variant-indv
-  "Encodes individual part of a variant and returns as a byte buffer"
-  [v]
-  (let [n-sample (:n-sample v)
-        bas (->> (:genotype v)
-                 (mapcat
-                  (fn [[k values]]
-                    (let [vs (map (fn [i] (nth values i nil)) (range n-sample))
-                          new-vs (if (some sequential? vs)
-                                   (let [max-len (apply max (map count vs))]
-                                     (map (fn [i] (or i (concat (repeat (dec max-len) nil) [:eov]))) vs))
-                                   vs)]
-                      [(encode-typed-value k)
-                       (encode-typed-value new-vs n-sample)]))))
-        bb (ByteBuffer/allocate (reduce + (map alength bas)))]
-    (doseq [ba bas]
-      (.put bb ^bytes ba))
-    bb))
+  [{:keys [^long n-sample genotype]}]
+  (->> genotype
+       (mapcat
+        (fn [[k t vs]]
+          [(encode-typed-value :int k)
+           (encode-typed-value t vs n-sample)]))
+       concat-bytes
+       (ByteBuffer/wrap)))
 
 (defn- write-variant
   "Encodes a BCF-style variant map and write it to writer."
@@ -207,35 +233,43 @@
     (lsb/write-bytes w shared-ba)
     (lsb/write-bytes w indv-ba)))
 
-(defn- update-if-contained
-  "Like update, but only affects if k is contained in m."
-  [m k f & args]
-  (if (contains? m k)
-    (apply update m k f args)
-    m))
-
 (defn- parsed-variant->bcf-map
   "Converts a parsed variant map to BCF-style map."
   [[fmt-kw & indiv-kws :as kws] contigs filters formats info variant]
-  (let [fmt (variant fmt-kw)
-        indivs (map (fn [kw] (update-if-contained (variant kw) :GT vcf-util/genotype->ints)) indiv-kws)
-        genotype (into {} (map (fn [k] [(:idx (formats k)) (map (fn [indiv] (get indiv k)) indivs)])) fmt)]
+  (let [fmts (map (juxt identity formats) (variant fmt-kw))
+        genotype (map
+                  (fn [[k {:keys [idx type-kw]}]]
+                    (->> indiv-kws
+                         (map #(cond-> (get-in variant [% k] nil)
+                                 (= k :GT) vcf-util/genotype->ints))
+                         (vector idx type-kw)))
+                  fmts)]
     (-> (apply dissoc variant kws)
-        (assoc :n-sample (count indivs))
-        (assoc :ref-length (count (:ref variant)))
+        (assoc :n-sample (count indiv-kws)
+               :ref-length (if-let [e (get-in variant [:info :END])]
+                             (inc (- e (:pos variant)))
+                             (count (:ref variant)))
+               :format (map (comp :idx second) fmts)
+               :genotype genotype)
         (update :chr (comp :idx contigs))
         (update :filter (fn [f] (map (comp :idx filters) f)))
-        (update :info (fn [i] (into {} (map (fn [[k v]] [(:idx (info k)) v])) i)))
-        (assoc :format (map (comp :idx formats) fmt))
-        (assoc :genotype genotype))))
+        (update :info (fn [i]
+                        (map (fn [[k v]]
+                               (let [{:keys [idx type-kw]} (info k)]
+                                 [idx type-kw v])) i))))))
 
 (defn- meta->map
   "Creates a map for searching meta-info with (f id)."
   [meta f]
-  (into {} (map (fn [m] [(f (:id m)) (update m :idx #(Integer/parseInt %))])) meta))
+  (into {} (map
+            (fn [{:keys [id] t :type :as m}]
+              [(f id) (cond-> (update m :idx #(Integer/parseInt %))
+                        t (assoc :type-kw (type-kws t)))])) meta))
 
 (defn write-variants
-  "Writes data lines on writer, returning nil. variants must be a sequence of parsed or VCF-style maps. e.g.
+  "Writes data lines on writer. Returns nil. `variants` must be a sequence of
+  parsed or VCF-style maps.
+  e.g.
 
     (write-variants [{:chr \"19\", :pos 111, :id nil, :ref \"A\",
                       :alt [\"C\"], :qual 9.6, :filter [:PASS], :info {:DP 4},
@@ -243,11 +277,18 @@
   [^BCFWriter w variants]
   (let [kws (mapv keyword (drop 8 (.header w)))
         contigs (meta->map (:contig (.meta-info w)) identity)
-        filters (assoc (meta->map (:filter (.meta-info w)) keyword) :PASS {:idx 0})
-        formats (meta->map (:format (.meta-info w)) keyword)
+        filters (assoc (meta->map (:filter (.meta-info w)) keyword)
+                       :PASS {:idx 0})
+        formats (-> (.meta-info w)
+                    :format
+                    (meta->map keyword)
+                    (assoc-in [:GT :type-kw] :int)
+                    (assoc-in [:GT :number] nil))
         info (meta->map (:info (.meta-info w)) keyword)
         parse-variant (vcf-util/variant-parser (.meta-info w) (.header w))]
     (doseq [v variants]
-      (->> (if (some string? ((apply juxt :filter :info kws) v)) (parse-variant v) v)
+      (->> (if (some string? ((apply juxt :filter :info kws) v))
+             (parse-variant v)
+             v)
            (parsed-variant->bcf-map kws contigs filters formats info)
            (write-variant (.writer w))))))

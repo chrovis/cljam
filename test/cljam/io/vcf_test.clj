@@ -104,12 +104,21 @@
     (with-open [rdr (vcf/reader test-bcf-no-samples-file)]
       (is (= (vcf/read-variants rdr) test-vcf-no-samples-variants-deep)))))
 
+(deftest read-variants-complex-test
+  (with-open [v (vcf/reader test-vcf-complex-file)
+              b (vcf/reader test-bcf-complex-file)]
+    (is (= (vcf/read-variants v)
+           (vcf/read-variants b)))))
+
 (deftest writer-test
   (testing "vcf"
     (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.vcf")) {} [])]
       (is (instance? cljam.io.vcf.writer.VCFWriter wtr))))
   (testing "bcf"
     (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bcf")) {} [])]
+      (is (instance? cljam.io.bcf.writer.BCFWriter wtr)))
+    (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bcf"))
+                                {:filter [{:id "PASS", :description "All filters passed"}]} [])]
       (is (instance? cljam.io.bcf.writer.BCFWriter wtr))))
   (testing "throws Exception"
     (is (thrown? Exception
@@ -178,16 +187,41 @@
 (deftest vcf->bcf-conversion-test
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_v4_3.bcf"))]
-      (with-open [r (vcf/reader test-vcf-v4_3-file)
-                  w (vcf/bcf-writer temp-file (vcf/meta-info r) (vcf/header r))]
-        (vcf/write-variants w (vcf/read-variants r)))
-      (with-open [r1 (vcf/reader test-vcf-v4_3-file)
-                  r2 (vcf/bcf-reader temp-file)]
-        (is (= (vcf/header r2) (vcf/header r1)))
-        (is (= (vcf/meta-info r2) (vcf/meta-info r1)))
-        (doseq [[x2 x1] (map vector (vcf/read-variants r2) (vcf/read-variants r1))]
-          (is (= x2 x1)))))))
+    (testing "v4.3"
+      (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_v4_3.bcf"))]
+        (with-open [r (vcf/reader test-vcf-v4_3-file)
+                    w (vcf/bcf-writer temp-file (vcf/meta-info r) (vcf/header r))]
+          (vcf/write-variants w (vcf/read-variants r)))
+        (with-open [r1 (vcf/reader test-vcf-v4_3-file)
+                    r2 (vcf/bcf-reader temp-file)]
+          (is (= (vcf/header r2) (vcf/header r1)))
+          (is (= (vcf/meta-info r2) (vcf/meta-info r1)))
+          (doseq [[x2 x1] (map vector (vcf/read-variants r2) (vcf/read-variants r1))]
+            (is (= x2 x1))))))
+    (testing "no samples"
+      (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_no_samples.bcf"))]
+        (with-open [v (vcf/reader test-vcf-no-samples-file)]
+          (let [xs (vcf/read-variants v)
+                m (vcf/meta-info v)
+                h (vcf/header v)]
+            (with-open [b (vcf/writer temp-file m h)]
+              (vcf/write-variants b xs))
+            (with-open [b (vcf/reader temp-file)]
+              (is (= xs (vcf/read-variants b))))
+            (with-open [b1 (vcf/reader test-bcf-no-samples-file)
+                        b2 (vcf/reader temp-file)]
+              (is (= (vcf/read-variants b1 {:depth :bcf})
+                     (vcf/read-variants b2 {:depth :bcf}))))))))
+    (testing "v4.3 complex"
+      (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_v4_3_complex.bcf"))]
+        (with-open [v (vcf/reader test-vcf-complex-file)]
+          (let [xs (vcf/read-variants v)
+                m (vcf/meta-info v)
+                h (vcf/header v)]
+            (with-open [b (vcf/writer temp-file m h)]
+              (vcf/write-variants b xs))
+            (with-open [b (vcf/reader temp-file)]
+              (is (= xs (vcf/read-variants b))))))))))
 
 (deftest bcf->vcf-conversion-test
   (with-before-after {:before (prepare-cache!)

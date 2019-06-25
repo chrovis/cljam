@@ -71,7 +71,7 @@
     (if (= (seq magic) (map byte "BCF\2\2"))
       (let [hlen (lsb/read-int rdr)
             header-buf (lsb/read-bytes rdr hlen)]
-        (if (= (aget ^bytes header-buf (dec hlen)) 0) ;; NULL-terminated
+        (if (zero? (aget ^bytes header-buf (dec hlen))) ;; NULL-terminated
           (let [{:keys [header meta]} (->> (String. ^bytes header-buf 0 (int (dec hlen)))
                                            cstr/split-lines
                                            parse-meta-and-header)]
@@ -98,6 +98,14 @@
         (case (Float/floatToRawIntBits i) 0x7F800001 nil 0x7F800002 :eov i))
     7 (lsb/read-byte r)))
 
+(defn- bytes->strs
+  [ba]
+  (map (fn [^String s]
+         (let [z (.indexOf s (int 0))
+               s' (cond-> s (not (neg? z)) (subs 0 z))]
+           (when-not (= s' ".") (not-empty s'))))
+       (cstr/split (String. (byte-array ba)) #",")))
+
 (defn- read-typed-value
   "Reads typed value from BCF file. n-sample is a number of values repeated
   after type specifier byte."
@@ -106,16 +114,16 @@
   ([rdr n-sample]
    (let [type-byte (lsb/read-byte rdr)
          len (unsigned-bit-shift-right (bit-and 0xF0 type-byte) 4)
-         total-len (if (= len 15) (read-typed-value rdr) len)
+         total-len (if (= len 15) (first (read-typed-value rdr)) len)
          type-id (bit-and 0x0F type-byte)]
-     (if (= type-id 0)
-       (repeat n-sample :exists)
+     (if (zero? type-id)
+       (repeat n-sample nil)
        (let [results (->> #(read-typed-atomic-value rdr type-id)
                           (repeatedly (* n-sample total-len))
                           (partition total-len)
                           doall)]
          (if (= type-id 7)
-           (map #(String. (byte-array %)) results)
+           (map bytes->strs results)
            (map (fn [xs] (take-while #(not= % :eov) xs)) results)))))))
 
 (defn- read-typed-kv
@@ -173,42 +181,40 @@
      :ref-length rlen
      :qual (when-not (= (Float/floatToRawIntBits qual) 0x7F800001) qual)
      :id id
-     :ref refseq
-     :alt (if (empty? altseq) nil altseq)
+     :ref (first refseq)
+     :alt (seq (map first altseq))
      :filter flter
      :info info
      :genotype genotype
      :n-sample n-sample}))
 
+(defn- fixup-val [{kw :kw t :type n :number} v]
+  (cond->> v
+    (= kw :GT) vcf-util/ints->genotype
+    (= t "Flag") ((constantly :exists))
+    (= t "Character") (map first)
+    (and (= n 1) (not= kw :GT)) first))
+
 (defn- bcf-map->parsed-variant
   "Converts a BCF-style variant map to parsed variant using meta-info."
-  [contigs filters formats info [fmt-kw & indiv-kws] variant]
-  (let [gts (:genotype variant)
-        indiv (map
-               (fn [i] (into
-                        {}
-                        (map
-                         (fn [[k vs]]
-                           (let [tag (formats k)
-                                 v (nth vs i)]
-                             [(:kw tag)
-                              (when-not (or (nil? v) (= [nil] v))
-                                (cond
-                                  (= (:kw tag) :GT) (vcf-util/ints->genotype v)
-                                  (and (= (:number tag) 1) (sequential? v)) (first v)
-                                  :else v))]))) gts))
-               (range (:n-sample variant)))
-        v (-> (dissoc variant :genotype)
-              (dissoc :ref-length)
-              (dissoc :n-sample)
+  [contigs filters formats info
+   [fmt-kw & indiv-kws] {:keys [genotype n-sample] :as variant}]
+  (let [->gt-kv (fn [i [k vs]]
+                  (let [{:keys [kw] :as f} (formats k)
+                        v (nth vs i nil)]
+                    [kw (when-not (or (nil? v) (= [nil] v))
+                          (fixup-val f v))]))
+        ->info-kv (fn [[k v]]
+                    (let [{:keys [kw] :as i} (info k)]
+                      [kw (fixup-val i v)]))
+        indiv (map (fn [i] (not-empty (into {} (map #(->gt-kv i %)) genotype)))
+                   (range n-sample))
+        v (-> (dissoc variant :genotype :ref-length :n-sample)
               (update :chr (comp :id contigs))
-              (update :filter #(map (comp :kw filters) %))
-              (update :info #(into {} (map (fn [[k v]] [(:kw (info k))
-                                                        (if (and (= (:number (info k)) 1) (sequential? v))
-                                                          (first v)
-                                                          v)])) %)))]
+              (update :filter #(not-empty (map (comp :kw filters) %)))
+              (update :info #(not-empty (into {} (map ->info-kv) %))))]
     (cond-> v
-      fmt-kw (assoc fmt-kw (map (comp :kw formats first) gts))
+      fmt-kw (assoc fmt-kw (not-empty (map (comp :kw formats first) genotype)))
       indiv-kws (merge (zipmap indiv-kws indiv)))))
 
 (defn- read-data-lines
@@ -216,8 +222,7 @@
   [^BGZFInputStream rdr read-fn]
   (when (pos? (.available rdr))
     (let [data (read-fn rdr)]
-      (cons data
-            (lazy-seq (read-data-lines rdr read-fn))))))
+      (cons data (lazy-seq (read-data-lines rdr read-fn))))))
 
 (defn- meta->map
   "Creates a map for searching meta-info with indices."

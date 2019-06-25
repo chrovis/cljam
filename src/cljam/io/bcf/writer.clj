@@ -159,7 +159,7 @@
          7 (.put bb (byte (get {nil 0 :eov 0} b b)))))
      (.array bb))))
 
-(defn- merge-bytes
+(defn- concat-bytes
   ^bytes [xs]
   (let [l (long (transduce (map alength) + xs))
         bb (ByteBuffer/allocate l)]
@@ -184,7 +184,7 @@
         n-fmt-sample (bit-or (bit-shift-left n-fmt 24) ^long n-sample)
         id (if id (encode-typed-value :str id) (byte-array [0x07]))
         refseq ^bytes (encode-typed-value :str ref-bases)
-        altseq (merge-bytes (map (partial encode-typed-value :str) alt))
+        altseq (concat-bytes (map (partial encode-typed-value :str) alt))
         filters (if-let [f (seq filters)]
                   (encode-typed-value :int f)
                   (byte-array [0x00]))
@@ -194,7 +194,7 @@
                      (fn [[k t v]]
                        [(encode-typed-value :int k)
                         (encode-typed-value t v)]))
-                    merge-bytes)
+                    concat-bytes)
                (byte-array 0))
         l-shared (+ 24
                     (alength id) (alength refseq) (alength altseq)
@@ -220,7 +220,7 @@
         (fn [[k t vs]]
           [(encode-typed-value :int k)
            (encode-typed-value t vs n-sample)]))
-       merge-bytes
+       concat-bytes
        (ByteBuffer/wrap)))
 
 (defn- write-variant

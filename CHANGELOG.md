@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+* Fix I/O of variants with empty info/individual fields. [#167](https://github.com/chrovis/cljam/pull/167)
+* Fix bugs in BCF I/O. [#168](https://github.com/chrovis/cljam/pull/168)
+
 ## [0.7.2] - 2019-06-04
 
 ### Added

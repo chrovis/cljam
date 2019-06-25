@@ -68,8 +68,7 @@
                     (let [{[p] true, f false} (group-by #(= "PASS" (:id %)) xs)]
                       (cons (or p default-pass-filter) f))))
         fif (->> [:filter :info :format]
-                 (map #(map vector (repeat %) (% m)))
-                 (apply concat)
+                 (mapcat #(map vector (repeat %) (% m)))
                  (map-indexed (fn [i [k v]] [k (assoc v :idx (str i))]))
                  (reduce (fn [r [k v]] (update r k (fnil conj []) v)) {}))]
     (-> meta-info

@@ -236,7 +236,7 @@
 (defn- parsed-variant->bcf-map
   "Converts a parsed variant map to BCF-style map."
   [[fmt-kw & indiv-kws :as kws] contigs filters formats info variant]
-  (let [fmts (map (juxt identity formats) (variant fmt-kw))
+  (let [fmts (keep (fn [f] (when-let [m (formats f)] [f m])) (variant fmt-kw))
         genotype (map
                   (fn [[k {:keys [idx type-kw]}]]
                     (->> indiv-kws
@@ -254,9 +254,9 @@
         (update :chr (comp :idx contigs))
         (update :filter (fn [f] (map (comp :idx filters) f)))
         (update :info (fn [i]
-                        (map (fn [[k v]]
-                               (let [{:keys [idx type-kw]} (info k)]
-                                 [idx type-kw v])) i))))))
+                        (keep (fn [[k v]]
+                                (when-let [{:keys [idx type-kw]} (info k)]
+                                  [idx type-kw v])) i))))))
 
 (defn- meta->map
   "Creates a map for searching meta-info with (f id)."

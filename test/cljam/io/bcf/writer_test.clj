@@ -1,8 +1,10 @@
 (ns cljam.io.bcf.writer-test
   (:require [clojure.test :refer :all]
             [clojure.string :as cstr]
-            [cljam.io.bcf.writer :as bcf-writer])
-  (:import [java.nio ByteBuffer]))
+            [cljam.io.bcf.writer :as bcf-writer]
+            [cljam.io.util.bgzf :as bgzf])
+  (:import [java.nio ByteBuffer ByteOrder]
+           [java.io ByteArrayOutputStream File]))
 
 (deftest about-encode-typed-value
   (let [ba (#'bcf-writer/encode-typed-value :int (vec (repeat 14 1)))]
@@ -210,3 +212,58 @@
      0x80 0x81
      0x02 0x02
      0x02 0x04]))
+
+(defn- bgzf->bb ^ByteBuffer [f]
+  (with-open [is (bgzf/bgzf-input-stream f)
+              baos (ByteArrayOutputStream.)]
+    (while (pos? (.available is))
+      (.write baos (.read is)))
+    (.flush baos)
+    (doto (ByteBuffer/wrap (.toByteArray baos))
+      (.order ByteOrder/LITTLE_ENDIAN))))
+
+(defn- read-variant-blocks! [f]
+  (let [bb (bgzf->bb f)]
+    (doseq [b (map byte [\B \C \F 2 2])]
+      (assert (= b (.get bb))))
+    (.position bb (+ (.getInt bb) (.position bb)))
+    (->> (repeatedly
+          #(when (.hasRemaining bb)
+             (let [shared (byte-array (.getInt bb))
+                   indiv (byte-array (.getInt bb))]
+               (.get bb shared)
+               (.get bb indiv)
+               [(vec shared) (vec indiv)])))
+         (take-while some?)
+         vec)))
+
+(defn- write-variants&read-blocks [meta-info header variants]
+  (let [tmp (File/createTempFile "write-variants" ".bcf")]
+    (with-open [w (bcf-writer/writer tmp meta-info header)]
+      (bcf-writer/write-variants w variants))
+    (let [blocks (read-variant-blocks! tmp)]
+      (.delete tmp)
+      blocks)))
+
+(deftest write-variants
+  (let [meta-info {:fileformat "VCFv4.3"
+                   :contig [{:id "1", :length 100}]}
+        header ["CHROM" "POS" "ID" "REF" "ALT" "QUAL" "FILTER" "INFO"
+                "FORMAT" "SAMPLE"]]
+    (are [?variants ?blocks]
+         (= (map #(map (partial map unchecked-byte) %) ?blocks)
+            (write-variants&read-blocks meta-info header ?variants))
+      [{:chr "1", :pos 10, :ref "A", :alt ["C"],
+        :info {:UNDECLARED-INFO #{"???"}},
+        :FORMAT [:UNDECLARED-FORMAT]}]
+      [[[0x00 0x00 0x00 0x00
+         0x09 0x00 0x00 0x00
+         0x01 0x00 0x00 0x00
+         0x01 0x00 0x80 0x7f
+         0x00 0x00 0x02 0x00
+         0x01 0x00 0x00 0x00
+         0x07
+         0x17 0x41
+         0x17 0x43
+         0x00]
+        []]])))

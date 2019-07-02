@@ -6,6 +6,8 @@
 
 * Fix I/O of variants with empty info/individual fields. [#167](https://github.com/chrovis/cljam/pull/167)
 * Fix bugs in BCF I/O. [#168](https://github.com/chrovis/cljam/pull/168)
+* Ignore undeclared keys in INFO and FORMAT when writing BCF files. [#169](https://github.com/chrovis/cljam/pull/169)
+* Provide a default file format version for BCF. [#170](https://github.com/chrovis/cljam/pull/170)
 
 ## [0.7.2] - 2019-06-04
 

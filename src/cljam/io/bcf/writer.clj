@@ -22,6 +22,7 @@
   (write-variants [this variants]
     (write-variants this variants)))
 
+(def ^:private ^:const default-fileformat "VCFv4.3")
 (def ^:private ^:const bcf-meta-keys
   [:fileformat :file-date :source :reference :contig :phasing :info :filter
    :format :alt :sample :pedigree])
@@ -86,8 +87,11 @@
        (WRITING-BCF))"
   [f meta-info header]
   (let [bos (bgzf/bgzf-output-stream f)
-        dos (DataOutputStream. bos)]
-    (doto (BCFWriter. (util/as-url f) (index-meta meta-info) header dos)
+        dos (DataOutputStream. bos)
+        indexed-meta (->> meta-info
+                          (merge {:fileformat default-fileformat})
+                          index-meta)]
+    (doto (BCFWriter. (util/as-url f) indexed-meta header dos)
       (write-file-header))))
 
 (defn- value-type

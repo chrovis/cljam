@@ -38,7 +38,10 @@
   (cond
     (io-util/fasta-reader? f) (fa-core/clone-reader f)
     (io-util/twobit-reader? f) (tb-reader/clone-reader f)
-    :else (case (io-util/file-type f)
+    :else (case (try
+                  (io-util/file-type f)
+                  (catch IllegalArgumentException _
+                    (io-util/file-type-from-contents f)))
             :fasta (fasta-reader f)
             :2bit (twobit-reader f)
             (throw (IllegalArgumentException. "Invalid file type")))))

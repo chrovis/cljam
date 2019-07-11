@@ -17,7 +17,8 @@
             cljam.io.bed
             cljam.io.wig
             cljam.io.bigwig
-            [cljam.util :as util]))
+            [cljam.util :as util])
+  (:import [java.nio ByteBuffer ByteOrder]))
 
 (defn alignment-reader?
   "Checks if given object implements protocol IAlignmentReader."
@@ -156,9 +157,53 @@
     #"(?i)\.fai$" :fai
     #"(?i)\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa)" :fasta
     #"(?i)\.2bit$" :2bit
+    #"(?i)\.tbi$" :tbi
     #"(?i)\.vcf" :vcf
     #"(?i)\.bcf$" :bcf
     #"(?i)\.bed" :bed
+    #"(?i)\.gff3?" :gff
     #"(?i)\.wig" :wig
     #"(?i)\.(bigWig|bw)" :bigwig
     (throw (IllegalArgumentException. "Invalid file type"))))
+
+(defn file-type-from-bytes
+  "Tries to detect a file format based on contents of the byte array `ba`.
+  The input byte array must be larger than 4 bytes. Note that detection of some
+  formats `#{:fasta :fastq :wig :fai :bed}` is based on naive heuristics and
+  thus can fail."
+  [^bytes ba]
+  (let [s (String. ba 0 (Math/min (int 64) (alength ba)))
+        i (-> (ByteBuffer/wrap ba)
+              (.order ByteOrder/LITTLE_ENDIAN)
+              (.getInt)
+              (bit-and 0xffffffff))]
+    (case i
+      0x888ffc26 :bigwig
+      (0x1A412743 0x4327411A) :2bit
+      (condp re-find s
+        #"^BAM\01" :bam
+        #"^BAI\01" :bai
+        #"^BCF\02" :bcf
+        #"^TBI\01" :tbi
+        #"^##fileformat=VCF" :vcf
+        #"^##gff-version 3" :gff
+        #"^@HD\t" :sam
+        #"^@SQ\t" :sam
+        #"^@RG\t" :sam
+        #"^@PG\t" :sam
+        #"^@CO\t" :sam
+        #"^>\S" :fasta
+        #"^@\S" :fastq
+        #"(variable|fixed)Step" :wig
+        #"^\S+\t\d+\t\d+\t\d+\t\d+\n" :fai
+        #"(?m)^\S+( |\t)\d+( |\t)\d+( |\t|$)" :bed
+        nil))))
+
+(defn file-type-from-contents
+  "Detects a file format based on contents of the input file `f`. Causes a side
+  effect of reading some header bytes."
+  [f]
+  (let [ba (byte-array 64)]
+    (with-open [is (util/compressor-input-stream f)]
+      (.read is ba))
+    (file-type-from-bytes ba)))

@@ -16,12 +16,24 @@
     (with-open [rdr (cseq/reader test-fa-file)
                 cloned (cseq/reader rdr)]
       (is (instance? cljam.io.fasta.reader.FASTAReader rdr))
-      (is (instance? cljam.io.fasta.reader.FASTAReader cloned))))
+      (is (instance? cljam.io.fasta.reader.FASTAReader cloned)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (let [tmp (cio/file temp-dir "temp-fasta-file-without-suffix")]
+        (cio/copy (cio/file test-fa-file) tmp)
+        (with-open [rdr (cseq/reader tmp)]
+          (is (instance? cljam.io.fasta.reader.FASTAReader rdr))))))
   (testing "twobit"
     (with-open [rdr (cseq/reader test-twobit-file)
                 cloned (cseq/reader rdr)]
       (is (instance? cljam.io.twobit.reader.TwoBitReader rdr))
-      (is (instance? cljam.io.twobit.reader.TwoBitReader cloned))))
+      (is (instance? cljam.io.twobit.reader.TwoBitReader cloned)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (let [tmp (cio/file temp-dir "temp-2bit-file-without-suffix")]
+        (cio/copy (cio/file test-twobit-file) tmp)
+        (with-open [rdr (cseq/reader tmp)]
+          (is (instance? cljam.io.twobit.reader.TwoBitReader rdr))))))
   (testing "throws Exception"
     (are [f] (thrown? Exception (cseq/reader f))
       "test-resources/fasta/not-found.fa"
@@ -74,9 +86,9 @@
   (with-open [fa-rdr (cseq/reader test-fa-file)
               tb-rdr (cseq/reader test-twobit-file)]
     (are [?reg ?opts ?expect]
-        (= (cseq/read-sequence fa-rdr ?reg ?opts)
-           (cseq/read-sequence tb-rdr ?reg ?opts)
-           ?expect)
+         (= (cseq/read-sequence fa-rdr ?reg ?opts)
+            (cseq/read-sequence tb-rdr ?reg ?opts)
+            ?expect)
       {} {} nil
       {:chr "badref"} {} nil
       {:chr "ref" :start -1 :end 0} {} nil
@@ -103,9 +115,9 @@
   (with-open [fa-rdr (cseq/reader test-fa-file)
               tb-rdr (cseq/reader test-twobit-file)]
     (are [?reg ?expect]
-        (= (cseq/read-sequence fa-rdr ?reg)
-           (cseq/read-sequence tb-rdr ?reg)
-           ?expect)
+         (= (cseq/read-sequence fa-rdr ?reg)
+            (cseq/read-sequence tb-rdr ?reg)
+            ?expect)
       {:chr "ref" :start 5 :end 10} "TGTTAG"
       {:chr "ref2" :start 1 :end 16} "AGGTTTTATAAAACAA"
       {:chr "ref2" :start 0 :end 45} "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"

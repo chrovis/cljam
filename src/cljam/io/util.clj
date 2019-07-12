@@ -176,7 +176,7 @@
         i (-> (ByteBuffer/wrap ba)
               (.order ByteOrder/LITTLE_ENDIAN)
               (.getInt)
-              (bit-and 0xffffffff))]
+              (Integer/toUnsignedLong))]
     (case i
       0x888ffc26 :bigwig
       (0x1A412743 0x4327411A) :2bit

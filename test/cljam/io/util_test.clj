@@ -13,9 +13,10 @@
             [cljam.io.bigwig :as bigwig]))
 
 (deftest about-file-type-detection
-  (are [?path ?expected] (and (= (io-util/file-type ?path) ?expected)
-                              (= (io-util/file-type (str "./" ?path)) ?expected)
-                              (= (io-util/file-type (str "/home/bar/" ?path)) ?expected))
+  (are [?path ?expected]
+       (and (= (io-util/file-type ?path) ?expected)
+            (= (io-util/file-type (cio/file "./" ?path)) ?expected)
+            (= (io-util/file-type (cio/file "/home/bar" ?path)) ?expected))
     "foo.bam" :bam
     "foo.BAM" :bam
     "foo.bam.bai" :bai
@@ -69,7 +70,7 @@
     "foo.bw" :bigwig
     "foo.BW" :bigwig)
   (are [?dir]
-       (are [?path] (thrown? Exception (io-util/file-type (str ?dir ?path)))
+       (are [?path] (thrown? Exception (io-util/file-type (cio/file ?dir ?path)))
          "foo.bam.gz"
          "foo.SAM.gz"
          "foo.cram"

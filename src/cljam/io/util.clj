@@ -195,7 +195,7 @@
         #"^>\S" :fasta
         #"^@\S" :fastq
         #"(variable|fixed)Step" :wig
-        #"^\S+\t\d+\t\d+\t\d+\t\d+\n" :fai
+        #"^\S+(?:\t\d+){4}\n" :fai
         #"(?m)^\S+( |\t)\d+( |\t)\d+( |\t|$)" :bed
         nil))))
 

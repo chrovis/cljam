@@ -13,9 +13,10 @@
             [cljam.io.bigwig :as bigwig]))
 
 (deftest about-file-type-detection
-  (are [?path ?expected] (and (= (io-util/file-type ?path) ?expected)
-                              (= (io-util/file-type (str "./" ?path)) ?expected)
-                              (= (io-util/file-type (str "/home/bar/" ?path)) ?expected))
+  (are [?path ?expected]
+       (and (= (io-util/file-type ?path) ?expected)
+            (= (io-util/file-type (cio/file "./" ?path)) ?expected)
+            (= (io-util/file-type (cio/file "/home/bar" ?path)) ?expected))
     "foo.bam" :bam
     "foo.BAM" :bam
     "foo.bam.bai" :bai
@@ -47,6 +48,8 @@
     "foo.fq.gz" :fastq
     "foo.fastq" :fastq
     "foo.fastq.gz" :fastq
+    "foo.vcf.gz.tbi" :tbi
+    "foo.vcf.gz.TBI" :tbi
     "foo.vcf" :vcf
     "foo.vcf.gz" :vcf
     "foo.VCF" :vcf
@@ -57,6 +60,9 @@
     "foo.bed.gz" :bed
     "foo.BED" :bed
     "foo.BED.GZ" :bed
+    "foo.gff" :gff
+    "foo.gff3" :gff
+    "foo.GFF" :gff
     "foo.wig" :wig
     "foo.WIG" :wig
     "foo.bigWig" :bigwig
@@ -64,16 +70,69 @@
     "foo.bw" :bigwig
     "foo.BW" :bigwig)
   (are [?dir]
-      (are [?path] (thrown? Exception (io-util/file-type (str ?dir ?path)))
-        "foo.bam.gz"
-        "foo.SAM.gz"
-        "foo.cram"
-        "foo.CRAM"
-        "foo.2bit.gz"
-        "foo.bcf.gz")
+       (are [?path] (thrown? Exception (io-util/file-type (cio/file ?dir ?path)))
+         "foo.bam.gz"
+         "foo.SAM.gz"
+         "foo.cram"
+         "foo.CRAM"
+         "foo.2bit.gz"
+         "foo.bcf.gz")
     ""
     "./"
     "/home/bar"))
+
+(deftest file-type-from-contents
+  (are [?in-file ?expected]
+       (= ?expected (io-util/file-type-from-contents ?in-file))
+    test-sam-file :sam
+    medium-sam-file :sam
+    normalize-before-sam-file :sam
+    normalize-after-sam-file :sam
+    opts-sam-file :sam
+    test-bam-file :bam
+    test-paired-bam-file :bam
+    test-sorted-bam-file :bam
+    small-bam-file :bam
+    medium-bam-file :bam
+    dedupe-before-bam-file :bam
+    dedupe-after-bam-file :bam
+    normalize-before-bam-file :bam
+    normalize-after-bam-file :bam
+    opts-bam-file :bam
+    test-bai-file :bai
+    test-fa-file :fasta
+    test-fa-bz2-file :fasta
+    test-fa-dict-file :sam
+    medium-fa-file :fasta
+    medium-fa-gz-file :fasta
+    test-fai-file :fai
+    medium-fai-file :fai
+    test-twobit-file :2bit
+    test-twobit-n-file :2bit
+    test-twobit-be-file :2bit
+    test-twobit-be-n-file :2bit
+    medium-twobit-file :2bit
+    test-fq-file :fastq
+    test-bed-file1 nil     ;; fail
+    test-bed-file1-gz nil  ;; fail
+    test-bed-file2 nil     ;; fail
+    test-bed-file2-bz2 nil ;; fail
+    test-bed-file3 nil     ;; fail
+    test-bed-file4 :bed
+    test-bed-file4-bgz :bed
+    test-tabix-file :tbi
+    test-vcf-v4_0-file :vcf
+    test-vcf-v4_3-file :vcf
+    test-pileup-file nil   ;; unsupported
+    test-bcf-v4_3-file :bcf
+    test-bcf-complex-file :bcf
+    test-gff3-file :gff
+    test-wig-file1 nil     ;; fail
+    test-wig-file2 nil     ;; fail
+    test-bigwig-fixed-file :bigwig
+    test-bigwig-variable-file :bigwig
+    test-bigwig-bedgraph-file :bigwig
+    test-bigwig-non-leaf-blocks-file :bigwig))
 
 (deftest reader-predicates-test
   (testing "sam reader"

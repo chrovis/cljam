@@ -32,10 +32,22 @@
 (deftest reader-test
   (testing "vcf"
     (with-open [rdr (vcf/reader test-vcf-v4_3-file)]
-      (is (instance? cljam.io.vcf.reader.VCFReader rdr))))
+      (is (instance? cljam.io.vcf.reader.VCFReader rdr)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (let [tmp (cio/file temp-dir "temp-vcf-file-without-suffix")]
+        (cio/copy (cio/file test-vcf-v4_3-file) tmp)
+        (with-open [rdr (vcf/reader tmp)]
+          (is (instance? cljam.io.vcf.reader.VCFReader rdr))))))
   (testing "bcf"
     (with-open [rdr (vcf/reader test-bcf-v4_3-file)]
-      (is (instance? cljam.io.bcf.reader.BCFReader rdr))))
+      (is (instance? cljam.io.bcf.reader.BCFReader rdr)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (let [tmp (cio/file temp-dir "temp-bcf-file-without-suffix")]
+        (cio/copy (cio/file test-bcf-v4_3-file) tmp)
+        (with-open [rdr (vcf/reader tmp)]
+          (is (instance? cljam.io.bcf.reader.BCFReader rdr))))))
   (testing "throws Exception"
     (are [f] (thrown? Exception (vcf/reader f))
       "test-resources/vcf/not-found.vcf"

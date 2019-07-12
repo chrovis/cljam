@@ -193,10 +193,22 @@
 (deftest reader-test
   (testing "sam"
     (with-open [rdr (sam/reader test-sam-file)]
-      (is (instance? cljam.io.sam.reader.SAMReader rdr))))
+      (is (instance? cljam.io.sam.reader.SAMReader rdr)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (let [tmp (cio/file temp-dir "temp-sam-file-without-suffix")]
+        (cio/copy (cio/file test-sam-file) tmp)
+        (with-open [rdr (sam/reader tmp)]
+          (is (instance? cljam.io.sam.reader.SAMReader rdr))))))
   (testing "bam"
     (with-open [rdr (sam/reader test-bam-file)]
-      (is (instance? cljam.io.bam.reader.BAMReader rdr))))
+      (is (instance? cljam.io.bam.reader.BAMReader rdr)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (let [tmp (cio/file temp-dir "temp-bam-file-without-suffix")]
+        (cio/copy (cio/file test-bam-file) tmp)
+        (with-open [rdr (sam/reader tmp)]
+          (is (instance? cljam.io.bam.reader.BAMReader rdr))))))
   (testing "clone bam"
     (with-open [rdr (sam/reader test-bam-file)
                 crdr (sam/reader rdr)]

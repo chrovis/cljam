@@ -41,7 +41,9 @@
   "Selects suitable reader from f's extension, returning the open reader. This
   function supports VCF and BCF formats."
   [f]
-  (case (io-util/file-type f)
+  (case (try (io-util/file-type f)
+             (catch IllegalArgumentException _
+               (io-util/file-type-from-contents f)))
     :vcf (vcf-reader f)
     :bcf (bcf-reader f)
     (throw (IllegalArgumentException. "Invalid file type"))))

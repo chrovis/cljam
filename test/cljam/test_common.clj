@@ -171,6 +171,8 @@
 (def test-bed-file3 "test-resources/bed/test3.bed")
 (def test-bed-file1-gz "test-resources/bed/test1.bed.gz")
 (def test-bed-file2-bz2 "test-resources/bed/test2.bed.bz2")
+(def test-bed-file4 "test-resources/bed/test4.bed")
+(def test-bed-file4-bgz "test-resources/bed/test4.bed.gz")
 
 ;; ### TABIX files
 
@@ -429,15 +431,14 @@
         (.delete (file (str temp-dir "/" f))))
       (.delete dir))))
 
-
 (defn- uniq [coll]
   (reduce
-    (fn [r one]
-      (if (= (first r) one)
-        r
-        (conj r one)))
-    nil
-    coll))
+   (fn [r one]
+     (if (= (first r) one)
+       r
+       (conj r one)))
+   nil
+   coll))
 
 (defn- get-rnames [sam]
   (uniq (map :rname (:alignments sam))))
@@ -451,20 +452,20 @@
         (throw (Exception. "not matched by rnames order"))))
     ;; check order
     (dorun
-      (map
-        (fn [rname]
-          (reduce
-            (fn [prev one]
-              (case (compare (:pos prev) (:pos one))
-                -1 true
-                1 (throw (Exception. "pos not sorted"))
-                (case (compare (bit-and 16 (:flag prev)) (bit-and 16 (:flag one)))
-                  -1 true
-                  1 (throw (Exception. "reverse flag not sorted"))
-                  true))
-              one)
-            (filter #(= rname (:rname %)) (:alignments target-sam))))
-        target-rnames))))
+     (map
+      (fn [rname]
+        (reduce
+         (fn [prev one]
+           (case (compare (:pos prev) (:pos one))
+             -1 true
+             1 (throw (Exception. "pos not sorted"))
+             (case (compare (bit-and 16 (:flag prev)) (bit-and 16 (:flag one)))
+               -1 true
+               1 (throw (Exception. "reverse flag not sorted"))
+               true))
+           one)
+         (filter #(= rname (:rname %)) (:alignments target-sam))))
+      target-rnames))))
 
 (defn coord-sorted? [f]
   (with-open [r (sam/reader f)]

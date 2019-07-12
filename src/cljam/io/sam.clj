@@ -42,7 +42,10 @@
   [f]
   (if (io-util/bam-reader? f)
     (clone-bam-reader f)
-    (case (io-util/file-type f)
+    (case (try
+            (io-util/file-type f)
+            (catch IllegalArgumentException _
+              (io-util/file-type-from-contents f)))
       :sam (sam-reader f)
       :bam (bam-reader f)
       (throw (IllegalArgumentException. "Invalid source type")))))

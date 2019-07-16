@@ -85,7 +85,7 @@
 (deftest about-random-access-file
   (common/with-before-after {:before (common/prepare-cache!)
                              :after (common/clean-cache!)}
-    (let [filename (str common/temp-dir "raf.bin")]
+    (let [filename (cio/file common/temp-dir "raf.bin")]
       (with-open [raf (RandomAccessFile. filename "rw")]
         (let [bb (lsb/gen-byte-buffer 24)]
           (.putLong bb 0x789ABCDEF0123456)
@@ -160,7 +160,7 @@
 (deftest about-data-input-stream
   (common/with-before-after {:before (common/prepare-cache!)
                              :after (common/clean-cache!)}
-    (let [filename (str common/temp-dir "raf.bin")]
+    (let [filename (cio/file common/temp-dir "raf.bin")]
       (with-open [raf (RandomAccessFile. filename "rw")]
         (let [bb (lsb/gen-byte-buffer 24)]
           (.putLong bb 0x789ABCDEF0123456)
@@ -247,7 +247,7 @@
 (deftest about-bgzf-input-stream
   (common/with-before-after {:before (common/prepare-cache!)
                              :after (common/clean-cache!)}
-    (let [filename (str common/temp-dir "raf.bin.gz")]
+    (let [filename (cio/file common/temp-dir "raf.bin.gz")]
       (with-open [bgzfos (BGZFOutputStream. (cio/file filename))]
         (let [bb (lsb/gen-byte-buffer 24)]
           (.putLong bb 0x789ABCDEF0123456)

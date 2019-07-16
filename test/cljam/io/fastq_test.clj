@@ -136,7 +136,7 @@
         (cio/as-url (str (:uri server) "/fastq/test.fq")))))
 
   (testing "writer"
-    (let [temp-file (str temp-dir "test.fq")]
+    (let [temp-file (.getPath (cio/file temp-dir "test.fq"))]
       (are [x] (with-before-after {:before (prepare-cache!)
                                    :after (clean-cache!)}
                  (with-open [wtr (fq/writer x)]

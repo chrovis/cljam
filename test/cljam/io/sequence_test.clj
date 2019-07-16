@@ -341,7 +341,7 @@
         (cio/as-url (str (:uri server) "/twobit/test.2bit")))))
 
   (testing "writer"
-    (let [temp-test-twobit-file (str temp-dir "test.2bit")]
+    (let [temp-test-twobit-file (.getPath (cio/file temp-dir "test.2bit"))]
       (are [x] (with-before-after {:before (prepare-cache!)
                                    :after (clean-cache!)}
                  (with-open [rdr (cseq/reader test-fa-file)

@@ -1,6 +1,47 @@
 (ns cljam.io.sam.util.cigar-test
   (:require [clojure.test :refer :all]
-            [cljam.io.sam.util.cigar :as cigar]))
+            [cljam.io.sam.util.cigar :as cigar])
+  (:import [java.nio ByteBuffer ByteOrder]))
+
+(defn- ints->bytes ^bytes [ints]
+  (let [b (ByteBuffer/allocate (* 4 (count ints)))
+        _ (.order b ByteOrder/LITTLE_ENDIAN)
+        ib (.asIntBuffer b)]
+    (doseq [i ints]
+      (.put ib (unchecked-int i)))
+    (.array b)))
+
+(deftest count-ref-bytes
+  (are [?cigar ?expected]
+       (= ?expected
+          (-> ?cigar
+              cigar/encode-cigar
+              ints->bytes
+              cigar/count-ref-bytes))
+    "10M" 10
+    "10S" 0
+    "10M10I" 10
+    "10M10D" 20
+    "134217727M" 134217727 ;; 2^27 - 1, 0x07FFFFFF
+    "134217728M" 134217728 ;; 2^27    , 0x08000000
+    "268435455M" 268435455 ;; 2^28 - 1, 0x0FFFFFFF
+    ))
+
+(deftest decode-cigar-and-ref-length
+  (are [?cigar ?ref-length]
+       (= [?cigar ?ref-length]
+          (-> ?cigar
+              cigar/encode-cigar
+              ints->bytes
+              cigar/decode-cigar-and-ref-length))
+    "10M" 10
+    "10S" 0
+    "10M10I" 10
+    "10M10D" 20
+    "134217727M" 134217727 ;; 2^27 - 1, 0x07FFFFFF
+    "134217728M" 134217728 ;; 2^27    , 0x08000000
+    "268435455M" 268435455 ;; 2^28 - 1, 0x0FFFFFFF
+    ))
 
 (deftest about-parse
   (is (= (cigar/parse  "1S2I6M1P11I") '([1 \S] [2 \I] [6 \M] [1 \P] [11 \I]))))

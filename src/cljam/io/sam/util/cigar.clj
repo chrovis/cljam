@@ -69,9 +69,9 @@
     (.order buf ByteOrder/LITTLE_ENDIAN)
     (loop [ref-length 0]
       (if (.hasRemaining buf)
-        (let [b (.getInt buf)
+        (let [b (Integer/toUnsignedLong (.getInt buf))
               op (bit-and b 0xF)
-              n (bit-shift-right b 4)]
+              n (unsigned-bit-shift-right b 4)]
           (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
         ref-length))))
 
@@ -84,9 +84,9 @@
     (.order buf ByteOrder/LITTLE_ENDIAN)
     (loop [ref-length 0]
       (if (.hasRemaining buf)
-        (let [b (.getInt buf)
+        (let [b (Integer/toUnsignedLong (.getInt buf))
               op (bit-and b 0xF)
-              n  (bit-shift-right b 4)]
+              n  (unsigned-bit-shift-right b 4)]
           (doto sb
             (.append n)
             (.append (case op 0 \M 1 \I 2 \D 3 \N 4 \S 5 \H 6 \P 7 \= 8 \X)))

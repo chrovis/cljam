@@ -1,25 +1,65 @@
 (ns cljam.io.fasta.reader
-  (:refer-clojure :exclude [read])
+  (:refer-clojure :exclude [read read-line])
   (:require [cljam.util :refer [graph?]]
             [cljam.io.fasta.util :refer [header-line? parse-header-line]]
-            [cljam.io.fasta-index.core :as fasta-index])
-  (:import [java.io RandomAccessFile InputStream]
+            [cljam.io.fasta-index.core :as fasta-index]
+            [cljam.io.util.bgzf.gzi :as gzi]
+            [cljam.io.util.bgzf :as bgzf])
+  (:import [java.io Closeable RandomAccessFile InputStream EOFException]
            [java.nio Buffer ByteBuffer CharBuffer]
-           [java.nio.channels FileChannel$MapMode]))
+           [java.nio.channels FileChannel$MapMode]
+           [bgzf4j BGZFInputStream]))
 
 ;; FASTAReader
 ;; -----------
 
 (deftype FASTAReader [reader stream url index-delay]
-  java.io.Closeable
+  Closeable
   (close [this]
     (.close ^java.io.Closeable (.reader this))
     (.close ^java.io.Closeable (.stream this))))
 
+(defprotocol RandomAccessor
+  (seek [this pos])
+  (read-line [this])
+  (read-buffer [this start end])
+  (get-file-pointer [this]))
+
+(extend-type RandomAccessFile
+  RandomAccessor
+  (seek [this pos]
+    (.seek this pos))
+  (read-line [this]
+    (.readLine this))
+  (read-buffer [this start end]
+    (.. this
+        getChannel
+        (map FileChannel$MapMode/READ_ONLY start (- end start))))
+  (get-file-pointer [this]
+    (.getFilePointer this)))
+
+(deftype IndexedBGZFInputStream [^BGZFInputStream is idx]
+  Closeable
+  (close [_]
+    (.close is))
+  RandomAccessor
+  (seek [_ pos]
+    (.seek is pos))
+  (read-line [_]
+    (.readLine is))
+  (read-buffer [_ start end]
+    (.seek is (gzi/uncomp->comp @idx start))
+    (let [buf (byte-array (- end start))]
+      (if (neg? (.read is buf))
+        (throw (EOFException.))
+        (ByteBuffer/wrap buf))))
+  (get-file-pointer [_]
+    (gzi/comp->uncomp @idx (.getFilePointer is))))
+
 ;; Reading
 ;; -------
 
-(defn- read* [line ^RandomAccessFile rdr]
+(defn- read* [line rdr]
   (loop [line line
          ret {}]
     (if-not (nil? line)
@@ -28,49 +68,51 @@
           (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
                 (lazy-seq (read* line rdr)))
           (let [ref (subs line 1)
-                offset (.getFilePointer rdr)]
-            (recur (.readLine rdr) (assoc ret :rname ref :offset offset))))
-        (let [ret' (if (:line-len ret)
-                     (update-in ret [:seq] str line)
-                     (assoc ret
-                       :seq line
-                       :line-len (inc (count line))
-                       :line-blen (count (filter graph? line))))]
-          (recur (.readLine rdr) ret')))
+                offset (get-file-pointer rdr)]
+            (recur (read-line rdr) (assoc ret :rname ref :offset offset))))
+        (if (:rname ret)
+          (let [ret' (if (:line-len ret)
+                       (update-in ret [:seq] str line)
+                       (assoc ret
+                              :seq line
+                              :line-len (inc (count line))
+                              :line-blen (count (filter graph? line))))]
+            (recur (read-line rdr) ret'))
+          (throw (ex-info "Missing sequence name" {:line line}))))
       (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
             nil))))
 
 (defn load-headers
-  [^RandomAccessFile rdr]
-  (.seek rdr 0)
-  (loop [line (.readLine rdr), headers []]
+  [rdr]
+  (seek rdr 0)
+  (loop [line (read-line rdr), headers []]
     (if line
       (if (header-line? line)
-        (let [offset (.getFilePointer rdr)]
-          (recur (.readLine rdr) (conj headers (merge (parse-header-line line)
+        (let [offset (get-file-pointer rdr)]
+          (recur (read-line rdr) (conj headers (merge (parse-header-line line)
                                                       {:offset offset}))))
-        (recur (.readLine rdr) headers))
+        (recur (read-line rdr) headers))
       headers)))
 
 (defn- read-sequence*
   [^FASTAReader rdr name]
-  (let [reader ^RandomAccessFile (.reader rdr)
-        line (.readLine reader)]
-    (if line
-      (if-not (header-line? line)
+  (when-let [line (read-line (.reader rdr))]
+    (if-not (header-line? line)
+      (if name
         {:name name, :sequence line}
-        (:name (parse-header-line line))))))
+        (throw (ex-info "Missing sequence name" {})))
+      (:name (parse-header-line line)))))
 
 (defn read-sequences
   "Reads sequences by line, returning the line-separated sequences
   as lazy sequence."
   [^FASTAReader rdr]
-  (.seek ^RandomAccessFile (.reader rdr) 0)
-  (let [read-fn (fn read-fn* [^FASTAReader rdr name]
-                  (let [s (read-sequence* rdr name)]
-                    (cond
-                     (string? s) (read-fn* rdr s)
-                     (map? s) (cons s (lazy-seq (read-fn* rdr name))))))]
+  (seek (.reader rdr) 0)
+  (letfn [(read-fn [rdr name]
+            (let [s (read-sequence* rdr name)]
+              (cond
+                (string? s) (read-fn rdr s)
+                (map? s) (cons s (lazy-seq (read-fn rdr name))))))]
     (read-fn rdr nil)))
 
 (defn read-sequence
@@ -80,17 +122,16 @@
       (let [start' (max 1 (or start 1))
             end' (min len (or end len))]
         (when (<= start' end')
-          (let [buf (CharBuffer/allocate (inc (- end' start')))
-                r ^RandomAccessFile (.reader rdr)]
+          (let [buf (CharBuffer/allocate (inc (- end' start')))]
             (when-let [[s e] (fasta-index/get-span fai name (dec start') end')]
-              (let [mbb (.. r getChannel (map FileChannel$MapMode/READ_ONLY s (- e s)))]
+              (let [bb ^ByteBuffer (read-buffer (.reader rdr) s e)]
                 (if mask?
-                  (while (.hasRemaining mbb)
-                    (let [c (unchecked-char (.get mbb))]
+                  (while (.hasRemaining bb)
+                    (let [c (unchecked-char (.get bb))]
                       (when-not (or (= \newline c) (= \return c))
                         (.put buf c))))
-                  (while (.hasRemaining mbb)
-                    (let [c (unchecked-long (.get mbb))]
+                  (while (.hasRemaining bb)
+                    (let [c (unchecked-long (.get bb))]
                       (when-not (or (= 10 c) (= 13 c))
                         ;; toUpperCase works only for ASCII chars.
                         (.put buf (unchecked-char (bit-and c 0x5f))))))))
@@ -100,13 +141,12 @@
 (defn read
   "Reads FASTA sequence data, returning its information as a lazy sequence."
   [^FASTAReader rdr]
-  (let [r ^RandomAccessFile (.reader rdr)]
-    (read* (.readLine r) r)))
+  (let [r (.reader rdr)]
+    (read* (read-line r) r)))
 
 (defn reset
   [^FASTAReader rdr]
-  (let [r ^RandomAccessFile (.reader rdr)]
-    (.seek r 0)))
+  (seek (.reader rdr) 0))
 
 (definline create-ba [^ByteBuffer buffer]
   `(when (pos? (.position ~buffer))

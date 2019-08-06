@@ -5,41 +5,55 @@
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]
             [cljam.io.fasta-index.core :as fai]
-            [cljam.io.fasta.reader :as reader])
+            [cljam.io.fasta.reader :as reader]
+            [cljam.io.util.bgzf :as bgzf]
+            [cljam.io.util.bgzf.gzi :as gzi])
   (:import [java.io FileNotFoundException RandomAccessFile]
-           [cljam.io.fasta.reader FASTAReader]))
+           [cljam.io.fasta.reader FASTAReader IndexedBGZFInputStream]))
 
 ;; Reading
 ;; -------
 
 (defn- fasta-index
   [fasta-url]
-  (let [fasta-exts #"(?i)(\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa)?)$"]
+  (let [fasta-exts #"(?i)(\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa))$"]
     (or (->> ["$1.fai" ".fai" "$1.FAI" ".FAI"]
-             (eduction
-              (comp
-               (map #(cstr/replace (str fasta-url) fasta-exts %))
-               (map util/as-url)
-               (keep #(try (fai/reader %) (catch FileNotFoundException _)))))
-             first)
+             (map #(util/as-url (cstr/replace (str fasta-url) fasta-exts %)))
+             (cons (util/as-url (str fasta-url ".fai")))
+             (some #(try (fai/reader %) (catch FileNotFoundException _))))
         (throw (FileNotFoundException.
                 (str "Could not find FASTA Index file for " fasta-url))))))
 
+(defn- bgzip-index
+  [fasta-url]
+  (gzi/read-gzi (util/as-url (str fasta-url ".gzi"))))
+
+(defn- random-accessor [f]
+  (if (bgzf/bgzip? f)
+    (reader/->IndexedBGZFInputStream
+     (bgzf/bgzf-input-stream f)
+     (delay (bgzip-index f)))
+    (RandomAccessFile. (cio/as-file f) "r")))
+
 (defn ^FASTAReader reader
   [f]
-  (let [f (.getAbsolutePath (cio/file f))]
-    (FASTAReader. (RandomAccessFile. f "r")
-                  (util/compressor-input-stream f)
-                  (util/as-url f)
-                  (delay (fasta-index (util/as-url f))))))
+  (let [url (util/as-url f)]
+    (FASTAReader. (random-accessor url)
+                  (util/compressor-input-stream url)
+                  url
+                  (delay (fasta-index url)))))
 
 (defn ^FASTAReader clone-reader
   "Clones fasta reader sharing persistent objects."
   [^FASTAReader rdr]
   (let [url (.url rdr)
-        raf (RandomAccessFile. (cio/as-file url) "r")
+        r (if (instance? RandomAccessFile (.reader rdr))
+            (RandomAccessFile. (cio/as-file url) "r")
+            (reader/->IndexedBGZFInputStream
+             (bgzf/bgzf-input-stream url)
+             (.idx ^IndexedBGZFInputStream (.reader rdr))))
         stream (util/compressor-input-stream url)]
-    (FASTAReader. raf stream url (.index-delay rdr))))
+    (FASTAReader. r stream url (.index-delay rdr))))
 
 (defn read-headers
   [^FASTAReader rdr]

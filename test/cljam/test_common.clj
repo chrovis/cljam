@@ -142,11 +142,14 @@
 (def test-fa-dict-file "test-resources/fasta/test-fa.dict")
 (def medium-fa-file "test-resources/fasta/medium.fa")
 (def medium-fa-gz-file "test-resources/fasta/medium.fa.gz")
+(def medium-fa-bgz-file "test-resources/fasta/medium_bgzf.fa.gz")
 
 ;; ### FASTA index files
 
 (def test-fai-file "test-resources/fasta/test.fa.fai")
 (def medium-fai-file "test-resources/fasta/medium.fa.fai")
+(def medium-fa-bgz-fai-file "test-resources/fasta/medium_bgzf.fa.gz.fai")
+(def medium-fa-bgz-gzi-file "test-resources/fasta/medium_bgzf.fa.gz.gzi")
 
 ;; ### 2bit files
 

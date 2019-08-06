@@ -85,3 +85,27 @@
   (let [block1 (long (get-block-address fp1))
         block2 (long (get-block-address fp2))]
     (or (= block1 block2) (= (inc block1) block2))))
+
+(defn- bgzip-header?
+  [^bytes b]
+  (and (<= 16 (alength b))
+       (= (unchecked-byte 0x1f) (aget b 0))
+       (= (unchecked-byte 0x8b) (aget b 1))
+       (bit-test (aget b 3) 2) ;; FEXTRA
+       (= (byte \B) (aget b 12)) ;; SI1
+       (= (byte \C) (aget b 13)) ;; SI2
+       (= 2 (aget b 14)) ;; LEN
+       (zero? (aget b 15))))
+
+(defn bgzip?
+  "Checks if a given file is bgzipped or not."
+  [f]
+  (let [buf (byte-array 16)]
+    (with-open [r (cio/input-stream f)]
+      (loop [off 0
+             len (alength buf)]
+        (let [n (.read r buf off len)]
+          (cond
+            (neg? n) false
+            (< n len) (recur (+ off n) (- len n))
+            :else (bgzip-header? buf)))))))

@@ -4,8 +4,6 @@
             [cljam.test-common :refer :all]
             [cljam.io.fasta.core :as fa-core]))
 
-(def illegal-fasta-file test-tabix-file)
-
 (def temp-test-fa-file (str temp-dir "/test.fa"))
 (def temp-medium-fa-file (str temp-dir "/medium.fa"))
 
@@ -59,4 +57,27 @@
   (with-open [rdr (fa-core/reader medium-fa-gz-file)]
     (let [fa (fa-core/sequential-read rdr)]
       (is (= (map :name fa) '("chr1" "chr2" "chr3" "chr4" "chr5" "chr6" "chr7" "chr8" "chr9")))
+      (is (= (map (comp count :sequence) fa) (repeat 9 50000)))))
+  (with-open [rdr (fa-core/reader medium-fa-bgz-file)]
+    (let [fa (fa-core/sequential-read rdr)]
+      (is (= (map :name fa) '("chr1" "chr2" "chr3" "chr4" "chr5" "chr6" "chr7" "chr8" "chr9")))
       (is (= (map (comp count :sequence) fa) (repeat 9 50000))))))
+
+(deftest random-read-plain-and-bgzip
+  (with-open [plain (fa-core/reader medium-fa-file)
+              bgzip (fa-core/reader medium-fa-bgz-file)]
+    (are [?region]
+         (= (fa-core/read-sequence plain ?region {})
+            (fa-core/read-sequence bgzip ?region {}))
+      {:chr "chr1", :start 1, :end 50}
+      {:chr "chr1", :start 1, :end 51}
+      {:chr "chr1", :start 50, :end 200}
+      {:chr "chr1", :start 51, :end 200}
+      {:chr "chr1", :start 1, :end 50000}
+      {:chr "chr1", :start 49000, :end 50000}
+      {:chr "chr2", :start 1, :end 50}
+      {:chr "chr2", :start 1, :end 13990}
+      {:chr "chr2", :start 13800, :end 14000}
+      {:chr "chr9", :start 13800, :end 50000}
+      {:chr "chr9", :start 1, :end 60000}
+      {:chr "chr10", :start 1, :end 60000})))

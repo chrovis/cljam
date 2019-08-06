@@ -60,13 +60,13 @@
   "Negative if fp1 is earlier in file than fp2, positive if it is later, 0 if equal."
   [^long fp1 ^long fp2]
   (cond
-   (= fp1 fp2)                 0
+    (= fp1 fp2)                 0
    ;; When treating as unsigned, negative number is > positive.
-   (and (< fp1 0) (>= fp2 0))  1
-   (and (>= fp1 0) (< fp2 0)) -1
+    (and (< fp1 0) (>= fp2 0))  1
+    (and (>= fp1 0) (< fp2 0)) -1
    ;; Either both negative or both non-negative, so regular comparison works.
-   (< fp1 fp2)                -1
-   :else                       1))
+    (< fp1 fp2)                -1
+    :else                       1))
 
 (defn get-block-address
   "File offset of start of BGZF block for this file pointer."

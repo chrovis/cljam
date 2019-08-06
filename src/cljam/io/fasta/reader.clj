@@ -150,11 +150,11 @@
 
 (definline create-ba [^ByteBuffer buffer]
   `(when (pos? (.position ~buffer))
-       (let [ba# (byte-array (.position ~buffer))]
-         (.clear ~(with-meta buffer {:tag `Buffer}))
-         (.get ~buffer ba#)
-         (.clear ~(with-meta buffer {:tag `Buffer}))
-         ba#)))
+     (let [ba# (byte-array (.position ~buffer))]
+       (.clear ~(with-meta buffer {:tag `Buffer}))
+       (.get ~buffer ba#)
+       (.clear ~(with-meta buffer {:tag `Buffer}))
+       ba#)))
 
 (def ^:private ^:const gt-byte (byte \>))
 (def ^:private ^:const newline-byte (byte \newline))

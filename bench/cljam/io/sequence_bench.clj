@@ -9,6 +9,8 @@
                                  (dorun (cseq/read-all-sequences rdr opts))))
     tcommon/medium-fa-file {}
     tcommon/medium-fa-file {:mask? true}
+    tcommon/medium-fa-bgz-file {}
+    tcommon/medium-fa-bgz-file {:mask? true}
     tcommon/medium-twobit-file {}
     tcommon/medium-twobit-file {:mask? true}))
 
@@ -22,6 +24,8 @@
            (cseq/read-sequence rdr region opts))))
     tcommon/medium-fa-file {}
     tcommon/medium-fa-file {:mask? true}
+    tcommon/medium-fa-bgz-file {}
+    tcommon/medium-fa-bgz-file {:mask? true}
     tcommon/medium-twobit-file {}
     tcommon/medium-twobit-file {:mask? true}))
 
@@ -37,5 +41,7 @@
            (cseq/read-sequence rdr region opts))))
     tcommon/medium-fa-file {}
     tcommon/medium-fa-file {:mask? true}
+    tcommon/medium-fa-bgz-file {}
+    tcommon/medium-fa-bgz-file {:mask? true}
     tcommon/medium-twobit-file {}
     tcommon/medium-twobit-file {:mask? true}))

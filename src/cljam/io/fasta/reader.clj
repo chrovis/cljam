@@ -3,8 +3,7 @@
   (:require [cljam.util :refer [graph?]]
             [cljam.io.fasta.util :refer [header-line? parse-header-line]]
             [cljam.io.fasta-index.core :as fasta-index]
-            [cljam.io.util.bgzf.gzi :as gzi]
-            [cljam.io.util.bgzf :as bgzf])
+            [cljam.io.util.bgzf.gzi :as gzi])
   (:import [java.io Closeable RandomAccessFile InputStream EOFException]
            [java.nio Buffer ByteBuffer CharBuffer]
            [java.nio.channels FileChannel$MapMode]

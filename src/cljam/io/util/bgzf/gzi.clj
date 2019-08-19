@@ -36,7 +36,7 @@
             (bit-and diff 0xffff))))
 
 (defn comp->uncomp
-  "Returns a uncompressed offset for a given virtual file offset"
+  "Returns an uncompressed offset for a given virtual file offset"
   ^long [gzi ^long compressed-offset]
   (let [off (unsigned-bit-shift-right compressed-offset 16)
         [uncompressed] (->> gzi

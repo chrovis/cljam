@@ -41,7 +41,7 @@
   (let [off (unsigned-bit-shift-right compressed-offset 16)
         [uncompressed] (->> gzi
                             rseq
-                            (filter (fn [[u c]] (= (long c) off)))
+                            (filter (fn [[_ c]] (= (long c) off)))
                             first)]
     (assert uncompressed)
     (+ uncompressed (bit-and compressed-offset 0xffff))))

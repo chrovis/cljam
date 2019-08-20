@@ -42,6 +42,7 @@
 
 (deftest multithread-reader-test
   (with-open [f (cseq/reader medium-fa-file)
+              b (cseq/reader medium-fa-bgz-file)
               t (cseq/reader medium-twobit-file)]
     (let [xs (cseq/read-seq-summaries f)]
       (is (->> (repeatedly
@@ -53,8 +54,10 @@
                (pmap
                 (fn [region]
                   (with-open [fc (cseq/reader f)
+                              bc (cseq/reader b)
                               tc (cseq/reader t)]
                     (= (cseq/read-sequence fc region)
+                       (cseq/read-sequence bc region)
                        (cseq/read-sequence tc region)))))
                (every? true?))))))
 
@@ -140,10 +143,11 @@
                     "CTTTTCTCTCCACTATTCACCCAACATCATCCGGGACCAGAACTAATGTC"
                     "AGCAAAGC")
         u-expect (cstr/upper-case expect)]
-    (with-open [rdr (cseq/fasta-reader medium-fa-file)]
-      (is (= (cseq/read-sequence rdr {:chr "chr3" :start 2053 :end 2158}) u-expect))
-      (is (= (cseq/read-sequence rdr {:chr "chr3" :start 2053 :end 2158} {:mask? false}) u-expect))
-      (is (= (cseq/read-sequence rdr {:chr "chr3" :start 2053 :end 2158} {:mask? true}) expect)))))
+    (doseq [file [medium-fa-file medium-fa-bgz-file]]
+      (with-open [rdr (cseq/fasta-reader file)]
+        (is (= (cseq/read-sequence rdr {:chr "chr3" :start 2053 :end 2158}) u-expect))
+        (is (= (cseq/read-sequence rdr {:chr "chr3" :start 2053 :end 2158} {:mask? false}) u-expect))
+        (is (= (cseq/read-sequence rdr {:chr "chr3" :start 2053 :end 2158} {:mask? true}) expect))))))
 
 (deftest read-sequence-twobit-test
   (testing "reference test"

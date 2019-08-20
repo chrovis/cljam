@@ -5,6 +5,7 @@
 ### Added
 
 * Add content-based file type detection. [#171](https://github.com/chrovis/cljam/pull/171)
+* Add support for random reading of bgzipped FASTA files. [#174](https://github.com/chrovis/cljam/pull/174)
 
 ### Fixed
 

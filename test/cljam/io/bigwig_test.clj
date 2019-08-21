@@ -197,6 +197,11 @@
     {:track {:line nil :format :fixed-step :chr "chr19" :step 300 :span 200}
      :chr "chr19" :start 49310101 :end 49310300 :value 100.0}]})
 
+(def ^:private ^:const eps 1e-4)
+
+(defn- equal-floating-points-num? [^double a ^double b]
+  (< (Math/abs (- a b)) eps))
+
 (defn- same-bigwig-headers?
   "Returns true if the given arguments are same bigWig headers, otherwise
   false."
@@ -208,14 +213,13 @@
        (= (:bpt-header ah) (:bpt-header bh))
        (apply = (map #(map (juxt :name :id :size) (:bbi-chrom-info %)) [ah bh]))
        (= (:cir-tree ah) (:cir-tree bh))
-       (let [eps 1e-4
-             x (:total-summary ah)
+       (let [x (:total-summary ah)
              y (:total-summary bh)]
          (and (= (:bases-covered x) (:bases-covered y))
-              (-> (- (:min-val x) (:min-val y)) Math/abs (< eps))
-              (-> (- (:max-val x) (:max-val y)) Math/abs (< eps))
-              (-> (- (:sum-data x) (:sum-data y)) Math/abs (< eps))
-              (-> (- (:sum-squared x) (:sum-squared y)) Math/abs (< eps))))))
+              (equal-floating-points-num? (:min-val x) (:min-val y))
+              (equal-floating-points-num? (:max-val x) (:max-val y))
+              (equal-floating-points-num? (:sum-data x) (:sum-data y))
+              (equal-floating-points-num? (:sum-squared x) (:sum-squared y))))))
 
 (defn- same-wig?
   "Returns true if the given arguments are same wig formats and same values."
@@ -225,7 +229,7 @@
                    (= (:chr a) (:chr b))
                    (= (:start a) (:start b))
                    (= (:end a) (:end b))
-                   (-> (- (:value a) (:value b)) Math/abs (< 1e-4))))
+                   (equal-floating-points-num? (:value a) (:value b))))
             as bs)
        (every? true?)))
 
@@ -237,7 +241,7 @@
                    (= (:chr a) (:chr b))
                    (= (:start a) (:start b))
                    (= (:end a) (:end b))
-                   (-> (- (:value a) (:value b)) Math/abs (< 1e-4))))
+                   (equal-floating-points-num? (:value a) (:value b))))
             as bs)
        (every? true?)))
 

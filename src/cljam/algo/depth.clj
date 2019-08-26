@@ -48,7 +48,7 @@
   "Calculate depth of coverage lazily. Returns a lazy seq of depth for range [start, end].
   Requires a `cljam.io.bam.reader.BAMReader` instance and region.
   If start and end are not supplied, piles whole range up.
-  Note that CIGAR code in alignemnts are ignored and only start/end positions are used."
+  Note that CIGAR code in alignments are ignored and only start/end positions are used."
   [bam-reader {:keys [chr start end] :or {start 1 end Long/MAX_VALUE}}
    & [{:keys [step n-threads] :or {step default-step n-threads 1}}]]
   {:pre [chr start end (pos? start) (pos? end) (<= start end)]}
@@ -119,7 +119,7 @@
   "Calculate depth of coverage eagerly. Returns a seq of depth for range [start, end].
   Requires a `cljam.io.bam.reader.BAMReader` instance and region.
   If start and end are not supplied, piles whole range up.
-  Note that CIGAR code in alignemnts are ignored and only start/end positions are used."
+  Note that CIGAR code in alignments are ignored and only start/end positions are used."
   [bam-reader {:keys [chr start end] :or {start 1 end Long/MAX_VALUE}}
    & [{:keys [step unchecked? n-threads] :or {step default-step unchecked? false n-threads 1}}]]
   {:pre [chr start end (pos? start) (pos? end) (<= start end)]}

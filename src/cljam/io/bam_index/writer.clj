@@ -29,7 +29,7 @@
   [^long pos]
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
-;; ### Intermidate data definitions
+;; ### Intermediate data definitions
 ;;
 ;; Use record for performance.
 ;; Record is faster than map for retrieving elements.
@@ -41,14 +41,14 @@
 ;; ### Initializing
 
 (defn- init-index-status
-  "Returns initialized index status. This data structure is intermidate. Must
+  "Returns initialized index status. This data structure is intermediate. Must
   be passed `finalize-index` in the final stage."
   []
   (IndexStatus. (MetaData. -1 0 0 0)
-                ;; Intermidiate bin-index -> {bin1 chunks1, bin2 chunks2, ...}
+                ;; Intermediate bin-index -> {bin1 chunks1, bin2 chunks2, ...}
                 ;; e.g. {4681 [{:beg 97, :end 555} ...], 37450 [...] ...}
                 {}
-                ;; Intermidate linear-index -> {pos1 value1, pos2 value2, ...}
+                ;; Intermediate linear-index -> {pos1 value1, pos2 value2, ...}
                 ;; e.g. {5415 4474732776, 14827 5955073327, ...}
                 {}))
 
@@ -117,7 +117,7 @@
 
 (defn- make-index*
   "Calculates index from the references and alignments, returning it as a map.
-  Returned index is still intermidate. It must be passed to finalize function
+  Returned index is still intermediate. It must be passed to finalize function
   in the final stage."
   [alns]
   (loop [[^BAMPointerBlock aln & rest] alns
@@ -177,7 +177,7 @@
   (merge-with min lidx1 lidx2))
 
 (defn- merge-index
-  "Merges two intermidate indices, returning the merged intermidate index."
+  "Merges two intermediate indices, returning the merged intermediate index."
   [idx1 idx2]
   (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
         idx1 (dissoc idx1 :no-coordinate-alns)
@@ -221,7 +221,7 @@
        (map second)))
 
 (defn- finalize-index
-  "Converts intermidate BAM index data structure into final one. Must be called
+  "Converts intermediate BAM index data structure into final one. Must be called
   in the final stage."
   [^long nrefs index]
   (loop [i 0

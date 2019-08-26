@@ -40,7 +40,7 @@
                     root-offset])
 
 ; Currently, max number of zoom levels (i.e. max number of zoom headers) is 10,
-; the numberais small. Therefore, we choose a record containing vector of zoom
+; the number is small. Therefore, we choose a record containing vector of zoom
 ; header instead of a flat record.
 ; Cf. https://github.com/ucscGenomeBrowser/kent/blob/3a0198acd1f859a603f5aad90188bee2d82efe0c/src/inc/bbiFile.h#L384
 (defrecord BigWigHeaders [^FixedWidthHeader fixed-width-header

@@ -11,7 +11,7 @@
             (= \. (.charAt ~s 0)))))
 
 (defn- value-parser
-  "Returns a parser function for given type idenfier."
+  "Returns a parser function for given type identifier."
   [type]
   (case type
     "Flag" (constantly :exists)
@@ -200,7 +200,7 @@
            (map vector ks vs)))))))
 
 (defn stringify-sample
-  "Converts sample map into string. formats must be a seqeunce of keys in sample-map."
+  "Converts sample map into string. formats must be a sequence of keys in sample-map."
   [formats sample-map]
   (->> formats
        (map (fn [k] [k (get sample-map k)]))

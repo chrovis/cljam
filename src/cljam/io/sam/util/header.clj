@@ -50,7 +50,7 @@
 
 (defn- group-by-rf
   "Returns a reducing function acts like `group-by`.
-  Second argument `rf` is a reducing function appliede to each group. Default is (into-rf [])."
+  Second argument `rf` is a reducing function applied to each group. Default is (into-rf [])."
   ([keyfn] (group-by-rf keyfn (into-rf [])))
   ([keyfn rf]
    (fn group-by-rf-inner

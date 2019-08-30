@@ -16,6 +16,8 @@
 * Fix nonintentional paths. [#172](https://github.com/chrovis/cljam/pull/172)
 * Fix decoding of long CIGAR ops in BAM. [#173](https://github.com/chrovis/cljam/pull/173)
 * Fix reflection warnings. [#175](https://github.com/chrovis/cljam/pull/175)
+* Fix minor typos. [#176](https://github.com/chrovis/cljam/pull/176)
+* Fix grammar. [#177](https://github.com/chrovis/cljam/pull/177)
 
 ## [0.7.2] - 2019-06-04
 

@@ -34,7 +34,7 @@
   (reduce + (map flags flag-set)))
 
 (defmacro encoded
-  "Macro to provide a encoded flag with set of keywords."
+  "Macro to provide an encoded flag with set of keywords."
   [flag-set-literal]
   (let [f (encode flag-set-literal)]
     f))

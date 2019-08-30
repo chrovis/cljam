@@ -241,7 +241,7 @@
 (defn read-variants
   "Returns data lines of the BCF from rdr as a lazy sequence of maps.
    rdr must implement cljam.bcf.BCFReader.
-   Can take a option :depth to specify parsing level. Default is :deep.
+   Can take an option :depth to specify parsing level. Default is :deep.
 
      :deep    Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
      :vcf     VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.

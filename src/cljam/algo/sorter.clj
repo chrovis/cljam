@@ -51,7 +51,7 @@
 
 (defn- split**
   "Splits SAM/BAM file into multiple files each containing alignments up to chunk-size.
-  name-fn must be a function taking a int value i and returning a path string for i-th output.
+  name-fn must be a function taking an int value i and returning a path string for i-th output.
   read-fn must produce a sequence of alignments and write-fn must consume the splitted sequence."
   [rdr mode chunk-size name-fn read-fn write-fn]
   (let [hdr (header/sorted-by mode (header/update-version (sam/read-header rdr)))]
@@ -86,7 +86,7 @@
     (split** rdr mode chunk-size name-fn read-fn write-fn)))
 
 (defn- head-pq
-  "Take a smallest element from sequences in priority queue."
+  "Take the smallest element from sequences in priority queue."
   [^PriorityQueue q]
   (when-not (.isEmpty q)
     (let [x (.poll q)]

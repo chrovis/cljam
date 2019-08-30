@@ -60,7 +60,7 @@
 
 (defn read-variants
   "Reads variants of the VCF/BCF file, returning them as a lazy sequence. rdr
-  must implement cljam.io.protocols/IVariantReader. Can take a option :depth to
+  must implement cljam.io.protocols/IVariantReader. Can take an option :depth to
   specify parsing level, default :deep. <:deep|:vcf|:bcf|:shallow|:raw>
     :deep - Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
     :vcf - VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.

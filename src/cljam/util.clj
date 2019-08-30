@@ -64,7 +64,7 @@
    :bzip2 CompressorStreamFactory/BZIP2})
 
 (defn ^java.io.InputStream compressor-input-stream
-  "Returns an compressor input stream from f, autodetecting the compressor type
+  "Returns a compressor input stream from f, autodetecting the compressor type
   from the first few bytes of f. Returns java.io.BufferedInputStream if the
   compressor type is not known. Should be used inside with-open to ensure the
   InputStream is properly closed."
@@ -77,7 +77,7 @@
         is))))
 
 (defn ^java.io.OutputStream compressor-output-stream
-  "Returns an compressor output stream from f and a compressor type k. k must be
+  "Returns a compressor output stream from f and a compressor type k. k must be
   selected from :gzip or :bzip2. Autodetects the compressor type from the
   extension of f if k is not passed. Returns java.io.BufferedOutputStream if the
   compressor type is not known. Should be used inside with-open to ensure the

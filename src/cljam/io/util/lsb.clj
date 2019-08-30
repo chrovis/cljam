@@ -192,7 +192,7 @@
   (write-ushort [this n] "Writes a 2-byte unsigned short value.")
   (write-int [this n] "Writes a 4-byte integer value.")
   (write-uint [this n] "Writes a 4-byte unsigned integer value.")
-  (write-long [this n] "Writes a 8-byte long value.")
+  (write-long [this n] "Writes an 8-byte long value.")
   (write-float [this n] "Writes a 4-byte float value.")
   (write-bytes [this b] "Writes a byte-array.")
   (write-string [this s] "Writes a string as a sequence of ascii characters."))

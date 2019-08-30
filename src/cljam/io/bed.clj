@@ -70,7 +70,8 @@
     (cstr/join "," xs)))
 
 (defn- update-some
-  "Same as update if map 'm' contains key 'k'. Otherwise returns the original map 'm'."
+  "Same as update if map 'm' contains key 'k'. Otherwise, returns the original
+  map 'm'."
   [m k f & args]
   (if (get m k)
     (apply update m k f args)

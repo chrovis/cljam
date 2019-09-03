@@ -2903,7 +2903,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- same-type?
   [f &amp; files]
   (apply = (io-util/file-type f) (map io-util/file-type files)))</pre></td></tr><tr><td class="docs"><p>Splits SAM/BAM file into multiple files each containing alignments up to chunk-size.
-  name-fn must be a function taking a int value i and returning a path string for i-th output.
+  name-fn must be a function taking an int value i and returning a path string for i-th output.
   read-fn must produce a sequence of alignments and write-fn must consume the splitted sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- split**
   [rdr mode chunk-size name-fn read-fn write-fn]
@@ -2934,7 +2934,7 @@ net.brehaut.ClojureTools = (function (SH) {
         write-fn (if block?
                    (fn [w xs _] (sam/write-blocks w (sort-fn xs)))
                    (fn [w xs hdr] (sam/write-alignments w (sort-fn xs) hdr)))]
-    (split** rdr mode chunk-size name-fn read-fn write-fn)))</pre></td></tr><tr><td class="docs"><p>Take a smallest element from sequences in priority queue.</p>
+    (split** rdr mode chunk-size name-fn read-fn write-fn)))</pre></td></tr><tr><td class="docs"><p>Take the smallest element from sequences in priority queue.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- head-pq
   [^PriorityQueue q]
   (when-not (.isEmpty q)

@@ -2865,331 +2865,46 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.vcf.util" name="cljam.io.vcf.util"><h1 class="project-name">cljam.io.vcf.util</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.vcf.util
-  (:require [clojure.string :as cstr]
-            [proton.core :as p]))</pre></td></tr><tr><td class="docs"><p>Checks if given string is equal to "." or nil.</p>
-</td><td class="codes"><pre class="brush: clojure">(definline dot-or-nil?
-  [^String s]
-  `(or (nil? ~s)
-       (empty? ~s)
-       (and (= 1 (.length ~s))
-            (= \. (.charAt ~s 0)))))</pre></td></tr><tr><td class="docs"><p>Returns a parser function for given type identifier.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- value-parser
-  [type]
-  (case type
-    &quot;Flag&quot; (constantly :exists)
-    &quot;Integer&quot; #(when-not (dot-or-nil? ^String %) (Integer/parseInt %))
-    &quot;Float&quot; #(when-not (dot-or-nil? ^String %) (Float/parseFloat %))
-    &quot;Character&quot; #(when-not (dot-or-nil? ^String %) (first %))
-    &quot;String&quot; #(when-not (dot-or-nil? ^String %) %)))</pre></td></tr><tr><td class="docs"><p>Creates a key-value paired vector of 'id' and its parser.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- meta-&gt;parser
-  [{:keys [id number type]}]
-  (let [p (value-parser type)]
-    [id (comp (if (or (= number 1) (= number 0)) first identity)
-              (fn [x] (map p (cstr/split (or x &quot;&quot;) #&quot;,&quot;))))]))</pre></td></tr><tr><td class="docs"><p>Returns a parser function defined by meta-info.
-   info-meta must be a sequence of map containing keys :id, :number and :type.
-   The parser takes a string and returns a map.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn info-parser
-  [info-meta]
-  (let [parser-map (into {} (map meta-&gt;parser) info-meta)]
-    (fn [^String s]
-      (when-not (dot-or-nil? s)
-        (-&gt;&gt; (cstr/split s #&quot;;&quot;)
-             (into
-              {}
-              (map (fn [ss]
-                     (let [[k vs] (cstr/split ss #&quot;\=&quot; 2)]
-                       [(keyword k) ((parser-map k) vs)])))))))))</pre></td></tr><tr><td class="docs"><p>Returns a stringifier function of INFO field.
-   Takes a vector of maps from info rows of meta-info.
-   The stringifier takes a map and returns a string.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn info-stringifier
-  [info-meta]
-  (let [id-ordered (mapv :id info-meta)
-        info-type (into {} (map (juxt :id :type)) info-meta)]
-    (fn [info]
-      (when info
-        (-&gt;&gt; id-ordered
-             (keep
-              (fn [k]
-                (when-let [v (info (keyword k))]
-                  (if (or (= v :exists) (= (info-type k) &quot;Flag&quot;))
-                    k
-                    (str k &quot;=&quot; (if (sequential? v) (cstr/join &quot;,&quot; v) v))))))
-             (cstr/join &quot;;&quot;)
-             not-empty)))))</pre></td></tr><tr><td class="docs"><p>Parses FILTER field and returns a sequence of keywords.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn parse-filter
-  [^String s]
-  (when-not (dot-or-nil? s)
-    (map keyword (cstr/split s #&quot;;&quot;))))</pre></td></tr><tr><td class="docs"><p>Stringifies FILTER field. Takes a sequence of keywords or strings.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn stringify-filter
-  [fltr]
-  (when (and (some? fltr) (some some? fltr))
-    (cstr/join &quot;;&quot; (map name fltr))))</pre></td></tr><tr><td class="docs"><p>Parses FORMAT field and returns as a sequence of keywords.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn parse-format
-  [^String s]
-  (when-not (dot-or-nil? s)
-    (map keyword (cstr/split s #&quot;:&quot;))))</pre></td></tr><tr><td class="docs"><p>Stringifies FORMAT field. Takes a sequence of keywords or strings.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn stringify-format
-  [formats]
-  (when-not (or (nil? formats) (empty? formats))
-    (cstr/join &quot;:&quot; (map name formats))))</pre></td></tr><tr><td class="docs"><p>Parses genotype (GT) format and returns a vector of pairs: [allele, phased].
-   Allele 0 indicates REF allele. 1,2,3... for 1st, 2nd, 3rd allele of ALT.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn parse-genotype
-  [^String gt]
-  (when-not (dot-or-nil? gt)
-    (-&gt;&gt; gt
-         (re-seq #&quot;([\||/])?(.|\d+)&quot;)
-         (map (fn [[_ phase ^String allele]]
-                [(when-not (dot-or-nil? allele) (Integer/parseInt allele))
-                 (if phase
-                   (= phase &quot;|&quot;)
-                   (neg? (.indexOf ^String gt &quot;/&quot;)))])))))</pre></td></tr><tr><td class="docs"><p>Stringifies genotype map into VCF-style GT string.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn stringify-genotype
-  [gt-seq]
-  (when-not (or (nil? gt-seq) (empty? gt-seq))
-    (-&gt;&gt; gt-seq
-         (mapcat
-          (fn [[allele phase]]
-            [(if phase &quot;|&quot; &quot;/&quot;) (or allele \.)]))
-         rest
-         (apply str))))</pre></td></tr><tr><td class="docs"><p>Returns a sequence of genotypes represented as sequences of integers.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn genotype-seq
-  ([^long ploidy ^long n-alt-alleles]
-   (genotype-seq ploidy n-alt-alleles []))
-  ([^long ploidy ^long n-alt-alleles s]
-   (mapcat
-    (fn [i]
-      (if (= 1 ploidy)
-        [(cons i s)]
-        (genotype-seq (dec ploidy) i (cons i s))))
-    (range (inc n-alt-alleles)))))</pre></td></tr><tr><td class="docs"><p>Returns an index for given genotype.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn genotype-index
-  ^long [genotype]
-  {:pre [(seq genotype)
-         (every? (complement neg?) genotype)]}
-  (letfn [(combination ^long [^long n ^long k]
-            (cond
-              (&lt; n k) 0
-              (= k n) 1
-              (or (= k 1) (= k (dec n))) n
-              (&lt; (quot n 2) k) (recur n (- n k))
-              :else (loop [i (inc (- n k)), j 1, r 1]
-                      (if (&lt;= j k)
-                        (recur (inc i) (inc j) (quot (* r i) j))
-                        r))))]
-    (-&gt;&gt; genotype
-         sort
-         (map-indexed (fn [^long m ^long k] (combination (+ k m) (inc m))))
-         (apply +))))</pre></td></tr><tr><td class="docs"><p>Converts a multiallelic <code>genotype</code> string into a biallelic one. Ignores all
-  alleles other than the reference allele and the <code>target-allele</code>.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn biallelic-genotype
-  [genotype ^long target-allele]
-  (-&gt;&gt; genotype
-       parse-genotype
-       (map (fn [[allele phased?]]
-              [(when allele (if (= target-allele allele) 1 0)) phased?]))
-       stringify-genotype))</pre></td></tr><tr><td class="docs"><p>Picks up elements in multiallelic <code>coll</code> and make a biallelic one. Ignores
-  all alleles other than the reference allele and the <code>target-allele</code>.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn biallelic-coll
-  [^long ploidy ^long n-alt-alleles ^long target-allele coll]
-  (keep-indexed
-   (fn [i gt]
-     (when (every? (fn [^long a] (or (= a 0) (= a target-allele))) gt)
-       (nth coll i)))
-   (genotype-seq ploidy n-alt-alleles)))</pre></td></tr><tr><td class="docs"><p>Convert genotype to a sequence of integers.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn genotype-&gt;ints
-  [gt]
-  (let [parsed-gt (or (cond-&gt; gt (string? gt) parse-genotype) [[nil]])]
-    (-&gt;&gt; (assoc-in (vec parsed-gt) [0 1] false)
-         (map (fn [[allele phased]]
-                (bit-or
-                 (bit-shift-left (if allele (inc allele) 0) 1)
-                 (if phased 1 0)))))))</pre></td></tr><tr><td class="docs"><p>Convert a sequence of integers to genotype string.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ints-&gt;genotype
-  [vs]
-  (-&gt;&gt; vs
-       (mapcat (fn [i] [(if (odd? i) \| \/) (if (zero? (quot i 2)) &quot;.&quot; (dec (quot i 2)))]))
-       rest
-       (apply str)
-       (#(when-not (dot-or-nil? ^String %) %))))</pre></td></tr><tr><td class="docs"><p>Returns a parser function defined by meta-formats.
-   info must be a sequence of map containing keys :id, :number and :type.
-   The parser takes two string (format-line and sample-line) and returns a map.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn sample-parser
-  [formats-meta]
-  (let [parser-map (into {} (map meta-&gt;parser) formats-meta)]
-    (fn [^String format-line sample-line]
-      (when-not (dot-or-nil? format-line)
-        (let [ks (cstr/split format-line #&quot;:&quot;)
-              vs (concat
-                  (when (not-empty sample-line)
-                    (cstr/split sample-line #&quot;:&quot;))
-                  (repeat nil))]
-          (into
-           {}
-           (map (fn [[k ^String v]]
-                  [(keyword k) (when-not (dot-or-nil? v) ((parser-map k) v))]))
-           (map vector ks vs)))))))</pre></td></tr><tr><td class="docs"><p>Converts sample map into string. formats must be a sequence of keys in sample-map.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn stringify-sample
-  [formats sample-map]
-  (-&gt;&gt; formats
-       (map (fn [k] [k (get sample-map k)]))
-       reverse
-       (drop-while (fn [[_ v]] (or (nil? v) (= [nil] v))))
-       (map (fn [[_ v]]
-              (cond
-                (sequential? v) (cstr/join &quot;,&quot; (map (fn [i] (if (nil? i) &quot;.&quot; i)) v))
-                (nil? v) &quot;.&quot;
-                :else v)))
-       reverse
-       (cstr/join &quot;:&quot;)
-       not-empty))</pre></td></tr><tr><td class="docs"><p>Returns a parser function to parse :filter, :info, :FORMAT and sample columns of VCF.
-   Takes meta-info and header of VCF.
-   The parser takes a variant map and returns a parsed map.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn variant-parser
-  [meta-info header]
-  (let [[fmt-kw &amp; sample-kws] (mapv keyword (drop 8 header))
-        parse-info (info-parser (:info meta-info))
-        parse-sample (sample-parser (:format meta-info))]
-    (fn [v]
-      (cond-&gt; v
-        true (update :filter parse-filter)
-        true (update :info parse-info)
-        fmt-kw (update fmt-kw parse-format)
-        sample-kws (into (for [k sample-kws] [k (parse-sample (v fmt-kw) (v k))]))))))</pre></td></tr><tr><td class="docs"><p>Returns a stringifier function to stringify :filter, :info, :FORMAT and sample columns of VCF.
-   Takes meta-info and header of VCF.
-   The stringifier takes a parsed variant map and returns a map.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn variant-vals-stringifier
-  [meta-info header]
-  (let [[fmt-kw &amp; sample-kws] (mapv keyword (drop 8 header))
-        stringify-info (info-stringifier (:info meta-info))]
-    (fn [v]
-      (-&gt; v
-          (update :filter stringify-filter)
-          (update :info stringify-info)
-          (update fmt-kw stringify-format)
-          (merge (into {} (for [k sample-kws] [k (stringify-sample (v fmt-kw) (v k))])))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const long-breakend-regexp
-  ;;   pre-seq    [ or ]  chr    pos     [ or ]    post-seq
-  #&quot;([ACGTN]*|\.)([\[\]])(.+?)(?::(\d+))([\[\]])([ACGTN]*|\.)&quot;)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const short-breakend-regexp
-  #&quot;(\.?)([ATGCN]+)(\.?)&quot;)</pre></td></tr><tr><td class="docs"><p>Parses an ALT allele string of SVTYPE=BND.
-  Returns a map with mandatory keys:
-  - <code>:bases</code> bases that replaces the reference place
-  - <code>:join</code> <code>:before</code> or <code>:after</code>
-  and optional keys for a mate:
-  - <code>:chr</code> chromosome name of the mate sequence
-  - <code>:pos</code> genomic position of the mate sequence
-  - <code>:strand</code> strand of the mate sequence
-  Returns <code>nil</code> if input <code>alt</code> is not a breakend.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn parse-breakend
-  [alt]
-  (if-let [[_ pre-seq [left-bracket] chr pos [right-bracket] post-seq]
-           (re-matches long-breakend-regexp alt)]
-    (let [pre (not-empty pre-seq)
-          post (not-empty post-seq)]
-      (when (and (= left-bracket right-bracket)
-                 (or pre post)
-                 (not (and pre post)))
-        (when-let [p (p/as-long pos)]
-          {:chr chr,
-           :pos p,
-           :join (if post :before :after),
-           :bases (or pre post),
-           :strand (if (= left-bracket \])
-                     (if post :forward :reverse)
-                     (if post :reverse :forward))})))
-    (when-let [[_ [pre-dot] bases [post-dot]]
-               (re-matches short-breakend-regexp alt)]
-      (when (and (or pre-dot post-dot)
-                 (not (and pre-dot post-dot)))
-        {:bases bases, :join (if pre-dot :before :after)}))))</pre></td></tr><tr><td class="docs"><p>Returns a string representation of a breakend. If the input is malformed,
-  returns <code>nil</code>. See the docstring of <code>parse-breakend</code> for the format.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn stringify-breakend
-  [{:keys [chr pos strand join] s :bases}]
-  (when (and (not-empty s) (#{:before :after} join))
-    (if (and chr pos (#{:forward :reverse} strand))
-      (let [before? (= join :before)
-            bracket (if (= strand :forward)
-                      (if before? \] \[)
-                      (if before? \[ \]))]
-        (str (when-not before? s) bracket chr \: pos bracket (when before? s)))
-      (str (when (= :before join) \.) s (when (= :after join) \.)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- inspect-nucleotides-allele
-  [ref alt]
-  (let [ref-length (count ref)
-        alt-length (count alt)
-        upper-ref (cstr/upper-case ref)
-        upper-alt (cstr/upper-case alt)
-        left-match (-&gt;&gt; (map = upper-ref upper-alt)
-                        (take-while true?)
-                        count)
-        right-match (-&gt;&gt; (cstr/reverse upper-alt)
-                         (map = (cstr/reverse upper-ref))
-                         (take-while true?)
-                         count
-                         long
-                         (Math/min (- (Math/min ref-length alt-length)
-                                      left-match)))
-        matched-length (+ left-match right-match)]
-    (cond
-      (= left-match ref-length alt-length)
-      {:type :ref}
-      (and (= left-match ref-length) (&lt; left-match alt-length))
-      {:type :insertion, :offset (dec left-match),
-       :n-bases (- alt-length left-match), :inserted (subs alt left-match)}
-      (and (&lt; left-match ref-length) (= left-match alt-length))
-      {:type :deletion, :offset (dec left-match),
-       :n-bases (- ref-length left-match), :deleted (subs ref left-match)}
-      (= (inc matched-length) ref-length alt-length)
-      {:type :snv, :ref (nth ref left-match),
-       :alt (nth alt left-match), :offset left-match}
-      (= matched-length alt-length)
-      {:type :deletion, :offset (dec left-match),
-       :n-bases (- ref-length right-match left-match),
-       :deleted (subs ref left-match (- ref-length right-match))}
-      (= matched-length ref-length)
-      {:type :insertion, :offset (dec left-match),
-       :n-bases (- alt-length right-match left-match),
-       :inserted (subs alt left-match (- alt-length right-match))}
-      (= ref-length alt-length)
-      {:type :mnv, :offset left-match,
-       :ref (subs ref left-match (- ref-length right-match)),
-       :alt (subs alt left-match (- alt-length right-match))}
-      :else {:type :complex})))</pre></td></tr><tr><td class="docs"><p>Inspects an <code>alt</code> allele by comparing to a <code>ref</code> allele string.
-  Returns a map containing <code>:type</code> and other detailed information.
-  A value of the key <code>:type</code> can be one of the followings:
-  - <code>:no-call</code>            No variant called
-  - <code>:spanning-deletion</code>  Placeholder to signify an absent sequence
-  - <code>:unspecified</code>        Unspecified non-ref allele
-  - <code>:ref</code>                Duplicated allele of REF
-  - <code>:id</code>                 Symbolic reference
-  - <code>:snv</code>                Single nucleotide variant
-  - <code>:mnv</code>                Multiple nucleotide variants
-  - <code>:insertion</code>          Insertion of a short base sequence
-  - <code>:deletion</code>           Deletion of a short base sequence
-  - <code>:complete-insertion</code> Complete insertion of a long sequence
-  - <code>:breakend</code>           Breakend of a complex rearrangement
-  - <code>:complex</code>            Complex nucleotide variants other than snv/mnv/indel
-  - <code>:other</code>              Can't categorize the allele, might be malformed</p>
-</td><td class="codes"><pre class="brush: clojure">(defn inspect-allele
-  [ref alt]
-  (or
-   (when (re-matches #&quot;(?i)[ACGTN]+&quot; (or ref &quot;&quot;))
-     (condp re-matches (or (not-empty alt) &quot;.&quot;)
-       #&quot;\.&quot; {:type :no-call}
-       #&quot;\*&quot; {:type :spanning-deletion}
-       #&quot;(X|&lt;\*&gt;|&lt;X&gt;)&quot; {:type :unspecified}
-       #&quot;&lt;(.+)&gt;&quot; :&gt;&gt; (fn [[_ id]] {:type :id, :id id})
-       #&quot;(?i)([ACGTN])&lt;(.+)&gt;&quot; :&gt;&gt; (fn [[_ [base] id]]
-                                    {:type :complete-insertion,
-                                     :join :after, :base base, :id id})
-       #&quot;(?i)&lt;(.+)&gt;([ACGTN])&quot; :&gt;&gt; (fn [[_ id [base]]]
-                                    {:type :complete-insertion,
-                                     :join :before, :base base, :id id})
-       #&quot;(?i)[ACGTN]+&quot; (inspect-nucleotides-allele ref alt)
-       (some-&gt; (parse-breakend alt) (assoc :type :breakend))))
-   {:type :other}))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.util.bgzf.gzi" name="cljam.io.util.bgzf.gzi"><h1 class="project-name">cljam.io.util.bgzf.gzi</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.util.bgzf.gzi
+  (:require [cljam.util :as util])
+  (:import [java.nio ByteBuffer ByteOrder]
+           [java.nio.channels FileChannel FileChannel$MapMode]
+           [java.nio.file Paths OpenOption StandardOpenOption]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- read-full ^ByteBuffer [f]
+  (with-open [c (FileChannel/open
+                 (Paths/get (.toURI (util/as-url f)))
+                 (into-array OpenOption [StandardOpenOption/READ]))]
+    (.. c
+        (map FileChannel$MapMode/READ_ONLY 0 (.size c))
+        (order ByteOrder/LITTLE_ENDIAN))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- parse-gzi [^ByteBuffer bb]
+  (let [n-entries (.getLong bb)]
+    (-&gt;&gt; #(let [compressed (.getLong bb)
+                uncompressed (.getLong bb)]
+            [uncompressed compressed])
+         (repeatedly n-entries)
+         (into (sorted-map 0 0)))))</pre></td></tr><tr><td class="docs"><p>Reads a .gzi file and returns a sorted-map of uncompressed offsets to
+  compressed offsets.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-gzi
+  [f]
+  (parse-gzi (read-full f)))</pre></td></tr><tr><td class="docs"><p>Returns a virtual file offset for a given uncompressed offset.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn uncomp-&gt;comp
+  ^long [gzi ^long uncompressed-offset]
+  (let [[u c] (first (rsubseq gzi &lt;= uncompressed-offset))
+        diff (- uncompressed-offset (long u))]
+    (assert (&lt;= 0 diff 0xffff))
+    (bit-or (bit-shift-left (long c) 16)
+            (bit-and diff 0xffff))))</pre></td></tr><tr><td class="docs"><p>Returns an uncompressed offset for a given virtual file offset</p>
+</td><td class="codes"><pre class="brush: clojure">(defn comp-&gt;uncomp
+  ^long [gzi ^long compressed-offset]
+  (let [off (unsigned-bit-shift-right compressed-offset 16)
+        [uncompressed] (-&gt;&gt; gzi
+                            rseq
+                            (filter (fn [[_ c]] (= (long c) off)))
+                            first)]
+    (assert uncompressed)
+    (+ uncompressed (bit-and compressed-offset 0xffff))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

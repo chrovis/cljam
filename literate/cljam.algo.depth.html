@@ -2905,7 +2905,7 @@ net.brehaut.ClojureTools = (function (SH) {
          (apply concat))))</pre></td></tr><tr><td class="docs"><p>Calculate depth of coverage lazily. Returns a lazy seq of depth for range [start, end].
   Requires a <code>cljam.io.bam.reader.BAMReader</code> instance and region.
   If start and end are not supplied, piles whole range up.
-  Note that CIGAR code in alignemnts are ignored and only start/end positions are used.</p>
+  Note that CIGAR code in alignments are ignored and only start/end positions are used.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn lazy-depth
   [bam-reader {:keys [chr start end] :or {start 1 end Long/MAX_VALUE}}
    &amp; [{:keys [step n-threads] :or {step default-step n-threads 1}}]]
@@ -2966,7 +2966,7 @@ net.brehaut.ClojureTools = (function (SH) {
     pile))</pre></td></tr><tr><td class="docs"><p>Calculate depth of coverage eagerly. Returns a seq of depth for range [start, end].
   Requires a <code>cljam.io.bam.reader.BAMReader</code> instance and region.
   If start and end are not supplied, piles whole range up.
-  Note that CIGAR code in alignemnts are ignored and only start/end positions are used.</p>
+  Note that CIGAR code in alignments are ignored and only start/end positions are used.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn depth
   [bam-reader {:keys [chr start end] :or {start 1 end Long/MAX_VALUE}}
    &amp; [{:keys [step unchecked? n-threads] :or {step default-step unchecked? false n-threads 1}}]]

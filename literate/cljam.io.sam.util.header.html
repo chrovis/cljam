@@ -2905,7 +2905,7 @@ net.brehaut.ClojureTools = (function (SH) {
         ([] to)
         ([x] x)
         ([r x] (conj r x)))))</pre></td></tr><tr><td class="docs"><p>Returns a reducing function acts like <code>group-by</code>.
-  Second argument <code>rf</code> is a reducing function appliede to each group. Default is (into-rf []).</p>
+  Second argument <code>rf</code> is a reducing function applied to each group. Default is (into-rf []).</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- group-by-rf
   ([keyfn] (group-by-rf keyfn (into-rf [])))
   ([keyfn rf]

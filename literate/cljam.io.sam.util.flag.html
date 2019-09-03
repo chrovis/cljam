@@ -2891,7 +2891,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (into #{} (for [[k i] flag-keywords :when (long-bit-test f i)] k)))</pre></td></tr><tr><td class="docs"><p>Returns a flag integer encoding set of keywords.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn encode
   [flag-set]
-  (reduce + (map flags flag-set)))</pre></td></tr><tr><td class="docs"><p>Macro to provide a encoded flag with set of keywords.</p>
+  (reduce + (map flags flag-set)))</pre></td></tr><tr><td class="docs"><p>Macro to provide an encoded flag with set of keywords.</p>
 </td><td class="codes"><pre class="brush: clojure">(defmacro encoded
   [flag-set-literal]
   (let [f (encode flag-set-literal)]

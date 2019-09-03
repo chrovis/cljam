@@ -2873,35 +2873,47 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]
             [cljam.io.fasta-index.core :as fai]
-            [cljam.io.fasta.reader :as reader])
+            [cljam.io.fasta.reader :as reader]
+            [cljam.io.util.bgzf :as bgzf]
+            [cljam.io.util.bgzf.gzi :as gzi])
   (:import [java.io FileNotFoundException RandomAccessFile]
-           [cljam.io.fasta.reader FASTAReader]))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
+           [cljam.io.fasta.reader FASTAReader IndexedBGZFInputStream]))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- fasta-index
   [fasta-url]
-  (let [fasta-exts #&quot;(?i)(\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa)?)$&quot;]
+  (let [fasta-exts #&quot;(?i)(\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa))$&quot;]
     (or (-&gt;&gt; [&quot;$1.fai&quot; &quot;.fai&quot; &quot;$1.FAI&quot; &quot;.FAI&quot;]
-             (eduction
-              (comp
-               (map #(cstr/replace (str fasta-url) fasta-exts %))
-               (map util/as-url)
-               (keep #(try (fai/reader %) (catch FileNotFoundException _)))))
-             first)
+             (map #(util/as-url (cstr/replace (str fasta-url) fasta-exts %)))
+             (cons (util/as-url (str fasta-url &quot;.fai&quot;)))
+             (some #(try (fai/reader %) (catch FileNotFoundException _))))
         (throw (FileNotFoundException.
                 (str &quot;Could not find FASTA Index file for &quot; fasta-url))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- bgzip-index
+  [fasta-url]
+  (gzi/read-gzi (util/as-url (str fasta-url &quot;.gzi&quot;))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- random-accessor [f]
+  (if (bgzf/bgzip? f)
+    (reader/-&gt;IndexedBGZFInputStream
+     (bgzf/bgzf-input-stream f)
+     (delay (bgzip-index f)))
+    (RandomAccessFile. (cio/as-file f) &quot;r&quot;)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader reader
   [f]
-  (let [f (.getAbsolutePath (cio/file f))]
-    (FASTAReader. (RandomAccessFile. f &quot;r&quot;)
-                  (util/compressor-input-stream f)
-                  (util/as-url f)
-                  (delay (fasta-index (util/as-url f))))))</pre></td></tr><tr><td class="docs"><p>Clones fasta reader sharing persistent objects.</p>
+  (let [url (util/as-url f)]
+    (FASTAReader. (random-accessor url)
+                  (util/compressor-input-stream url)
+                  url
+                  (delay (fasta-index url)))))</pre></td></tr><tr><td class="docs"><p>Clones fasta reader sharing persistent objects.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader clone-reader
   [^FASTAReader rdr]
   (let [url (.url rdr)
-        raf (RandomAccessFile. (cio/as-file url) &quot;r&quot;)
+        r (if (instance? RandomAccessFile (.reader rdr))
+            (RandomAccessFile. (cio/as-file url) &quot;r&quot;)
+            (reader/-&gt;IndexedBGZFInputStream
+             (bgzf/bgzf-input-stream url)
+             (.idx ^IndexedBGZFInputStream (.reader rdr))))
         stream (util/compressor-input-stream url)]
-    (FASTAReader. raf stream url (.index-delay rdr))))</pre></td></tr><tr><td class="docs">
+    (FASTAReader. r stream url (.index-delay rdr))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-headers
   [^FASTAReader rdr]
   (try

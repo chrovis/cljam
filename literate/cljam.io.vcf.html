@@ -2900,7 +2900,9 @@ net.brehaut.ClojureTools = (function (SH) {
   function supports VCF and BCF formats.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^Closeable reader
   [f]
-  (case (io-util/file-type f)
+  (case (try (io-util/file-type f)
+             (catch IllegalArgumentException _
+               (io-util/file-type-from-contents f)))
     :vcf (vcf-reader f)
     :bcf (bcf-reader f)
     (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Returns meta-info section of VCF/BCF file as a map.</p>
@@ -2910,7 +2912,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn header
   [rdr]
   (protocols/header rdr))</pre></td></tr><tr><td class="docs"><p>Reads variants of the VCF/BCF file, returning them as a lazy sequence. rdr
-  must implement cljam.io.protocols/IVariantReader. Can take a option :depth to
+  must implement cljam.io.protocols/IVariantReader. Can take an option :depth to
   specify parsing level, default :deep. &lt;:deep|:vcf|:bcf|:shallow|:raw>
     :deep - Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
     :vcf - VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.

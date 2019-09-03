@@ -2887,19 +2887,26 @@ net.brehaut.ClojureTools = (function (SH) {
   protocols/IVariantWriter
   (write-variants [this variants]
     (write-variants this variants)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const bcf-meta-keys
-  [:fileformat :file-date :source :reference :contig :phasing :info :filter :format :alt :sample :pedigree])
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const default-fileformat &quot;VCFv4.3&quot;)
+(def ^:private ^:const bcf-meta-keys
+  [:fileformat :file-date :source :reference :contig :phasing :info :filter
+   :format :alt :sample :pedigree])
 (def ^:private ^:const meta-info-prefix &quot;##&quot;)
-(def ^:private ^:const header-prefix &quot;#&quot;)</pre></td></tr><tr><td class="docs"><p>Converts meta-info rows to a sequence of strings.</p>
+(def ^:private ^:const header-prefix &quot;#&quot;)
+(def ^:private ^:const type-kws
+  {&quot;String&quot; :str, &quot;Character&quot; :char,
+   &quot;Integer&quot; :int, &quot;Float&quot; :float, &quot;Flag&quot; :flag})
+(def ^:private ^:const default-pass-filter
+  {:id &quot;PASS&quot;, :description &quot;All filters passed&quot;})</pre></td></tr><tr><td class="docs"><p>Converts meta-info rows to a sequence of strings.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta
   [meta-info]
-  (-&gt;&gt;
+  (apply
+   concat
    (for [k bcf-meta-keys :let [v (meta-info k)] :when v]
      (if (sequential? v)
        (for [x v]
          (str meta-info-prefix (vw/stringify-key k) &quot;=&lt;&quot; (vw/stringify-structured-line k x) &quot;&gt;&quot;))
-       [(str meta-info-prefix (vw/stringify-key k) &quot;=&quot; v)]))
-   (apply concat)))</pre></td></tr><tr><td class="docs"><p>Writes BCF file header, meta-info and header row to writer.</p>
+       [(str meta-info-prefix (vw/stringify-key k) &quot;=&quot; v)]))))</pre></td></tr><tr><td class="docs"><p>Writes BCF file header, meta-info and header row to writer.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- write-file-header
   [^BCFWriter w]
   (let [wtr ^DataOutputStream (.writer w)
@@ -2908,12 +2915,26 @@ net.brehaut.ClojureTools = (function (SH) {
                     (concat
                      (stringify-meta (.meta-info w))
                      [(vw/stringify-header (.header w))]))
+                   (str \newline) ;; newline at the end of the header
                    (str (char 0)) ;; NULL-terminated
                    .getBytes)
         hlen (alength hdr-ba)]
     (lsb/write-bytes wtr (byte-array (map byte &quot;BCF\2\2&quot;)))
     (lsb/write-int wtr hlen)
-    (lsb/write-bytes wtr hdr-ba)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.bcf.BCFWriter of f.
+    (lsb/write-bytes wtr hdr-ba)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- index-meta
+  [meta-info]
+  (let [m (update meta-info :filter
+                  (fn [xs]
+                    (let [{[p] true, f false} (group-by #(= &quot;PASS&quot; (:id %)) xs)]
+                      (cons (or p default-pass-filter) f))))
+        fif (-&gt;&gt; [:filter :info :format]
+                 (mapcat #(map vector (repeat %) (% m)))
+                 (map-indexed (fn [i [k v]] [k (assoc v :idx (str i))]))
+                 (reduce (fn [r [k v]] (update r k (fnil conj []) v)) {}))]
+    (-&gt; meta-info
+        (update :contig #(map-indexed (fn [i c] (assoc c :idx (str i))) %))
+        (merge fif))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.bcf.BCFWriter of f.
    Meta-information lines and a header line will be written in this function.
    Should be used inside with-open to ensure the Writer is properly closed. e.g.</p>
 
@@ -2926,28 +2947,23 @@ net.brehaut.ClojureTools = (function (SH) {
   [f meta-info header]
   (let [bos (bgzf/bgzf-output-stream f)
         dos (DataOutputStream. bos)
-        indexed-meta (-&gt; meta-info
-                         (update :contig (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
-                         (update :filter (fn [xs]
-                                           (let [{pass true
-                                                  others false} (group-by #(= &quot;PASS&quot; (:id %)) (:filter meta-info))]
-                                             (concat (when pass (assoc (first pass) :idx &quot;0&quot;))
-                                                     (map-indexed (fn [i m] (assoc m :idx (str (inc i)))) others)))))
-                         (update :info (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs)))
-                         (update :format (fn [xs] (map-indexed (fn [i m] (assoc m :idx (str i))) xs))))
-        w (BCFWriter. (util/as-url f) indexed-meta header dos)]
-    (write-file-header w)
-    w))</pre></td></tr><tr><td class="docs"><p>Returns an integer indicating type of input value.</p>
+        indexed-meta (-&gt;&gt; meta-info
+                          (merge {:fileformat default-fileformat})
+                          index-meta)]
+    (doto (BCFWriter. (util/as-url f) indexed-meta header dos)
+      (write-file-header))))</pre></td></tr><tr><td class="docs"><p>Returns an integer indicating type of input value.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- value-type
-  [v]
+  ^long [v]
   (cond
     (nil? v) 1
     (keyword? v) 1
     (float? v) 5
     (char? v) 7
-    (&lt;= Byte/MIN_VALUE v Byte/MAX_VALUE) 1
-    (&lt;= Short/MIN_VALUE v Short/MAX_VALUE) 2
-    (&lt;= Integer/MIN_VALUE v Integer/MAX_VALUE) 3))</pre></td></tr><tr><td class="docs">
+    ;; 0x80-0x87, 0x8000-0x8007 and 0x80000000-0x80000007
+    ;; are reserved for future use in the BCF2 spec.
+    (&lt;= (+ Byte/MIN_VALUE 8) v Byte/MAX_VALUE) 1
+    (&lt;= (+ Short/MIN_VALUE 8) v Short/MAX_VALUE) 2
+    (&lt;= (+ Integer/MIN_VALUE 8) v Integer/MAX_VALUE) 3))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const int8-special-map
   {nil 0x80 :eov 0x81 :exists 1})
 (def ^:private ^:const int16-special-map
@@ -2955,96 +2971,112 @@ net.brehaut.ClojureTools = (function (SH) {
 (def ^:private ^:const int32-special-map
   {nil 0x80000000 :eov 0x80000001 :exists 1})
 (def ^:private ^:const float32-special-map
-  {nil (Float/intBitsToFloat 0x7F800001) :eov (Float/intBitsToFloat 0x7F800002) :exists 1})</pre></td></tr><tr><td class="docs"><p>Encodes given value and returns as a byte-array.
-   Allowed input types are integer, float, character, and homogeneous sequence of them. String is also supported.</p>
+  {nil 0x7F800001 :eov 0x7F800002 :exists 1})</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- encode-typed-value
-  ([v]
+  (^bytes [element-type v]
    (if (= v :exists)
      (byte-array [0x00])
-     (encode-typed-value [v] 1)))
-  ([[v :as vs] n-sample]
-   (let [total-len (apply max 0 (map #(if (or (sequential? %) (string? %)) (count %) 1) vs))
-         type-id (long (cond (string? v) 7 (sequential? v) (apply max 1 (map value-type v)) :else (value-type v)))
-         type-byte (unchecked-byte (bit-or (bit-shift-left (min 15 total-len) 4) type-id))
-         bb (ByteBuffer/allocate (+ (* n-sample total-len (case type-id 1 1 2 2 3 4 5 4 7 1))
-                                    (if (&lt;= 15 total-len) (case (int (value-type total-len)) 1 3 2 4 3 6) 1)))]
+     (encode-typed-value element-type [v] 1)))
+  (^bytes [element-type vs ^long n-sample]
+   (let [str? (or (= element-type :str) (= element-type :char))
+         vs (map (fn [v]
+                   (let [v (if (sequential? v) v [v])]
+                     (if str? (cstr/join \, (map #(or % &quot;.&quot;) v)) v))) vs)
+         max-len (long (apply max 0 (map count vs)))
+         vs (map
+             (fn [v]
+               (let [l (max 1 (count v))]
+                 (if (&lt; l max-len)
+                   (if str?
+                     (apply str v (repeat (- max-len l) (char 0)))
+                     (concat
+                      (or (seq v) [nil])
+                      (repeat (- max-len l) :eov)))
+                   v))) vs)
+         type-id (case element-type
+                   (:str :char) 7
+                   :float 5
+                   (long (apply max 1 (mapcat (partial map value-type) vs))))
+         type-byte (bit-or (bit-shift-left (min 15 max-len) 4) type-id)
+         len-bytes (when (&lt;= 15 max-len)
+                     (encode-typed-value :int max-len))
+         n-bytes (+ (* n-sample max-len (case type-id 1 1 2 2 3 4 5 4 7 1))
+                    1 (if len-bytes (alength ^bytes len-bytes) 0))
+         bb (ByteBuffer/allocate n-bytes)]
      (.order bb ByteOrder/LITTLE_ENDIAN)
-     (.put bb type-byte)
-     (when (&lt;= 15 total-len)
-       (.put bb ^bytes (encode-typed-value total-len)))
-     (doseq [x vs
-             b (if (or (sequential? x) (string? x)) x [x])]
+     (.put bb (unchecked-byte type-byte))
+     (when len-bytes
+       (.put bb ^bytes len-bytes))
+     (doseq [v vs
+             b v]
        (case type-id
          1 (.put bb (unchecked-byte (get int8-special-map b b)))
          2 (.putShort bb (unchecked-short (get int16-special-map b b)))
          3 (.putInt bb (unchecked-int (get int32-special-map b b)))
-         5 (.putFloat bb (float (get float32-special-map b b)))
-         7 (.put bb (byte b))))
-     (.array bb))))</pre></td></tr><tr><td class="docs"><p>Encodes key-value pairs and returns as a byte-array.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- encode-typed-kvs
-  [kvs]
-  (let [bas (-&gt;&gt; kvs
-                 (mapcat
-                  (fn [[k v]]
-                    [(encode-typed-value k)
-                     (encode-typed-value v)])))
-        bb (ByteBuffer/allocate (reduce + (map alength bas)))]
-    (doseq [ba bas]
-      (.put bb ^bytes ba))
+         5 (.putInt bb (unchecked-int (or (get float32-special-map b)
+                                          (Float/floatToRawIntBits b))))
+         7 (.put bb (byte (get {nil 0 :eov 0} b b)))))
+     (.array bb))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- concat-bytes
+  ^bytes [xs]
+  (let [l (long (transduce (map alength) + xs))
+        bb (ByteBuffer/allocate l)]
+    (doseq [x xs]
+      (.put bb ^bytes x))
     (.array bb)))</pre></td></tr><tr><td class="docs"><p>Encodes shared part of a variant and returns as a byte buffer.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- encode-variant-shared
-  [v]
-  (let [chrom-id (:chr v)
-        pos (dec (:pos v))
-        rlen (:ref-length v)
-        qual (if-let [qual-val (:qual v)] qual-val (byte-array [(float32-special-map nil)]))
-        n-allele (inc (count (:alt v)))
-        n-info (count (:info v))
+  ^ByteBuffer [{:keys [chr pos id ref-length alt qual info n-sample]
+                ref-bases :ref filters :filter formats :format}]
+  (let [chrom-id (unchecked-int chr)
+        pos (unchecked-int (dec ^long pos))
+        rlen (unchecked-int ref-length)
+        qual (unchecked-int (if qual
+                              (Float/floatToRawIntBits qual)
+                              (float32-special-map nil)))
+        n-allele (inc (count alt))
+        n-info (count info)
         n-allele-info (bit-or (bit-shift-left n-allele 16) n-info)
-        n-fmt (count (:format v))
-        n-sample (:n-sample v)
-        n-fmt-sample (bit-or (bit-shift-left n-fmt 24) n-sample)
-        id (if-let [id-str (:id v)] (encode-typed-value id-str) (byte-array [0x07]))
-        refseq ^bytes (encode-typed-value (:ref v))
-        altseq (byte-array (mapcat encode-typed-value (:alt v)))
-        flter ^bytes (encode-typed-value (:filter v))
-        info ^bytes (encode-typed-kvs (:info v))
-        l-shared (+ 4 4 4 4 4 4
-                    (alength ^bytes id)
-                    (alength refseq)
-                    (alength altseq)
-                    (alength flter)
-                    (alength info))]
+        n-fmt (count formats)
+        n-fmt-sample (bit-or (bit-shift-left n-fmt 24) ^long n-sample)
+        id (if id (encode-typed-value :str id) (byte-array [0x07]))
+        refseq ^bytes (encode-typed-value :str ref-bases)
+        altseq (concat-bytes (map (partial encode-typed-value :str) alt))
+        filters (if-let [f (seq filters)]
+                  (encode-typed-value :int f)
+                  (byte-array [0x00]))
+        info (if (pos? n-info)
+               (-&gt;&gt; info
+                    (mapcat
+                     (fn [[k t v]]
+                       [(encode-typed-value :int k)
+                        (encode-typed-value t v)]))
+                    concat-bytes)
+               (byte-array 0))
+        l-shared (+ 24
+                    (alength id) (alength refseq) (alength altseq)
+                    (alength filters) (alength info))]
     (doto (ByteBuffer/allocate l-shared)
       (.order ByteOrder/LITTLE_ENDIAN)
       (.putInt chrom-id)
       (.putInt pos)
       (.putInt rlen)
-      (.putFloat qual)
+      (.putInt qual)
       (.putInt n-allele-info)
       (.putInt n-fmt-sample)
-      (.put ^bytes id)
+      (.put id)
       (.put refseq)
       (.put altseq)
-      (.put flter)
-      (.put info))))</pre></td></tr><tr><td class="docs"><p>Encodes individual part of a variant and returns as a byte buffer</p>
+      (.put filters)
+      (.put info))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- encode-variant-indv
-  [v]
-  (let [n-sample (:n-sample v)
-        bas (-&gt;&gt; (:genotype v)
-                 (mapcat
-                  (fn [[k values]]
-                    (let [vs (map (fn [i] (nth values i nil)) (range n-sample))
-                          new-vs (if (some sequential? vs)
-                                   (let [max-len (apply max (map count vs))]
-                                     (map (fn [i] (or i (concat (repeat (dec max-len) nil) [:eov]))) vs))
-                                   vs)]
-                      [(encode-typed-value k)
-                       (encode-typed-value new-vs n-sample)]))))
-        bb (ByteBuffer/allocate (reduce + (map alength bas)))]
-    (doseq [ba bas]
-      (.put bb ^bytes ba))
-    bb))</pre></td></tr><tr><td class="docs"><p>Encodes a BCF-style variant map and write it to writer.</p>
+  [{:keys [^long n-sample genotype]}]
+  (-&gt;&gt; genotype
+       (mapcat
+        (fn [[k t vs]]
+          [(encode-typed-value :int k)
+           (encode-typed-value t vs n-sample)]))
+       concat-bytes
+       (ByteBuffer/wrap)))</pre></td></tr><tr><td class="docs"><p>Encodes a BCF-style variant map and write it to writer.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- write-variant
   [w v]
   (let [shared-ba (.array ^ByteBuffer (encode-variant-shared v))
@@ -3052,28 +3084,38 @@ net.brehaut.ClojureTools = (function (SH) {
     (lsb/write-uint w (alength shared-ba))
     (lsb/write-uint w (alength indv-ba))
     (lsb/write-bytes w shared-ba)
-    (lsb/write-bytes w indv-ba)))</pre></td></tr><tr><td class="docs"><p>Like update, but only affects if k is contained in m.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- update-if-contained
-  [m k f &amp; args]
-  (if (contains? m k)
-    (apply update m k f args)
-    m))</pre></td></tr><tr><td class="docs"><p>Converts a parsed variant map to BCF-style map.</p>
+    (lsb/write-bytes w indv-ba)))</pre></td></tr><tr><td class="docs"><p>Converts a parsed variant map to BCF-style map.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- parsed-variant-&gt;bcf-map
   [[fmt-kw &amp; indiv-kws :as kws] contigs filters formats info variant]
-  (let [fmt (variant fmt-kw)
-        indivs (map (fn [kw] (update-if-contained (variant kw) :GT vcf-util/genotype-&gt;ints)) indiv-kws)
-        genotype (into {} (map (fn [k] [(:idx (formats k)) (map (fn [indiv] (get indiv k)) indivs)])) fmt)]
+  (let [fmts (keep (fn [f] (when-let [m (formats f)] [f m])) (variant fmt-kw))
+        genotype (map
+                  (fn [[k {:keys [idx type-kw]}]]
+                    (-&gt;&gt; indiv-kws
+                         (map #(cond-&gt; (get-in variant [% k] nil)
+                                 (= k :GT) vcf-util/genotype-&gt;ints))
+                         (vector idx type-kw)))
+                  fmts)]
     (-&gt; (apply dissoc variant kws)
-        (assoc :n-sample (count indivs))
-        (assoc :ref-length (count (:ref variant)))
+        (assoc :n-sample (count indiv-kws)
+               :ref-length (if-let [e (get-in variant [:info :END])]
+                             (inc (- e (:pos variant)))
+                             (count (:ref variant)))
+               :format (map (comp :idx second) fmts)
+               :genotype genotype)
         (update :chr (comp :idx contigs))
         (update :filter (fn [f] (map (comp :idx filters) f)))
-        (update :info (fn [i] (into {} (map (fn [[k v]] [(:idx (info k)) v])) i)))
-        (assoc :format (map (comp :idx formats) fmt))
-        (assoc :genotype genotype))))</pre></td></tr><tr><td class="docs"><p>Creates a map for searching meta-info with (f id).</p>
+        (update :info (fn [i]
+                        (keep (fn [[k v]]
+                                (when-let [{:keys [idx type-kw]} (info k)]
+                                  [idx type-kw v])) i))))))</pre></td></tr><tr><td class="docs"><p>Creates a map for searching meta-info with (f id).</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- meta-&gt;map
   [meta f]
-  (into {} (map (fn [m] [(f (:id m)) (update m :idx #(Integer/parseInt %))])) meta))</pre></td></tr><tr><td class="docs"><p>Writes data lines on writer, returning nil. variants must be a sequence of parsed or VCF-style maps. e.g.</p>
+  (into {} (map
+            (fn [{:keys [id] t :type :as m}]
+              [(f id) (cond-&gt; (update m :idx #(Integer/parseInt %))
+                        t (assoc :type-kw (type-kws t)))])) meta))</pre></td></tr><tr><td class="docs"><p>Writes data lines on writer. Returns nil. <code>variants</code> must be a sequence of
+  parsed or VCF-style maps.
+  e.g.</p>
 
 <pre><code>(write-variants [{:chr "19", :pos 111, :id nil, :ref "A",
                   :alt ["C"], :qual 9.6, :filter [:PASS], :info {:DP 4},
@@ -3083,12 +3125,19 @@ net.brehaut.ClojureTools = (function (SH) {
   [^BCFWriter w variants]
   (let [kws (mapv keyword (drop 8 (.header w)))
         contigs (meta-&gt;map (:contig (.meta-info w)) identity)
-        filters (assoc (meta-&gt;map (:filter (.meta-info w)) keyword) :PASS {:idx 0})
-        formats (meta-&gt;map (:format (.meta-info w)) keyword)
+        filters (assoc (meta-&gt;map (:filter (.meta-info w)) keyword)
+                       :PASS {:idx 0})
+        formats (-&gt; (.meta-info w)
+                    :format
+                    (meta-&gt;map keyword)
+                    (assoc-in [:GT :type-kw] :int)
+                    (assoc-in [:GT :number] nil))
         info (meta-&gt;map (:info (.meta-info w)) keyword)
         parse-variant (vcf-util/variant-parser (.meta-info w) (.header w))]
     (doseq [v variants]
-      (-&gt;&gt; (if (some string? ((apply juxt :filter :info kws) v)) (parse-variant v) v)
+      (-&gt;&gt; (if (some string? ((apply juxt :filter :info kws) v))
+             (parse-variant v)
+             v)
            (parsed-variant-&gt;bcf-map kws contigs filters formats info)
            (write-variant (.writer w))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();

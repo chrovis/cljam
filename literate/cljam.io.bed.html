@@ -2922,7 +2922,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- long-list-&gt;str
   [xs]
   (when (seq xs)
-    (cstr/join &quot;,&quot; xs)))</pre></td></tr><tr><td class="docs"><p>Same as update if map 'm' contains key 'k'. Otherwise returns the original map 'm'.</p>
+    (cstr/join &quot;,&quot; xs)))</pre></td></tr><tr><td class="docs"><p>Same as update if map 'm' contains key 'k'. Otherwise, returns the original
+  map 'm'.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- update-some
   [m k f &amp; args]
   (if (get m k)

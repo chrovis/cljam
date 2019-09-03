@@ -2931,7 +2931,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (if (= (seq magic) (map byte &quot;BCF\2\2&quot;))
       (let [hlen (lsb/read-int rdr)
             header-buf (lsb/read-bytes rdr hlen)]
-        (if (= (aget ^bytes header-buf (dec hlen)) 0) ;; NULL-terminated
+        (if (zero? (aget ^bytes header-buf (dec hlen))) ;; NULL-terminated
           (let [{:keys [header meta]} (-&gt;&gt; (String. ^bytes header-buf 0 (int (dec hlen)))
                                            cstr/split-lines
                                            parse-meta-and-header)]
@@ -2954,7 +2954,14 @@ net.brehaut.ClojureTools = (function (SH) {
         (case (bit-and 0xFFFFFFFF i) 0x80000000 nil 0x80000001 :eov i))
     5 (let [i (lsb/read-float r)]
         (case (Float/floatToRawIntBits i) 0x7F800001 nil 0x7F800002 :eov i))
-    7 (lsb/read-byte r)))</pre></td></tr><tr><td class="docs"><p>Reads typed value from BCF file. n-sample is a number of values repeated
+    7 (lsb/read-byte r)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- bytes-&gt;strs
+  [ba]
+  (map (fn [^String s]
+         (let [z (.indexOf s (int 0))
+               s' (cond-&gt; s (not (neg? z)) (subs 0 z))]
+           (when-not (= s' &quot;.&quot;) (not-empty s'))))
+       (cstr/split (String. (byte-array ba)) #&quot;,&quot;)))</pre></td></tr><tr><td class="docs"><p>Reads typed value from BCF file. n-sample is a number of values repeated
   after type specifier byte.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-typed-value
   ([rdr]
@@ -2962,16 +2969,16 @@ net.brehaut.ClojureTools = (function (SH) {
   ([rdr n-sample]
    (let [type-byte (lsb/read-byte rdr)
          len (unsigned-bit-shift-right (bit-and 0xF0 type-byte) 4)
-         total-len (if (= len 15) (read-typed-value rdr) len)
+         total-len (if (= len 15) (first (read-typed-value rdr)) len)
          type-id (bit-and 0x0F type-byte)]
-     (if (= type-id 0)
-       (repeat n-sample :exists)
+     (if (zero? type-id)
+       (repeat n-sample nil)
        (let [results (-&gt;&gt; #(read-typed-atomic-value rdr type-id)
                           (repeatedly (* n-sample total-len))
                           (partition total-len)
                           doall)]
          (if (= type-id 7)
-           (map #(String. (byte-array %)) results)
+           (map bytes-&gt;strs results)
            (map (fn [xs] (take-while #(not= % :eov) xs)) results)))))))</pre></td></tr><tr><td class="docs"><p>Reads a key-value pair.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-typed-kv
   ([rdr]
@@ -3021,47 +3028,43 @@ net.brehaut.ClojureTools = (function (SH) {
      :ref-length rlen
      :qual (when-not (= (Float/floatToRawIntBits qual) 0x7F800001) qual)
      :id id
-     :ref refseq
-     :alt (if (empty? altseq) nil altseq)
+     :ref (first refseq)
+     :alt (seq (map first altseq))
      :filter flter
      :info info
      :genotype genotype
-     :n-sample n-sample}))</pre></td></tr><tr><td class="docs"><p>Converts a BCF-style variant map to parsed variant using meta-info.</p>
+     :n-sample n-sample}))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- fixup-val [{kw :kw t :type n :number} v]
+  (cond-&gt;&gt; v
+    (= kw :GT) vcf-util/ints-&gt;genotype
+    (= t &quot;Flag&quot;) ((constantly :exists))
+    (= t &quot;Character&quot;) (map first)
+    (and (= n 1) (not= kw :GT)) first))</pre></td></tr><tr><td class="docs"><p>Converts a BCF-style variant map to parsed variant using meta-info.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- bcf-map-&gt;parsed-variant
-  [contigs filters formats info [fmt-kw &amp; indiv-kws] variant]
-  (let [gts (:genotype variant)
-        indiv (map
-               (fn [i] (into
-                        {}
-                        (keep
-                         (fn [[k vs]]
-                           (let [tag (formats k)
-                                 v (nth vs i)]
-                             (when-not (or (nil? v) (= [nil] v))
-                               [(:kw tag)
-                                (cond
-                                  (= (:kw tag) :GT) (vcf-util/ints-&gt;genotype v)
-                                  (and (= (:number tag) 1) (sequential? v)) (first v)
-                                  :else v)])))) gts))
-               (range (:n-sample variant)))
-        v (-&gt; (dissoc variant :genotype)
-              (dissoc :ref-length)
-              (dissoc :n-sample)
+  [contigs filters formats info
+   [fmt-kw &amp; indiv-kws] {:keys [genotype n-sample] :as variant}]
+  (let [-&gt;gt-kv (fn [i [k vs]]
+                  (let [{:keys [kw] :as f} (formats k)
+                        v (nth vs i nil)]
+                    [kw (when-not (or (nil? v) (= [nil] v))
+                          (fixup-val f v))]))
+        -&gt;info-kv (fn [[k v]]
+                    (let [{:keys [kw] :as i} (info k)]
+                      [kw (fixup-val i v)]))
+        indiv (map (fn [i] (not-empty (into {} (map #(-&gt;gt-kv i %)) genotype)))
+                   (range n-sample))
+        v (-&gt; (dissoc variant :genotype :ref-length :n-sample)
               (update :chr (comp :id contigs))
-              (update :filter #(map (comp :kw filters) %))
-              (update :info #(into {} (map (fn [[k v]] [(:kw (info k))
-                                                        (if (and (= (:number (info k)) 1) (sequential? v))
-                                                          (first v)
-                                                          v)])) %)))]
+              (update :filter #(not-empty (map (comp :kw filters) %)))
+              (update :info #(not-empty (into {} (map -&gt;info-kv) %))))]
     (cond-&gt; v
-      fmt-kw (assoc fmt-kw (map (comp :kw formats first) gts))
+      fmt-kw (assoc fmt-kw (not-empty (map (comp :kw formats first) genotype)))
       indiv-kws (merge (zipmap indiv-kws indiv)))))</pre></td></tr><tr><td class="docs"><p>Reads data from BCF file and returns them as a lazy-sequence of maps.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-data-lines
   [^BGZFInputStream rdr read-fn]
   (when (pos? (.available rdr))
     (let [data (read-fn rdr)]
-      (cons data
-            (lazy-seq (read-data-lines rdr read-fn))))))</pre></td></tr><tr><td class="docs"><p>Creates a map for searching meta-info with indices.</p>
+      (cons data (lazy-seq (read-data-lines rdr read-fn))))))</pre></td></tr><tr><td class="docs"><p>Creates a map for searching meta-info with indices.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- meta-&gt;map
   [meta]
   (into {} (map (fn [m] [(Integer/parseInt (:idx m)) (assoc m :kw (keyword (:id m)))])) meta))</pre></td></tr><tr><td class="docs"><p>Returns meta-information of the BCF from rdr as a map.</p>
@@ -3073,7 +3076,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (update :info (fn [xs] (map (fn [m] (dissoc m :idx)) xs)))
       (update :format (fn [xs] (map (fn [m] (dissoc m :idx)) xs)))))</pre></td></tr><tr><td class="docs"><p>Returns data lines of the BCF from rdr as a lazy sequence of maps.
    rdr must implement cljam.bcf.BCFReader.
-   Can take a option :depth to specify parsing level. Default is :deep.</p>
+   Can take an option :depth to specify parsing level. Default is :deep.</p>
 
 <pre><code> :deep    Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
  :vcf     VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.

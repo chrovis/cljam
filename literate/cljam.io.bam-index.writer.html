@@ -2888,22 +2888,22 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn pos-&gt;lidx-offset
   [^long pos]
-  (bit-shift-right (if (&lt;= pos 0) 0 (dec pos)) linear-index-shift))</pre></td></tr><tr><td class="docs"><h3>Intermidate data definitions</h3>
+  (bit-shift-right (if (&lt;= pos 0) 0 (dec pos)) linear-index-shift))</pre></td></tr><tr><td class="docs"><h3>Intermediate data definitions</h3>
 
 <p>Use record for performance.
 Record is faster than map for retrieving elements.</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord MetaData [^long first-offset ^long last-offset ^long aligned-alns ^long unaligned-alns])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord IndexStatus [^MetaData meta-data bin-index linear-index])</pre></td></tr><tr><td class="docs"><h3>Initializing</h3>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Returns initialized index status. This data structure is intermidate. Must
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Returns initialized index status. This data structure is intermediate. Must
   be passed <code>finalize-index</code> in the final stage.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- init-index-status
   []
   (IndexStatus. (MetaData. -1 0 0 0)
-                ;; Intermidiate bin-index -&gt; {bin1 chunks1, bin2 chunks2, ...}
+                ;; Intermediate bin-index -&gt; {bin1 chunks1, bin2 chunks2, ...}
                 ;; e.g. {4681 [{:beg 97, :end 555} ...], 37450 [...] ...}
                 {}
-                ;; Intermidate linear-index -&gt; {pos1 value1, pos2 value2, ...}
+                ;; Intermediate linear-index -&gt; {pos1 value1, pos2 value2, ...}
                 ;; e.g. {5415 4474732776, 14827 5955073327, ...}
                 {}))</pre></td></tr><tr><td class="docs"><h3>Updating</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
@@ -2963,7 +2963,7 @@ Record is faster than map for retrieving elements.</p>
                 (update-bin-index (.bin-index index-status) aln)
                 (update-linear-index (.linear-index index-status) aln)))</pre></td></tr><tr><td class="docs"><h3>Making index</h3>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Calculates index from the references and alignments, returning it as a map.
-  Returned index is still intermidate. It must be passed to finalize function
+  Returned index is still intermediate. It must be passed to finalize function
   in the final stage.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- make-index*
   [alns]
@@ -3015,7 +3015,7 @@ Record is faster than map for retrieving elements.</p>
   (merge-with merge-chunks bin-map1 bin-map2))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- merge-linear-index
   [lidx1 lidx2]
-  (merge-with min lidx1 lidx2))</pre></td></tr><tr><td class="docs"><p>Merges two intermidate indices, returning the merged intermidate index.</p>
+  (merge-with min lidx1 lidx2))</pre></td></tr><tr><td class="docs"><p>Merges two intermediate indices, returning the merged intermediate index.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- merge-index
   [idx1 idx2]
   (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
@@ -3051,7 +3051,7 @@ Record is faster than map for retrieving elements.</p>
        (seq)
        (sort-by first)
        (complement-linear-index)
-       (map second)))</pre></td></tr><tr><td class="docs"><p>Converts intermidate BAM index data structure into final one. Must be called
+       (map second)))</pre></td></tr><tr><td class="docs"><p>Converts intermediate BAM index data structure into final one. Must be called
   in the final stage.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- finalize-index
   [^long nrefs index]

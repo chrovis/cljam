@@ -1,8 +1,10 @@
 (ns cljam.io.bcf.writer-test
   (:require [clojure.test :refer :all]
+            [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [cljam.io.bcf.writer :as bcf-writer]
-            [cljam.io.util.bgzf :as bgzf])
+            [cljam.io.util.bgzf :as bgzf]
+            [cljam.test-common :refer :all])
   (:import [java.nio ByteBuffer ByteOrder]
            [java.io ByteArrayOutputStream File]))
 
@@ -238,12 +240,12 @@
          vec)))
 
 (defn- write-variants&read-blocks [meta-info header variants]
-  (let [tmp (File/createTempFile "write-variants" ".bcf")]
-    (with-open [w (bcf-writer/writer tmp meta-info header)]
-      (bcf-writer/write-variants w variants))
-    (let [blocks (read-variant-blocks! tmp)]
-      (.delete tmp)
-      blocks)))
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (let [tmp (cio/file temp-dir "write-variants.bcf")]
+      (with-open [w (bcf-writer/writer tmp meta-info header)]
+        (bcf-writer/write-variants w variants))
+      (read-variant-blocks! tmp))))
 
 (deftest write-variants
   (let [meta-info {:fileformat "VCFv4.3"

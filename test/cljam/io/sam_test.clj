@@ -3,8 +3,7 @@
             [clojure.java.io :as cio]
             [cljam.test-common :refer :all]
             [cljam.io.sam :as sam]
-            [cljam.io.protocols :as protocols]
-            [cljam.util :as util]))
+            [cljam.io.protocols :as protocols]))
 
 (def temp-sam-file (str temp-dir "/test.sam"))
 (def temp-bam-file (str temp-dir "/test.bam"))
@@ -260,15 +259,21 @@
 
 (deftest writer-test
   (testing "sam"
-    (with-open [wtr (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.sam")))]
-      (is (instance? cljam.io.sam.writer.SAMWriter wtr))))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [wtr (sam/writer (.getAbsolutePath (cio/file temp-dir "temp.sam")))]
+        (is (instance? cljam.io.sam.writer.SAMWriter wtr)))))
   (testing "bam"
-    (with-open [wtr (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bam")))]
-      (is (instance? cljam.io.bam.writer.BAMWriter wtr))))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [wtr (sam/writer (.getAbsolutePath (cio/file temp-dir "temp.bam")))]
+        (is (instance? cljam.io.bam.writer.BAMWriter wtr)))))
   (testing "throws Exception"
-    (are [f] (thrown? Exception (sam/writer (.getAbsolutePath (cio/file util/temp-dir f))))
-      "temp.baam"
-      "temp.bai")))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (are [f] (thrown? Exception (sam/writer (.getAbsolutePath (cio/file temp-dir f))))
+        "temp.baam"
+        "temp.bai"))))
 
 (def test-options
   [{:Xa {:type "A", :value \p}}

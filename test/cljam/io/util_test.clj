@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
             [cljam.test-common :refer :all]
-            [cljam.util :as util]
             [cljam.io.bed :as bed]
             [cljam.io.fastq :as fastq]
             [cljam.io.sam :as sam]
@@ -303,137 +302,155 @@
 
 (deftest writer-predicates-test
   (testing "sam writer"
-    (with-open [r (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.sam")))]
-      (are [?pred ?expected] (= (?pred r) ?expected)
-        io-util/alignment-writer? true
-        io-util/sam-writer? true
-        io-util/bam-writer? false
-        io-util/sequence-writer? false
-        io-util/fasta-writer? false
-        io-util/twobit-writer? false
-        io-util/variant-writer? false
-        io-util/vcf-writer? false
-        io-util/bcf-writer? false
-        io-util/fastq-writer? false
-        io-util/bed-writer? false
-        io-util/wig-writer? false)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [r (sam/writer (.getAbsolutePath (cio/file temp-dir "temp.sam")))]
+        (are [?pred ?expected] (= (?pred r) ?expected)
+          io-util/alignment-writer? true
+          io-util/sam-writer? true
+          io-util/bam-writer? false
+          io-util/sequence-writer? false
+          io-util/fasta-writer? false
+          io-util/twobit-writer? false
+          io-util/variant-writer? false
+          io-util/vcf-writer? false
+          io-util/bcf-writer? false
+          io-util/fastq-writer? false
+          io-util/bed-writer? false
+          io-util/wig-writer? false))))
   (testing "bam writer"
-    (with-open [r (sam/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bam")))]
-      (are [?pred ?expected] (= (?pred r) ?expected)
-        io-util/alignment-writer? true
-        io-util/sam-writer? false
-        io-util/bam-writer? true
-        io-util/sequence-writer? false
-        io-util/fasta-writer? false
-        io-util/twobit-writer? false
-        io-util/variant-writer? false
-        io-util/vcf-writer? false
-        io-util/bcf-writer? false
-        io-util/fastq-writer? false
-        io-util/bed-writer? false
-        io-util/wig-writer? false)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [r (sam/writer (.getAbsolutePath (cio/file temp-dir "temp.bam")))]
+        (are [?pred ?expected] (= (?pred r) ?expected)
+          io-util/alignment-writer? true
+          io-util/sam-writer? false
+          io-util/bam-writer? true
+          io-util/sequence-writer? false
+          io-util/fasta-writer? false
+          io-util/twobit-writer? false
+          io-util/variant-writer? false
+          io-util/vcf-writer? false
+          io-util/bcf-writer? false
+          io-util/fastq-writer? false
+          io-util/bed-writer? false
+          io-util/wig-writer? false))))
   (testing "fasta writer"
-    (with-open [r (cseq/writer (.getAbsolutePath (cio/file util/temp-dir "temp.fa")))]
-      (are [?pred ?expected] (= (?pred r) ?expected)
-        io-util/alignment-writer? false
-        io-util/sam-writer? false
-        io-util/bam-writer? false
-        io-util/sequence-writer? true
-        io-util/fasta-writer? true
-        io-util/twobit-writer? false
-        io-util/variant-writer? false
-        io-util/vcf-writer? false
-        io-util/bcf-writer? false
-        io-util/fastq-writer? false
-        io-util/bed-writer? false
-        io-util/wig-writer? false)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [r (cseq/writer (.getAbsolutePath (cio/file temp-dir "temp.fa")))]
+        (are [?pred ?expected] (= (?pred r) ?expected)
+          io-util/alignment-writer? false
+          io-util/sam-writer? false
+          io-util/bam-writer? false
+          io-util/sequence-writer? true
+          io-util/fasta-writer? true
+          io-util/twobit-writer? false
+          io-util/variant-writer? false
+          io-util/vcf-writer? false
+          io-util/bcf-writer? false
+          io-util/fastq-writer? false
+          io-util/bed-writer? false
+          io-util/wig-writer? false))))
   (testing "twobit writer"
-    (with-open [r (cseq/writer (.getAbsolutePath (cio/file util/temp-dir "temp.2bit")))]
-      (are [?pred ?expected] (= (?pred r) ?expected)
-        io-util/alignment-writer? false
-        io-util/sam-writer? false
-        io-util/bam-writer? false
-        io-util/sequence-writer? true
-        io-util/fasta-writer? false
-        io-util/twobit-writer? true
-        io-util/variant-writer? false
-        io-util/vcf-writer? false
-        io-util/bcf-writer? false
-        io-util/fastq-writer? false
-        io-util/bed-writer? false
-        io-util/wig-writer? false)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [r (cseq/writer (.getAbsolutePath (cio/file temp-dir "temp.2bit")))]
+        (are [?pred ?expected] (= (?pred r) ?expected)
+          io-util/alignment-writer? false
+          io-util/sam-writer? false
+          io-util/bam-writer? false
+          io-util/sequence-writer? true
+          io-util/fasta-writer? false
+          io-util/twobit-writer? true
+          io-util/variant-writer? false
+          io-util/vcf-writer? false
+          io-util/bcf-writer? false
+          io-util/fastq-writer? false
+          io-util/bed-writer? false
+          io-util/wig-writer? false))))
   (testing "vcf writer"
-    (with-open [r (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.vcf")) {} [])]
-      (are [?pred ?expected] (= (?pred r) ?expected)
-        io-util/alignment-writer? false
-        io-util/sam-writer? false
-        io-util/bam-writer? false
-        io-util/sequence-writer? false
-        io-util/fasta-writer? false
-        io-util/twobit-writer? false
-        io-util/variant-writer?  true
-        io-util/vcf-writer? true
-        io-util/bcf-writer? false
-        io-util/fastq-writer? false
-        io-util/bed-writer? false
-        io-util/wig-writer? false)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [r (vcf/writer (.getAbsolutePath (cio/file temp-dir "temp.vcf")) {} [])]
+        (are [?pred ?expected] (= (?pred r) ?expected)
+          io-util/alignment-writer? false
+          io-util/sam-writer? false
+          io-util/bam-writer? false
+          io-util/sequence-writer? false
+          io-util/fasta-writer? false
+          io-util/twobit-writer? false
+          io-util/variant-writer?  true
+          io-util/vcf-writer? true
+          io-util/bcf-writer? false
+          io-util/fastq-writer? false
+          io-util/bed-writer? false
+          io-util/wig-writer? false))))
   (testing "bcf writer"
-    (with-open [r (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bcf")) {} [])]
-      (are [?pred ?expected] (= (?pred r) ?expected)
-        io-util/alignment-writer? false
-        io-util/sam-writer? false
-        io-util/bam-writer? false
-        io-util/sequence-writer? false
-        io-util/fasta-writer? false
-        io-util/twobit-writer? false
-        io-util/variant-writer?  true
-        io-util/vcf-writer? false
-        io-util/bcf-writer? true
-        io-util/fastq-writer? false
-        io-util/bed-writer? false
-        io-util/wig-writer? false)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [r (vcf/writer (.getAbsolutePath (cio/file temp-dir "temp.bcf")) {} [])]
+        (are [?pred ?expected] (= (?pred r) ?expected)
+          io-util/alignment-writer? false
+          io-util/sam-writer? false
+          io-util/bam-writer? false
+          io-util/sequence-writer? false
+          io-util/fasta-writer? false
+          io-util/twobit-writer? false
+          io-util/variant-writer?  true
+          io-util/vcf-writer? false
+          io-util/bcf-writer? true
+          io-util/fastq-writer? false
+          io-util/bed-writer? false
+          io-util/wig-writer? false))))
   (testing "fastq writer"
-    (with-open [r (fastq/writer (.getAbsolutePath (cio/file util/temp-dir "temp.fq")))]
-      (are [?pred ?expected] (= (?pred r) ?expected)
-        io-util/alignment-writer? false
-        io-util/sam-writer? false
-        io-util/bam-writer? false
-        io-util/sequence-writer? false
-        io-util/fasta-writer? false
-        io-util/twobit-writer? false
-        io-util/variant-writer?  false
-        io-util/vcf-writer? false
-        io-util/bcf-writer? false
-        io-util/fastq-writer? true
-        io-util/bed-writer? false
-        io-util/wig-writer? false)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [r (fastq/writer (.getAbsolutePath (cio/file temp-dir "temp.fq")))]
+        (are [?pred ?expected] (= (?pred r) ?expected)
+          io-util/alignment-writer? false
+          io-util/sam-writer? false
+          io-util/bam-writer? false
+          io-util/sequence-writer? false
+          io-util/fasta-writer? false
+          io-util/twobit-writer? false
+          io-util/variant-writer?  false
+          io-util/vcf-writer? false
+          io-util/bcf-writer? false
+          io-util/fastq-writer? true
+          io-util/bed-writer? false
+          io-util/wig-writer? false))))
   (testing "bed writer"
-    (with-open [r (bed/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bed")))]
-      (are [?pred ?expected] (= (?pred r) ?expected)
-        io-util/alignment-writer? false
-        io-util/sam-writer? false
-        io-util/bam-writer? false
-        io-util/sequence-writer? false
-        io-util/fasta-writer? false
-        io-util/twobit-writer? false
-        io-util/variant-writer?  false
-        io-util/vcf-writer? false
-        io-util/bcf-writer? false
-        io-util/fastq-writer? false
-        io-util/bed-writer? true
-        io-util/wig-writer? false)))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [r (bed/writer (.getAbsolutePath (cio/file temp-dir "temp.bed")))]
+        (are [?pred ?expected] (= (?pred r) ?expected)
+          io-util/alignment-writer? false
+          io-util/sam-writer? false
+          io-util/bam-writer? false
+          io-util/sequence-writer? false
+          io-util/fasta-writer? false
+          io-util/twobit-writer? false
+          io-util/variant-writer?  false
+          io-util/vcf-writer? false
+          io-util/bcf-writer? false
+          io-util/fastq-writer? false
+          io-util/bed-writer? true
+          io-util/wig-writer? false))))
   (testing "wig writer"
-    (with-open [r (wig/writer (.getAbsolutePath (cio/file util/temp-dir "temp.wig")))]
-      (are [?pred ?expected] (= (?pred r) ?expected)
-        io-util/alignment-writer? false
-        io-util/sam-writer? false
-        io-util/bam-writer? false
-        io-util/sequence-writer? false
-        io-util/fasta-writer? false
-        io-util/twobit-writer? false
-        io-util/variant-writer?  false
-        io-util/vcf-writer? false
-        io-util/bcf-writer? false
-        io-util/fastq-writer? false
-        io-util/bed-writer? false
-        io-util/wig-writer? true))))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [r (wig/writer (.getAbsolutePath (cio/file temp-dir "temp.wig")))]
+        (are [?pred ?expected] (= (?pred r) ?expected)
+          io-util/alignment-writer? false
+          io-util/sam-writer? false
+          io-util/bam-writer? false
+          io-util/sequence-writer? false
+          io-util/fasta-writer? false
+          io-util/twobit-writer? false
+          io-util/variant-writer?  false
+          io-util/vcf-writer? false
+          io-util/bcf-writer? false
+          io-util/fastq-writer? false
+          io-util/bed-writer? false
+          io-util/wig-writer? true)))))

@@ -134,34 +134,27 @@
 ;; Sorter
 ;; ------
 
-(defn- clean-all!
-  "Deletes all files in list."
-  [files]
-  (doseq [f (map cio/file files)
-          :when (.exists ^File f)]
-    (.delete ^File f)))
-
 (defn- gen-cache-filename
   "Generates i-th cache filename."
-  [fmt prefix i]
-  (format "%s/%s_%05d.%s" util/temp-dir prefix i fmt))
+  [fmt temp-dir prefix i]
+  (format "%s/%s_%05d.%s" temp-dir prefix i fmt))
 
 (defn sort!
   "Sorts alignments of rdr by mode and writes them to wtr.
   :coordinate and :queryname are available for mode."
   [rdr wtr {:keys [mode chunk-size cache-fmt] :or {cache-fmt :bam}}]
-  (let [name-fn (->> rdr
-                     protocols/reader-url
-                     util/basename
-                     (partial gen-cache-filename (name cache-fmt)))
-        key-fn ({header/order-coordinate (partial coordinate-key (refmap (sam/read-refs rdr)))
-                 header/order-queryname queryname-key} mode)
-        splitted-files (split* rdr chunk-size name-fn mode #(sort-by-index key-fn %))
-        hdr (header/sorted-by mode (header/update-version (sam/read-header rdr)))]
-    (logging/info (str "Merging from " (count splitted-files) " files..."))
-    (merge* wtr hdr splitted-files mode key-fn)
-    (logging/info "Deleting cache files...")
-    (clean-all! splitted-files)))
+  (util/with-temp-dir [temp-dir "cljam.algo.sorter"]
+    (let [name-fn (->> rdr
+                       protocols/reader-url
+                       util/basename
+                       (partial gen-cache-filename (name cache-fmt) temp-dir))
+          key-fn ({header/order-coordinate (partial coordinate-key (refmap (sam/read-refs rdr)))
+                   header/order-queryname queryname-key} mode)
+          splitted-files (split* rdr chunk-size name-fn mode #(sort-by-index key-fn %))
+          hdr (header/sorted-by mode (header/update-version (sam/read-header rdr)))]
+      (logging/info (str "Merging from " (count splitted-files) " files..."))
+      (merge* wtr hdr splitted-files mode key-fn)
+      (logging/info "Deleting cache files..."))))
 
 (defn sort-by-pos
   "Sorts alignments by chromosomal position."

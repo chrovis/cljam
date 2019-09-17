@@ -40,10 +40,10 @@
 
 (defn- cache-path
   "Create a path to the cache file."
-  [rdr i]
+  [rdr temp-dir i]
   (->> i
        (format "%s_%06d.bam" (util/basename (protocols/reader-url rdr)))
-       (cio/file util/temp-dir)
+       (cio/file temp-dir)
        (.getCanonicalPath)))
 
 (defn- add-level-mt
@@ -54,23 +54,23 @@
     (sam/write-header wtr hdr)
     (sam/write-refs wtr hdr)
     (cp/with-shutdown! [p (cp/threadpool (get-exec-n-threads))]
-      ;; split and compute levels
-      (let [xs (cp/pfor p [[i {:keys [name]}] (map vector (range) (sam/read-refs rdr))]
-                 (let [cache (cache-path rdr i)]
-                   (with-open [r (sam/reader rdr)
-                               w (sam/writer cache)]
-                     (sam/write-header w hdr)
-                     (sam/write-refs w hdr)
-                     (->> {:chr name}
-                          (sam/read-alignments r)
-                          (map (partial add-level! (volatile! [])))
-                          (#(sam/write-alignments w % hdr))))
-                   cache))]
-        ;; merge
-        (doseq [cache xs]
-          (with-open [r (sam/reader cache)]
-            (sam/write-blocks wtr (sam/read-blocks r)))
-          (.delete (cio/file cache)))))))
+      (util/with-temp-dir [temp-dir "cljam.algo.level"]
+        ;; split and compute levels
+        (let [xs (cp/pfor p [[i {:keys [name]}] (map vector (range) (sam/read-refs rdr))]
+                          (let [cache (cache-path rdr temp-dir i)]
+                            (with-open [r (sam/reader rdr)
+                                        w (sam/writer cache)]
+                              (sam/write-header w hdr)
+                              (sam/write-refs w hdr)
+                              (->> {:chr name}
+                                   (sam/read-alignments r)
+                                   (map (partial add-level! (volatile! [])))
+                                   (#(sam/write-alignments w % hdr))))
+                            cache))]
+          ;; merge
+          (doseq [cache xs]
+            (with-open [r (sam/reader cache)]
+              (sam/write-blocks wtr (sam/read-blocks r)))))))))
 
 (defmethod add-level :bam
   [rdr wtr & {:keys [n-threads]

@@ -2,17 +2,56 @@
   "General utilities."
   (:require [clojure.java.io :refer [file] :as cio])
   (:import [java.net MalformedURLException URL]
+           [java.nio.file Files FileVisitor FileVisitResult]
+           [java.nio.file.attribute FileAttribute]
            [org.apache.commons.compress.compressors
             CompressorStreamFactory CompressorException]))
 
 ;; Disk cache
 ;; ----------
 
-(def temp-dir (let [system-tmp-dir-path (or (System/getenv "TMPDIR")
-                                            (System/getProperty "java.io.tmpdir"))
-                    dir-path (.getPath (file system-tmp-dir-path "cljam"))]
-                (.mkdirs (file dir-path))
-                dir-path))
+(defn create-temp-dir
+  "Returns a created temporary directory with the given `prefix`."
+  [prefix]
+  (->> 0
+       (make-array FileAttribute)
+       (Files/createTempDirectory prefix)
+       .toFile))
+
+(defn delete-temp-dir!
+  "Takes the temporary directory created by `create-temp-dir` and deletes the
+  `dir` and the files in `dir`."
+  [^java.io.File dir]
+  (Files/walkFileTree
+   (.toPath dir)
+   (reify FileVisitor
+     (visitFile [this# file# attrs#]
+       (Files/deleteIfExists file#)
+       FileVisitResult/CONTINUE)
+     (visitFileFailed [this# file# exc#]
+       FileVisitResult/CONTINUE)
+     (preVisitDirectory [this# dir# attrs#]
+       FileVisitResult/CONTINUE)
+     (postVisitDirectory [this# dir# exc#]
+       (Files/deleteIfExists dir#)
+       FileVisitResult/CONTINUE))))
+
+(defmacro with-temp-dir
+  "bindings => [dir prefix ...]
+  Creates a temporary directory with the given `prefix` and binds the given
+  `dir` to it. Finally, deletes `dir` and the files in `dir`."
+  [bindings & body]
+  (assert (vector? bindings) "bindings must be a vector")
+  (assert (even? (count bindings)) "bindings must have an even number of forms")
+  (cond
+    (zero? (count bindings)) `(do ~@body)
+    (symbol? (bindings 0)) (let [[dir prefix] bindings]
+                             `(let [~dir (create-temp-dir ~prefix)]
+                                (try
+                                  (with-temp-dir ~(subvec bindings 2) ~@body)
+                                  (finally
+                                    (delete-temp-dir! ~dir)))))
+    :else (throw (IllegalArgumentException. "binding must be a symbol"))))
 
 ;; byte array
 ;; ----------

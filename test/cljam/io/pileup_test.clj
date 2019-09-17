@@ -281,9 +281,10 @@
   (testing "with-ref"
     (are [?input]
          (= ?input
-            (let [tmp (File/createTempFile "pileup-regression" ".fa")
-                  idx (File/createTempFile "pileup-regression" ".fai")]
-              (try
+            (with-before-after {:before (prepare-cache!)
+                                :after (clean-cache!)}
+              (let [tmp (cio/file temp-dir "pileup-regression.fa")
+                    idx (cio/file temp-dir "pileup-regression.fai")]
                 (with-open [w (cseq/writer (.getCanonicalPath tmp))]
                   (cseq/write-sequences w [{:name "chr1" :sequence "NNNNNNNNNATGC"}]))
                 (fai/create-index tmp idx)
@@ -291,10 +292,7 @@
                             sw (StringWriter.)
                             w (plpio/writer sw tmp)]
                   (plpio/write-piles w (plpio/read-piles r))
-                  (str sw))
-                (finally
-                  (when (.isFile (cio/file tmp))
-                    (cio/delete-file (cio/file tmp)))))))
+                  (str sw)))))
       "chr1\t10\tA\t1\t.\tI\n"
       "chr1\t10\tA\t4\t.,Tt\tIABC\n"
       "chr1\t10\tA\t4\t^].+3TTT,-2tg$Tt\tIABC\n")))

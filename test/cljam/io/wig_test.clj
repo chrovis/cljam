@@ -3,8 +3,7 @@
             [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [cljam.test-common :refer :all]
-            [cljam.io.wig :as wig]
-            [cljam.util :as util])
+            [cljam.io.wig :as wig])
   (:import [java.io BufferedReader InputStreamReader ByteArrayInputStream
             ByteArrayOutputStream OutputStreamWriter BufferedWriter]
            [cljam.io.wig WIGReader WIGWriter]))
@@ -189,8 +188,10 @@
 
 (deftest writer
   (testing "make writer instance"
-    (with-open [wtr (wig/writer (.getAbsolutePath (cio/file util/temp-dir "temp.wig")))]
-      (is (instance? cljam.io.wig.WIGWriter wtr))))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [wtr (wig/writer (.getAbsolutePath (cio/file temp-dir "temp.wig")))]
+        (is (instance? cljam.io.wig.WIGWriter wtr)))))
 
   (testing "write wig"
     (is (= (-> "variableStep chrom=chr1 span=10\n1 1\n101 2" str->wig wig->str)

@@ -5,8 +5,7 @@
             [cljam.test-common :refer :all]
             [cljam.io.fasta.core :as fa-core]
             [cljam.io.sequence :as cseq]
-            [cljam.io.protocols :as protocols]
-            [cljam.util :as util]))
+            [cljam.io.protocols :as protocols]))
 
 (def temp-test-fa-file (str temp-dir "/test.fa"))
 (def temp-medium-fa-file (str temp-dir "/medium.fa"))
@@ -219,15 +218,21 @@
 
 (deftest writer-test
   (testing "fasta"
-    (with-open [wtr (cseq/writer (.getAbsolutePath (cio/file util/temp-dir "temp.fa")))]
-      (is (instance? cljam.io.fasta.writer.FASTAWriter wtr))))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [wtr (cseq/writer (.getAbsolutePath (cio/file temp-dir "temp.fa")))]
+        (is (instance? cljam.io.fasta.writer.FASTAWriter wtr)))))
   (testing "twobit"
-    (with-open [wtr (cseq/writer (.getAbsolutePath (cio/file util/temp-dir "temp.2bit")))]
-      (is (instance? cljam.io.twobit.writer.TwoBitWriter wtr))))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [wtr (cseq/writer (.getAbsolutePath (cio/file temp-dir "temp.2bit")))]
+        (is (instance? cljam.io.twobit.writer.TwoBitWriter wtr)))))
   (testing "throws Exception"
-    (are [f] (thrown? Exception (cseq/writer (.getAbsolutePath (cio/file util/temp-dir f))))
-      "temp.fsta"
-      "temp.fa.fai")))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (are [f] (thrown? Exception (cseq/writer (.getAbsolutePath (cio/file temp-dir f))))
+        "temp.fsta"
+        "temp.fa.fai"))))
 
 (deftest write-sequences-fasta-test
   (with-before-after {:before (prepare-cache!)

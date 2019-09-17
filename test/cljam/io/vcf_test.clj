@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [clojure.java.io :as cio]
             [cljam.test-common :refer :all]
-            [cljam.io.vcf :as vcf]
-            [cljam.util :as util])
+            [cljam.io.vcf :as vcf])
   (:import bgzf4j.BGZFException))
 
 (def ^:private temp-file (str temp-dir "/test.vcf"))
@@ -124,17 +123,25 @@
 
 (deftest writer-test
   (testing "vcf"
-    (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.vcf")) {} [])]
-      (is (instance? cljam.io.vcf.writer.VCFWriter wtr))))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file temp-dir "temp.vcf")) {} [])]
+        (is (instance? cljam.io.vcf.writer.VCFWriter wtr)))))
   (testing "bcf"
-    (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bcf")) {} [])]
-      (is (instance? cljam.io.bcf.writer.BCFWriter wtr)))
-    (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.bcf"))
-                                {:filter [{:id "PASS", :description "All filters passed"}]} [])]
-      (is (instance? cljam.io.bcf.writer.BCFWriter wtr))))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file temp-dir "temp.bcf")) {} [])]
+        (is (instance? cljam.io.bcf.writer.BCFWriter wtr))))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [wtr (vcf/writer (.getAbsolutePath (cio/file temp-dir "temp.bcf"))
+                                  {:filter [{:id "PASS", :description "All filters passed"}]} [])]
+        (is (instance? cljam.io.bcf.writer.BCFWriter wtr)))))
   (testing "throws Exception"
-    (is (thrown? Exception
-                 (vcf/writer (.getAbsolutePath (cio/file util/temp-dir "temp.vccf")) {} [])))))
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (is (thrown? Exception
+                   (vcf/writer (.getAbsolutePath (cio/file temp-dir "temp.vccf")) {} []))))))
 
 (deftest about-writing-vcf-v4_0-deep
   (with-before-after {:before (prepare-cache!)

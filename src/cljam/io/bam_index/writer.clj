@@ -138,7 +138,7 @@
                        indices)]
         (recur rest rid' idx-status' no-coordinate-alns' indices'))
       (assoc indices rid idx-status
-                     :no-coordinate-alns no-coordinate-alns))))
+             :no-coordinate-alns no-coordinate-alns))))
 
 ;; Merging indices
 ;; -------------
@@ -148,9 +148,9 @@
   (MetaData. (let [f1 (.first-offset meta1)
                    f2 (.first-offset meta2)]
                (cond
-                (= f1 -1) f2
-                (= f2 -1) f1
-                :else (min f1 f2)))
+                 (= f1 -1) f2
+                 (= f2 -1) f1
+                 :else (min f1 f2)))
              (max (.last-offset meta1) (.last-offset meta2))
              (+ (.aligned-alns meta1) (.aligned-alns meta2))
              (+ (.unaligned-alns meta1) (.unaligned-alns meta2))))

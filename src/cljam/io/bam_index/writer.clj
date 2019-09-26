@@ -307,7 +307,7 @@
                                                   (->> sub-blocks
                                                        (eduction (map bam-decoder/decode-pointer-block))
                                                        make-index*)))
-                                 (reduce merge-index)))))]
+                                 (reduce merge-index {:no-coordinate-alns 0})))))]
     (->> blocks
          make-index-fn
          (finalize-index nrefs))))

@@ -106,3 +106,14 @@
     (is (not-throw? (bai/create-index temp-file-sorted
                                       (str temp-file-sorted ".bai"))))
     (is (.isFile (cio/file (str temp-file-sorted ".bai"))))))
+
+(deftest bam-without-alignments-test
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (let [header {:SQ [{:SN "chr1", :LN 100}]}
+          target (cio/file temp-dir "no_aln.bam")
+          target-bai (cio/file temp-dir "no_aln.bam.bai")]
+      (with-open [w (sam/writer target)]
+        (sam/write-header w header)
+        (sam/write-refs w header))
+      (is (not-throw? (bai/create-index target target-bai))))))

@@ -2985,16 +2985,16 @@ Record is faster than map for retrieving elements.</p>
                        indices)]
         (recur rest rid' idx-status' no-coordinate-alns' indices'))
       (assoc indices rid idx-status
-                     :no-coordinate-alns no-coordinate-alns))))</pre></td></tr><tr><td class="docs"><h2>Merging indices</h2>
+             :no-coordinate-alns no-coordinate-alns))))</pre></td></tr><tr><td class="docs"><h2>Merging indices</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- merge-meta-data
   [^MetaData meta1 ^MetaData meta2]
   (MetaData. (let [f1 (.first-offset meta1)
                    f2 (.first-offset meta2)]
                (cond
-                (= f1 -1) f2
-                (= f2 -1) f1
-                :else (min f1 f2)))
+                 (= f1 -1) f2
+                 (= f2 -1) f1
+                 :else (min f1 f2)))
              (max (.last-offset meta1) (.last-offset meta2))
              (+ (.aligned-alns meta1) (.aligned-alns meta2))
              (+ (.unaligned-alns meta1) (.unaligned-alns meta2))))</pre></td></tr><tr><td class="docs">
@@ -3127,7 +3127,7 @@ Record is faster than map for retrieving elements.</p>
                                                   (-&gt;&gt; sub-blocks
                                                        (eduction (map bam-decoder/decode-pointer-block))
                                                        make-index*)))
-                                 (reduce merge-index)))))]
+                                 (reduce merge-index {:no-coordinate-alns 0})))))]
     (-&gt;&gt; blocks
          make-index-fn
          (finalize-index nrefs))))</pre></td></tr><tr><td class="docs"><p>Calculates a BAM index from alns, writing the index to a file.</p>

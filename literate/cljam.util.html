@@ -2869,14 +2869,48 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.util
   (:require [clojure.java.io :refer [file] :as cio])
   (:import [java.net MalformedURLException URL]
+           [java.nio.file Files FileVisitor FileVisitResult]
+           [java.nio.file.attribute FileAttribute]
            [org.apache.commons.compress.compressors
             CompressorStreamFactory CompressorException]))</pre></td></tr><tr><td class="docs"><h2>Disk cache</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def temp-dir (let [system-tmp-dir-path (or (System/getenv &quot;TMPDIR&quot;)
-                                            (System/getProperty &quot;java.io.tmpdir&quot;))
-                    dir-path (.getPath (file system-tmp-dir-path &quot;cljam&quot;))]
-                (.mkdirs (file dir-path))
-                dir-path))</pre></td></tr><tr><td class="docs"><h2>byte array</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Returns a created temporary directory with the given <code>prefix</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn create-temp-dir
+  [prefix]
+  (-&gt;&gt; 0
+       (make-array FileAttribute)
+       (Files/createTempDirectory prefix)
+       .toFile))</pre></td></tr><tr><td class="docs"><p>Takes the temporary directory created by <code>create-temp-dir</code> and deletes the
+  <code>dir</code> and the files in <code>dir</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn delete-temp-dir!
+  [^java.io.File dir]
+  (Files/walkFileTree
+   (.toPath dir)
+   (reify FileVisitor
+     (visitFile [this# file# attrs#]
+       (Files/deleteIfExists file#)
+       FileVisitResult/CONTINUE)
+     (visitFileFailed [this# file# exc#]
+       FileVisitResult/CONTINUE)
+     (preVisitDirectory [this# dir# attrs#]
+       FileVisitResult/CONTINUE)
+     (postVisitDirectory [this# dir# exc#]
+       (Files/deleteIfExists dir#)
+       FileVisitResult/CONTINUE))))</pre></td></tr><tr><td class="docs"><p>bindings => [dir prefix ...]
+  Creates a temporary directory with the given <code>prefix</code> and binds the given
+  <code>dir</code> to it. Finally, deletes <code>dir</code> and the files in <code>dir</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defmacro with-temp-dir
+  [bindings &amp; body]
+  (assert (vector? bindings) &quot;bindings must be a vector&quot;)
+  (assert (even? (count bindings)) &quot;bindings must have an even number of forms&quot;)
+  (cond
+    (zero? (count bindings)) `(do ~@body)
+    (symbol? (bindings 0)) (let [[dir prefix] bindings]
+                             `(let [~dir (create-temp-dir ~prefix)]
+                                (try
+                                  (with-temp-dir ~(subvec bindings 2) ~@body)
+                                  (finally
+                                    (delete-temp-dir! ~dir)))))
+    :else (throw (IllegalArgumentException. &quot;binding must be a symbol&quot;))))</pre></td></tr><tr><td class="docs"><h2>byte array</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Casts to byte avoiding an error about out of range for byte.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ubyte
   [n]

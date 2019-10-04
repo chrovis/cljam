@@ -2973,30 +2973,25 @@ net.brehaut.ClojureTools = (function (SH) {
                    (fn [w xs _] (sam/write-blocks w xs))
                    sam/write-alignments)]
     (merge** wtr hdr files key-fn read-fn write-fn)))</pre></td></tr><tr><td class="docs"><h2>Sorter</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Deletes all files in list.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- clean-all!
-  [files]
-  (doseq [f (map cio/file files)
-          :when (.exists ^File f)]
-    (.delete ^File f)))</pre></td></tr><tr><td class="docs"><p>Generates i-th cache filename.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Generates i-th cache filename.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- gen-cache-filename
-  [fmt prefix i]
-  (format &quot;%s/%s_%05d.%s&quot; util/temp-dir prefix i fmt))</pre></td></tr><tr><td class="docs"><p>Sorts alignments of rdr by mode and writes them to wtr.
+  [fmt temp-dir prefix i]
+  (format &quot;%s/%s_%05d.%s&quot; temp-dir prefix i fmt))</pre></td></tr><tr><td class="docs"><p>Sorts alignments of rdr by mode and writes them to wtr.
   :coordinate and :queryname are available for mode.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn sort!
   [rdr wtr {:keys [mode chunk-size cache-fmt] :or {cache-fmt :bam}}]
-  (let [name-fn (-&gt;&gt; rdr
-                     protocols/reader-url
-                     util/basename
-                     (partial gen-cache-filename (name cache-fmt)))
-        key-fn ({header/order-coordinate (partial coordinate-key (refmap (sam/read-refs rdr)))
-                 header/order-queryname queryname-key} mode)
-        splitted-files (split* rdr chunk-size name-fn mode #(sort-by-index key-fn %))
-        hdr (header/sorted-by mode (header/update-version (sam/read-header rdr)))]
-    (logging/info (str &quot;Merging from &quot; (count splitted-files) &quot; files...&quot;))
-    (merge* wtr hdr splitted-files mode key-fn)
-    (logging/info &quot;Deleting cache files...&quot;)
-    (clean-all! splitted-files)))</pre></td></tr><tr><td class="docs"><p>Sorts alignments by chromosomal position.</p>
+  (util/with-temp-dir [temp-dir &quot;cljam.algo.sorter&quot;]
+    (let [name-fn (-&gt;&gt; rdr
+                       protocols/reader-url
+                       util/basename
+                       (partial gen-cache-filename (name cache-fmt) temp-dir))
+          key-fn ({header/order-coordinate (partial coordinate-key (refmap (sam/read-refs rdr)))
+                   header/order-queryname queryname-key} mode)
+          splitted-files (split* rdr chunk-size name-fn mode #(sort-by-index key-fn %))
+          hdr (header/sorted-by mode (header/update-version (sam/read-header rdr)))]
+      (logging/info (str &quot;Merging from &quot; (count splitted-files) &quot; files...&quot;))
+      (merge* wtr hdr splitted-files mode key-fn)
+      (logging/info &quot;Deleting cache files...&quot;))))</pre></td></tr><tr><td class="docs"><p>Sorts alignments by chromosomal position.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn sort-by-pos
   [rdr wtr &amp; [option]]
   (sort! rdr wtr (into (or option {}) {:mode header/order-coordinate})))</pre></td></tr><tr><td class="docs"><p>Sort alignments by query name.</p>

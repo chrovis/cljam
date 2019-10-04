@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+* Fix creating temp directory to support multiple users. [#178](https://github.com/chrovis/cljam/pull/178)
+* Avoid an ArityException on creating an index for BAM files without alignments. [#179](https://github.com/chrovis/cljam/pull/179)
+
 ## [0.7.3] - 2019-09-03
 
 ### Added

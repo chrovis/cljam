@@ -1,6 +1,8 @@
 (ns cljam.io.bam-index
   "Parser for a BAM index file."
-  (:require [cljam.io.bam-index.core :as bai-core]))
+  (:require
+   [cljam.io.bam-index.core :as bai-core]
+   [cljam.io.util.bin :as util-bin]))
 
 (defn bin-index
   "Returns binning index for the given reference index."
@@ -15,7 +17,7 @@
 (defn get-spans
   "Returns regions of a BAM file that may contain an alignment for the given range."
   [bai ref-idx beg end]
-  (bai-core/get-spans bai ref-idx beg end))
+  (util-bin/get-spans bai ref-idx beg end))
 
 (defn bam-index
   "Returns a cljam.bam-index.core.BAMIndex."

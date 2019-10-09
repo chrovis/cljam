@@ -6,14 +6,18 @@
             [cljam.io.protocols :as protocols]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [proton.core :refer [as-long]]
-            [cljam.io.vcf.util :as vcf-util])
+            [cljam.io.util.bin :as util-bin]
+            [cljam.io.vcf.util :as vcf-util]
+            [cljam.io.tabix :as tabix])
   (:import [java.io Closeable]
-           [clojure.lang LazilyPersistentVector]))
+           [cljam.io.tabix Tabix]
+           [clojure.lang LazilyPersistentVector]
+           bgzf4j.BGZFInputStream))
 
 ;; VCFReader
 ;; ---------
 
-(declare read-variants)
+(declare read-variants read-variants-randomly)
 
 (deftype VCFReader [url meta-info header reader]
   Closeable
@@ -178,3 +182,46 @@
                     :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
                     :vcf identity)]
      (map parse-fn (read-data-lines (.reader rdr) (.header rdr) kws)))))
+
+(defn read-variants-randomly
+  [^VCFReader rdr {:keys [chr start end depth] :or {depth :deep start 1 end 4294967296}}]
+  (let [kws (mapv keyword (drop 8 (.header rdr)))
+        tabix-path (str (.getPath ^java.net.URL (.url rdr)) ".tbi")
+        tabix-data (tabix/read-index tabix-path)
+        ref-idx (.indexOf
+                 ^clojure.lang.PersistentVector (.seq ^Tabix tabix-data)
+                 (if (and (string? chr)
+                          (> (count chr) 3)
+                          (= (subs chr 0 3) "chr"))
+                   (subs chr 3)
+                   (throw (ex-info "Invalid chr." {:chr chr}))))
+        spans
+        (if (= ref-idx -1)
+          '()
+          (util-bin/get-spans tabix-data ref-idx start end))
+        input-stream ^bgzf4j.BGZFInputStream (.reader rdr)
+        parse-fn (case depth
+                   :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
+                   :vcf identity)]
+    (reduce
+     (fn [res span]
+       (.seek input-stream (first span))
+       (loop [res res]
+
+         (if (< (.getFilePointer input-stream) (second span))
+           (let [variant
+                 (parse-fn
+                  (parse-data-line
+                   (.readLine input-stream)
+                   kws))
+                 variant-pos (:pos variant)]
+             (if (or (< variant-pos (first span))
+                     (>= variant-pos (second span)))
+               res
+               (recur
+                (cons
+                 variant
+                 res))))
+           res)))
+     '()
+     spans)))

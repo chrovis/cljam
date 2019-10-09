@@ -9,12 +9,14 @@
             [cljam.io.vcf.reader :as vcf-reader]
             [cljam.io.vcf.writer :as vcf-writer]
             [cljam.io.bcf.reader :as bcf-reader]
-            [cljam.io.bcf.writer :as bcf-writer])
+            [cljam.io.bcf.writer :as bcf-writer]
+            [cljam.io.util.bgzf :as bgzf])
   (:import java.io.Closeable
            cljam.io.vcf.reader.VCFReader
            cljam.io.vcf.writer.VCFWriter
            cljam.io.bcf.reader.BCFReader
-           cljam.io.bcf.writer.BCFWriter))
+           cljam.io.bcf.writer.BCFWriter
+           bgzf4j.BGZFInputStream))
 
 ;; Reading
 ;; -------
@@ -28,7 +30,9 @@
         header (with-open [r (cio/reader (util/compressor-input-stream f))]
                  (vcf-reader/load-header r))]
     (VCFReader. (util/as-url f) meta-info header
-                (cio/reader (util/compressor-input-stream f)))))
+                (if (bgzf/bgzip? f)
+                  (bgzf/bgzf-input-stream f)
+                  (cio/reader (util/compressor-input-stream f))))))
 
 (defn ^BCFReader bcf-reader
   "Returns an open cljam.io.bcf.reader.BCFReader of f. Should be used inside
@@ -69,6 +73,13 @@
     :raw - Raw map of ByteBufers."
   ([rdr] (protocols/read-variants rdr))
   ([rdr option] (protocols/read-variants rdr option)))
+
+(defn read-variants-randomly
+  "Reads variants of the VCF file randomly, returning them as a lazy sequence."
+  ([rdr option]
+   (vcf-reader/read-variants-randomly
+    rdr
+    option)))
 
 ;; Writing
 ;; -------

@@ -42,7 +42,16 @@
                 :sha1 "dcc3ba10c8432be3094cbf5d6fb1b577317e3429"}
                {:id "large.tbi"
                 :url "https://test.chrov.is/data/test3_summits.bed.gz.tbi"
-                :sha1 "1aff56f9961c0b93c6de3a190f02d3264c27a9c7"}]})
+                :sha1 "1aff56f9961c0b93c6de3a190f02d3264c27a9c7"}
+               {:id "large.vcf.gz"
+                :url "https://test.chrov.is/data/cljam/example-500-10000.vcf.gz"
+                :sha1 "15eda0cb653e29ced47caafa5c2f58f014e36437"}
+               {:id "large.vcf.gz.tbi"
+                :url "https://test.chrov.is/data/cljam/example-500-10000.vcf.gz.tbi"
+                :sha1 "f5e42e5af8666a39e1db1a477b25f183bf09fc9b"}
+               {:id "large.vcf.gz.csi"
+                :url "https://test.chrov.is/data/cljam/example-500-10000.vcf.gz.csi"
+                :sha1 "568a47f463de8df846e021640d38b8cf8f257e66"}]})
 
 (defn prepare-cavia! []
   (with-profile mycavia
@@ -189,7 +198,13 @@
 (def test-vcf-no-samples-file "test-resources/vcf/test-no-samples.vcf")
 (def test-vcf-complex-file "test-resources/vcf/test-v4_3-complex.vcf")
 
+(def test-large-vcf-file (cavia/resource mycavia "large.vcf.gz"))
+(def test-large-vcf-tbi-file (cavia/resource mycavia "large.vcf.gz.tbi"))
+(def test-large-vcf-csi-file (cavia/resource mycavia "large.vcf.gz.csi"))
+
+
 ;; ### pileup files
+
 
 (def test-pileup-file "test-resources/pileup/test.pileup")
 (def test-pileup-dir "test-resources/pileup/")

@@ -121,6 +121,27 @@
     (is (= (vcf/read-variants v)
            (vcf/read-variants b)))))
 
+(deftest-remote bin-index-is-done-without-errors-with-a-large-file
+  (with-before-after {:before (prepare-cavia!)}
+    (is (not-throw?
+         (vcf/read-variants-randomly
+          (vcf/vcf-reader
+           test-large-vcf-file)
+          {:chr "chr1"
+           :start 20
+           :end 1000000})))
+    (is (not-throw?
+         (vcf/read-variants-randomly
+          (vcf/vcf-reader
+           test-large-vcf-file)
+          {:chr "chr1"
+           :start 2000})))
+    (is (not-throw?
+         (vcf/read-variants-randomly
+          (vcf/vcf-reader
+           test-large-vcf-file)
+          {:chr "chr1"})))))
+
 (deftest writer-test
   (testing "vcf"
     (with-before-after {:before (prepare-cache!)

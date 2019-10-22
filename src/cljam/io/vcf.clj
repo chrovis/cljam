@@ -10,7 +10,8 @@
             [cljam.io.vcf.writer :as vcf-writer]
             [cljam.io.bcf.reader :as bcf-reader]
             [cljam.io.bcf.writer :as bcf-writer]
-            [cljam.io.util.bgzf :as bgzf])
+            [cljam.io.util.bgzf :as bgzf]
+            [cljam.io.tabix :as tabix])
   (:import java.io.Closeable
            cljam.io.vcf.reader.VCFReader
            cljam.io.vcf.writer.VCFWriter
@@ -30,9 +31,11 @@
         header (with-open [r (cio/reader (util/compressor-input-stream f))]
                  (vcf-reader/load-header r))]
     (VCFReader. (util/as-url f) meta-info header
+
                 (if (bgzf/bgzip? f)
                   (bgzf/bgzf-input-stream f)
-                  (cio/reader (util/compressor-input-stream f))))))
+                  (cio/reader (util/compressor-input-stream f)))
+                (delay (tabix/read-index (str f ".tbi"))))))
 
 (defn ^BCFReader bcf-reader
   "Returns an open cljam.io.bcf.reader.BCFReader of f. Should be used inside

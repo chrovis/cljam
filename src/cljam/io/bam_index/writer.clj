@@ -5,12 +5,12 @@
             [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.bam-index.common :refer :all]
-            [cljam.io.bam-index.chunk :as chunk]
+            [cljam.io.util.chunk :as chunk]
             [cljam.io.bam.decoder :as bam-decoder])
   (:import [java.io DataOutputStream Closeable]
            [java.nio ByteBuffer ByteOrder]
            [cljam.io.bam.decoder BAMPointerBlock]
-           [cljam.io.bam_index.chunk Chunk]))
+           [cljam.io.util.chunk Chunk]))
 
 (declare make-index-from-blocks)
 

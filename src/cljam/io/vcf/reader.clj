@@ -7,8 +7,8 @@
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [proton.core :refer [as-long]]
             [cljam.io.util.bin :as util-bin]
-            [cljam.io.vcf.util :as vcf-util]
-            [cljam.io.tabix :as tabix])
+            [cljam.io.tabix :as tabix]
+            [cljam.io.vcf.util :as vcf-util])
   (:import [java.io Closeable]
            [cljam.io.tabix Tabix]
            [clojure.lang LazilyPersistentVector]
@@ -19,7 +19,7 @@
 
 (declare read-variants read-variants-randomly)
 
-(deftype VCFReader [url meta-info header reader]
+(deftype VCFReader [url meta-info header reader index-delay]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
@@ -183,18 +183,17 @@
                     :vcf identity)]
      (map parse-fn (read-data-lines (.reader rdr) (.header rdr) kws)))))
 
+(defn- make-lazy-variants [f s]
+  (if (not-empty s)
+    (concat
+     (f (first s))
+     (make-lazy-variants f (rest s)))))
+
 (defn read-variants-randomly
   [^VCFReader rdr {:keys [chr start end depth] :or {depth :deep start 1 end 4294967296}}]
   (let [kws (mapv keyword (drop 8 (.header rdr)))
-        tabix-path (str (.getPath ^java.net.URL (.url rdr)) ".tbi")
-        tabix-data (tabix/read-index tabix-path)
-        ref-idx (.indexOf
-                 ^clojure.lang.PersistentVector (.seq ^Tabix tabix-data)
-                 (if (and (string? chr)
-                          (> (count chr) 3)
-                          (= (subs chr 0 3) "chr"))
-                   (subs chr 3)
-                   (throw (ex-info "Invalid chr." {:chr chr}))))
+        tabix-data @(.index-delay rdr)
+        ref-idx (util-bin/get-ref-index tabix-data chr)
         spans
         (if (= ref-idx -1)
           '()
@@ -203,25 +202,21 @@
         parse-fn (case depth
                    :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
                    :vcf identity)]
-    (reduce
-     (fn [res span]
-       (.seek input-stream (first span))
-       (loop [res res]
 
-         (if (< (.getFilePointer input-stream) (second span))
-           (let [variant
-                 (parse-fn
-                  (parse-data-line
-                   (.readLine input-stream)
-                   kws))
-                 variant-pos (:pos variant)]
-             (if (or (< variant-pos (first span))
-                     (>= variant-pos (second span)))
-               res
-               (recur
-                (cons
-                 variant
-                 res))))
-           res)))
-     '()
+    (make-lazy-variants
+     (fn [[chunk-beg ^long chunk-end]]
+       (.seek input-stream chunk-beg)
+
+       (->> #(when (< (.getFilePointer input-stream) chunk-end)
+               (-> input-stream
+                   .readLine
+                   (parse-data-line kws)
+                   parse-fn))
+            repeatedly
+            (take-while identity)
+            (filter
+             (fn [{chr' :chr :keys [pos ref info]}]
+               (and (= chr' chr)
+                    (<= pos end)
+                    (<= start (get info :END (dec (+ pos (count ref))))))))))
      spans)))

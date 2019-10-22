@@ -1,11 +1,6 @@
 (ns cljam.io.util.bin
-  (:refer-clojure :exclude [compare])
-  (:require [cljam.io.bam-index [chunk :as bam-index-chunk]
-             [writer :as bam-index-writer]])
-  (:import [java.io File]
-           [java.net MalformedURLException URI URL]
-           [cljam.io.bam_index.chunk Chunk]
-           [bgzf4j BGZFInputStream BGZFOutputStream]))
+  (:require [cljam.io.util.chunk :as util-chunk]
+            [cljam.io.bam-index.writer :as bam-index-writer]))
 
 (defn- reg->bins*
   "Returns candidate bins for the specified region as a vector."
@@ -31,15 +26,16 @@
 
 (defprotocol IBinaryIndex
   (bidx-ref [this])
-  (lidx-ref [this]))
+  (lidx-ref [this])
+  (get-ref-index [this chr]))
 
 (defn get-spans
-  [^cljam.io.util.bin.IBinaryIndex index-data ^long ref-idx ^long beg ^long end]
+  [index-data ^long ref-idx ^long beg ^long end]
   (let [bins (reg->bins beg end)
         bidx (get (bidx-ref index-data) ref-idx)
         lidx (get (lidx-ref index-data) ref-idx)
-        chunks (into [] (comp (map bidx) cat) bins)
+        chunks (into [] (mapcat bidx) bins)
         lin-beg (bam-index-writer/pos->lidx-offset beg)
         min-offset (get lidx lin-beg 0)]
-    (->> (bam-index-chunk/optimize-chunks chunks min-offset)
+    (->> (util-chunk/optimize-chunks chunks min-offset)
          (map vals))))

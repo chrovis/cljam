@@ -127,20 +127,42 @@
          (vcf/read-variants-randomly
           (vcf/vcf-reader
            test-large-vcf-file)
-          {:chr "chr1"
+          {:chr "1"
            :start 20
            :end 1000000})))
     (is (not-throw?
          (vcf/read-variants-randomly
           (vcf/vcf-reader
            test-large-vcf-file)
-          {:chr "chr1"
+          {:chr "1"
            :start 2000})))
     (is (not-throw?
          (vcf/read-variants-randomly
           (vcf/vcf-reader
            test-large-vcf-file)
-          {:chr "chr1"})))))
+          {:chr "1"})))))
+
+(deftest read-randomly-variants-complex-test
+  (doseq [index [{:chr "1"}
+                 {:chr "2" :start 30000}
+                 {:chr "2" :start 40000}
+                 {:chr "2" :end 40000}
+                 {:chr "2" :start 30000 :end 40000}]]
+    (with-open [vcf-file (vcf/vcf-reader test-vcf-complex-file)
+                vcf-gz-file (vcf/vcf-reader test-vcf-complex-gz-file)]
+      (is
+       (=
+        (vcf/read-variants-randomly
+         vcf-gz-file
+         index)
+        (let [{:keys [chr start end] :or {start 1 end 4294967296}} index]
+          (filter
+           (fn [variant]
+             (and (= chr (:chr variant))
+                  (<= start (:pos variant))
+                  (> end (:pos variant))))
+           (vcf/read-variants
+            vcf-file))))))))
 
 (deftest writer-test
   (testing "vcf"

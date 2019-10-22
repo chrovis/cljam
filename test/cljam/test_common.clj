@@ -197,6 +197,8 @@
 (def test-vcf-v4_3-file "test-resources/vcf/test-v4_3.vcf")
 (def test-vcf-no-samples-file "test-resources/vcf/test-no-samples.vcf")
 (def test-vcf-complex-file "test-resources/vcf/test-v4_3-complex.vcf")
+(def test-vcf-complex-gz-file "test-resources/vcf/test-v4_3-complex.vcf.gz")
+(def test-vcf-complex-tbi-file "test-resources/vcf/test-v4_3-complex.vcf.gz.tbi")
 
 (def test-large-vcf-file (cavia/resource mycavia "large.vcf.gz"))
 (def test-large-vcf-tbi-file (cavia/resource mycavia "large.vcf.gz.tbi"))

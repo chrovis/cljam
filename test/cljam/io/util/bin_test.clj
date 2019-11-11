@@ -7,7 +7,7 @@
 
 (deftest get-spans-returns-a-sequence-including-regions
   (let [tabix* (tabix/read-index test-tabix-file)]
-    (is (seq? (util-bin/get-spans tabix* 0 0 100)))
+    (is (= [[0 50872]] (util-bin/get-spans tabix* 0 0 100)))
     (is (every? #(and (= 2 (count %))
                       (number? (first %))
                       (number? (second %)))

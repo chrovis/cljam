@@ -25,17 +25,20 @@
 (def ^:private reg->bins (memoize reg->bins*))
 
 (defprotocol IBinaryIndex
-  (bidx-ref [this])
-  (lidx-ref [this])
+  (get-chunks [this ref-idx bins])
+  (get-min-offset [this ref-idx beg])
   (get-ref-index [this chr]))
 
+(defn calculate-min-offset
+  "Calculate offset for get-spans."
+  [lidx beg]
+  (get lidx (bam-index-writer/pos->lidx-offset beg) 0))
+
 (defn get-spans
+  "Calculate span information for random access from ndex data such as tabix."
   [index-data ^long ref-idx ^long beg ^long end]
   (let [bins (reg->bins beg end)
-        bidx (get (bidx-ref index-data) ref-idx)
-        lidx (get (lidx-ref index-data) ref-idx)
-        chunks (into [] (mapcat bidx) bins)
-        lin-beg (bam-index-writer/pos->lidx-offset beg)
-        min-offset (get lidx lin-beg 0)]
+        chunks (get-chunks index-data ref-idx bins)
+        min-offset (get-min-offset index-data ref-idx beg)]
     (->> (util-chunk/optimize-chunks chunks min-offset)
          (map vals))))

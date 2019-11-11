@@ -12,10 +12,12 @@
 
 (deftype BAMIndex [url bidx lidx]
   util-bin/IBinaryIndex
-  (bidx-ref [this]
-    (.bidx this))
-  (lidx-ref [this]
-    (.lidx this)))
+  (get-chunks [this ref-idx bins]
+    (into [] (mapcat (get (.bidx this) ref-idx) bins)))
+  (get-min-offset [this ref-idx beg]
+    (util-bin/calculate-min-offset
+     (get (.lidx this) ref-idx)
+     beg)))
 
 (defn bam-index [f]
   (let [{:keys [bidx lidx]} (with-open [r ^BAIReader (reader/reader f)] (reader/read-all-index! r))]

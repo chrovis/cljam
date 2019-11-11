@@ -79,10 +79,11 @@
 
 (defn read-variants-randomly
   "Reads variants of the VCF file randomly, returning them as a lazy sequence."
-  ([rdr option]
+  ([rdr span-option depth-option]
    (vcf-reader/read-variants-randomly
     rdr
-    option)))
+    span-option
+    depth-option)))
 
 ;; Writing
 ;; -------

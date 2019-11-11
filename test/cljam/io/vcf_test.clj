@@ -123,24 +123,32 @@
 
 (deftest-remote bin-index-is-done-without-errors-with-a-large-file
   (with-before-after {:before (prepare-cavia!)}
-    (is (not-throw?
-         (vcf/read-variants-randomly
-          (vcf/vcf-reader
-           test-large-vcf-file)
-          {:chr "1"
-           :start 20
-           :end 1000000})))
-    (is (not-throw?
-         (vcf/read-variants-randomly
-          (vcf/vcf-reader
-           test-large-vcf-file)
-          {:chr "1"
-           :start 2000})))
-    (is (not-throw?
-         (vcf/read-variants-randomly
-          (vcf/vcf-reader
-           test-large-vcf-file)
-          {:chr "1"})))))
+    (with-open [v (vcf/vcf-reader
+                   test-large-vcf-file)]
+      (is (not-throw?
+           (vcf/read-variants-randomly
+            v
+            {:chr "chr1"
+             :start 20
+             :end 1000000}
+            {}))))
+
+    (with-open [v (vcf/vcf-reader
+                   test-large-vcf-file)]
+      (is (not-throw?
+           (vcf/read-variants-randomly
+            v
+            {:chr "chr1"
+             :start 2000}
+            {}))))
+
+    (with-open [v (vcf/vcf-reader
+                   test-large-vcf-file)]
+      (is (not-throw?
+           (vcf/read-variants-randomly
+            v
+            {:chr "chr1"}
+            {}))))))
 
 (deftest read-randomly-variants-complex-test
   (doseq [index [{:chr "1"}
@@ -154,7 +162,8 @@
        (=
         (vcf/read-variants-randomly
          vcf-gz-file
-         index)
+         index
+         {})
         (let [{:keys [chr start end] :or {start 1 end 4294967296}} index]
           (filter
            (fn [variant]

@@ -11,10 +11,12 @@
 
 (deftype Tabix [n-ref preset sc bc ec meta skip seq bidx lidx]
   util-bin/IBinaryIndex
-  (bidx-ref [this]
-    (.bidx this))
-  (lidx-ref [this]
-    (.lidx this))
+  (get-chunks [this ref-idx bins]
+    (into [] (mapcat (get (.bidx this) ref-idx) bins)))
+  (get-min-offset [this ref-idx beg]
+    (util-bin/calculate-min-offset
+     (get (.lidx this) ref-idx)
+     beg))
   (get-ref-index [this chr]
     (.indexOf
      ^clojure.lang.PersistentVector

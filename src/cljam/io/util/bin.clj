@@ -1,6 +1,7 @@
 (ns cljam.io.util.bin
-  (:require [cljam.io.util.chunk :as util-chunk]
-            [cljam.io.bam-index.writer :as bam-index-writer]))
+  (:require [cljam.io.util.chunk :as util-chunk]))
+
+(def ^:const linear-index-shift 14)
 
 (defn- reg->bins*
   "Returns candidate bins for the specified region as a vector."
@@ -29,10 +30,9 @@
   (get-min-offset [this ref-idx beg])
   (get-ref-index [this chr]))
 
-(defn calculate-min-offset
-  "Calculate offset for get-spans."
-  [lidx beg]
-  (get lidx (bam-index-writer/pos->lidx-offset beg) 0))
+(defn pos->lidx-offset
+  [^long pos ^long linear-index-shift]
+  (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
 (defn get-spans
   "Calculate span information for random access from ndex data such as tabix."

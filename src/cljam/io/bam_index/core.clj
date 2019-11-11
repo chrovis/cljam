@@ -3,7 +3,8 @@
   (:require [clojure.java.io :as cio]
             [clojure.tools.logging :as logging]
             [cljam.io.bam-index [reader :as reader]
-             [writer :as writer]]
+             [writer :as writer]
+             [common :as common]]
             [cljam.util :as util]
             [cljam.io.util.bin :as util-bin])
   (:import [java.io DataOutputStream FileOutputStream]
@@ -15,9 +16,8 @@
   (get-chunks [this ref-idx bins]
     (into [] (mapcat (get (.bidx this) ref-idx) bins)))
   (get-min-offset [this ref-idx beg]
-    (util-bin/calculate-min-offset
-     (get (.lidx this) ref-idx)
-     beg)))
+    (get (get (.lidx this) ref-idx)
+         (util-bin/pos->lidx-offset beg common/linear-index-shift) 0)))
 
 (defn bam-index [f]
   (let [{:keys [bidx lidx]} (with-open [r ^BAIReader (reader/reader f)] (reader/read-all-index! r))]

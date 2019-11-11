@@ -9,14 +9,15 @@
            [java.io DataInputStream IOException]
            [cljam.io.util.chunk Chunk]))
 
+(def ^:const linear-index-shift 14)
+
 (deftype Tabix [n-ref preset sc bc ec meta skip seq bidx lidx]
   util-bin/IBinaryIndex
   (get-chunks [this ref-idx bins]
     (into [] (mapcat (get (.bidx this) ref-idx) bins)))
   (get-min-offset [this ref-idx beg]
-    (util-bin/calculate-min-offset
-     (get (.lidx this) ref-idx)
-     beg))
+    (get (get (.lidx this) ref-idx)
+         (util-bin/pos->lidx-offset beg linear-index-shift) 0))
   (get-ref-index [this chr]
     (.indexOf
      ^clojure.lang.PersistentVector

@@ -7,10 +7,8 @@
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [proton.core :refer [as-long]]
             [cljam.io.util.bin :as util-bin]
-            [cljam.io.tabix :as tabix]
             [cljam.io.vcf.util :as vcf-util])
   (:import [java.io Closeable]
-           [cljam.io.tabix Tabix]
            [clojure.lang LazilyPersistentVector]
            bgzf4j.BGZFInputStream))
 
@@ -187,8 +185,7 @@
   (when-first [fs s]
     (lazy-cat
      (f fs)
-     (lazy-seq
-      (make-lazy-variants f (rest s))))))
+     (make-lazy-variants f (rest s)))))
 
 (defn read-variants-randomly
   "Read variants of the  bgzip compressed VCF file randomly using tabix file.
@@ -199,15 +196,12 @@
   (let [kws (mapv keyword (drop 8 (.header rdr)))
         tabix-data @(.index-delay rdr)
         ref-idx (util-bin/get-ref-index tabix-data chr)
-        spans
-        (if (= ref-idx -1)
-          '()
-          (util-bin/get-spans tabix-data ref-idx start end))
+        spans (when-not (neg? ref-idx)
+                (util-bin/get-spans tabix-data ref-idx start end))
         input-stream ^BGZFInputStream (.reader rdr)
         parse-fn (case depth
                    :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
                    :vcf identity)]
-
     (make-lazy-variants
      (fn [[chunk-beg ^long chunk-end]]
        (.seek input-stream chunk-beg)

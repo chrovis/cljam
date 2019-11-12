@@ -17,7 +17,7 @@ jobs:
         java-version: ${{ matrix.java }}
         architecture: x64
     - name: Cache m2 repository
-      uses: actions/cache@preview
+      uses: actions/cache@v1
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
@@ -44,7 +44,7 @@ jobs:
         jdkFile: ./openjdk-14-ea+14_linux-x64_bin.tar.gz
         architecture: x64
     - name: Cache m2 repository
-      uses: actions/cache@preview
+      uses: actions/cache@v1
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}

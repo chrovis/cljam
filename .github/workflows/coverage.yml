@@ -8,7 +8,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Cache m2 repository
-      uses: actions/cache@preview
+      uses: actions/cache@v1
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}

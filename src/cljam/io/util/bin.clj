@@ -35,7 +35,7 @@
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
 (defn get-spans
-  "Calculate span information for random access from ndex data such as tabix."
+  "Calculate span information for random access from index data such as tabix."
   [index-data ^long ref-idx ^long beg ^long end]
   (let [bins (reg->bins beg end)
         chunks (get-chunks index-data ref-idx bins)

@@ -23,8 +23,8 @@
     (is (number? (.meta tabix-data)))
     (is (number? (.skip tabix-data)))
     (is (vector? (.seq tabix-data)))
-    (is (instance?  Chunk (get (get (get (.bidx tabix-data) 0) 4687) 0)))
-    (is (vector?  (get (.lidx tabix-data) 0)))))
+    (is (instance? Chunk (get (get (get (.bidx tabix-data) 0) 4687) 0)))
+    (is (vector? (get (.lidx tabix-data) 0)))))
 
 (deftest-remote large-file
   (with-before-after {:before (prepare-cavia!)}

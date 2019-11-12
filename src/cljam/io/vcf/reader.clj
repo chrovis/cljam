@@ -181,14 +181,8 @@
                     :vcf identity)]
      (map parse-fn (read-data-lines (.reader rdr) (.header rdr) kws)))))
 
-(defn- make-lazy-variants [f s]
-  (when-first [fs s]
-    (lazy-cat
-     (f fs)
-     (make-lazy-variants f (rest s)))))
-
 (defn read-variants-randomly
-  "Read variants of the  bgzip compressed VCF file randomly using tabix file.
+  "Reads variants of the bgzip compressed VCF file randomly using tabix file.
    Returning them as a lazy sequence."
   [^VCFReader rdr
    {:keys [chr start end] :or {start 1 end 4294967296}}
@@ -202,7 +196,7 @@
         parse-fn (case depth
                    :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
                    :vcf identity)]
-    (make-lazy-variants
+    (mapcat
      (fn [[chunk-beg ^long chunk-end]]
        (.seek input-stream chunk-beg)
        (->> #(when (< (.getFilePointer input-stream) chunk-end)

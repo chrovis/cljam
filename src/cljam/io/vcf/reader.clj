@@ -6,16 +6,18 @@
             [cljam.io.protocols :as protocols]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [proton.core :refer [as-long]]
+            [cljam.io.util.bin :as util-bin]
             [cljam.io.vcf.util :as vcf-util])
   (:import [java.io Closeable]
-           [clojure.lang LazilyPersistentVector]))
+           [clojure.lang LazilyPersistentVector]
+           bgzf4j.BGZFInputStream))
 
 ;; VCFReader
 ;; ---------
 
-(declare read-variants)
+(declare read-variants read-variants-randomly)
 
-(deftype VCFReader [url meta-info header reader]
+(deftype VCFReader [url meta-info header reader index-delay]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
@@ -178,3 +180,35 @@
                     :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
                     :vcf identity)]
      (map parse-fn (read-data-lines (.reader rdr) (.header rdr) kws)))))
+
+(defn read-variants-randomly
+  "Reads variants of the bgzip compressed VCF file randomly using tabix file.
+   Returning them as a lazy sequence."
+  [^VCFReader rdr
+   {:keys [chr start end] :or {start 1 end 4294967296}}
+   {:keys [depth] :or {depth :deep}}]
+  (let [kws (mapv keyword (drop 8 (.header rdr)))
+        tabix-data @(.index-delay rdr)
+        ref-idx (util-bin/get-ref-index tabix-data chr)
+        spans (when-not (neg? ref-idx)
+                (util-bin/get-spans tabix-data ref-idx start end))
+        input-stream ^BGZFInputStream (.reader rdr)
+        parse-fn (case depth
+                   :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
+                   :vcf identity)]
+    (mapcat
+     (fn [[chunk-beg ^long chunk-end]]
+       (.seek input-stream chunk-beg)
+       (->> #(when (< (.getFilePointer input-stream) chunk-end)
+               (-> input-stream
+                   .readLine
+                   (parse-data-line kws)
+                   parse-fn))
+            repeatedly
+            (take-while identity)
+            (filter
+             (fn [{chr' :chr :keys [pos ref info]}]
+               (and (= chr' chr)
+                    (<= pos end)
+                    (<= start (get info :END (dec (+ pos (count ref))))))))))
+     spans)))

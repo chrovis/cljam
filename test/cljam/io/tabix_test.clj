@@ -2,26 +2,29 @@
   (:require [clojure.java.io :as cio]
             [clojure.test :refer :all]
             [cljam.test-common :refer :all]
-            [cljam.io.tabix :as tbi]))
+            [cljam.io.tabix :as tbi])
+  (:import
+   [cljam.io.tabix Tabix]
+   [cljam.io.util.chunk Chunk]))
 
 (deftest about-read-index-with-error
   (is (thrown? java.io.IOException (tbi/read-index small-bam-file))))
 
-(deftest about-read-index-returns-a-map
-  (is (map? (tbi/read-index test-tabix-file))))
+(deftest about-read-index-returns-tabix-object
+  (is (instance? Tabix (tbi/read-index test-tabix-file))))
 
-(deftest about-read-index-check-the-returning-maps-structure
-  (is (just-map? {:n-seq number?
-                  :preset number?
-                  :sc number?
-                  :bc number?
-                  :ec number?
-                  :meta number?
-                  :skip number?
-                  :seq vector?
-                  :bin-index vector?
-                  :linear-index vector?}
-                 (tbi/read-index test-tabix-file))))
+(deftest about-read-index-check-the-returning-object
+  (let [tabix-data ^Tabix (tbi/read-index test-tabix-file)]
+    (is (number? (.n-ref tabix-data)))
+    (is (number? (.preset tabix-data)))
+    (is (number? (.sc tabix-data)))
+    (is (number? (.bc tabix-data)))
+    (is (number? (.ec tabix-data)))
+    (is (number? (.meta tabix-data)))
+    (is (number? (.skip tabix-data)))
+    (is (vector? (.seq tabix-data)))
+    (is (instance? Chunk (get (get (get (.bidx tabix-data) 0) 4687) 0)))
+    (is (vector? (get (.lidx tabix-data) 0)))))
 
 (deftest-remote large-file
   (with-before-after {:before (prepare-cavia!)}
@@ -29,7 +32,7 @@
 
 (deftest source-type-test
   (with-open [server (http-server)]
-    (are [x] (map? (tbi/read-index x))
+    (are [x] (instance? Tabix (tbi/read-index x))
       test-tabix-file
       (cio/file test-tabix-file)
       (cio/as-url (cio/file test-tabix-file))

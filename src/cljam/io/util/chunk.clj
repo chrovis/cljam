@@ -1,4 +1,4 @@
-(ns cljam.io.bam-index.chunk
+(ns cljam.io.util.chunk
   (:refer-clojure :exclude [compare])
   (:require [cljam.io.util.bgzf :as bgzf]))
 
@@ -52,10 +52,10 @@
            ret (transient [])]
       (if f
         (cond
-         (<= (.end f) min-offset) (recur r last-chunk ret)
-         (nil? last-chunk) (recur r f (conj! ret f))
-         (and (not (overlap? last-chunk f))
-              (not (adjacent? last-chunk f))) (recur r f (conj! ret f))
-         (> (.end f) (.end last-chunk)) (let [l (assoc last-chunk :end (.end f))] (recur r l (conj! (pop! ret) l)))
-         :else (recur r last-chunk ret))
+          (<= (.end f) min-offset) (recur r last-chunk ret)
+          (nil? last-chunk) (recur r f (conj! ret f))
+          (and (not (overlap? last-chunk f))
+               (not (adjacent? last-chunk f))) (recur r f (conj! ret f))
+          (> (.end f) (.end last-chunk)) (let [l (assoc last-chunk :end (.end f))] (recur r l (conj! (pop! ret) l)))
+          :else (recur r last-chunk ret))
         (persistent! ret)))))

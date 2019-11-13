@@ -2,11 +2,11 @@
   (:require [clojure.java.io :as cio]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.bam-index.common :refer [bai-magic]]
-            [cljam.io.bam-index.chunk :as chunk]
+            [cljam.io.util.chunk :as chunk]
             [cljam.util :as util])
   (:import java.util.Arrays
            [java.io FileInputStream Closeable IOException]
-           [cljam.io.bam_index.chunk Chunk]))
+           [cljam.io.util.chunk Chunk]))
 
 (deftype BAIReader [url reader]
   Closeable
@@ -49,10 +49,10 @@
 (defn- read-chunks!
   [rdr]
   (let [n (lsb/read-int rdr)]
-   (loop [i 0, chunks []]
-     (if (< i n)
-       (recur (inc i) (conj chunks (Chunk. (lsb/read-long rdr) (lsb/read-long rdr))))
-       chunks))))
+    (loop [i 0, chunks []]
+      (if (< i n)
+        (recur (inc i) (conj chunks (Chunk. (lsb/read-long rdr) (lsb/read-long rdr))))
+        chunks))))
 
 (defn- read-bin-index**!
   [rdr]

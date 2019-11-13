@@ -4,13 +4,14 @@
             [cljam.io.sam.util :as sam-util]
             [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.bin :as util-bin]
             [cljam.io.bam-index.common :refer :all]
-            [cljam.io.bam-index.chunk :as chunk]
+            [cljam.io.util.chunk :as chunk]
             [cljam.io.bam.decoder :as bam-decoder])
   (:import [java.io DataOutputStream Closeable]
            [java.nio ByteBuffer ByteOrder]
            [cljam.io.bam.decoder BAMPointerBlock]
-           [cljam.io.bam_index.chunk Chunk]))
+           [cljam.io.util.chunk Chunk]))
 
 (declare make-index-from-blocks)
 
@@ -22,17 +23,12 @@
   (close [this]
     (.close writer)))
 
-;; Indexing
-;; --------
-
-(defn pos->lidx-offset
-  [^long pos]
-  (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
 ;; ### Intermediate data definitions
 ;;
 ;; Use record for performance.
 ;; Record is faster than map for retrieving elements.
+
 
 (defrecord MetaData [^long first-offset ^long last-offset ^long aligned-alns ^long unaligned-alns])
 
@@ -95,11 +91,11 @@
         aln-beg (.pos aln)
         aln-end (.end aln)
         win-beg (if (zero? aln-end)
-                  (pos->lidx-offset (dec aln-beg))
-                  (pos->lidx-offset aln-beg))
+                  (util-bin/pos->lidx-offset (dec aln-beg) linear-index-shift)
+                  (util-bin/pos->lidx-offset aln-beg linear-index-shift))
         win-end (if (zero? aln-end)
                   win-beg
-                  (pos->lidx-offset aln-end))
+                  (util-bin/pos->lidx-offset aln-end linear-index-shift))
         min* (fn [x]
                (if x (min x beg) beg))]
     (loop [i win-beg, ret linear-index]

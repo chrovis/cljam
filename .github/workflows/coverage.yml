@@ -1,0 +1,27 @@
+name: coverage
+
+on: [push, pull_request]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: Cache m2 repository
+      uses: actions/cache@v1
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-
+    - name: Install dependencies
+      run: lein deps
+    - name: Generate Coverage Report
+      run: |
+        lein cloverage --codecov
+        bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
+    - name: Coverage Graph
+      uses: codecov/codecov-action@v1.0.3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./target/coverage/codecov.json

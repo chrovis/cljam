@@ -1,0 +1,73 @@
+name: main
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        java: [ '1.8', '11', '12' ]
+    name: Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v1
+    - name: Setup Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: ${{ matrix.java }}
+        architecture: x64
+    - name: Cache m2 repository
+      uses: actions/cache@v1
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-
+    - name: Install dependencies
+      run: lein deps
+    - name: Run tests
+      run: |
+        lein with-profile +dev:+1.8:+1.9 test
+        lein with-profile dev bin
+        target/cljam version
+
+  ea-build:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: Download Early-Access Builds
+      run: curl -O https://download.java.net/java/early_access/jdk14/14/GPL/openjdk-14-ea+14_linux-x64_bin.tar.gz
+    - name: Setup Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: ea
+        jdkFile: ./openjdk-14-ea+14_linux-x64_bin.tar.gz
+        architecture: x64
+    - name: Cache m2 repository
+      uses: actions/cache@v1
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-
+    - name: Install Dependencies
+      run: lein deps
+    - name: Run tests
+      run: |
+        lein with-profile +dev:+1.8:+1.9 test
+        lein with-profile dev bin
+        target/cljam version
+
+  deploy:
+    needs: [build, ea-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: Setup Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: '1.8'
+        architecture: x64
+    - name: Deploy
+      run: ./deploy-snapshot.sh

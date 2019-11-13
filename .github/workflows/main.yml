@@ -70,4 +70,7 @@ jobs:
         java-version: '1.8'
         architecture: x64
     - name: Deploy
+      env:
+        CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
+        CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
       run: ./deploy-snapshot.sh

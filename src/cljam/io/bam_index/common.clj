@@ -7,3 +7,4 @@
 (def level-starts [0 1 9 73 585 4681])
 
 (def ^:const linear-index-shift 14)
+(def ^:const linear-index-depth 5)

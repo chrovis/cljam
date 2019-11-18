@@ -168,10 +168,10 @@
          {})
         (let [{:keys [chr start end] :or {start 1 end 4294967296}} index]
           (filter
-           (fn [variant]
-             (and (= chr (:chr variant))
-                  (<= start (:pos variant))
-                  (> end (:pos variant))))
+           (fn [{chr' :chr :keys [pos ref info]}]
+             (and (= chr chr')
+                  (<= start (get info :END (dec (+ pos (count ref)))))
+                  (>= end pos)))
            (vcf/read-variants
             vcf-file))))))))
 
@@ -351,3 +351,26 @@
       temp-bcf-file
       (cio/file temp-bcf-file)
       (cio/as-url (cio/file temp-bcf-file)))))
+
+(deftest read-variants-randomly-test
+  (are [chr start end]
+       (let [vcf1* (vcf/vcf-reader test-vcf-various-bins-gz-file)
+             vcf2* (vcf/vcf-reader test-vcf-various-bins-gz-file)]
+         (=
+          (vcf/read-variants-randomly vcf1* {:chr chr :start start :end end} {})
+          (filter
+           (fn [{chr' :chr :keys [pos ref info]}]
+             (and (= chr chr')
+                  (<= start (get info :END (dec (+ pos (count ref)))))
+                  (>= end pos)))
+           (vcf/read-variants vcf2*))))
+    "chr1" 1 16384
+    "chr1" 1 49153
+    "chr1" 1 30000
+    "chr1" 49153 147457
+    "chr1" 32769 147457
+    "chr1" 49153 1064952
+    "chr1" 1048577 414826496
+    "chr1" 1048577 414826497
+    "chr1" 32769 414859265
+    "chr1" 414859265 536608769))

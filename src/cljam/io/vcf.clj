@@ -11,8 +11,10 @@
             [cljam.io.bcf.reader :as bcf-reader]
             [cljam.io.bcf.writer :as bcf-writer]
             [cljam.io.util.bgzf :as bgzf]
-            [cljam.io.tabix :as tabix])
+            [cljam.io.tabix :as tabix]
+            [cljam.io.csi :as csi])
   (:import java.io.Closeable
+           java.io.FileNotFoundException
            cljam.io.vcf.reader.VCFReader
            cljam.io.vcf.writer.VCFWriter
            cljam.io.bcf.reader.BCFReader
@@ -34,7 +36,9 @@
                 (if (bgzf/bgzip? f)
                   (bgzf/bgzf-input-stream f)
                   (cio/reader (util/compressor-input-stream f)))
-                (delay (tabix/read-index (str f ".tbi"))))))
+                (delay (try (csi/read-index (str f ".csi"))
+                            (catch FileNotFoundException e
+                              (tabix/read-index (str f ".tbi"))))))))
 
 (defn ^BCFReader bcf-reader
   "Returns an open cljam.io.bcf.reader.BCFReader of f. Should be used inside

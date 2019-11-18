@@ -183,6 +183,12 @@
                     :vcf identity)]
      (map parse-fn (read-data-lines (.reader rdr) (.header rdr) kws)))))
 
+(defn- make-lazy-variants [f s]
+  (when-first [fs s]
+    (lazy-cat
+     (f fs)
+     (make-lazy-variants f (rest s)))))
+
 (defn read-variants-randomly
   "Reads variants of the bgzip compressed VCF file randomly using tabix file.
    Returning them as a lazy sequence."
@@ -191,14 +197,15 @@
    {:keys [depth] :or {depth :deep}}]
   (let [kws (mapv keyword (drop 8 (.header rdr)))
         tabix-data @(.index-delay rdr)
-        ref-idx (util-bin/get-ref-index tabix-data chr)
+        chr-names (->> (.meta-info rdr) :contig (mapv :id))
+        ref-idx (.indexOf ^clojure.lang.PersistentVector chr-names chr)
         spans (when-not (neg? ref-idx)
                 (util-bin/get-spans tabix-data ref-idx start end))
         input-stream ^BGZFInputStream (.reader rdr)
         parse-fn (case depth
                    :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
                    :vcf identity)]
-    (mapcat
+    (make-lazy-variants
      (fn [[chunk-beg ^long chunk-end]]
        (.seek input-stream chunk-beg)
        (->> #(when (< (.getFilePointer input-stream) chunk-end)

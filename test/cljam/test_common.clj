@@ -191,6 +191,9 @@
 (def test-tabix-file "test-resources/tabix/test.gtf.gz.tbi")
 (def test-large-tabix-file (cavia/resource mycavia "large.tbi"))
 
+;; ### CSI files
+(def test-csi-file "test-resources/csi/test.csi")
+
 ;; ### VCF files
 
 (def test-vcf-v4_0-file "test-resources/vcf/test-v4_0.vcf")
@@ -199,6 +202,9 @@
 (def test-vcf-complex-file "test-resources/vcf/test-v4_3-complex.vcf")
 (def test-vcf-complex-gz-file "test-resources/vcf/test-v4_3-complex.vcf.gz")
 (def test-vcf-complex-tbi-file "test-resources/vcf/test-v4_3-complex.vcf.gz.tbi")
+(def test-vcf-various-bins-gz-file "test-resources/vcf/various-bins.vcf.gz")
+(def test-vcf-various-bins-tbi-file "test-resources/vcf/various-bins.vcf.gz.tbi")
+(def test-vcf-various-bins-csi-file "test-resources/vcf/various-bins.vcf.gz.csi")
 
 (def test-large-vcf-file (cavia/resource mycavia "large.vcf.gz"))
 (def test-large-vcf-tbi-file (cavia/resource mycavia "large.vcf.gz.tbi"))

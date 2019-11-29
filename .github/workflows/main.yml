@@ -36,7 +36,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Download Early-Access Builds
-      run: curl -O https://download.java.net/java/early_access/jdk14/25/GPL/openjdk-14-ea+14_linux-x64_bin.tar.gz
+      run: curl -O https://download.java.net/java/early_access/jdk14/25/GPL/openjdk-14-ea+25_linux-x64_bin.tar.gz
     - name: Setup Java
       uses: actions/setup-java@v1
       with:

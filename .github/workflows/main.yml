@@ -41,7 +41,7 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: ea
-        jdkFile: ./openjdk-14-ea+14_linux-x64_bin.tar.gz
+        jdkFile: ./openjdk-14-ea+25_linux-x64_bin.tar.gz
         architecture: x64
     - name: Cache m2 repository
       uses: actions/cache@v1

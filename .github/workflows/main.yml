@@ -36,12 +36,14 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Download Early-Access Builds
-      run: curl -O https://download.java.net/java/early_access/jdk14/25/GPL/openjdk-14-ea+25_linux-x64_bin.tar.gz
+      run: curl -sSL https://jdk.java.net/14 | grep -m1 -Eo 'https.*linux-x64_bin.tar.gz' | xargs curl -O
+    - name: Get name of the downloaded jdkFile
+      run: echo -e "::set-env name=JDKFILE::$(find . -name '*linux-x64_bin.tar.gz' | head -n1)"
     - name: Setup Java
       uses: actions/setup-java@v1
       with:
         java-version: ea
-        jdkFile: ./openjdk-14-ea+25_linux-x64_bin.tar.gz
+        jdkFile: ${{ env.JDKFILE }}
         architecture: x64
     - name: Cache m2 repository
       uses: actions/cache@v1

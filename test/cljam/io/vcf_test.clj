@@ -292,6 +292,17 @@
             (with-open [b (vcf/writer temp-file m h)]
               (vcf/write-variants b xs))
             (with-open [b (vcf/reader temp-file)]
+              (is (= xs (vcf/read-variants b))))))))
+    (testing "v4.3 complex bgzip"
+      (let [temp-file (.getAbsolutePath
+                       (cio/file temp-dir "test_v4_3_complex_bgzip.bcf"))]
+        (with-open [v (vcf/reader test-vcf-complex-gz-file)]
+          (let [xs (vcf/read-variants v)
+                m (vcf/meta-info v)
+                h (vcf/header v)]
+            (with-open [b (vcf/writer temp-file m h)]
+              (vcf/write-variants b xs))
+            (with-open [b (vcf/reader temp-file)]
               (is (= xs (vcf/read-variants b))))))))))
 
 (deftest bcf->vcf-conversion-test

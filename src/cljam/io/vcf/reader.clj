@@ -8,7 +8,7 @@
             [proton.core :refer [as-long]]
             [cljam.io.util.bin :as util-bin]
             [cljam.io.vcf.util :as vcf-util])
-  (:import [java.io Closeable]
+  (:import [java.io Closeable BufferedReader]
            [clojure.lang LazilyPersistentVector]
            bgzf4j.BGZFInputStream))
 
@@ -109,7 +109,7 @@
          v)]))
 
 (defn load-meta-info
-  [^java.io.BufferedReader rdr]
+  [^BufferedReader rdr]
   (loop [line (.readLine rdr), meta-info {}]
     (if (meta-line? line)
       (let [[k v] (parse-meta-info-line line)]
@@ -133,7 +133,7 @@
   (cstr/split (subs line 1) #"\t"))
 
 (defn load-header
-  [^java.io.BufferedReader rdr]
+  [^BufferedReader rdr]
   (loop [line (.readLine rdr)]
     (if (header-line? line)
       (parse-header-line line)
@@ -164,8 +164,10 @@
          (apply hash-map))))
 
 (defn- read-data-lines
-  [^java.io.BufferedReader rdr header kws]
-  (when-let [line (.readLine rdr)]
+  [rdr header kws]
+  (when-let [line (if (instance? BufferedReader rdr)
+                    (.readLine ^BufferedReader rdr)
+                    (.readLine ^BGZFInputStream rdr))]
     (if-not (or (meta-line? line) (header-line? line))
       (cons (parse-data-line line kws)
             (lazy-seq (read-data-lines rdr header kws)))

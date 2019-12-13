@@ -31,7 +31,6 @@
         header (with-open [r (cio/reader (util/compressor-input-stream f))]
                  (vcf-reader/load-header r))]
     (VCFReader. (util/as-url f) meta-info header
-
                 (if (bgzf/bgzip? f)
                   (bgzf/bgzf-input-stream f)
                   (cio/reader (util/compressor-input-stream f)))

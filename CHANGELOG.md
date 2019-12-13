@@ -1,5 +1,20 @@
 # Change Log
 
+## [Unreleased]
+
+### Added
+
+* Add support for random reading of vcf file. [#180](https://github.com/chrovis/cljam/pull/180)
+
+### Changed
+
+* Migrate CI to GitHub Actions. [#181](https://github.com/chrovis/cljam/pull/181)
+* Detect the latest build number of OpenJDK EA. [#183](https://github.com/chrovis/cljam/pull/183)
+
+### Fixed
+
+* Fix a bug in reading bgzipped VCF files. [#184](https://github.com/chrovis/cljam/pull/184)
+
 ## [0.7.4] - 2019-10-04
 
 ### Fixed

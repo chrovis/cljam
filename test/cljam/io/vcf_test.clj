@@ -116,9 +116,11 @@
       (is (= (vcf/read-variants rdr) test-vcf-no-samples-variants-deep)))))
 
 (deftest read-variants-complex-test
-  (with-open [v (vcf/reader test-vcf-complex-file)
-              b (vcf/reader test-bcf-complex-file)]
+  (with-open [v (vcf/reader test-vcf-complex-file)    ;; uncompressed VCF
+              z (vcf/reader test-vcf-complex-gz-file) ;; bgzipped VCF
+              b (vcf/reader test-bcf-complex-file)]   ;; bgzipped BCF
     (is (= (vcf/read-variants v)
+           (vcf/read-variants z)
            (vcf/read-variants b)))))
 
 (deftest-remote bin-index-is-done-without-errors-with-a-large-file

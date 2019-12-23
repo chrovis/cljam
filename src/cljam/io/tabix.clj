@@ -10,19 +10,18 @@
            [cljam.io.util.chunk Chunk]))
 
 (def ^:const linear-index-shift 14)
+(def ^:const linear-index-depth 5)
 
 (deftype Tabix [n-ref preset sc bc ec meta skip seq bidx lidx]
-  util-bin/IBinaryIndex
-  (get-chunks [this ref-idx bins]
-    (into [] (mapcat (get (.bidx this) ref-idx) bins)))
-  (get-min-offset [this ref-idx beg]
-    (get (get (.lidx this) ref-idx)
+  util-bin/IBinningIndex
+  (get-chunks [_ ref-idx bins]
+    (vec (mapcat (get bidx ref-idx) bins)))
+  (get-min-offset [_ ref-idx beg]
+    (get (get lidx ref-idx)
          (util-bin/pos->lidx-offset beg linear-index-shift) 0))
-  (get-ref-index [this chr]
-    (.indexOf
-     ^clojure.lang.PersistentVector
-     (.seq  this)
-     chr)))
+  (get-min-shift [_] linear-index-shift)
+  (get-depth [_]
+    linear-index-depth))
 
 (def tabix-magic "TBI\1")
 

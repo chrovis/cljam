@@ -12,12 +12,15 @@
            cljam.io.bam_index.writer.BAIWriter))
 
 (deftype BAMIndex [url bidx lidx]
-  util-bin/IBinaryIndex
-  (get-chunks [this ref-idx bins]
-    (into [] (mapcat (get (.bidx this) ref-idx) bins)))
-  (get-min-offset [this ref-idx beg]
-    (get (get (.lidx this) ref-idx)
-         (util-bin/pos->lidx-offset beg common/linear-index-shift) 0)))
+  util-bin/IBinningIndex
+  (get-chunks [_ ref-idx bins]
+    (vec (mapcat (get bidx ref-idx) bins)))
+  (get-min-offset [_ ref-idx beg]
+    (get (get lidx ref-idx)
+         (util-bin/pos->lidx-offset beg common/linear-index-shift) 0))
+  (get-depth [_]
+    common/linear-index-depth)
+  (get-min-shift [_] common/linear-index-shift))
 
 (defn bam-index [f]
   (let [{:keys [bidx lidx]} (with-open [r ^BAIReader (reader/reader f)] (reader/read-all-index! r))]

@@ -5,6 +5,7 @@
 ### Added
 
 * Add support for random reading of vcf file. [#180](https://github.com/chrovis/cljam/pull/180)
+* Add support for CSI reader. [#182](https://github.com/chrovis/cljam/pull/182)
 
 ### Changed
 

@@ -125,32 +125,28 @@
 
 (deftest-remote bin-index-is-done-without-errors-with-a-large-file
   (with-before-after {:before (prepare-cavia!)}
-    (with-open [v (vcf/vcf-reader
-                   test-large-vcf-file)]
-      (is (not-throw?
-           (vcf/read-variants-randomly
-            v
-            {:chr "chr1"
-             :start 20
-             :end 1000000}
-            {}))))
-
-    (with-open [v (vcf/vcf-reader
-                   test-large-vcf-file)]
-      (is (not-throw?
-           (vcf/read-variants-randomly
-            v
-            {:chr "chr1"
-             :start 2000}
-            {}))))
-
-    (with-open [v (vcf/vcf-reader
-                   test-large-vcf-file)]
-      (is (not-throw?
-           (vcf/read-variants-randomly
-            v
-            {:chr "chr1"}
-            {}))))))
+    (testing "vcf"
+      (are [index]
+           (with-open [v (vcf/vcf-reader test-large-vcf-file)]
+             (is (not-throw?
+                  (vcf/read-variants-randomly v index {}))))
+        {:chr "chr1"
+         :start 20
+         :end 1000000}
+        {:chr "chr1"
+         :start 2000}
+        {:chr "chr1"}))
+    (testing "bcf"
+      (are [index]
+           (with-open [v (vcf/vcf-reader test-large-bcf-file)]
+             (is (not-throw?
+                  (vcf/read-variants-randomly v index {}))))
+        {:chr "chr1"
+         :start 20
+         :end 1000000}
+        {:chr "chr1"
+         :start 2000}
+        {:chr "chr1"}))))
 
 (deftest read-randomly-variants-complex-test
   (doseq [index [{:chr "1"}
@@ -159,21 +155,18 @@
                  {:chr "2" :end 40000}
                  {:chr "2" :start 30000 :end 40000}]]
     (with-open [vcf-file (vcf/vcf-reader test-vcf-complex-file)
-                vcf-gz-file (vcf/vcf-reader test-vcf-complex-gz-file)]
-      (is
-       (=
-        (vcf/read-variants-randomly
-         vcf-gz-file
-         index
-         {})
-        (let [{:keys [chr start end] :or {start 1 end 4294967296}} index]
-          (filter
-           (fn [{chr' :chr :keys [pos ref info]}]
-             (and (= chr chr')
-                  (<= start (get info :END (dec (+ pos (count ref)))))
-                  (>= end pos)))
-           (vcf/read-variants
-            vcf-file))))))))
+                vcf-gz-file (vcf/vcf-reader test-vcf-complex-gz-file)
+                bcf-file (vcf/bcf-reader test-bcf-complex-file)]
+      (is (= (vcf/read-variants-randomly vcf-gz-file index {})
+             (vcf/read-variants-randomly bcf-file index {})
+             (let [{:keys [chr start end] :or {start 1 end 4294967296}} index]
+               (filter
+                (fn [{chr' :chr :keys [pos ref info]}]
+                  (and (= chr chr')
+                       (<= start (get info :END (dec (+ pos (count ref)))))
+                       (>= end pos)))
+                (vcf/read-variants
+                 vcf-file))))))))
 
 (deftest writer-test
   (testing "vcf"
@@ -353,24 +346,50 @@
       (cio/as-url (cio/file temp-bcf-file)))))
 
 (deftest read-variants-randomly-test
-  (are [chr start end]
-       (let [vcf1* (vcf/vcf-reader test-vcf-various-bins-gz-file)
-             vcf2* (vcf/vcf-reader test-vcf-various-bins-gz-file)]
-         (=
-          (vcf/read-variants-randomly vcf1* {:chr chr :start start :end end} {})
-          (filter
-           (fn [{chr' :chr :keys [pos ref info]}]
-             (and (= chr chr')
-                  (<= start (get info :END (dec (+ pos (count ref)))))
-                  (>= end pos)))
-           (vcf/read-variants vcf2*))))
-    "chr1" 1 16384
-    "chr1" 1 49153
-    "chr1" 1 30000
-    "chr1" 49153 147457
-    "chr1" 32769 147457
-    "chr1" 49153 1064952
-    "chr1" 1048577 414826496
-    "chr1" 1048577 414826497
-    "chr1" 32769 414859265
-    "chr1" 414859265 536608769))
+  (testing "vcf"
+    (are [chr start end]
+         (let [vcf1* (vcf/vcf-reader test-vcf-various-bins-gz-file)
+               vcf2* (vcf/vcf-reader test-vcf-various-bins-gz-file)]
+           (=
+            (vcf/read-variants-randomly vcf1* {:chr chr :start start :end end}
+                                        {})
+            (filter
+             (fn [{chr' :chr :keys [pos ref info]}]
+               (and (= chr chr')
+                    (<= start (get info :END (dec (+ pos (count ref)))))
+                    (>= end pos)))
+             (vcf/read-variants vcf2*))))
+      "chr1" 1 16384
+      "chr1" 1 49153
+      "chr1" 1 30000
+      "chr1" 49153 147457
+      "chr1" 32769 147457
+      "chr1" 49153 1064952
+      "chr1" 1048577 414826496
+      "chr1" 1048577 414826497
+      "chr1" 32769 414859265
+      "chr1" 414859265 536608769))
+  (testing "bcf"
+    (are [chr start end]
+         (let [bcf1* (vcf/bcf-reader test-bcf-various-bins-file)
+               bcf2* (vcf/bcf-reader test-bcf-various-bins-file)
+               vcf (vcf/vcf-reader test-vcf-various-bins-gz-file)]
+           (=
+            (vcf/read-variants-randomly bcf2* {:chr chr :start start :end end} {})
+            (vcf/read-variants-randomly vcf {:chr chr :start start :end end} {})
+            (filter
+             (fn [{chr' :chr :keys [pos ref info]}]
+               (and (= chr chr')
+                    (<= start (get info :END (dec (+ pos (count ref)))))
+                    (>= end pos)))
+             (vcf/read-variants bcf1*))))
+      "chr1" 1 16384
+      "chr1" 1 49153
+      "chr1" 1 30000
+      "chr1" 49153 147457
+      "chr1" 32769 147457
+      "chr1" 49153 1064952
+      "chr1" 1048577 414826496
+      "chr1" 1048577 414826497
+      "chr1" 32769 414859265
+      "chr1" 414859265 536608769)))

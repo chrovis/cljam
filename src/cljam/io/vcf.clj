@@ -81,9 +81,9 @@
   ([rdr option] (protocols/read-variants rdr option)))
 
 (defn read-variants-randomly
-  "Reads variants of the VCF file randomly, returning them as a lazy sequence."
+  "Reads variants of the VCF/BCF file randomly, returning them as a lazy sequence."
   ([rdr span-option depth-option]
-   (vcf-reader/read-variants-randomly
+   (protocols/read-variants-randomly
     rdr
     span-option
     depth-option)))

@@ -94,8 +94,8 @@
         (case (bit-and 0xFFFF i) 0x8000 nil 0x8001 :eov i))
     3 (let [i (lsb/read-int r)]
         (case (bit-and 0xFFFFFFFF i) 0x80000000 nil 0x80000001 :eov i))
-    5 (let [i (lsb/read-float r)]
-        (case (Float/floatToRawIntBits i) 0x7F800001 nil 0x7F800002 :eov i))
+    5 (let [i (lsb/read-int r)]
+        (case (bit-and 0xFFFFFFFF i) 0x7F800001 nil 0x7F800002 :eov (Float/intBitsToFloat i)))
     7 (lsb/read-byte r)))
 
 (defn- bytes->strs
@@ -163,7 +163,7 @@
   (let [chrom-id (lsb/read-int shared)
         pos (inc (lsb/read-int shared))
         rlen (lsb/read-int shared)
-        qual (lsb/read-float shared)
+        qual (lsb/read-int shared)
         n-allele-info (lsb/read-int shared)
         n-allele (unsigned-bit-shift-right n-allele-info 16)
         n-info (bit-and n-allele-info 0xFFFF)
@@ -179,7 +179,7 @@
     {:chr chrom-id
      :pos pos
      :ref-length rlen
-     :qual (when-not (= (Float/floatToRawIntBits qual) 0x7F800001) qual)
+     :qual (when-not (= qual 0x7F800001) (Float/intBitsToFloat qual))
      :id id
      :ref (first refseq)
      :alt (seq (map first altseq))

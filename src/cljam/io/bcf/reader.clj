@@ -116,15 +116,15 @@
          len (unsigned-bit-shift-right (bit-and 0xF0 type-byte) 4)
          total-len (if (= len 15) (first (read-typed-value rdr)) len)
          type-id (bit-and 0x0F type-byte)]
-     (if (zero? type-id)
-       (repeat n-sample nil)
-       (let [results (->> #(read-typed-atomic-value rdr type-id)
-                          (repeatedly (* n-sample total-len))
-                          (partition total-len)
-                          doall)]
-         (if (= type-id 7)
-           (map bytes->strs results)
-           (map (fn [xs] (take-while #(not= % :eov) xs)) results)))))))
+     (case type-id
+       0 (repeat n-sample nil)
+       7 (doall (repeatedly n-sample
+                            #(bytes->strs (lsb/read-bytes rdr total-len))))
+       (->> #(read-typed-atomic-value rdr type-id)
+            (repeatedly (* n-sample total-len))
+            (partition total-len)
+            (map (fn [xs] (take-while #(not= % :eov) xs)))
+            doall)))))
 
 (defn- read-typed-kv
   "Reads a key-value pair."

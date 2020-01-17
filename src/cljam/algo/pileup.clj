@@ -237,26 +237,25 @@
    (when-let [^long len (:len (refs/ref-by-name (sam/read-refs sam-reader) chr))]
      (let [s (max 1 start)
            e (min len end)
-           region {:chr chr :start s :end e}]
+           region {:chr chr :start s :end e}
+           filter-fn (if (pos? min-base-quality)
+                       (partial map (filter-by-base-quality min-base-quality))
+                       identity)]
        (->> (sam/read-alignments sam-reader region)
             (sequence
              (comp
               (filter (basic-mpileup-pred min-map-quality))
               (map index-cigar)))
             (seq-step start end chunk-size)
-            (sequence
-             (comp
-              (mapcat (fn [[^long pos alns]]
-                        (->> (if ignore-overlaps?
-                               alns
-                               (keep (partial correct-quals-at-ref
-                                              (make-corrected-quals-map alns)) alns))
-                             (pileup-seq pos (min end (+ pos chunk-size))))))
-              (map resolve-bases)
-              (if (pos? min-base-quality)
-                (map (filter-by-base-quality min-base-quality))
-                identity)
-              (keep (partial ->locus-pile chr)))))))))
+            (mapcat (fn [[^long pos alns]]
+                      (->> (if ignore-overlaps?
+                             alns
+                             (keep (partial correct-quals-at-ref
+                                            (make-corrected-quals-map alns)) alns))
+                           (pileup-seq pos (min end (+ pos chunk-size))))))
+            (map resolve-bases)
+            filter-fn
+            (keep (partial ->locus-pile chr)))))))
 
 (defn align-pileup-seqs
   "Align multiple piled-up seqs."

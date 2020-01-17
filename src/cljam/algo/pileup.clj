@@ -103,7 +103,7 @@
      (when-not deletion? indel)
      (when deletion? indel)
      (.qname aln)
-     aln)))
+     (dissoc aln :seqs-at-ref :quals-at-ref))))
 
 (defn- resolve-bases
   [[ref-pos alns]]

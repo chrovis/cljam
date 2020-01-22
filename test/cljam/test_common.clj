@@ -235,7 +235,7 @@
 (def test-bcf-various-bins-file "test-resources/bcf/various-bins.bcf")
 (def test-bcf-various-bins-csi-file "test-resources/bcf/various-bins.bcf.csi")
 (def test-large-bcf-file (cavia/resource mycavia "large.bcf"))
-(def test-large-vcf-csi-file (cavia/resource mycavia "large.bcf.csi"))
+(def test-large-bcf-csi-file (cavia/resource mycavia "large.bcf.csi"))
 
 ;; ### GFF3 files
 

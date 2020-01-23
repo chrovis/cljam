@@ -294,8 +294,8 @@
      (make-lazy-variants f (rest s)))))
 
 (defn read-variants-randomly
-  "Reads variants of the bgzip compressed BCF file randomly using csi file.
-   Returning them as a lazy sequence."
+  "Reads variants of the BCF file randomly using csi file.
+   Returns them as a lazy sequence."
   [^BCFReader rdr
    {:keys [chr start end] :or {start 1 end 4294967296}}
    {:keys [depth] :or {depth :deep}}]

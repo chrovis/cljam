@@ -40,7 +40,7 @@
   (let [empty-qual? (and (= (.length qual) 1)
                          (= (.charAt qual 0) \*))]
     (if empty-qual?
-      (short-array (repeat (count idx) 93)) ;; \~
+      (short-array (count idx) (short 93)) ;; \~
       (->> idx
            (map (fn [[_ x]]
                   (if (number? x)

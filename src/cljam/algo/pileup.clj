@@ -40,21 +40,26 @@
   (let [empty-qual? (and (= (.length qual) 1)
                          (= (.charAt qual 0) \*))]
     (if empty-qual?
-      (vec (repeat (count idx) 93)) ;; \~
-      (mapv (fn [[_ x]]
-              (if (number? x)
-                (qual/fastq-char->phred-byte (.charAt qual x))
-                93))
-            idx))))
+      (short-array (count idx) (short 93)) ;; \~
+      (->> idx
+           (map (fn [[_ x]]
+                  (if (number? x)
+                    (qual/fastq-char->phred-byte (.charAt qual x))
+                    93)))
+           short-array))))
+
+(deftype PosBase [^char base indel])
 
 (defn- seqs-at-ref
   [idx ^String s]
-  (mapv (fn [[op x xs]]
-          (let [c (if (number? x) (.charAt s x) x)]
-            (case op
-              :m [c]
-              :d [c xs]
-              :i [c (subs s (first xs) (last xs))]))) idx))
+  (->> idx
+       (map (fn [[op x xs]]
+              (let [c (if (number? x) (.charAt s x) x)]
+                (case op
+                  :m (->PosBase c nil)
+                  :d (->PosBase c xs)
+                  :i (->PosBase c (subs s (first xs) (last xs)))))))
+       object-array))
 
 (defn index-cigar
   "Align bases and base quality scores with the reference coordinate."
@@ -83,8 +88,10 @@
   "Find a piled-up base and an indel from an alignment."
   [^long ref-pos ^SAMAlignment aln]
   (let [relative-pos (- ref-pos (.pos aln))
-        qual ((:quals-at-ref aln) relative-pos)
-        [base indel] ((:seqs-at-ref aln) relative-pos)
+        qual (aget ^shorts (:quals-at-ref aln) relative-pos)
+        ^PosBase pb (aget ^objects (:seqs-at-ref aln) relative-pos)
+        base (.base pb)
+        indel (.indel pb)
         deletion? (number? indel)]
     (plpio/->PileupBase
      (zero? relative-pos)
@@ -96,7 +103,7 @@
      (when-not deletion? indel)
      (when deletion? indel)
      (.qname aln)
-     aln)))
+     (dissoc aln :seqs-at-ref :quals-at-ref))))
 
 (defn- resolve-bases
   [[ref-pos alns]]
@@ -106,7 +113,7 @@
   "Convert a pile into `cljam.io.pileup.LocusPile`."
   [chr [pos pile]]
   (when (seq pile)
-    (LocusPile. chr pos pile)))
+    (LocusPile. chr pos (object-array pile))))
 
 (defn filter-by-base-quality
   "Returns a predicate for filtering piled-up reads by base quality at its
@@ -114,7 +121,7 @@
   [^long min-base-quality]
   (fn [p]
     (->> #(<= min-base-quality (.qual ^PileupBase %))
-         (partial filterv)
+         (partial filter)
          (update p 1))))
 
 (defn- unzip-2
@@ -138,31 +145,30 @@
 (defn- merge-corrected-quals
   "Merge corrected quals with the uncorrected part."
   [^SAMAlignment aln ^long correct-start corrected-quals]
-  (let [quals (:quals-at-ref aln)
+  (let [^shorts quals (:quals-at-ref aln)
         start (.pos aln)
-        len   (count corrected-quals)]
-    (if (< start correct-start)
-      (-> quals
-          (subvec 0 (- correct-start start))
-          (into corrected-quals)
-          (into (subvec quals (+ (- correct-start start) len))))
-      (into corrected-quals (subvec quals len)))))
+        len   (count corrected-quals)
+        quals' (java.util.Arrays/copyOf quals (alength quals))
+        start' (if (< start correct-start) (- correct-start start) 0)]
+    (dotimes [i len]
+      (aset quals' (+ start' i) (short (corrected-quals i))))
+    quals'))
 
 (defn- correct-pair-qual
   [^SAMAlignment a1 ^SAMAlignment a2]
   (let [pos1 (.pos a1)
         pos2 (.pos a2)
-        quals1 (:quals-at-ref a1)
-        quals2 (:quals-at-ref a2)
-        seqs1  (:seqs-at-ref a1)
-        seqs2  (:seqs-at-ref a2)]
+        ^shorts quals1 (:quals-at-ref a1)
+        ^shorts quals2 (:quals-at-ref a2)
+        ^objects seqs1 (:seqs-at-ref a1)
+        ^objects seqs2 (:seqs-at-ref a2)]
     (fn [^long pos]
       (let [relative-pos1 (- pos pos1)
             relative-pos2 (- pos pos2)
-            ^int q1 (quals1 relative-pos1)
-            ^int q2 (quals2 relative-pos2)
-            [b1] (seqs1 relative-pos1)
-            [b2] (seqs2 relative-pos2)]
+            q1 (aget quals1 relative-pos1)
+            q2 (aget quals2 relative-pos2)
+            b1 (-> seqs1 ^PosBase (aget relative-pos1) .-base)
+            b2 (-> seqs2 ^PosBase (aget relative-pos2) .-base)]
         (if (= b1 b2)
           [(min 200 (+ q1 q2)) 0]
           (if (<= q2 q1)
@@ -231,26 +237,25 @@
    (when-let [^long len (:len (refs/ref-by-name (sam/read-refs sam-reader) chr))]
      (let [s (max 1 start)
            e (min len end)
-           region {:chr chr :start s :end e}]
+           region {:chr chr :start s :end e}
+           filter-fn (if (pos? min-base-quality)
+                       (partial map (filter-by-base-quality min-base-quality))
+                       identity)]
        (->> (sam/read-alignments sam-reader region)
             (sequence
              (comp
               (filter (basic-mpileup-pred min-map-quality))
               (map index-cigar)))
             (seq-step start end chunk-size)
-            (sequence
-             (comp
-              (mapcat (fn [[^long pos alns]]
-                        (->> (if ignore-overlaps?
-                               alns
-                               (keep (partial correct-quals-at-ref
-                                              (make-corrected-quals-map alns)) alns))
-                             (pileup-seq pos (min end (+ pos chunk-size))))))
-              (map resolve-bases)
-              (if (pos? min-base-quality)
-                (map (filter-by-base-quality min-base-quality))
-                identity)
-              (keep (partial ->locus-pile chr)))))))))
+            (mapcat (fn [[^long pos alns]]
+                      (->> (if ignore-overlaps?
+                             alns
+                             (keep (partial correct-quals-at-ref
+                                            (make-corrected-quals-map alns)) alns))
+                           (pileup-seq pos (min end (+ pos chunk-size))))))
+            (map resolve-bases)
+            filter-fn
+            (keep (partial ->locus-pile chr)))))))
 
 (defn align-pileup-seqs
   "Align multiple piled-up seqs."

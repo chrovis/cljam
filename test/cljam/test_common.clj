@@ -51,7 +51,16 @@
                 :sha1 "f5e42e5af8666a39e1db1a477b25f183bf09fc9b"}
                {:id "large.vcf.gz.csi"
                 :url "https://test.chrov.is/data/cljam/example-500-10000.vcf.gz.csi"
-                :sha1 "568a47f463de8df846e021640d38b8cf8f257e66"}]})
+                :sha1 "568a47f463de8df846e021640d38b8cf8f257e66"}
+               {:id "large.vcf.gz.csi"
+                :url "https://test.chrov.is/data/cljam/example-500-10000.vcf.gz.csi"
+                :sha1 "568a47f463de8df846e021640d38b8cf8f257e66"}
+               {:id "large.bcf"
+                :url "https://test.chrov.is/data/cljam/example-500-10000.bcf"
+                :sha1 "f7f57ed9d21874c92331ef6d86d85b36959f4d16"}
+               {:id "large.bcf.csi"
+                :url "https://test.chrov.is/data/cljam/example-500-10000.bcf.csi"
+                :sha1 "5f0c2deab6c33eda887139227c691f140f88ade9"}]})
 
 (defn prepare-cavia! []
   (with-profile mycavia
@@ -223,8 +232,13 @@
 (def test-bcf-invalid-file "test-resources/bcf/invalid.bcf")
 (def test-bcf-no-samples-file "test-resources/bcf/test-no-samples.bcf")
 (def test-bcf-complex-file "test-resources/bcf/test-v4_3-complex.bcf")
+(def test-bcf-various-bins-file "test-resources/bcf/various-bins.bcf")
+(def test-bcf-various-bins-csi-file "test-resources/bcf/various-bins.bcf.csi")
+(def test-large-bcf-file (cavia/resource mycavia "large.bcf"))
+(def test-large-bcf-csi-file (cavia/resource mycavia "large.bcf.csi"))
 
 ;; ### GFF3 files
+
 
 (def test-gff3-file "test-resources/gff3/example.gff3")
 

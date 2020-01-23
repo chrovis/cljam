@@ -7,15 +7,19 @@
             [cljam.io.util.lsb :as lsb]
             [cljam.io.vcf.reader :as vcf-reader]
             [cljam.io.vcf.util :as vcf-util]
-            [cljam.util :as util])
+            [cljam.util :as util]
+            [cljam.io.util.bin :as util-bin]
+            [cljam.io.csi :as csi])
   (:import [java.io Closeable IOException]
            [java.net URL]
            [java.nio Buffer ByteBuffer]
            [bgzf4j BGZFInputStream]))
 
-(declare read-variants meta-info)
+(declare read-variants meta-info read-variants-randomly)
 
-(deftype BCFReader [^URL url meta-info header ^BGZFInputStream reader ^long start-pos]
+(deftype BCFReader
+         [^URL url meta-info header ^BGZFInputStream reader
+          ^long start-pos index-delay]
   Closeable
   (close [this]
     (.close ^Closeable (.reader this)))
@@ -42,7 +46,9 @@
   (header [this] (.header this))
   (read-variants
     ([this] (protocols/read-variants this {}))
-    ([this option] (read-variants this option))))
+    ([this option] (read-variants this option)))
+  (read-variants-randomly [this region-option deep-option]
+    (read-variants-randomly this region-option deep-option)))
 
 (defn- parse-meta-and-header
   "Parses meta-info and header of BCF files and returns them as a map.
@@ -72,10 +78,13 @@
       (let [hlen (lsb/read-int rdr)
             header-buf (lsb/read-bytes rdr hlen)]
         (if (zero? (aget ^bytes header-buf (dec hlen))) ;; NULL-terminated
-          (let [{:keys [header meta]} (->> (String. ^bytes header-buf 0 (int (dec hlen)))
+          (let [{:keys [header meta]} (->> (String. ^bytes header-buf
+                                                    0
+                                                    (int (dec hlen)))
                                            cstr/split-lines
                                            parse-meta-and-header)]
-            (BCFReader. (util/as-url f) meta header rdr (.getFilePointer rdr)))
+            (BCFReader. (util/as-url f) meta header rdr (.getFilePointer rdr)
+                        (delay (csi/read-index (str f ".csi")))))
           (do
             (.close rdr)
             (throw (IOException. (str "Invalid file format. BCF header must be NULL-terminated."))))))
@@ -238,6 +247,27 @@
       (update :info (fn [xs] (map (fn [m] (dissoc m :idx)) xs)))
       (update :format (fn [xs] (map (fn [m] (dissoc m :idx)) xs)))))
 
+(defn- make-parse-fn [^BCFReader rdr info depth]
+  (let [contigs (meta->map (:contig (.meta-info rdr)))
+        filters (assoc (meta->map (:filter (.meta-info rdr)))
+                       0
+                       {:id "PASS" :kw :PASS})
+        formats (meta->map (:format (.meta-info rdr)))
+        kws (mapv keyword (drop 8 (.header rdr)))]
+    (case depth
+      :deep (comp (partial bcf-map->parsed-variant
+                           contigs filters formats info kws)
+                  parse-data-line-deep)
+      :vcf (comp (vcf-util/variant-vals-stringifier
+                  (.meta-info rdr)
+                  (.header rdr))
+                 (partial bcf-map->parsed-variant
+                          contigs filters formats info kws)
+                 parse-data-line-deep)
+      :bcf parse-data-line-deep
+      :shallow (partial parse-data-line-shallow contigs)
+      :raw identity)))
+
 (defn read-variants
   "Returns data lines of the BCF from rdr as a lazy sequence of maps.
    rdr must implement cljam.bcf.BCFReader.
@@ -252,19 +282,43 @@
    (read-variants rdr {}))
   ([^BCFReader rdr {:keys [depth] :or {depth :deep}}]
    (.seek ^BGZFInputStream (.reader rdr) ^long (.start-pos rdr))
-   (let [contigs (meta->map (:contig (.meta-info rdr)))
-         filters (assoc (meta->map (:filter (.meta-info rdr))) 0 {:id "PASS" :kw :PASS})
-         formats (meta->map (:format (.meta-info rdr)))
-         info (meta->map (:info (.meta-info rdr)))
-         kws (mapv keyword (drop 8 (.header rdr)))
-         parse-fn (case depth
-                    :deep (comp (partial bcf-map->parsed-variant contigs filters formats info kws)
-                                parse-data-line-deep)
-                    :vcf (comp (vcf-util/variant-vals-stringifier (.meta-info rdr) (.header rdr))
-                               (partial bcf-map->parsed-variant contigs filters formats info kws)
-                               parse-data-line-deep)
-                    :bcf parse-data-line-deep
-                    :shallow (partial parse-data-line-shallow contigs)
-                    :raw identity)]
+   (let [info (meta->map (:info (.meta-info rdr)))
+         parse-fn  (make-parse-fn rdr info depth)]
      (read-data-lines (.reader rdr)
                       (fn [rdr] (parse-fn (read-data-line-buffer rdr)))))))
+
+(defn- make-lazy-variants [f s]
+  (when-first [fs s]
+    (lazy-cat
+     (f fs)
+     (make-lazy-variants f (rest s)))))
+
+(defn read-variants-randomly
+  "Reads variants of the BCF file randomly using csi file.
+   Returns them as a lazy sequence."
+  [^BCFReader rdr
+   {:keys [chr start end] :or {start 1 end 4294967296}}
+   {:keys [depth] :or {depth :deep}}]
+  (let [info (meta->map (:info (.meta-info rdr)))
+        parse-fn  (make-parse-fn rdr info depth)
+        input-stream ^BGZFInputStream (.reader rdr)
+        chr-names (->> (.meta-info rdr) :contig (mapv :id))
+        ref-idx (.indexOf ^clojure.lang.PersistentVector chr-names chr)
+        csi-data @(.index-delay rdr)
+        spans (when-not (neg? ref-idx)
+                (util-bin/get-spans csi-data ref-idx start end))]
+    (make-lazy-variants
+     (fn [[chunk-beg ^long chunk-end]]
+       (.seek input-stream chunk-beg)
+       (->> #(when (< (.getFilePointer input-stream) chunk-end)
+               (-> input-stream
+                   read-data-line-buffer
+                   parse-fn))
+            repeatedly
+            (take-while identity)
+            (filter
+             (fn [{chr' :chr :keys [pos ref info]}]
+               (and (= chr' chr)
+                    (<= pos end)
+                    (<= start (get info :END (dec (+ pos (count ref))))))))))
+     spans)))

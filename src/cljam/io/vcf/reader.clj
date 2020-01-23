@@ -44,7 +44,9 @@
   (header [this] (.header this))
   (read-variants
     ([this] (protocols/read-variants this {}))
-    ([this option] (read-variants this option))))
+    ([this option] (read-variants this option)))
+  (read-variants-randomly [this region-option deep-option]
+    (read-variants-randomly this region-option  deep-option)))
 
 ;; Utilities
 ;; ---------

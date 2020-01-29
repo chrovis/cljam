@@ -6,15 +6,19 @@
 
 * Add support for random reading of vcf file. [#180](https://github.com/chrovis/cljam/pull/180)
 * Add support for CSI reader. [#182](https://github.com/chrovis/cljam/pull/182)
+* Add support for random reading of a bcf file. [#187](https://github.com/chrovis/cljam/pull/187)
 
 ### Changed
 
 * Migrate CI to GitHub Actions. [#181](https://github.com/chrovis/cljam/pull/181)
 * Detect the latest build number of OpenJDK EA. [#183](https://github.com/chrovis/cljam/pull/183)
+* Improve performance for reading string from BCF. [#186](https://github.com/chrovis/cljam/pull/186)
+* Improvement for pileup memory usage. [#188](https://github.com/chrovis/cljam/pull/188)
 
 ### Fixed
 
 * Fix a bug in reading bgzipped VCF files. [#184](https://github.com/chrovis/cljam/pull/184)
+* Fix float reader for specific environments such as IcedTea. [#185](https://github.com/chrovis/cljam/pull/185)
 
 ## [0.7.4] - 2019-10-04
 

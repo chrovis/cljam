@@ -1,5 +1,7 @@
 (ns cljam.io.sam.util.cigar
   "Parser of CIGAR strings."
+  (:require [clojure.core.memoize :as memoize]
+            [proton.core :as proton])
   (:import [java.nio ByteBuffer ByteOrder]))
 
 (defn parse
@@ -45,7 +47,10 @@
           #{\I} (recur xs r (+ s l) (update-last! idx (fn [x] [:i x [s (+ l s)]]))))
         (persistent! idx)))))
 
-(def to-index (memoize to-index*))
+(def to-index
+  (memoize/lu to-index* :lu/threshold
+              (or (proton/as-int (System/getProperty "cljam.sam.cigar.cache-size"))
+                  1024)))
 
 (defn count-op
   "Returns length of CIGAR operations."

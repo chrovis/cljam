@@ -14,6 +14,7 @@
 * Detect the latest build number of OpenJDK EA. [#183](https://github.com/chrovis/cljam/pull/183)
 * Improve performance for reading string from BCF. [#186](https://github.com/chrovis/cljam/pull/186)
 * Improvement for pileup memory usage. [#188](https://github.com/chrovis/cljam/pull/188)
+* Replace memoizing cache for parsed CIGARs with core.memoize's LU cache. [#189](https://github.com/chrovis/cljam/pull/189)
 
 ### Fixed
 

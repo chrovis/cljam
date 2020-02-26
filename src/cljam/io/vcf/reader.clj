@@ -15,7 +15,7 @@
 ;; VCFReader
 ;; ---------
 
-(declare read-variants read-variants-randomly)
+(declare read-variants read-variants-randomly read-file-offsets)
 
 (deftype VCFReader [url meta-info header reader index-delay]
   Closeable
@@ -46,7 +46,9 @@
     ([this] (protocols/read-variants this {}))
     ([this option] (read-variants this option)))
   (read-variants-randomly [this region-option deep-option]
-    (read-variants-randomly this region-option  deep-option)))
+    (read-variants-randomly this region-option  deep-option))
+  (read-file-offsets [this]
+    (read-file-offsets this)))
 
 ;; Utilities
 ;; ---------
@@ -192,20 +194,21 @@
      (make-lazy-variants f (rest s)))))
 
 (defn read-variants-randomly
-  "Reads variants of the bgzip compressed VCF file randomly using tabix file.
+  "Reads variants of the bgzip compressed VCF file randomly using tabix/csi file
    Returning them as a lazy sequence."
   [^VCFReader rdr
    {:keys [chr start end] :or {start 1 end 4294967296}}
    {:keys [depth] :or {depth :deep}}]
   (let [kws (mapv keyword (drop 8 (.header rdr)))
-        tabix-data @(.index-delay rdr)
+        index-data @(.index-delay rdr)
         chr-names (->> (.meta-info rdr) :contig (mapv :id))
         ref-idx (.indexOf ^clojure.lang.PersistentVector chr-names chr)
         spans (when-not (neg? ref-idx)
-                (util-bin/get-spans tabix-data ref-idx start end))
+                (util-bin/get-spans index-data ref-idx start end))
         input-stream ^BGZFInputStream (.reader rdr)
         parse-fn (case depth
-                   :deep (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
+                   :deep (vcf-util/variant-parser (.meta-info rdr)
+                                                  (.header rdr))
                    :vcf identity)]
     (make-lazy-variants
      (fn [[chunk-beg ^long chunk-end]]
@@ -223,3 +226,29 @@
                     (<= pos end)
                     (<= start (get info :END (dec (+ pos (count ref))))))))))
      spans)))
+
+(defn read-file-offsets
+  "Reading bgzip compressed VCF and returning position,chrom,beg,end."
+  [^VCFReader rdr]
+  (let [^BGZFInputStream input-stream (.reader rdr)
+        meta-info-contigs (->> (:contig (.meta-info rdr))
+                               (map-indexed (fn [index contig]
+                                              [(:id contig) index]))
+                               (into {}))
+        kws (mapv keyword (drop 8 (.header rdr)))
+        parse (comp (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
+                    #(parse-data-line % kws))]
+    (letfn [(step [contigs beg-pointer]
+              (when-let [line (.readLine input-stream)]
+                (let [end-pointer (.getFilePointer input-stream)]
+                  (if (or (meta-line? line) (header-line? line))
+                    (lazy-seq (step contigs end-pointer))
+                    (let [{:keys [chr pos ref info]} (parse line)
+                          contigs' (if (contains? contigs chr)
+                                     contigs
+                                     (assoc contigs chr (count contigs)))]
+                      (cons {:file-beg beg-pointer, :file-end end-pointer
+                             :chr-index (contigs' chr), :beg pos, :chr chr,
+                             :end (or (:END info) (dec (+ pos (count ref))))}
+                            (lazy-seq (step contigs' end-pointer))))))))]
+      (step meta-info-contigs 0))))

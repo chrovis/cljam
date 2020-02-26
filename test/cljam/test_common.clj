@@ -52,9 +52,6 @@
                {:id "large.vcf.gz.csi"
                 :url "https://test.chrov.is/data/cljam/example-500-10000.vcf.gz.csi"
                 :sha1 "568a47f463de8df846e021640d38b8cf8f257e66"}
-               {:id "large.vcf.gz.csi"
-                :url "https://test.chrov.is/data/cljam/example-500-10000.vcf.gz.csi"
-                :sha1 "568a47f463de8df846e021640d38b8cf8f257e66"}
                {:id "large.bcf"
                 :url "https://test.chrov.is/data/cljam/example-500-10000.bcf"
                 :sha1 "f7f57ed9d21874c92331ef6d86d85b36959f4d16"}
@@ -214,6 +211,9 @@
 (def test-vcf-various-bins-gz-file "test-resources/vcf/various-bins.vcf.gz")
 (def test-vcf-various-bins-tbi-file "test-resources/vcf/various-bins.vcf.gz.tbi")
 (def test-vcf-various-bins-csi-file "test-resources/vcf/various-bins.vcf.gz.csi")
+(def test-vcf-changed-chr-order-file "test-resources/vcf/test-changed-chr-order.vcf.gz")
+(def test-vcf-changed-chr-order-field-less-file "test-resources/vcf/test-changed-chr-order-field-less.vcf.gz")
+(def test-vcf-chr-skipped-file "test-resources/vcf/test-chr-skipped.vcf.gz")
 
 (def test-large-vcf-file (cavia/resource mycavia "large.vcf.gz"))
 (def test-large-vcf-tbi-file (cavia/resource mycavia "large.vcf.gz.tbi"))

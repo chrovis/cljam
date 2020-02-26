@@ -57,3 +57,40 @@
     2 72
     3 584
     5 37448))
+
+(deftest reg->bin-test
+  (testing "BAI-compatible"
+    (are [?start ?end ?bin]
+         (= ?bin (util-bin/reg->bin ?start ?end 14 5))
+      0 0 4681
+      0 1 4681
+      1 1 4681
+      1 16384 4681
+      16384 16384 4681
+      16384 16385 585
+      16385 16385 4682
+      131072 131072 4688
+      131072 131073 73
+      8388608 8388609 1
+      67108864 67108865 0
+      536870912 536870912 37448
+      536870912 536870913 37448))
+  (testing "1-by-1"
+    (are [?start ?end ?bin]
+         (= ?bin (util-bin/reg->bin ?start ?end 0 2))
+      0 1 9
+      1 1 9
+      2 2 10
+      1 2 1
+      1 8 1
+      1 9 0
+      8 9 0
+      9 9 17
+      63 64 8
+      64 64 72
+      64 64 72))
+  (testing "various min-shfits and depths"
+    (is (= (util-bin/reg->bin 1 1 14 6) 37449))
+    (is (= (util-bin/reg->bin 1 1 14 7) 299593))
+    (is (= (util-bin/reg->bin 1 32769 15 6) 4681))
+    (is (= (util-bin/reg->bin 240877561 240877568 14 6) 52150))))

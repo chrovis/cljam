@@ -1,7 +1,6 @@
 (ns cljam.io.bam-index.writer
   (:require [com.climate.claypoole :as cp]
             [cljam.common :refer [get-exec-n-threads]]
-            [cljam.io.sam.util :as sam-util]
             [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.util.bin :as util-bin]
@@ -74,7 +73,8 @@
 
 (defn- update-bin-index
   [bin-index ^BAMPointerBlock aln]
-  (let [bin (sam-util/reg->bin (.pos aln) (inc (.end aln)))
+  (let [bin (util-bin/reg->bin
+             (.pos aln) (.end aln) linear-index-shift linear-index-depth)
         beg (.pointer-beg aln)
         end (.pointer-end aln)]
     (assoc bin-index bin

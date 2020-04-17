@@ -68,14 +68,14 @@
 
 (deftest depth-values-option
   (are [?unchecked]
-      (are [?n-threads]
-          (are [?step]
-              (are [?fn]
-                  (= (with-open [r (sam/bam-reader common/test-sorted-bam-file)]
-                       (doall (?fn r {:chr "ref"} {:step ?step, :n-threads ?n-threads, :unchecked? ?unchecked})))
-                     test-bam-depth-ref)
-                depth/depth
-                depth/lazy-depth)
-            2 3 5 7 11 13)
-        1 2 3 4)
+       (are [?n-threads]
+            (are [?step]
+                 (are [?fn]
+                      (= (with-open [r (sam/bam-reader common/test-sorted-bam-file)]
+                           (doall (?fn r {:chr "ref"} {:step ?step, :n-threads ?n-threads, :unchecked? ?unchecked})))
+                         test-bam-depth-ref)
+                   depth/depth
+                   depth/lazy-depth)
+              2 3 5 7 11 13)
+         1 2 3 4)
     true false))

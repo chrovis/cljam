@@ -22,7 +22,8 @@
                              [lein-codox "0.10.7"]
                              [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]
                              [lein-cloverage "1.1.2"]
-                             [net.totakke/lein-libra "0.1.2"]]
+                             [net.totakke/lein-libra "0.1.2"]
+                             [lein-cljfmt "0.6.7"]]
                    :test-selectors {:default #(not-any? % [:slow :remote])
                                     :slow :slow ; Slow tests with local resources
                                     :remote :remote ; Tests with remote resources

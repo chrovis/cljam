@@ -21,7 +21,7 @@
 
     (testing "chr -> whole-genome (simple)"
       (are [?chr ?pos ?wg-pos]
-          (= (wg/->whole-genome-coord idx ?chr ?pos) ?wg-pos)
+           (= (wg/->whole-genome-coord idx ?chr ?pos) ?wg-pos)
         "0" 1 nil
         "1" 0 nil
         "1" 1 1
@@ -37,7 +37,7 @@
   (let [idx (wg/chr-to-whole-genome-index refs)]
     (testing "chr -> whole-genome"
       (are [?chr ?pos ?wg-pos]
-          (= (wg/->whole-genome-coord idx ?chr ?pos) ?wg-pos)
+           (= (wg/->whole-genome-coord idx ?chr ?pos) ?wg-pos)
         "chr1" 1 1
         "chr1" 248956422 248956422
         "chr2" 1 (+ 248956422 1)
@@ -51,7 +51,7 @@
 
     (testing "whole-genome -> chr"
       (are [?wg-pos ?chr-and-pos]
-          (= (wg/->chr-and-pos idx ?wg-pos) ?chr-and-pos)
+           (= (wg/->chr-and-pos idx ?wg-pos) ?chr-and-pos)
         0 nil
         1 ["1" 1]
         2 ["1" 2]
@@ -65,7 +65,7 @@
 
     (testing "whole-genome [start, end] -> regions"
       (are [?wg-start ?wg-end ?regions]
-          (= (wg/->regions idx ?wg-start ?wg-end) ?regions)
+           (= (wg/->regions idx ?wg-start ?wg-end) ?regions)
         0 0 nil
         0 1 [{:chr "1", :start 1, :end 1}]
         1 0 nil

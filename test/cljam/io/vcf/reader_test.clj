@@ -5,7 +5,7 @@
 (deftest parse-structured-line-test
   (is (= {:id "ID", :description "\"This\" is a description",
           :note "You can use \" in string fields by escaping it with \\"}
-       (#'vcf-reader/parse-structured-line "ID=ID,Description=\"\\\"This\\\" is a description\",Note=\"You can use \\\" in string fields by escaping it with \\\\\"")))
+         (#'vcf-reader/parse-structured-line "ID=ID,Description=\"\\\"This\\\" is a description\",Note=\"You can use \\\" in string fields by escaping it with \\\\\"")))
   (is (thrown-with-msg? RuntimeException
                         #"Unexpected end of string field"
                         (#'vcf-reader/parse-structured-line "x=\"unbalanced double quote")))

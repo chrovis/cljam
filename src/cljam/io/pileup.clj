@@ -118,6 +118,7 @@
 ;; Writer
 ;; ------
 
+
 (defn- write-mpileup-alignment!
   [^BufferedWriter w ref-reader rname ref-pos ref
    {:keys [base reverse? mapq start? end? insertion deletion]}]

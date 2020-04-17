@@ -2,8 +2,8 @@
   "The core of BAM features."
   (:require [clojure.string :as cstr]
             [cljam.io.bam [common :as common]
-                          [reader :as reader]
-                          [writer :as writer]]
+             [reader :as reader]
+             [writer :as writer]]
             [cljam.io.bam-index :as bai]
             [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]

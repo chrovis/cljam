@@ -23,10 +23,10 @@
   [refs]
   (into (sorted-map)
         (map vector
-         (->> refs
-              (map :len)
-              (reductions + 0))
-         refs)))
+             (->> refs
+                  (map :len)
+                  (reductions + 0))
+             refs)))
 
 (defn ->chr-and-pos
   "Transforms a whole-genome position to a vector of a chromosome name and a

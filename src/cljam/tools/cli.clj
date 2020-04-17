@@ -66,9 +66,9 @@
 (defn view [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args view-cli-options)]
     (cond
-     (:help options) (exit 0 (view-usage summary))
-     (not= (count arguments) 1) (exit 1 (view-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (view-usage summary))
+      (not= (count arguments) 1) (exit 1 (view-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
       (with-open [^Closeable r (condp = (:format options)
                                  "auto" (sam/reader f)
@@ -104,9 +104,9 @@
 (defn convert [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args convert-cli-options)]
     (cond
-     (:help options) (exit 0 (convert-usage summary))
-     (not (<= 2 (count arguments) 4)) (exit 1 (convert-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (convert-usage summary))
+      (not (<= 2 (count arguments) 4)) (exit 1 (convert-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [[in & [out & more :as outs]] arguments]
       (convert/convert in (if more outs out) :n-threads (:thread options))))
   nil)
@@ -128,9 +128,9 @@
 (defn normalize [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args normalize-cli-options)]
     (cond
-     (:help options) (exit 0 (normalize-usage summary))
-     (not= (count arguments) 2) (exit 1 (normalize-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (normalize-usage summary))
+      (not= (count arguments) 2) (exit 1 (normalize-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (with-open [r (sam/reader in)
                   w (sam/writer out)]
@@ -159,9 +159,9 @@
 (defn sort [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args sort-cli-options)]
     (cond
-     (:help options) (exit 0 (sort-usage summary))
-     (not= (count arguments) 2) (exit 1 (sort-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (sort-usage summary))
+      (not= (count arguments) 2) (exit 1 (sort-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (with-open [r (sam/reader in)
                   w (sam/writer out)]
@@ -190,9 +190,9 @@
 (defn index [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args index-cli-options)]
     (cond
-     (:help options) (exit 0 (index-usage summary))
-     (not= (count arguments) 1) (exit 1 (index-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (index-usage summary))
+      (not= (count arguments) 1) (exit 1 (index-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
       (bai/create-index f (str f ".bai") :n-threads (:thread options))))
   nil)
@@ -264,9 +264,9 @@
 (defn faidx [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args faidx-cli-options)]
     (cond
-     (:help options) (exit 0 (faidx-usage summary))
-     (not= (count arguments) 1) (exit 1 (faidx-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (faidx-usage summary))
+      (not= (count arguments) 1) (exit 1 (faidx-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
       (fai/create-index f (str f ".fai"))))
   nil)
@@ -288,9 +288,9 @@
 (defn dict [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args dict-cli-options)]
     (cond
-     (:help options) (exit 0 (dict-usage summary))
-     (not= (count arguments) 2) (exit 1 (dict-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (dict-usage summary))
+      (not= (count arguments) 2) (exit 1 (dict-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (dict/create-dict in out)))
   nil)

@@ -282,9 +282,9 @@
                                           (:headers test-bigwig-fixed-fields))
                     (same-wig? (bigwig/read-tracks r)
                                (:tracks test-bigwig-fixed-fields))))
-         test-bigwig-fixed-file
-         (cio/file test-bigwig-fixed-file)
-         (cio/as-url (cio/file test-bigwig-fixed-file))))
+      test-bigwig-fixed-file
+      (cio/file test-bigwig-fixed-file)
+      (cio/as-url (cio/file test-bigwig-fixed-file))))
   (testing "reader (non-file URL is not supported)"
     (with-open [server (http-server)]
       (let [x (cio/as-url (str (:uri server) "/bigwig/test-fixed.bigWig"))]

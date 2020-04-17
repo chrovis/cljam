@@ -16,26 +16,26 @@
 (definline validate-tag-type
   [t]
   `(case (long ~t)
-    ~(long \I) \i
-    ~(long \s) \i
-    ~(long \S) \i
-    ~(long \c) \i
-    ~(long \C) \i
-    (char ~t)))
+     ~(long \I) \i
+     ~(long \s) \i
+     ~(long \S) \i
+     ~(long \c) \i
+     ~(long \C) \i
+     (char ~t)))
 
 (definline parse-tag-single [tag-type ^ByteBuffer bb]
   `(case (long ~tag-type)
-    ~(long \Z) (lsb/read-null-terminated-string ~bb)
-    ~(long \A) (char (.get ~bb))
-    ~(long \I) (bit-and (.getInt ~bb) 0xffffffff)
-    ~(long \i) (.getInt ~bb)
-    ~(long \s) (int (.getShort ~bb))
-    ~(long \S) (bit-and (.getShort ~bb) 0xffff)
-    ~(long \c) (int (.get ~bb))
-    ~(long \C) (bit-and (int (.get ~bb)) 0xff)
-    ~(long \f) (.getFloat ~bb)
-    ~(long \H) (proton/hex->bytes (lsb/read-null-terminated-string ~bb))
-    (throw (Exception. "Unrecognized tag type"))))
+     ~(long \Z) (lsb/read-null-terminated-string ~bb)
+     ~(long \A) (char (.get ~bb))
+     ~(long \I) (bit-and (.getInt ~bb) 0xffffffff)
+     ~(long \i) (.getInt ~bb)
+     ~(long \s) (int (.getShort ~bb))
+     ~(long \S) (bit-and (.getShort ~bb) 0xffff)
+     ~(long \c) (int (.get ~bb))
+     ~(long \C) (bit-and (int (.get ~bb)) 0xff)
+     ~(long \f) (.getFloat ~bb)
+     ~(long \H) (proton/hex->bytes (lsb/read-null-terminated-string ~bb))
+     (throw (Exception. "Unrecognized tag type"))))
 
 (defn- parse-tag-array [^ByteBuffer bb]
   (let [typ (char (.get bb))

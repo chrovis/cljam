@@ -5,8 +5,8 @@
 (deftest parse-optional-field
   (testing "regression"
     (are [?str ?expect]
-        (and (= (opt/parse-optional-field ?str) ?expect)
-             (= (opt/stringify-optional-fields [?expect]) ?str))
+         (and (= (opt/parse-optional-field ?str) ?expect)
+              (= (opt/stringify-optional-fields [?expect]) ?str))
       "AS:i:0" {:AS {:type "i" :value 0}}
       "BC:Z:CGTAC" {:BC {:type "Z" :value "CGTAC"}}
       "pa:f:0.987" {:pa {:type "f" :value 0.987}}
@@ -55,7 +55,7 @@
 
 (deftest md-string
   (are [?str ?expect]
-      (= (opt/parse-mismatching-positions-str ?str) ?expect)
+       (= (opt/parse-mismatching-positions-str ?str) ?expect)
     "100"
     [[:match 100]]
     "132T0"

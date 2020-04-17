@@ -7,6 +7,7 @@
 * Add support for random reading of vcf file. [#180](https://github.com/chrovis/cljam/pull/180)
 * Add support for CSI reader. [#182](https://github.com/chrovis/cljam/pull/182)
 * Add support for random reading of a bcf file. [#187](https://github.com/chrovis/cljam/pull/187)
+* Add support for generating CSI file from bgzip compressed VCF. [#190](https://github.com/chrovis/cljam/pull/190)
 
 ### Changed
 

@@ -88,6 +88,10 @@
     span-option
     depth-option)))
 
+(defn read-file-offsets
+  "Reads offsets {:file-beg :file-end :beg :end :chr } from VCF/BCF file."
+  [rdr] (protocols/read-file-offsets rdr))
+
 ;; Writing
 ;; -------
 

@@ -3,11 +3,14 @@
   (:require [clojure.string :as cstr]
             cljam.io.protocols
             [cljam.io.sam.util.cigar :as cigar]
+            [cljam.io.util.bin :as util-bin]
             [cljam.io.sam.util.option :as opt])
   (:import [java.nio CharBuffer ByteBuffer]
            [java.nio.charset StandardCharsets]
            [cljam.io.protocols SAMAlignment]))
 
+(def ^:const linear-index-shift 14)
+(def ^:const linear-index-depth 5)
 ;;; parse
 
 (defn parse-alignment
@@ -32,29 +35,6 @@
 
 ;;; indexing bin
 
-(defn reg->bin
-  "Calculates bin given an alignment covering [beg,end) (zero-based, half-close-half-open),
-  the same as reg2bin on samtools."
-  [^long beg ^long end]
-  (let [end (dec end)]
-    (cond
-     (= (bit-shift-right beg 14) (bit-shift-right end 14))
-     (+ 4681 (bit-shift-right beg 14))
-
-     (= (bit-shift-right beg 17) (bit-shift-right end 17))
-     (+ 585 (bit-shift-right beg 17))
-
-     (= (bit-shift-right beg 20) (bit-shift-right end 20))
-     (+ 73 (bit-shift-right beg 20))
-
-     (= (bit-shift-right beg 23) (bit-shift-right end 23))
-     (+ 9 (bit-shift-right beg 23))
-
-     (= (bit-shift-right beg 26) (bit-shift-right end 26))
-     (+ 1 (bit-shift-right beg 26))
-
-     :else 0)))
-
 (defn get-end
   "Returns the end position in reference for the given alignment."
   [aln]
@@ -66,6 +46,6 @@
 (defn compute-bin
   "Returns indexing bin based on alignment start and end."
   [aln]
-  (let [beg (dec (:pos aln))
+  (let [beg (:pos aln)
         end (get-end aln)]
-   (reg->bin beg end)))
+    (util-bin/reg->bin beg end linear-index-shift linear-index-depth)))

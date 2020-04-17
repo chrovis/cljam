@@ -3,7 +3,7 @@
   (:refer-clojure :exclude [read indexed?]))
 
 (defrecord SAMAlignment
-  [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])
+           [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])
 (defrecord SAMRegionBlock [data ^int ref-id ^int pos ^int end])
 (defrecord SAMCoordinateBlock [data ^int ref-id ^int pos ^int flag])
 (defrecord SAMQuerynameBlock [data qname ^int flag])
@@ -52,7 +52,9 @@
   (read-variants [this] [this option]
     "Reads variants of the VCF/BCF file, returning them as a lazy sequence.")
   (read-variants-randomly [this region-option depth-option]
-    "Reads randomly variants of the VCF/BCF file, returning them as a lazy sequence."))
+    "Reads randomly variants of the VCF/BCF file, returning them as a lazy sequence.")
+  (read-file-offsets [rdr]
+    "Reads file-offsets of VCF/BCF file"))
 
 (defprotocol IVariantWriter
   (write-variants [this variants]

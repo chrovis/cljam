@@ -98,7 +98,7 @@
 
 (deftest short-qname
   (are [?flag ?qname]
-      (= (convert/short-qname {:flag ?flag, :qname "SEQ"}) {:flag ?flag, :qname ?qname})
+       (= (convert/short-qname {:flag ?flag, :qname "SEQ"}) {:flag ?flag, :qname ?qname})
     65  "SEQ/1"
     129 "SEQ/2"
     81  "SEQ/1"
@@ -108,7 +108,7 @@
 
 (deftest medium-qname
   (are [?flag ?qname]
-      (= (convert/medium-qname {:flag ?flag, :qname "SEQ"}) {:flag ?flag, :qname ?qname})
+       (= (convert/medium-qname {:flag ?flag, :qname "SEQ"}) {:flag ?flag, :qname ?qname})
     65  "SEQ_R1"
     129 "SEQ_R2"
     81  "SEQ_R1"
@@ -118,7 +118,7 @@
 
 (deftest long-qname
   (are [?flag ?qname]
-      (= (convert/long-qname {:flag ?flag, :qname "SEQ"}) {:flag ?flag, :qname ?qname})
+       (= (convert/long-qname {:flag ?flag, :qname "SEQ"}) {:flag ?flag, :qname ?qname})
     65  "SEQ 1:N:0:1"
     129 "SEQ 2:N:0:1"
     81  "SEQ 1:N:0:1"
@@ -128,8 +128,8 @@
 
 (deftest aln->read
   (are [?flag ?name ?seq ?qual]
-      (= (into {} (convert/aln->read {:flag ?flag, :qname "SEQ", :seq "AATGC", :qual "IIIEE"}))
-         {:name ?name, :sequence ?seq, :quality ?qual})
+       (= (into {} (convert/aln->read {:flag ?flag, :qname "SEQ", :seq "AATGC", :qual "IIIEE"}))
+          {:name ?name, :sequence ?seq, :quality ?qual})
     65  "SEQ" "AATGC" "IIIEE"
     129 "SEQ" "AATGC" "IIIEE"
     81  "SEQ" "GCATT" "EEIII"

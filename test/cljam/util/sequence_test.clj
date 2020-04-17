@@ -4,8 +4,8 @@
 
 (deftest revcomp
   (are [?forward ?reverse]
-      (and (= (util-seq/revcomp ?forward) ?reverse)
-           (= (util-seq/revcomp ?reverse) ?forward))
+       (and (= (util-seq/revcomp ?forward) ?reverse)
+            (= (util-seq/revcomp ?reverse) ?forward))
     "" ""
     "A" "T"
     "G" "C"

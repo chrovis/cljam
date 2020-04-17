@@ -7,9 +7,9 @@
 (deftest merge-regions
   (testing "(merge-regions)"
     (are [?regs ?expected]
-        (= (sequence (region/merge-regions) ?regs)
-           (transduce identity ((region/merge-regions) into*) ?regs)
-           ?expected)
+         (= (sequence (region/merge-regions) ?regs)
+            (transduce identity ((region/merge-regions) into*) ?regs)
+            ?expected)
 
       nil
       []
@@ -42,9 +42,9 @@
 
   (testing "(merge-regions gap) and (merge-regions gap regs)"
     (are [?gap ?regs ?expected]
-        (= (sequence (region/merge-regions ?gap) ?regs)
-           (region/merge-regions ?gap ?regs)
-           ?expected)
+         (= (sequence (region/merge-regions ?gap) ?regs)
+            (region/merge-regions ?gap ?regs)
+            ?expected)
 
       3 nil
       []
@@ -86,7 +86,7 @@
 
 (deftest subtract-region
   (are [?lhs ?rhs ?expected]
-      (= (region/subtract-region ?lhs ?rhs) ?expected)
+       (= (region/subtract-region ?lhs ?rhs) ?expected)
     {:chr "1" :start 10 :end 20} nil
     [{:chr "1" :start 10 :end 20}]
 
@@ -116,10 +116,10 @@
 
 (deftest complement-regions
   (are [?base-region ?in-region ?expected]
-      (= (sequence (region/complement-regions ?base-region) ?in-region)
-         (transduce identity ((region/complement-regions ?base-region) into*) ?in-region)
-         (region/complement-regions ?base-region ?in-region)
-         ?expected)
+       (= (sequence (region/complement-regions ?base-region) ?in-region)
+          (transduce identity ((region/complement-regions ?base-region) into*) ?in-region)
+          (region/complement-regions ?base-region ?in-region)
+          ?expected)
     {:chr "1"  :start 100 :end 200} [] [{:chr "1" :start 100 :end 200}]
     {:chr "1"  :start 100 :end 200} [{:chr "1" :start 1 :end 99}] [{:chr "1" :start 100 :end 200}]
     {:chr "1"  :start 100 :end 200} [{:chr "1" :start 201 :end 300}] [{:chr "1" :start 100 :end 200}]
@@ -133,7 +133,7 @@
 
 (deftest divide-region
   (are [?start ?end ?step ?expected]
-      (= (region/divide-region ?start ?end ?step) ?expected)
+       (= (region/divide-region ?start ?end ?step) ?expected)
     1 10 1 [[1 1] [2 2] [3 3] [4 4] [5 5] [6 6] [7 7] [8 8] [9 9] [10 10]]
     1 10 2 [[1 2] [3 4] [5 6] [7 8] [9 10]]
     1 10 3 [[1 3] [4 6] [7 9] [10 10]]
@@ -148,7 +148,7 @@
 
 (deftest divide-refs
   (are [?refs ?step ?expected]
-      (= (region/divide-refs ?refs ?step) ?expected)
+       (= (region/divide-refs ?refs ?step) ?expected)
     [{:name "chr1" :len 10}] 4 [{:chr "chr1" :start 1 :end 4}
                                 {:chr "chr1" :start 5 :end 8}
                                 {:chr "chr1" :start 9 :end 10}]
@@ -162,7 +162,7 @@
 
 (deftest valid-rname?
   (are [?rname ?expected]
-      (= ?expected (boolean (region/valid-rname? ?rname)))
+       (= ?expected (boolean (region/valid-rname? ?rname)))
     nil false
     [\c \h \r] false
     "" false
@@ -176,7 +176,7 @@
 
 (deftest valid-region?
   (are [?region-map ?expected]
-      (= ?expected (boolean (region/valid-region? ?region-map)))
+       (= ?expected (boolean (region/valid-region? ?region-map)))
     nil false
     {} false
     {:chr "chr1"} false
@@ -192,7 +192,7 @@
 
 (deftest parse-region
   (are [?region-str ?expected]
-      (= ?expected (region/parse-region ?region-str))
+       (= ?expected (region/parse-region ?region-str))
     nil nil
     "*" nil
     "=" nil
@@ -220,7 +220,7 @@
 
 (deftest parse-region-strict
   (are [?region-str ?expected]
-      (= ?expected (region/parse-region-strict ?region-str))
+       (= ?expected (region/parse-region-strict ?region-str))
     nil nil
     "*" nil
     "=" nil
@@ -248,7 +248,7 @@
 
 (deftest format-region
   (are [?region-map ?expected]
-      (= ?expected (region/format-region ?region-map))
+       (= ?expected (region/format-region ?region-map))
     nil nil
     {} nil
     {:chr "chr1"} "chr1"
@@ -261,7 +261,7 @@
 
 (deftest format-region-strict
   (are [?region-map ?expected]
-      (= ?expected (region/format-region-strict ?region-map))
+       (= ?expected (region/format-region-strict ?region-map))
     nil nil
     {} nil
     {:chr "chr1"} nil

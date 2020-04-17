@@ -308,10 +308,10 @@
 
 (deftest read-features
   (are [?str ?edn]
-      (= ?edn
-         (with-open [bais (ByteArrayInputStream. (.getBytes ^String ?str))
-                     r (gff/reader bais)]
-           (doall (gff/read-features r))))
+       (= ?edn
+          (with-open [bais (ByteArrayInputStream. (.getBytes ^String ?str))
+                      r (gff/reader bais)]
+            (doall (gff/read-features r))))
     simple-gff simple-edn
     nested-gff-1 nested-edn-1
     nested-gff-2 nested-edn-2
@@ -356,14 +356,14 @@
 (deftest write-features
   (are [?edn ?str]
       ;; ignore directives and comment lines
-      (= (cstr/replace ?str #"(?<=\n)#.*?\n" "")
-         (with-open [bais (ByteArrayInputStream. (.getBytes ^String ?str))
-                     baos (ByteArrayOutputStream.)]
-           (let [v (with-open [r (gff/reader bais)]
-                     (gff/version r))]
-             (with-open [w (gff/writer baos v)]
-               (gff/write-features w ?edn)))
-           (str baos)))
+       (= (cstr/replace ?str #"(?<=\n)#.*?\n" "")
+          (with-open [bais (ByteArrayInputStream. (.getBytes ^String ?str))
+                      baos (ByteArrayOutputStream.)]
+            (let [v (with-open [r (gff/reader bais)]
+                      (gff/version r))]
+              (with-open [w (gff/writer baos v)]
+                (gff/write-features w ?edn)))
+            (str baos)))
     simple-edn simple-gff
     nested-edn-1 nested-gff-1
     nested-edn-2 nested-gff-2

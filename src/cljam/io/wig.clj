@@ -95,9 +95,9 @@
                           :or {span 1}} (->> fields rest fields->map)
                          span (as-long span)
                          track (assoc track :format :variable-step
-                                            :chr chrom
-                                            :span span
-                                            :step nil)]
+                                      :chr chrom
+                                      :span span
+                                      :step nil)]
                      (deserialize (rest lines) nil track))
 
                    ; declaration line of fixedStep
@@ -108,9 +108,9 @@
                          pre-start (- (as-long start) step)
                          span (as-long span)
                          track (assoc track :format :fixed-step
-                                            :chr chrom
-                                            :span span
-                                            :step step)]
+                                      :chr chrom
+                                      :span span
+                                      :step step)]
                      (deserialize (rest lines) pre-start track))
 
                    ; data line

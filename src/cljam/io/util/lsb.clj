@@ -9,9 +9,9 @@
   "Generates a new `java.nio.ByteBuffer` instance with little-endian byte order.
   The default buffer size is 8."
   ([]
-     (.order (ByteBuffer/allocate 8) ByteOrder/LITTLE_ENDIAN))
+   (.order (ByteBuffer/allocate 8) ByteOrder/LITTLE_ENDIAN))
   ([size]
-     (.order (ByteBuffer/allocate size) ByteOrder/LITTLE_ENDIAN)))
+   (.order (ByteBuffer/allocate size) ByteOrder/LITTLE_ENDIAN)))
 
 ;; Reading
 ;; -------

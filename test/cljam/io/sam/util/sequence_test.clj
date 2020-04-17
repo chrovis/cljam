@@ -41,9 +41,9 @@
     "===A" [0 1]))
 
 (deftest str->compressed-bases-2
- (dotimes [_ 100]
-   (let [s (apply str (repeatedly (inc (rand-int 100)) #(rand-nth nibble-table)))]
-     (is (= (seq (sam-seq/str->compressed-bases s)) (encode s))))))
+  (dotimes [_ 100]
+    (let [s (apply str (repeatedly (inc (rand-int 100)) #(rand-nth nibble-table)))]
+      (is (= (seq (sam-seq/str->compressed-bases s)) (encode s))))))
 
 (deftest compressed-bases->str
   (are [?length ?bases ?offset ?expected] (= (sam-seq/compressed-bases->str ?length (byte-array (mapv util/ubyte ?bases)) ?offset)

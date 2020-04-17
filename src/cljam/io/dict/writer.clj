@@ -83,14 +83,14 @@
 (defn- write-dict*!
   [wtr headers sequences ur]
   (let [dicts (make-dict headers sequences ur)]
-   (write-header! wtr)
-   (doseq [header headers]
-     (let [dict (get dicts (:name header))]
-      (write-sequence! wtr
-                       (:name header)
-                       (:blen dict)
-                       (:ur dict)
-                       (:m5 dict))))))
+    (write-header! wtr)
+    (doseq [header headers]
+      (let [dict (get dicts (:name header))]
+        (write-sequence! wtr
+                         (:name header)
+                         (:blen dict)
+                         (:ur dict)
+                         (:m5 dict))))))
 
 (defn write-dict!
   [^DICTWriter wtr headers sequences ur]

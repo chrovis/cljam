@@ -39,14 +39,14 @@
   "Returns a reducing function which returns a new coll with elements conjoined."
   [to]
   (if (instance? IEditableCollection to)
-      (fn into-rf-editable
-        ([] (transient to))
-        ([x] (with-meta (persistent! x) (meta to)))
-        ([r x] (conj! r x)))
-      (fn into-rf-non-editable
-        ([] to)
-        ([x] x)
-        ([r x] (conj r x)))))
+    (fn into-rf-editable
+      ([] (transient to))
+      ([x] (with-meta (persistent! x) (meta to)))
+      ([r x] (conj! r x)))
+    (fn into-rf-non-editable
+      ([] to)
+      ([x] x)
+      ([r x] (conj r x)))))
 
 (defn- group-by-rf
   "Returns a reducing function acts like `group-by`.

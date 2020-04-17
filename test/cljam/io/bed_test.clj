@@ -233,10 +233,10 @@
 
 (deftest bed-complement
   (are [?xs ?result]
-      (= ?result
-         (bed/complement-fields [{:name "chr1" :len 1000}
-                                 {:name "chr2" :len 800}]
-                                ?xs))
+       (= ?result
+          (bed/complement-fields [{:name "chr1" :len 1000}
+                                  {:name "chr2" :len 800}]
+                                 ?xs))
     []
     [{:chr "chr1" :start 1 :end 1000} {:chr "chr2" :start 1 :end 800}]
 

@@ -42,16 +42,16 @@
 (defn- write-alignments*
   [^SAMWriter sam-writer alns _]
   (let [wtr ^BufferedWriter (.writer sam-writer)]
-   (doseq [a alns]
-     (.write wtr ^String (sam-util/stringify-alignment a))
-     (.newLine wtr))))
+    (doseq [a alns]
+      (.write wtr ^String (sam-util/stringify-alignment a))
+      (.newLine wtr))))
 
 (defn- write-blocks*
   [^SAMWriter sam-writer blocks]
   (let [wtr ^BufferedWriter (.writer sam-writer)]
-   (doseq [b blocks]
-     (.write wtr ^String (:data b))
-     (.newLine wtr))))
+    (doseq [b blocks]
+      (.write wtr ^String (:data b))
+      (.newLine wtr))))
 
 ;; Public
 ;; ------

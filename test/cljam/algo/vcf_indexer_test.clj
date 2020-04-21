@@ -1,9 +1,24 @@
 (ns cljam.algo.vcf-indexer-test
   "Tests for cljam.algo.bam-indexer."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is]]
             [clojure.string :as cstr]
             [clojure.java.io :as cio]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [deftest-remote
+              temp-dir
+              with-before-after
+              prepare-cache!
+              prepare-cavia!
+              clean-cache!
+              not-throw?
+              test-large-vcf-file
+              test-large-vcf-csi-file
+              test-vcf-complex-gz-file
+              test-vcf-changed-chr-order-file
+              test-vcf-changed-chr-order-field-less-file
+              test-vcf-chr-skipped-file
+              test-vcf-various-bins-gz-file
+              test-vcf-various-bins-csi-file]]
             [cljam.io.csi :as csi]
             [cljam.io.vcf :as vcf]
             [cljam.algo.vcf-indexer :as vcf-indexer])

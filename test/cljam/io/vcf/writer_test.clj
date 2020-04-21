@@ -1,6 +1,5 @@
 (ns cljam.io.vcf.writer-test
-  (:require [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+  (:require [clojure.test :refer [deftest is are]]
             [cljam.io.vcf.writer :as vcf-writer])
   (:import [java.io StringWriter BufferedWriter]
            [cljam.io.vcf.writer VCFWriter]))

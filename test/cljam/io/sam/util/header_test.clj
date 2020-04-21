@@ -1,5 +1,5 @@
 (ns cljam.io.sam.util.header-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is]]
             [cljam.io.sam.util.header :as header]))
 
 (deftest into-rf

@@ -301,8 +301,9 @@
                            end-base (lsb/read-uint r)
                            offset (lsb/read-long r)
                            size (lsb/read-long r)]
-                       (if (cir-tree-overlaps? id start end start-chrom-ix
-                                               start-base end-chrom-ix end-base)
+                       (when (cir-tree-overlaps?
+                              id start end start-chrom-ix
+                              start-base end-chrom-ix end-base)
                          {:offset offset, :size size}))))
        (remove nil?)))
 

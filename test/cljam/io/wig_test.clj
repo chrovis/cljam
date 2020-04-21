@@ -1,8 +1,16 @@
 (ns cljam.io.wig-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [clojure.java.io :as cio]
             [clojure.string :as cstr]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              not-throw?
+              http-server
+              temp-dir
+              test-wig-file1
+              test-wig-file2]]
             [cljam.io.wig :as wig])
   (:import [java.io BufferedReader InputStreamReader ByteArrayInputStream
             ByteArrayOutputStream OutputStreamWriter BufferedWriter]
@@ -73,14 +81,14 @@
   [^String s]
   (with-open [bais (ByteArrayInputStream. (.getBytes s))
               isr (InputStreamReader. bais)
-              br (wig/WIGReader. (BufferedReader. isr) nil)]
+              br (WIGReader. (BufferedReader. isr) nil)]
     (doall (wig/read-fields br))))
 
 (defn- wig->str
   [xs]
   (with-open [bao (ByteArrayOutputStream.)
               osw (OutputStreamWriter. bao)
-              bw (wig/WIGWriter. (BufferedWriter. osw) nil)]
+              bw (WIGWriter. (BufferedWriter. osw) nil)]
     (wig/write-fields bw xs)
     (.flush ^BufferedWriter (.writer bw))
     (.toString bao)))

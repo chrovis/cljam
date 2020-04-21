@@ -1,7 +1,38 @@
 (ns cljam.io.vcf-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [clojure.java.io :as cio]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [deftest-remote
+              with-before-after
+              prepare-cache!
+              prepare-cavia!
+              clean-cache!
+              not-throw?
+              http-server
+              temp-dir
+              test-bam-file
+              test-vcf-v4_0-file
+              test-vcf-v4_0-meta-info
+              test-vcf-v4_0-header
+              test-vcf-v4_0-variants
+              test-vcf-v4_0-variants-deep
+              test-vcf-v4_3-file
+              test-vcf-v4_3-meta-info
+              test-vcf-v4_3-header
+              test-vcf-v4_3-variants
+              test-vcf-v4_3-variants-deep
+              test-bcf-v4_3-file
+              test-bcf-invalid-file
+              test-vcf-no-samples-file
+              test-vcf-no-samples-variants-deep
+              test-bcf-no-samples-file
+              test-vcf-complex-file
+              test-vcf-complex-gz-file
+              test-bcf-complex-file
+              test-large-vcf-file
+              test-large-bcf-file
+              test-vcf-various-bins-gz-file
+              test-bcf-various-bins-file]]
             [cljam.io.vcf :as vcf])
   (:import bgzf4j.BGZFException))
 
@@ -22,11 +53,11 @@
 
 (deftest bcf-reader-test
   (is (thrown? BGZFException
-               (with-open [r (vcf/bcf-reader test-vcf-v4_3-file)] nil)))
+               (with-open [_ (vcf/bcf-reader test-vcf-v4_3-file)] nil)))
   (is (thrown? java.io.IOException
-               (with-open [r (vcf/bcf-reader test-bam-file)] nil)))
+               (with-open [_ (vcf/bcf-reader test-bam-file)] nil)))
   (is (thrown? java.io.IOException
-               (with-open [r (vcf/bcf-reader test-bcf-invalid-file)] nil))))
+               (with-open [_ (vcf/bcf-reader test-bcf-invalid-file)] nil))))
 
 (deftest reader-test
   (testing "vcf"

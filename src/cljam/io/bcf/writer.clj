@@ -6,7 +6,7 @@
             [cljam.io.vcf.writer :as vw]
             [cljam.io.vcf.util :as vcf-util]
             [cljam.util :as util])
-  (:import [java.io Closeable IOException DataOutputStream]
+  (:import [java.io Closeable DataOutputStream]
            [java.net URL]
            [java.nio ByteBuffer ByteOrder]))
 
@@ -27,7 +27,6 @@
   [:fileformat :file-date :source :reference :contig :phasing :info :filter
    :format :alt :sample :pedigree])
 (def ^:private ^:const meta-info-prefix "##")
-(def ^:private ^:const header-prefix "#")
 (def ^:private ^:const type-kws
   {"String" :str, "Character" :char,
    "Integer" :int, "Float" :float, "Flag" :flag})

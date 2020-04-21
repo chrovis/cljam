@@ -1,6 +1,6 @@
 (ns cljam.io.sam.util.refs-test
-  (:require [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+  (:require [clojure.test :refer [deftest is are]]
+            [cljam.test-common :refer [test-sam]]
             [cljam.io.sam.util.refs :as refs]))
 
 ;; Reference functions

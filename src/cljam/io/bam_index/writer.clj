@@ -4,11 +4,13 @@
             [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.util.bin :as util-bin]
-            [cljam.io.bam-index.common :refer :all]
+            [cljam.io.bam-index.common :refer [linear-index-shift
+                                               linear-index-depth
+                                               max-bins
+                                               bai-magic]]
             [cljam.io.util.chunk :as chunk]
             [cljam.io.bam.decoder :as bam-decoder])
   (:import [java.io DataOutputStream Closeable]
-           [java.nio ByteBuffer ByteOrder]
            [cljam.io.bam.decoder BAMPointerBlock]
            [cljam.io.util.chunk Chunk]))
 

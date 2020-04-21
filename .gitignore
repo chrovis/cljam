@@ -13,3 +13,4 @@ pom.xml.asc
 .nrepl-port
 /.cavia
 /docs
+.clj-kondo/.cache

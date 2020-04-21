@@ -1,9 +1,16 @@
 (ns cljam.io.pileup-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [clojure.walk :as walk]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              not-throw?
+              http-server
+              temp-dir
+              test-pileup-file]]
             [cljam.io.pileup :as plpio]
             [cljam.io.sequence :as cseq]
             [cljam.io.fasta-index.core :as fai]

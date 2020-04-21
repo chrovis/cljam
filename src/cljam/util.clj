@@ -1,6 +1,6 @@
 (ns cljam.util
   "General utilities."
-  (:require [clojure.java.io :refer [file] :as cio])
+  (:require [clojure.java.io :as cio])
   (:import [java.net MalformedURLException URL]
            [java.nio.file Files FileVisitor FileVisitResult]
            [java.nio.file.attribute FileAttribute]

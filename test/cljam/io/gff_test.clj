@@ -1,8 +1,15 @@
 (ns cljam.io.gff-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [clojure.string :as cstr]
             [clojure.java.io :as cio]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              not-throw?
+              http-server
+              temp-dir
+              test-gff3-file]]
             [cljam.io.gff :as gff])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            [cljam.io.gff GFFReader GFFWriter]))

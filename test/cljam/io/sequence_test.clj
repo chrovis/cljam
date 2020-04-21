@@ -1,8 +1,26 @@
 (ns cljam.io.sequence-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [clojure.java.io :as cio]
             [clojure.string :as cstr]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              not-throw?
+              same-file?
+              same-sequence-contents?
+              http-server
+              temp-dir
+              test-fa-file
+              test-fai-file
+              test-twobit-file
+              test-twobit-n-file
+              test-twobit-be-file
+              test-twobit-be-n-file
+              medium-fa-file
+              medium-fai-file
+              medium-fa-bgz-file
+              medium-twobit-file]]
             [cljam.io.fasta.core :as fa-core]
             [cljam.io.sequence :as cseq]
             [cljam.io.protocols :as protocols]))
@@ -155,12 +173,17 @@
       (is (= (for [i (range 1 45) j (range i 46)]
                (cseq/read-sequence r {:chr "ref" :start i :end j}))
              (for [i (range 1 45) j (range i 46)]
+               (cseq/read-sequence c {:chr "ref" :start i :end j}))
+             (for [i (range 1 45) j (range i 46)]
                (subs "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT" (dec i) j))))
       (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40})
+             (protocols/read-in-region c {:chr "ref2" :start 1 :end 40})
              "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
       (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40} {:mask? false})
+             (protocols/read-in-region c {:chr "ref2" :start 1 :end 40} {:mask? false})
              "AGGTTTTATAAAACAATTAAGTCTACAGAGCAACTACGCG"))
       (is (= (protocols/read-in-region r {:chr "ref2" :start 1 :end 40} {:mask? true})
+             (protocols/read-in-region c {:chr "ref2" :start 1 :end 40} {:mask? true})
              "aggttttataaaacaattaagtctacagagcaactacgcg"))))
   (testing "reference test with N"
     (with-open [r (cseq/twobit-reader test-twobit-n-file)

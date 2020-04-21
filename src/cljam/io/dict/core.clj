@@ -28,7 +28,7 @@
   (with-open [w (writer f)]
     (try
       (writer/write-dict! w headers sequences ur)
-      (catch Exception e (do
-                           (cio/delete-file (.url w))
-                           (logging/error "Failed to create dictionary")
-                           (throw e))))))
+      (catch Exception e
+        (cio/delete-file (.url w))
+        (logging/error "Failed to create dictionary")
+        (throw e)))))

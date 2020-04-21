@@ -1,5 +1,5 @@
 (ns cljam.io.sam.util.sequence-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are]]
             [clojure.string :as cstr]
             [cljam.io.sam.util.sequence :as sam-seq]
             [cljam.util :as util]))

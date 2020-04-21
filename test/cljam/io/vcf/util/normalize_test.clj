@@ -1,7 +1,7 @@
 (ns cljam.io.vcf.util.normalize-test
   (:require
-   [clojure.test :refer :all]
-   [cljam.test-common :refer :all]
+   [clojure.test :refer [deftest is are testing]]
+   [cljam.test-common :refer [medium-twobit-file]]
    [cljam.io.vcf.util.normalize :as norm]
    [cljam.io.protocols :as protocols]
    [cljam.io.sequence :as io-seq]

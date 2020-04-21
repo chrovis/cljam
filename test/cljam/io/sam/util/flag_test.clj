@@ -1,5 +1,5 @@
 (ns cljam.io.sam.util.flag-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest are testing]]
             [cljam.io.sam.util.flag :as flag]))
 
 (deftest flags

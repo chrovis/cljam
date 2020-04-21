@@ -18,8 +18,7 @@
            cljam.io.vcf.reader.VCFReader
            cljam.io.vcf.writer.VCFWriter
            cljam.io.bcf.reader.BCFReader
-           cljam.io.bcf.writer.BCFWriter
-           bgzf4j.BGZFInputStream))
+           cljam.io.bcf.writer.BCFWriter))
 
 ;; Reading
 ;; -------
@@ -37,7 +36,7 @@
                   (bgzf/bgzf-input-stream f)
                   (cio/reader (util/compressor-input-stream f)))
                 (delay (try (csi/read-index (str f ".csi"))
-                            (catch FileNotFoundException e
+                            (catch FileNotFoundException _
                               (tabix/read-index (str f ".tbi"))))))))
 
 (defn ^BCFReader bcf-reader

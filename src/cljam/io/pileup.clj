@@ -136,19 +136,19 @@
       (.append w (if reverse? \, \.))
       (.append w (unchecked-char (case-base-fn base))))
     (when deletion
-      (do (.append w \-)
-          (.append w (String/valueOf ^int deletion))
-          (.append w ^String (case-fn
-                              (if ref-reader
-                                (->> {:chr rname
-                                      :start (inc ref-pos)
-                                      :end (+ ref-pos deletion)}
-                                     (cseq/read-sequence ref-reader))
-                                (apply str (repeat deletion \N)))))))
+      (.append w \-)
+      (.append w (String/valueOf ^int deletion))
+      (.append w ^String (case-fn
+                          (if ref-reader
+                            (->> {:chr rname
+                                  :start (inc ref-pos)
+                                  :end (+ ref-pos deletion)}
+                                 (cseq/read-sequence ref-reader))
+                            (apply str (repeat deletion \N))))))
     (when insertion
-      (do (.append w \+)
-          (.append w (String/valueOf (count insertion)))
-          (.append w ^String (case-fn insertion))))
+      (.append w \+)
+      (.append w (String/valueOf (count insertion)))
+      (.append w ^String (case-fn insertion)))
     (when end?
       (.append w \$))))
 

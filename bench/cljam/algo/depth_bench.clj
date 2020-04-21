@@ -1,5 +1,5 @@
 (ns cljam.algo.depth-bench
-  (:require [libra.bench :refer :all]
+  (:require [libra.bench :refer [defbench are dur]]
             [libra.criterium :as c]
             [cljam.test-common :as tcommon]
             [cljam.algo.depth :as depth]

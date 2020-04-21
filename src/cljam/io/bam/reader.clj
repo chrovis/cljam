@@ -6,9 +6,8 @@
             [cljam.io.bam-index.core :as bai]
             [cljam.io.bam.decoder :as decoder]
             [cljam.io.util.lsb :as lsb])
-  (:import [java.io Closeable EOFException IOException FileNotFoundException]
+  (:import [java.io Closeable FileNotFoundException]
            [cljam.io.bam.decoder BAMRawBlock]
-           [java.nio ByteBuffer]
            [bgzf4j BGZFInputStream]))
 
 (declare read-blocks-sequentially*

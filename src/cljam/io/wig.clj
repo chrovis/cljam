@@ -169,9 +169,7 @@
                                        #(- (:end %) (:start %))))
                    (map
                     (fn [[{{:keys [line format span step]} :track
-                           chr :chr
-                           start :start
-                           end :end} :as xs]]
+                           chr :chr start :start} :as xs]]
                       (case format
                         :variable-step
                         (let [declaration-line (->> (cond-> ["variableStep"

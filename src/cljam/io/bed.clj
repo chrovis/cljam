@@ -3,7 +3,7 @@
   http://genome.ucsc.edu/FAQ/FAQformat#format1 for the detail BED specifications."
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
-            [proton.core :refer [as-int as-long]]
+            [proton.core :refer [as-long]]
             [cljam.io.protocols :as protocols]
             [cljam.util :as util]
             [cljam.util.chromosome :as chr]

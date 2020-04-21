@@ -1,14 +1,15 @@
 (ns cljam.algo.dedupe-test
-  (:require [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+  (:require [clojure.test :refer [deftest is]]
+            [cljam.test-common :as common]
             [cljam.algo.dedupe :as dedupe]))
 
 (deftest simple-pe-dedupe
-  (with-before-after {:before (prepare-cache!)
-                      :after (clean-cache!)}
-    (let [out-file (str temp-dir "/deduped.bam")]
-      (is (not-throw? (dedupe/dedupe dedupe-before-bam-file out-file)))
-      (is (same-sam-contents? out-file dedupe-after-bam-file)))))
+  (common/with-before-after {:before (common/prepare-cache!)
+                             :after (common/clean-cache!)}
+    (let [out-file (str common/temp-dir "/deduped.bam")]
+      (is (common/not-throw?
+           (dedupe/dedupe common/dedupe-before-bam-file out-file)))
+      (is (common/same-sam-contents? out-file common/dedupe-after-bam-file)))))
 
 (deftest simple-pe-dedupe-xform
   (is (= (into #{}

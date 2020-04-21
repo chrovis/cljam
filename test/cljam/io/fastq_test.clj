@@ -1,6 +1,17 @@
 (ns cljam.io.fastq-test
-  (:require [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              not-throw?
+              http-server
+              temp-dir
+              test-fq-file
+              test-fq-sequences
+              test-fq-sequences-raw
+              test-fq-gz-file
+              test-fq-bz2-file]]
             [clojure.java.io :as cio]
             [cljam.io.fastq :as fq]))
 

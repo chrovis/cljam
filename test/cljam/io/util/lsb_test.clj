@@ -1,10 +1,9 @@
 (ns cljam.io.util.lsb-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is]]
             [clojure.java.io :as cio]
             [cljam.test-common :as common]
             [cljam.io.util.lsb :as lsb])
-  (:import [java.nio ByteBuffer ByteOrder]
-           [java.io RandomAccessFile DataInputStream FileInputStream]
+  (:import [java.io RandomAccessFile DataInputStream FileInputStream]
            [bgzf4j BGZFInputStream BGZFOutputStream]))
 
 (deftest about-byte-buffer

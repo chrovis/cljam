@@ -43,7 +43,7 @@
              normalize-name
              prepend-chromosome-prefix
              normalize-chromosome-prefix)
-         (if version-suffix (cstr/lower-case version-suffix)))))
+         (when version-suffix (cstr/lower-case version-suffix)))))
 
 (defn is-primary-chromosome?
   [s]

@@ -1,7 +1,41 @@
 (ns cljam.io.sam-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [clojure.java.io :as cio]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [deftest-slow
+              deftest-remote
+              with-before-after
+              prepare-cache!
+              prepare-cavia!
+              clean-cache!
+              slurp-sam-for-test
+              slurp-bam-for-test
+              spit-sam-for-test
+              spit-bam-for-test
+              not-throw?
+              same-file?
+              data->clj
+              http-server
+              temp-dir
+              test-sam-file
+              test-bam-file
+              test-sam
+              test-sam-data
+              test-sam-refs
+              test-sam-sorted-by-pos
+              test-sorted-bam-file
+              test-sorted-bam-data
+              small-bam-file
+              medium-bam-file
+              medium-sam-refs
+              large-bam-file
+              large-sam-refs
+              opts-sam-file
+              opts-bam-file
+              test-sam-blocks
+              test-bai-file
+              test-fa-file
+              test-tabix-file]]
             [cljam.io.sam :as sam]
             [cljam.io.protocols :as protocols]))
 

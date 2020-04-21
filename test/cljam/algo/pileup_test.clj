@@ -1,13 +1,11 @@
 (ns cljam.algo.pileup-test
-  (:require [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
+            [cljam.test-common :as common]
             [cljam.io.protocols :as p]
             [cljam.io.sam :as sam]
             [cljam.io.sam.util.quality :as qual]
-            [cljam.io.sequence :as cseq]
             [cljam.algo.pileup :as plp]
-            [clojure.string :as cstr]
-            [cljam.io.pileup :as plpio]))
+            [clojure.string :as cstr]))
 
 (def test-bam-pileup-ref
   [0 0 0 0 0 0 1 1 3 3 3 3 3 3 2 3 3 3 2 2 2 2 1
@@ -88,9 +86,6 @@
       (update :pnext int)
       (update :mapq int)
       p/map->SAMAlignment))
-
-(defn- ->pbase [m]
-  (plpio/map->PileupBase (merge {:start? false :reverse? false :end? false} m)))
 
 (defn- ->pile [[pos pile]]
   [pos (map (juxt :pos :end) pile)])
@@ -242,8 +237,7 @@
 
 (deftest about-pileup
   (testing "dense"
-    (with-open [br (sam/bam-reader test-sorted-bam-file)
-                fr (cseq/fasta-reader test-fa-file)]
+    (with-open [br (sam/bam-reader common/test-sorted-bam-file)]
       (let [plp-ref (doall (plp/pileup br {:chr "ref"}))
             plp-ref2 (doall (plp/pileup br {:chr "ref2"}))]
         (is (= (filter pos? test-bam-pileup-ref)
@@ -260,14 +254,14 @@
                (map #(frequencies (map :base (:pile %))) plp-ref2)))))))
 
 (deftest mpileup
-  (with-open [r1 (sam/reader test-sorted-bam-file)
+  (with-open [r1 (sam/reader common/test-sorted-bam-file)
               r2 (sam/reader r1)]
     (let [mplp (plp/mpileup {:chr "ref"} {} r1 r2)]
       (is (= (keep-indexed #(when (pos? %2) (inc %1)) test-bam-pileup-ref)
              (map first mplp))))))
 
 (deftest pileup-region
-  (with-open [br (sam/bam-reader test-sorted-bam-file)]
+  (with-open [br (sam/bam-reader common/test-sorted-bam-file)]
     (let [plp-ref1 (doall (plp/pileup br {:chr "ref" :start 1 :end 40}))
           plp-ref2 (doall (plp/pileup br {:chr "ref2" :start 1 :end 40}))]
       (is (= (filter pos? (take 40 test-bam-pileup-ref))
@@ -442,11 +436,12 @@
            (map #(map :qual (:pile %)) plps)))))
 
 (deftest about-create-mpileup
-  (with-before-after {:before (prepare-cache!)
-                      :after (clean-cache!)}
-    (let [out-file (str temp-dir "/test.pileup")]
-      (is (not-throw? (plp/create-mpileup test-sorted-bam-file out-file)))
-      (doseq [[r1 r2] (->> [test-pileup-file out-file]
+  (common/with-before-after {:before (common/prepare-cache!)
+                             :after (common/clean-cache!)}
+    (let [out-file (str common/temp-dir "/test.pileup")]
+      (is (common/not-throw?
+           (plp/create-mpileup common/test-sorted-bam-file out-file)))
+      (doseq [[r1 r2] (->> [common/test-pileup-file out-file]
                            (map (comp cstr/split-lines slurp))
                            (apply map vector))
               :when (not (cstr/starts-with? r1 "ref\t35\t"))] ;; adjacent indel

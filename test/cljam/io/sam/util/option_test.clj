@@ -1,5 +1,5 @@
 (ns cljam.io.sam.util.option-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [cljam.io.sam.util.option :as opt]))
 
 (deftest parse-optional-field

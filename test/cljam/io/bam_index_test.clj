@@ -1,8 +1,16 @@
 (ns cljam.io.bam-index-test
   "Tests for cljam.io.bam-index."
   (:require [clojure.java.io :as cio]
-            [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+            [clojure.test :refer [deftest is are]]
+            [cljam.test-common :refer
+             [deftest-remote
+              with-before-after
+              prepare-cavia!
+              not-throw?
+              just-map?
+              http-server
+              test-bai-file
+              test-large-bai-file]]
             [cljam.io.bam-index :as bai]))
 
 ;;; bin-index

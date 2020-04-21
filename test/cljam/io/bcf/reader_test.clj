@@ -1,5 +1,5 @@
 (ns cljam.io.bcf.reader-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest are]]
             [cljam.io.bcf.reader :as bcf-reader])
   (:import [java.nio ByteBuffer ByteOrder]))
 

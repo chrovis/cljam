@@ -33,7 +33,7 @@
         result-len (quot (inc length) 2)
         in-bb (ByteBuffer/wrap b)
         out-bb (ByteBuffer/allocate result-len)]
-    (dotimes [i result-len]
+    (dotimes [_ result-len]
       (let [u (.get in-bb)
             l (byte (if (.hasRemaining in-bb) (.get in-bb) \=))]
         (->> (bit-and 0x7F l)

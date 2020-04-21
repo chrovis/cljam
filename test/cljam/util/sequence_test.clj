@@ -1,5 +1,5 @@
 (ns cljam.util.sequence-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest are]]
             [cljam.util.sequence :as util-seq]))
 
 (deftest revcomp

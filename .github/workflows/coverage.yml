@@ -6,7 +6,7 @@ jobs:
   coverage:
     runs-on: ubuntu-18.04
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Cache m2 repository
       uses: actions/cache@v1
       with:

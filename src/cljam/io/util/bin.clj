@@ -45,7 +45,8 @@
   (get-chunks [this ref-idx bins])
   (get-min-offset [this ref-idx beg])
   (get-min-shift [this])
-  (get-depth [this]))
+  (get-depth [this])
+  (get-chr-names  [this]))
 
 (defn pos->lidx-offset
   [^long pos ^long linear-index-shift]

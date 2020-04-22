@@ -51,4 +51,20 @@
       (is (= (.depth r) (.depth w)))
       (is (= (.bidx r) (.bidx w)))
       (is (= (.loffset r) (.loffset w)))
-      (is (= (vec (.aux r)) (vec (.aux w)))))))
+      (is (= (.aux r) (.aux w))))))
+
+(def ^:private aux-data
+  (->> (str "02000000010000000200000000000000"
+            "23000000000000000a00000063687231"
+            "006368723300")
+       (partition 2)
+       (map #(unchecked-byte (Short/parseShort (apply str %) 16)))
+       (byte-array)))
+
+(def ^:private ^:const aux-map
+  {:format 2, :col-seq 1, :col-beg 2, :col-end 0,
+   :meta-char \#, :skip 0, :chrs ["chr1" "chr3"]})
+
+(deftest tabix-aux-test
+  (is (= aux-map (@#'csi/parse-tabix-aux aux-data)))
+  (is (= (vec aux-data) (vec (@#'csi/create-tabix-aux aux-map)))))

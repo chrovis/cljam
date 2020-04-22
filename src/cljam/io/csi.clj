@@ -6,12 +6,16 @@
             [cljam.io.util.chunk :as chunk]
             [cljam.io.util.bin :as util-bin])
   (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException]))
+           [java.io DataInputStream DataOutputStream IOException]
+           [java.nio ByteBuffer ByteOrder]))
 
 (def ^:private default-vcf-csi-aux
   {:format 2 :col-seq 1 :col-beg 2 :col-end 0 :meta-char \# :skip 0})
 
 (def min-large-chunk-size 0x10000)
+
+;;; 4byte x 7 (format,seq,beg,end,meta,skip,l_nm)
+(def ^:private ^:const tabix-field-size (* 4 7))
 
 (deftype CSI [n-ref min-shift depth bidx loffset aux]
   util-bin/IBinningIndex
@@ -24,7 +28,27 @@
   (get-depth [_]
     depth)
   (get-min-shift [_]
-    min-shift))
+    min-shift)
+  (get-chr-names [_]
+    (:chrs aux)))
+
+(defn- parse-tabix-aux [^bytes ba]
+  (when (<= tabix-field-size (alength ba))
+    (let [bb (doto (ByteBuffer/wrap ba)
+               (.order ByteOrder/LITTLE_ENDIAN))
+          format' (.getInt bb)
+          col-seq (.getInt bb)
+          col-beg (.getInt bb)
+          col-end (.getInt bb)
+          meta-char (char (.getInt bb))
+          skip (.getInt bb)
+          l-nm (.getInt bb)]
+      (when-not (= l-nm (.remaining bb))
+        (throw (ex-info "l-nm does not match"
+                        {:l-nm l-nm, :remaining (.remaining bb)})))
+      {:format format', :col-seq col-seq, :col-beg col-beg, :col-end col-end,
+       :meta-char meta-char, :skip skip,
+       :chrs (cstr/split (String. ba (.position bb) (.remaining bb)) #"\00")})))
 
 (def ^:const ^:private csi-magic "CSI\1")
 
@@ -57,6 +81,7 @@
         depth (lsb/read-int rdr)
         l-aux (lsb/read-int rdr)
         aux (lsb/read-bytes rdr l-aux)
+        tabix-aux (try (parse-tabix-aux aux) (catch Throwable _ nil))
         n-ref (lsb/read-int rdr)
         bins (vec (repeatedly n-ref #(read-bin-index rdr)))
         max-bin (util-bin/max-bin depth)
@@ -81,7 +106,7 @@
                                              loffset])))
                                bin)]))
                      (into (sorted-map)))]
-    (->CSI n-ref min-shift depth bidx loffset aux)))
+    (->CSI n-ref min-shift depth bidx loffset tabix-aux)))
 
 (defn read-index
   [f]
@@ -142,18 +167,20 @@
                         first)]))
        (into (sorted-map))))
 
-(defn- create-vcf-csi-aux-data [contigs]
-  (let [contig-bytes (.getBytes (str (cstr/join (char 0) contigs) (char 0)))]
-    (byte-array
-     (concat (->> (assoc default-vcf-csi-aux
-                         :l-nm (count contig-bytes))
-                  ((juxt :format :col-seq :col-beg
-                         :col-end :meta-char :skip :l-nm))
-                  (map (fn [n]
-                         (map #(bit-shift-right (int n) %)
-                              (range 0 32 8))))
-                  (apply concat))
-             contig-bytes))))
+(defn- create-tabix-aux [aux]
+  (let [contig-bytes (.getBytes (str (cstr/join (char 0) (:chrs aux)) (char 0)))
+        bb (doto (ByteBuffer/wrap
+                  (byte-array (+ (alength contig-bytes) tabix-field-size)))
+             (.order ByteOrder/LITTLE_ENDIAN))]
+    (.putInt bb (:format aux))
+    (.putInt bb (:col-seq aux))
+    (.putInt bb (:col-beg aux))
+    (.putInt bb (:col-end aux))
+    (.putInt bb (int (:meta-char aux)))
+    (.putInt bb (:skip aux))
+    (.putInt bb (alength contig-bytes))
+    (.put bb contig-bytes)
+    (.array bb)))
 
 (defn offsets->index
   "Calculates loffsets and bidx
@@ -180,7 +207,7 @@
                                          offsets)]))
                       (into (sorted-map)))
         aux (when (= variant-file-type :vcf)
-              (create-vcf-csi-aux-data names))]
+              (assoc default-vcf-csi-aux :chrs names))]
     (->CSI (count bidx) shift depth bidx loffsets aux)))
 
 (defn write-index
@@ -190,9 +217,10 @@
     (lsb/write-bytes w (.getBytes ^String csi-magic))
     (lsb/write-int w (.min-shift csi))
     (lsb/write-int w (.depth csi))
-    (let [aux (.aux csi)]
-      (lsb/write-int w (count aux))
-      (when aux (lsb/write-bytes w aux)))
+    (let [tabix-aux (some-> (.aux csi) create-tabix-aux)]
+      (lsb/write-int w (count tabix-aux))
+      (when tabix-aux
+        (lsb/write-bytes w tabix-aux)))
     (lsb/write-int w (count (.bidx csi)))
     (doseq [[chr-index offsets] (.bidx csi)]
       (lsb/write-int w (count offsets))

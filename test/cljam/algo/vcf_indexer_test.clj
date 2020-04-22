@@ -1,7 +1,6 @@
 (ns cljam.algo.vcf-indexer-test
   "Tests for cljam.algo.bam-indexer."
   (:require [clojure.test :refer [deftest is]]
-            [clojure.string :as cstr]
             [clojure.java.io :as cio]
             [cljam.test-common :refer
              [deftest-remote
@@ -103,16 +102,12 @@
     (do (vcf-indexer/create-index test-vcf-changed-chr-order-file
                                   tmp-csi-file {:shift 18 :depth 5})
         (let [csi ^CSI (csi/read-index tmp-csi-file)]
-          (is (= (cstr/split (String. (byte-array (drop 28 (.aux csi))))
-                             #"\00")
-                 ["19" "20" "X"]))
-
+          (is (= ["19" "20" "X"] (:chrs (.aux csi))))
           (is (= (chunks->maps (.bidx csi))
                  {0 {4681 [{:beg 2096, :end 2205}]},
                   1 {4681 [{:beg 1647, :end 1811}],
                      4685 [{:beg 1811, :end 2096}]},
                   2 {4681 [{:beg 2205, :end 70975488}]}}))
-
           (is (= (.loffset csi)
                  {0 {1 2096},
                   1 {1 1647, 1048577 1811},
@@ -124,9 +119,7 @@
     (do (vcf-indexer/create-index test-vcf-changed-chr-order-field-less-file
                                   tmp-csi-file {:shift 18 :depth 5})
         (let [csi ^CSI (csi/read-index tmp-csi-file)]
-          (is (= (cstr/split (String. (byte-array (drop 28 (.aux csi))))
-                             #"\00")
-                 ["20" "19" "X"]))
+          (is (= ["20" "19" "X"] (:chrs (.aux csi))))
           (is (= (chunks->maps (.bidx csi))
                  {0 {4681 [{:beg 1597, :end 1761}],
                      4685 [{:beg 1761, :end 2046}]},
@@ -147,9 +140,7 @@
       (is (= (.n-ref csi) 3))
       (is (= (.min-shift csi) 14))
       (is (= (.depth csi) 6))
-      (is (= (cstr/split (String. (byte-array (drop 28 (.aux csi))))
-                         #"\00")
-             ["chr1" "chr2" "chr3"]))
+      (is (= ["chr1" "chr2" "chr3"] (:chrs (.aux csi))))
       (is (= (chunks->maps (.bidx csi))
              {0 {37449 [{:beg 117, :end 136}]},
               1 {}
@@ -201,7 +192,7 @@
       (is (= (.n-ref csi) (.n-ref ^CSI computed)))
       (is (= (.min-shift csi) (.min-shift ^CSI computed)))
       (is (= (.depth csi) (.depth ^CSI computed)))
-      (is (= (vec (.aux csi)) (vec (.aux ^CSI computed))))
+      (is (= (.aux csi) (.aux ^CSI computed)))
       ;;Exclude tail data
       ;;due to differences in implementation of HTSlib and bgzf4j.
       (is (= (update (.bidx csi) 0 dissoc 75)
@@ -234,7 +225,7 @@
         (is (= (.n-ref csi) (.n-ref ^CSI computed)))
         (is (= (.min-shift csi) (.min-shift ^CSI computed)))
         (is (= (.depth csi) (.depth ^CSI computed)))
-        (is (= (vec (.aux csi)) (vec (.aux ^CSI computed))))
+        (is (= (.aux csi) (.aux ^CSI computed)))
         (is (= (update (.bidx csi) 24 dissoc 37450)
                (update (.bidx ^CSI computed) 24 dissoc 37450)))
         (doseq [chr (keys (.loffset csi))]

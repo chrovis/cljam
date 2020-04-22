@@ -1,5 +1,5 @@
 (ns cljam.io.sequence-bench
-  (:require [libra.bench :refer :all]
+  (:require [libra.bench :refer [defbench are]]
             [libra.criterium :as c]
             [cljam.test-common :as tcommon]
             [cljam.io.sequence :as cseq]))

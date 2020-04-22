@@ -1,5 +1,5 @@
 (ns cljam.algo.convert-bench
-  (:require [libra.bench :refer :all]
+  (:require [libra.bench :refer [defbench are]]
             [libra.criterium :as c]
             [cljam.test-common :as tcommon]
             [cljam.algo.convert :as convert]))

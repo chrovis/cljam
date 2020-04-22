@@ -1,10 +1,14 @@
 (ns cljam.io.bcf.writer-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are]]
             [clojure.java.io :as cio]
             [clojure.string :as cstr]
             [cljam.io.bcf.writer :as bcf-writer]
             [cljam.io.util.bgzf :as bgzf]
-            [cljam.test-common :refer :all])
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              temp-dir]])
   (:import [java.nio ByteBuffer ByteOrder]
            [java.io ByteArrayOutputStream File]))
 

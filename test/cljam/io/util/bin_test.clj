@@ -1,7 +1,9 @@
 (ns cljam.io.util.bin-test
   "Tests for cljam.io.util.bin."
-  (:require [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
+            [cljam.test-common :refer
+             [test-tabix-file
+              test-csi-file]]
             [cljam.io.tabix :as tabix]
             [cljam.io.csi :as csi]
             [cljam.io.util.bin :as util-bin]))

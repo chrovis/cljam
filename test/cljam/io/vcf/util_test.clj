@@ -1,6 +1,14 @@
 (ns cljam.io.vcf.util-test
-  (:require [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+  (:require [clojure.test :refer [deftest are]]
+            [cljam.test-common :refer
+             [test-vcf-v4_3-meta-info
+              test-vcf-v4_3-header
+              test-vcf-v4_3-variants
+              test-vcf-v4_3-variants-deep
+              test-vcf-v4_0-meta-info
+              test-vcf-v4_0-header
+              test-vcf-v4_0-variants
+              test-vcf-v4_0-variants-deep]]
             [cljam.io.vcf.util :as vcf-util]))
 
 (deftest about-parse-info

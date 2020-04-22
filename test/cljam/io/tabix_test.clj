@@ -1,7 +1,15 @@
 (ns cljam.io.tabix-test
   (:require [clojure.java.io :as cio]
-            [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+            [clojure.test :refer [deftest is are]]
+            [cljam.test-common :refer
+             [deftest-remote
+              with-before-after
+              prepare-cavia!
+              not-throw?
+              http-server
+              small-bam-file
+              test-tabix-file
+              test-large-tabix-file]]
             [cljam.io.tabix :as tbi])
   (:import
    [cljam.io.tabix Tabix]

@@ -23,10 +23,10 @@
               w ^FAIWriter (writer out-fai)]
     (try
       (writer/write-index! r w)
-      (catch Exception e (do
-                           (cio/delete-file (.url w))
-                           (logging/error "Failed to create FASTA index")
-                           (throw e))))))
+      (catch Exception e
+        (cio/delete-file (.url w))
+        (logging/error "Failed to create FASTA index")
+        (throw e)))))
 
 ;;;; Reading
 

@@ -1,10 +1,15 @@
 (ns cljam.io.bigwig-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [clojure.java.io :as cio]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [http-server
+              test-bigwig-variable-file
+              test-bigwig-fixed-file
+              test-bigwig-bedgraph-file
+              test-bigwig-non-leaf-blocks-file]]
             [cljam.io.bigwig :as bigwig])
-  (:import [cljam.io.bigwig BIGWIGReader BigWigHeaders FixedWidthHeader
-            ZoomHeader TotalSummary ExtendedHeader BptHeader BbiChromInfo
+  (:import [cljam.io.bigwig BigWigHeaders FixedWidthHeader
+            ZoomHeader TotalSummary BptHeader BbiChromInfo
             CirTree]))
 
 (def ^:private ^BigWigHeaders test-bigwig-fixed-fields

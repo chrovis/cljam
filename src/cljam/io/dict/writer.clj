@@ -47,7 +47,7 @@
 (defn make-dict
   "Calculates sequence dictionary from the headers and sequences, returning it
   as a map."
-  [headers sequences ur]
+  [_headers sequences ur]
   (loop [[seq* & rest] sequences
          name (:name seq*)
          dict-status (init-dict-status)

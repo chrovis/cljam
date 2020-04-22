@@ -1,7 +1,18 @@
 (ns cljam.io.fasta.core-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are]]
             [clojure.string :as cstr]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [not-throw?
+              temp-dir
+              test-fa-file
+              test-fa-bz2-file
+              test-fa-header
+              test-fa-sequences
+              test-fa-data
+              test-tabix-file
+              medium-fa-file
+              medium-fa-gz-file
+              medium-fa-bgz-file]]
             [cljam.io.fasta.core :as fa-core]))
 
 (def temp-test-fa-file (str temp-dir "/test.fa"))

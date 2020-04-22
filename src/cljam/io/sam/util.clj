@@ -5,9 +5,7 @@
             [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.util.bin :as util-bin]
             [cljam.io.sam.util.option :as opt])
-  (:import [java.nio CharBuffer ByteBuffer]
-           [java.nio.charset StandardCharsets]
-           [cljam.io.protocols SAMAlignment]))
+  (:import [cljam.io.protocols SAMAlignment]))
 
 (def ^:const linear-index-shift 14)
 (def ^:const linear-index-depth 5)

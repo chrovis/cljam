@@ -148,7 +148,7 @@
 
 (defn- write-meta-info1
   [^VCFWriter wtr k v]
-  (if-not (nil? v)
+  (when-not (nil? v)
     (if (sequential? v)
       (doseq [x v]
         (write-line (.writer wtr) (str meta-info-prefix
@@ -182,12 +182,12 @@
 
 (defn- stringify-data-line-alt
   [v]
-  (if v
+  (when v
     (cstr/join \, v)))
 
 (defn- stringify-data-line-qual
   [x]
-  (if x
+  (when x
     (if (zero? (mod x 1))
       (str (int x))
       (str x))))

@@ -1,5 +1,5 @@
 (ns cljam.util.region-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest are testing]]
             [cljam.util.region :as region]))
 
 (defn into* ([] []) ([r] r) ([r x] (conj r x)))

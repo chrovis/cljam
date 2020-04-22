@@ -1,9 +1,9 @@
 (ns cljam.algo.depth-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [cljam.test-common :as common]
             [cljam.io.sam :as sam]
             [cljam.algo.depth :as depth])
-  (:import [clojure.lang LazySeq ArraySeq]))
+  (:import [clojure.lang LazySeq]))
 
 (def test-bam-depth-ref
   [0 0 0 0 0 0 1 1 3 3 3 3 3 3 2 3 3 3 2 2 2 2 1 1 1 1 1 1 2 2 2 2 2 1 1 1 2 2 2 2 1 1 1 1 1])

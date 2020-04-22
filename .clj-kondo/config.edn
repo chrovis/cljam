@@ -1,0 +1,23 @@
+{:linters
+ {:type-mismatch
+  {:namespaces
+   {clojure.core
+    {long {:arities {1 {:args [#{:byte :number :char}],
+                        :ret :int}}}},
+    cljam.algo.pileup
+    {unzip-2 {:arities {1 {:args [:fn],
+                           :ret :transducer}}}}}},
+  :unresolved-symbol
+  {:exclude [(cljam.io.pileup-test/with-string-writer [w])
+             ;; cljam.algo.depth
+             (com.climate.claypoole/pdoseq [s e])
+             ;; cljam.algo.level
+             (com.climate.claypoole/pfor [i])]}},
+ :lint-as {cljam.test-common/deftest-slow clojure.test/deftest,
+           cljam.test-common/deftest-remote clojure.test/deftest,
+           cljam.util/with-temp-dir clojure.core/with-open,
+           cavia.core/defprofile clojure.core/def,
+           libra.bench/defbench clojure.test/deftest,
+           libra.bench/is clojure.test/is,
+           libra.bench/are clojure.test/are,
+           com.climate.claypoole/with-shutdown! clojure.core/with-open}}

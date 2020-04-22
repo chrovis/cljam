@@ -1,7 +1,17 @@
 (ns cljam.io.csi-test
   (:require [clojure.java.io :as cio]
-            [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+            [clojure.test :refer [deftest is are]]
+            [cljam.test-common :refer
+             [deftest-remote
+              with-before-after
+              prepare-cache!
+              prepare-cavia!
+              clean-cache!
+              http-server
+              temp-dir
+              small-bam-file
+              test-csi-file
+              test-large-vcf-csi-file]]
             [cljam.io.csi :as csi])
   (:import
    [cljam.io.csi CSI]))

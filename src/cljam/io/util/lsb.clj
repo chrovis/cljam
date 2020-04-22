@@ -1,7 +1,7 @@
 (ns cljam.io.util.lsb
   "Reading/writing functions of stream and buffer for little-endian data."
   (:refer-clojure :exclude [read-string])
-  (:require [cljam.util :refer [string->bytes bytes->string]])
+  (:require [cljam.util :refer [string->bytes]])
   (:import [java.io DataInput InputStream DataOutputStream EOFException ByteArrayOutputStream]
            [java.nio Buffer ByteBuffer ByteOrder]))
 

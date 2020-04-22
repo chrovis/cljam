@@ -1,6 +1,27 @@
 (ns cljam.algo.sorter-test
-  (:require [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+  (:require [clojure.test :refer [deftest is use-fixtures]]
+            [cljam.test-common
+             :refer [deftest-slow
+                     deftest-remote
+                     disable-log-fixture
+                     get-shuffled-test-sam
+                     spit-sam-for-test
+                     spit-bam-for-test
+                     slurp-sam-for-test
+                     slurp-bam-for-test
+                     with-before-after
+                     prepare-cache!
+                     prepare-cavia!
+                     clean-cache!
+                     not-throw?
+                     check-sort-order
+                     qname-sorted?
+                     coord-sorted?
+                     temp-dir
+                     test-sam-file
+                     test-bam-file
+                     medium-bam-file
+                     large-bam-file]]
             [cljam.io.sam :as sam]
             [cljam.algo.sorter :as sorter]
             [cljam.io.sam.util.header :as header])

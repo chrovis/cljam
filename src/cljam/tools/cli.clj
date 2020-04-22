@@ -323,7 +323,7 @@
 
 ;; ### version command
 
-(defn version [args]
+(defn version [_]
   (let [ver (with-open [r (-> "META-INF/maven/cljam/cljam/pom.properties"
                               (clojure.java.io/resource)
                               (clojure.java.io/reader))]

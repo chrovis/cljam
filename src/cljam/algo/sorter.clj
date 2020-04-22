@@ -1,15 +1,14 @@
 (ns cljam.algo.sorter
   "Sorter of the SAM/BAM format alignments."
   (:refer-clojure :exclude [sorted?])
-  (:require [clojure.java.io :as cio]
-            [clojure.tools.logging :as logging]
+  (:require [clojure.tools.logging :as logging]
             [com.climate.claypoole :as cp]
             [cljam.io.protocols :as protocols]
             [cljam.io.sam :as sam]
             [cljam.io.util :as io-util]
             [cljam.util :as util]
             [cljam.io.sam.util.header :as header])
-  (:import [java.io Closeable File]
+  (:import [java.io Closeable]
            [java.util PriorityQueue]))
 
 (def ^:const default-chunk-size 1500000)

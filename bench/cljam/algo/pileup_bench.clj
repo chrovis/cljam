@@ -1,5 +1,5 @@
 (ns cljam.algo.pileup-bench
-  (:require [libra.bench :refer :all]
+  (:require [libra.bench :refer [defbench is]]
             [libra.criterium :as c]
             [criterium.core :as criterium]
             [cljam.test-common :as tcommon]
@@ -15,4 +15,3 @@
           (is
            (c/quick-bench
             (dorun (pileup/pileup r region)))))))))
-

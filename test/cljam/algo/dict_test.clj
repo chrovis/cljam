@@ -1,9 +1,9 @@
 (ns cljam.algo.dict-test
   "Tests for cljam.algo.dict."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is]]
             [clojure.string :as string]
             [clojure.java.io :as cio]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :as common]
             [cljam.algo.dict :as dict]))
 
 (defn same-dict-file? [f1 f2]
@@ -24,18 +24,19 @@
 ;; Resources
 ;; ---------
 
-(def temp-fa-file (str temp-dir "/test.fa"))
+(def temp-fa-file (str common/temp-dir "/test.fa"))
 (def out-dict-file (str temp-fa-file ".dict"))
 
 ;; Small-size FASTA
 ;; ---------------------------------
 
 (deftest about-create-dict
-  (with-before-after {:before (do (prepare-cache!)
-                                  (cio/copy (cio/file test-fa-file)
-                                            (cio/file temp-fa-file)))
-                      :after (clean-cache!)}
+  (common/with-before-after
+    {:before (do (common/prepare-cache!)
+                 (cio/copy (cio/file common/test-fa-file)
+                           (cio/file temp-fa-file)))
+     :after (common/clean-cache!)}
     ;; Create dictionary without errors
-    (is (not-throw? (dict/create-dict temp-fa-file out-dict-file)))
+    (is (common/not-throw? (dict/create-dict temp-fa-file out-dict-file)))
     ;; Check the file contents
-    (is (same-dict-file? out-dict-file test-fa-dict-file))))
+    (is (same-dict-file? out-dict-file common/test-fa-dict-file))))

@@ -1,8 +1,27 @@
 (ns cljam.algo.bam-indexer-test
   "Tests for cljam.algo.bam-indexer."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are use-fixtures]]
             [clojure.java.io :as cio]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [deftest-slow
+              deftest-remote
+              disable-log-fixture
+              with-before-after
+              prepare-cache!
+              prepare-cavia!
+              clean-cache!
+              not-throw?
+              same-file?
+              spit-bam-for-test
+              temp-dir
+              test-bai-file
+              test-sorted-bam-file
+              test-sam-sorted-by-pos
+              test-sam-incomplete-alignments
+              test-sam-incomplete-alignments-sorted-by-pos
+              small-bam-file
+              medium-bam-file
+              large-bam-file]]
             [cljam.io.sam :as sam]
             [cljam.algo.sorter :as sorter]
             [cljam.algo.bam-indexer :as bai]))

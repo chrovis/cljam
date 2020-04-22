@@ -1,5 +1,5 @@
 (ns cljam.util.whole-genome-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [cljam.util.whole-genome :as wg]))
 
 (def simple-refs [{:name "1", :len 100} {:name "2", :len 200} {:name "3", :len 300}])

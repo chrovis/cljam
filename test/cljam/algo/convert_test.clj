@@ -1,7 +1,22 @@
 (ns cljam.algo.convert-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [clojure.string :as cstr]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              not-throw?
+              same-sam-contents?
+              same-sequence-contents?
+              temp-dir
+              test-sam-file
+              test-bam-file
+              test-paired-bam-file
+              test-fa-file
+              test-twobit-file
+              test-fq-file
+              test-fq-r1-file
+              test-fq-r2-file]]
             [cljam.algo.convert :as convert]
             [cljam.io.sequence :as cseq]
             [cljam.io.fastq :as fq]

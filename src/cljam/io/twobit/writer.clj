@@ -76,14 +76,6 @@
             (recur (conj! r [p l]) nil nil (inc i))
             (recur r nil nil (inc i))))))))
 
-(defn- index-size
-  "Number of bytes required for index."
-  [seqs]
-  (-> (fn [{:keys [name]}]
-        (+ 1 (count name) 4))
-      map
-      (transduce + 0 seqs)))
-
 (defn- write-index!
   [w idx]
   (loop [offset (+ (* 4 4) (reduce + (map #(+ 1 (count (:name %)) 4) idx)))
@@ -173,7 +165,7 @@
             seq-data (or (:seq sequence) (:sequence sequence))
             masks (mask-regions seq-data)
             ambs (amb-regions seq-data)
-            i (first (keep-indexed #(if (= (:name %2) name) %1) @idx-atom))]
+            i (first (keep-indexed #(when (= (:name %2) name) %1) @idx-atom))]
         (swap! idx-atom update i assoc :masks masks :ambs ambs))
       (write-sequence! (.writer wtr) sequence @idx-atom))
     ;; finalize

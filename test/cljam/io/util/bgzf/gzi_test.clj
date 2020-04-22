@@ -1,5 +1,5 @@
 (ns cljam.io.util.bgzf.gzi-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are]]
             [cljam.test-common :as common]
             [cljam.io.util.bgzf.gzi :as gzi]))
 

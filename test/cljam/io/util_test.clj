@@ -1,7 +1,60 @@
 (ns cljam.io.util-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are testing]]
             [clojure.java.io :as cio]
-            [cljam.test-common :refer :all]
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              temp-dir
+              test-sam-file
+              medium-sam-file
+              medium-bam-file
+              normalize-before-sam-file
+              normalize-after-sam-file
+              normalize-before-bam-file
+              normalize-after-bam-file
+              opts-sam-file
+              opts-bam-file
+              test-bam-file
+              test-paired-bam-file
+              test-sorted-bam-file
+              small-bam-file
+              dedupe-before-bam-file
+              dedupe-after-bam-file
+              test-bai-file
+              test-fa-file
+              test-fa-bz2-file
+              test-fa-dict-file
+              medium-fa-file
+              medium-fa-gz-file
+              test-fai-file
+              medium-fai-file
+              test-twobit-file
+              test-twobit-n-file
+              test-twobit-be-file
+              test-twobit-be-n-file
+              medium-twobit-file
+              test-fq-file
+              test-bed-file1
+              test-bed-file1-gz
+              test-bed-file2
+              test-bed-file2-bz2
+              test-bed-file3
+              test-bed-file4
+              test-bed-file4-bgz
+              test-tabix-file
+              test-vcf-v4_0-file
+              test-vcf-v4_3-file
+              test-pileup-file
+              test-bcf-v4_3-file
+              test-bcf-complex-file
+              test-gff3-file
+              test-wig-file1
+              test-wig-file2
+              test-bigwig-fixed-file
+              test-bigwig-variable-file
+              test-bigwig-bedgraph-file
+              test-bigwig-non-leaf-blocks-file]]
             [cljam.io.bed :as bed]
             [cljam.io.fastq :as fastq]
             [cljam.io.sam :as sam]

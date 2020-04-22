@@ -1,6 +1,29 @@
 (ns cljam.tools.cli-test
-  (:require [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+  (:require [clojure.test :refer [deftest is are testing use-fixtures]]
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              not-throw?
+              same-sam-contents?
+              same-sequence-contents?
+              check-sort-order
+              slurp-sam-for-test
+              slurp-bam-for-test
+              disable-log-fixture
+              temp-dir
+              test-sam-file
+              test-bam-file
+              test-sam-sorted-by-pos
+              test-sam-sorted-by-qname
+              test-sorted-bam-file
+              test-fa-file
+              test-twobit-file
+              normalize-before-bam-file
+              normalize-after-bam-file
+              test-pileup-file
+              test-pileup-dir
+              test-sorted-bam-levels]]
             [clojure.java.io :as cio]
             [cljam.tools.cli :as cli]
             [cljam.io.sam :as sam])

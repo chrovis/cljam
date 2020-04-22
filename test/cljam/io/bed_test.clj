@@ -1,7 +1,20 @@
 (ns cljam.io.bed-test
   (:require [clojure.java.io :as cio]
-            [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+            [clojure.test :refer [deftest is are testing]]
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              not-throw?
+              http-server
+              temp-dir
+              test-bed-file1
+              test-bed-file1-gz
+              test-bed-file2
+              test-bed-file2-bz2
+              test-bed-file3
+              test-sorted-bam-file
+              medium-fa-file]]
             [cljam.io.bed :as bed]
             [cljam.io.sam :as sam]
             [cljam.io.sam.util :as sam-util]
@@ -13,13 +26,13 @@
 (defn- str->bed [^String s]
   (with-open [bais (ByteArrayInputStream. (.getBytes s))
               isr (InputStreamReader. bais)
-              br (bed/BEDReader. (BufferedReader. isr) nil)]
+              br (BEDReader. (BufferedReader. isr) nil)]
     (doall (bed/read-fields br))))
 
 (defn- bed->str [xs]
   (with-open [bao (ByteArrayOutputStream.)
               osw (OutputStreamWriter. bao)
-              bw (bed/BEDWriter. (BufferedWriter. osw) nil)]
+              bw (BEDWriter. (BufferedWriter. osw) nil)]
     (bed/write-fields bw xs)
     (.flush ^BufferedWriter (.writer bw))
     (.toString bao)))
@@ -339,7 +352,7 @@
       (are [x] (with-before-after {:before (prepare-cache!)
                                    :after (clean-cache!)}
                  (with-open [rdr (bed/reader test-bed-file1)
-                             wtr (bed/writer temp-file)]
+                             wtr (bed/writer x)]
                    (not-throw? (bed/write-fields wtr (bed/read-fields rdr)))))
         temp-file
         (cio/file temp-file)

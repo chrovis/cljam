@@ -1,5 +1,5 @@
 (ns cljam.io.vcf.util.check-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest are]]
             [cljam.io.protocols :as protocols]
             [cljam.io.vcf.util.check :as check]))
 

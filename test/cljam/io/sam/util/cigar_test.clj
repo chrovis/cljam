@@ -1,5 +1,5 @@
 (ns cljam.io.sam.util.cigar-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are]]
             [cljam.io.sam.util.cigar :as cigar])
   (:import [java.nio ByteBuffer ByteOrder]))
 

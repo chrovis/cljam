@@ -1,5 +1,5 @@
 (ns cljam.util.chromosome-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are]]
             [cljam.util.chromosome :as chr]))
 
 (deftest normalize-chromosome-key

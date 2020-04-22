@@ -2,8 +2,12 @@
   "Tests for cljam.util."
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
-            [clojure.test :refer :all]
-            [cljam.test-common :refer :all]
+            [clojure.test :refer [deftest is are testing]]
+            [cljam.test-common :refer
+             [with-before-after
+              prepare-cache!
+              clean-cache!
+              temp-dir]]
             [cljam.util :as util])
   (:import [java.io File]
            [java.net URL]

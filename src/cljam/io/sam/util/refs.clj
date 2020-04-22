@@ -32,4 +32,4 @@
 (defn ref-by-name
   "Returns the first reference which has the specified name."
   [refs name]
-  (some #(if (= (:name %) name) %) refs))
+  (some #(when (= (:name %) name) %) refs))

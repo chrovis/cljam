@@ -70,7 +70,7 @@
   (with-open [w (writer f refs)]
     (try
       (writer/write-index! w alns)
-      (catch Exception e (do
-                           (cio/delete-file (.url w))
-                           (logging/error "Failed to create BAM index")
-                           (throw e))))))
+      (catch Exception e
+        (cio/delete-file (.url w))
+        (logging/error "Failed to create BAM index")
+        (throw e)))))

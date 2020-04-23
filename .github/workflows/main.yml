@@ -10,7 +10,7 @@ jobs:
         java: [ '1.8', '11', '12' ]
     name: Java ${{ matrix.java }}
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Setup Java
       uses: actions/setup-java@v1
       with:
@@ -34,7 +34,7 @@ jobs:
   ea-build:
     runs-on: ubuntu-18.04
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Download Early-Access Builds
       run: curl -sSL https://jdk.java.net/14 | grep -m1 -Eo 'https.*linux-x64_bin.tar.gz' | xargs curl -O
     - name: Get name of the downloaded jdkFile
@@ -65,7 +65,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-18.04
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Setup Java
       uses: actions/setup-java@v1
       with:

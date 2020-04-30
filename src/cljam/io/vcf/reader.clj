@@ -201,7 +201,8 @@
    {:keys [depth] :or {depth :deep}}]
   (let [kws (mapv keyword (drop 8 (.header rdr)))
         index-data @(.index-delay rdr)
-        chr-names (->> (.meta-info rdr) :contig (mapv :id))
+        chr-names (or (util-bin/get-chr-names index-data)
+                      (->> (.meta-info rdr) :contig (mapv :id)))
         ref-idx (.indexOf ^clojure.lang.PersistentVector chr-names chr)
         spans (when-not (neg? ref-idx)
                 (util-bin/get-spans index-data ref-idx start end))

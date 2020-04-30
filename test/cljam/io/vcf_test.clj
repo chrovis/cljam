@@ -32,7 +32,9 @@
               test-large-vcf-file
               test-large-bcf-file
               test-vcf-various-bins-gz-file
-              test-bcf-various-bins-file]]
+              test-bcf-various-bins-file
+              test-vcf-chr-skipped-file
+              test-vcf-changed-chr-order-file]]
             [cljam.io.vcf :as vcf])
   (:import bgzf4j.BGZFException))
 
@@ -422,3 +424,20 @@
       "chr1" 1048577 414826496
       "chr1" 1048577 414826497
       "chr1" 32769 414859265)))
+
+(deftest read-variants-randomly-with-irregular-chr-test
+  (with-open [r (vcf/reader test-vcf-chr-skipped-file)]
+    (is (= (vcf/read-variants-randomly r {:chr "chr3"} {})
+           '({:alt ["C"], :ref "G", :pos 1, :filter nil, :id nil, :info nil,
+              :qual nil, :chr "chr3"}))))
+
+  (with-open [r (vcf/reader test-vcf-changed-chr-order-file)]
+    (is (= (vcf/read-variants-randomly r {:chr "19"} {})
+           '({:NA00001 {:GT "0|0", :HQ (10 10)}, :alt ["C"], :ref "A",
+              :FORMAT (:GT :HQ), :NA00002 {:GT "0|0", :HQ (10 10)},
+              :pos 111, :filter nil, :id nil, :info nil , :qual 9.6,
+              :NA00003 {:GT "0/1", :HQ (3 3)}, :chr "19"}
+             {:NA00001 {:GT "0|0", :HQ (10 10)}, :alt ["G"], :ref "A",
+              :FORMAT (:GT :HQ), :NA00002 {:GT "0|0", :HQ (10 10)},
+              :pos 112, :filter nil, :id nil, :info nil, :qual 10.0,
+              :NA00003 {:GT "0/1", :HQ (3 3)}, :chr "19"})))))

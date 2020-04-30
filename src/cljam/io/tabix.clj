@@ -21,7 +21,9 @@
          (util-bin/pos->lidx-offset beg linear-index-shift) 0))
   (get-min-shift [_] linear-index-shift)
   (get-depth [_]
-    linear-index-depth))
+    linear-index-depth)
+  (get-chr-names [_]
+    seq))
 
 (def tabix-magic "TBI\1")
 

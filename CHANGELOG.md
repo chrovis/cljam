@@ -16,11 +16,15 @@
 * Improve performance for reading string from BCF. [#186](https://github.com/chrovis/cljam/pull/186)
 * Improvement for pileup memory usage. [#188](https://github.com/chrovis/cljam/pull/188)
 * Replace memoizing cache for parsed CIGARs with core.memoize's LU cache. [#189](https://github.com/chrovis/cljam/pull/189)
+* Apply cljfmt. [#191](https://github.com/chrovis/cljam/pull/191)
+* Fix warnings and errors reported by clj-kondo. [#192](https://github.com/chrovis/cljam/pull/192)
+* Update actions/checkout to v2. [#193](https://github.com/chrovis/cljam/pull/193)
 
 ### Fixed
 
 * Fix a bug in reading bgzipped VCF files. [#184](https://github.com/chrovis/cljam/pull/184)
 * Fix float reader for specific environments such as IcedTea. [#185](https://github.com/chrovis/cljam/pull/185)
+* Fix reading chrs when chrs in index file and chr are not equal. [#194](https://github.com/chrovis/cljam/pull/194)
 
 ## [0.7.4] - 2019-10-04
 

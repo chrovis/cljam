@@ -1,0 +1,15 @@
+name: lint
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: xcoo/clj-lint-action@v1.1.1
+      with:
+        linters: "[\"clj-kondo\" \"kibit\" \"eastwood\"]"
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        runner: ":leiningen"
+        eastwood_linters: "[:all]"

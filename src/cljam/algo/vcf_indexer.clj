@@ -2,8 +2,7 @@
   "Indexer of VCF/BCF."
   (:require [cljam.io.csi :as csi]
             [cljam.io.util :as io-util]
-            [cljam.io.vcf :as vcf])
-  (:import cljam.io.vcf.reader.VCFReader))
+            [cljam.io.vcf :as vcf]))
 
 (defn create-index
   "Creates a CSI index file from the VCF/BCF file."
@@ -12,7 +11,7 @@
     (let [offsets (vcf/read-file-offsets r)
           variant-file-type (if (io-util/vcf-reader? r) :vcf :bcf)
           names (->> (map :chr offsets)
-                     (concat (->> (.meta-info r)
+                     (concat (->> (vcf/meta-info r)
                                   :contig
                                   (mapv :id)))
                      distinct)

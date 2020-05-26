@@ -333,19 +333,18 @@
                                (map-indexed (fn [index contig]
                                               [(:id contig) index]))
                                (into {}))
-        kws (mapv keyword (drop 8 (.header rdr)))
         parse-fn  (make-parse-fn rdr
                                  (meta->map (:info (.meta-info rdr))) :deep)]
     (letfn [(step [contigs beg-pointer]
               (when (pos? (.available input-stream))
                 (when-let [line (read-data-line-buffer input-stream)]
-                  (let [end-pointer (.getFilePointer input-stream)]
-                    (let [{:keys [chr pos ref info]} (parse-fn line)
-                          contigs' (if (contains? contigs chr)
-                                     contigs
-                                     (assoc contigs chr (count contigs)))]
-                      (cons {:file-beg beg-pointer, :file-end end-pointer
-                             :chr-index (contigs' chr), :beg pos, :chr chr,
-                             :end (or (:END info) (dec (+ pos (count ref))))}
-                            (lazy-seq (step contigs' end-pointer))))))))]
+                  (let [end-pointer (.getFilePointer input-stream)
+                        {:keys [chr pos ref info]} (parse-fn line)
+                        contigs' (if (contains? contigs chr)
+                                   contigs
+                                   (assoc contigs chr (count contigs)))]
+                    (cons {:file-beg beg-pointer, :file-end end-pointer
+                           :chr-index (contigs' chr), :beg pos, :chr chr,
+                           :end (or (:END info) (dec (+ pos (count ref))))}
+                          (lazy-seq (step contigs' end-pointer)))))))]
       (step meta-info-contigs (.getFilePointer input-stream)))))

@@ -18,17 +18,14 @@
               test-vcf-chr-skipped-file
               test-vcf-various-bins-gz-file
               test-vcf-various-bins-csi-file
-
               test-bcf-complex-file
               test-bcf-complex-csi-file
               test-bcf-various-bins-file
               test-bcf-various-bins-csi-file
               test-bcf-changed-chr-order-file
               test-bcf-changed-chr-order-csi-file
-
               test-large-bcf-file
               test-large-bcf-csi-file]]
-
             [cljam.io.csi :as csi]
             [cljam.io.vcf :as vcf]
             [cljam.algo.vcf-indexer :as vcf-indexer])
@@ -127,7 +124,7 @@
       (do (vcf-indexer/create-index test-bcf-complex-file
                                     tmp-csi-file {:shift 14 :depth 5})
           (let [computed ^CSI (csi/read-index tmp-csi-file)
-                csi ^CSI (csi/read-index tmp-csi-file)]
+                csi ^CSI (csi/read-index test-bcf-complex-csi-file)]
             (is (= (.n-ref csi) (.n-ref computed)))
             (is (= (.depth csi) (.depth computed)))
             (is (= (.aux csi) (.aux computed)))

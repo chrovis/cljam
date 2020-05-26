@@ -80,6 +80,17 @@
         (cio/copy (cio/file test-bcf-v4_3-file) tmp)
         (with-open [rdr (vcf/reader tmp)]
           (is (instance? cljam.io.bcf.reader.BCFReader rdr))))))
+  (testing "clone vcf"
+    (with-open [rdr (vcf/reader test-vcf-v4_3-file)
+                crdr (vcf/reader rdr)]
+      (is (instance? cljam.io.vcf.reader.VCFReader crdr)))
+    (with-open [rdr (vcf/reader test-vcf-complex-gz-file)
+                crdr (vcf/reader rdr)]
+      (is (instance? cljam.io.vcf.reader.VCFReader crdr))))
+  (testing "clone bcf"
+    (with-open [rdr (vcf/reader test-bcf-v4_3-file)
+                crdr (vcf/reader rdr)]
+      (is (instance? cljam.io.bcf.reader.BCFReader crdr))))
   (testing "throws Exception"
     (are [f] (thrown? Exception (vcf/reader f))
       "test-resources/vcf/not-found.vcf"

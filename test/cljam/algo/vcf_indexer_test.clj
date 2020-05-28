@@ -151,7 +151,7 @@
   (testing "bcf"
     (with-open [r (vcf/reader test-bcf-changed-chr-order-file)]
       (let [file-offsets (vcf/read-file-offsets r)
-            computed
+            computed ^CSI
             (csi/offsets->index file-offsets 14 6
                                 {:variant-file-type :bcf
                                  :names (mapv :id
@@ -162,18 +162,18 @@
                                    (map-indexed #(vector (:file-beg %2)
                                                          %1))
                                    (into {}))]
-        (is (= (.n-ref csi) (.n-ref ^CSI computed)))
-        (is (= (.min-shift csi) (.min-shift ^CSI computed)))
-        (is (= (.depth csi) (.depth ^CSI computed)))
-        (is (= (vec (.aux csi)) (vec (.aux ^CSI computed))))
-        (is (= (.bidx csi) (.bidx ^CSI computed)))
+        (is (= (.n-ref csi) (.n-ref computed)))
+        (is (= (.min-shift csi) (.min-shift computed)))
+        (is (= (.depth csi) (.depth computed)))
+        (is (= (vec (.aux csi)) (vec (.aux computed))))
+        (is (= (.bidx csi) (.bidx computed)))
         (doseq [chr (keys (.loffset csi))]
           (doseq [beg (keys (get (.loffset csi) chr))]
             (is (or (= (get-in (.loffset csi) [chr beg])
-                       (get-in (.loffset ^CSI computed) [chr beg]))
+                       (get-in (.loffset computed) [chr beg]))
                     (check-loffset file-offsets
                                    file-offset-index
-                                   beg (get-in (.loffset ^CSI computed)
+                                   beg (get-in (.loffset computed)
                                                [chr beg]))))))))))
 
 (deftest about-vcf-changed-chr-order-field-less
@@ -231,7 +231,7 @@
   (testing "vcf"
     (with-open [r (vcf/reader test-vcf-various-bins-gz-file)]
       (let [file-offsets (vcf/read-file-offsets r)
-            computed
+            computed ^CSI
             (csi/offsets->index file-offsets 14 6
                                 {:variant-file-type :vcf
                                  :names (mapv :id
@@ -242,27 +242,27 @@
                                    (map-indexed #(vector (:file-beg %2)
                                                          %1))
                                    (into {}))]
-        (is (= (.n-ref csi) (.n-ref ^CSI computed)))
-        (is (= (.min-shift csi) (.min-shift ^CSI computed)))
-        (is (= (.depth csi) (.depth ^CSI computed)))
-        (is (= (.aux csi) (.aux ^CSI computed)))
+        (is (= (.n-ref csi) (.n-ref computed)))
+        (is (= (.min-shift csi) (.min-shift computed)))
+        (is (= (.depth csi) (.depth computed)))
+        (is (= (.aux csi) (.aux computed)))
          ;;Exclude tail data
          ;;due to differences in implementation of HTSlib and bgzf4j.
         (is (= (update (.bidx csi) 0 dissoc 75)
-               (update (.bidx ^CSI computed) 0 dissoc 75)))
+               (update (.bidx computed) 0 dissoc 75)))
 
         (doseq [chr (keys (.loffset csi))]
           (doseq [beg (keys (get (.loffset csi) chr))]
             (is (or (= (get-in (.loffset csi) [chr beg])
-                       (get-in (.loffset ^CSI computed) [chr beg]))
+                       (get-in (.loffset computed) [chr beg]))
                     (check-loffset file-offsets
                                    file-offset-index
-                                   beg (get-in (.loffset ^CSI computed)
+                                   beg (get-in (.loffset computed)
                                                [chr beg])))))))))
   (testing "bcf"
     (with-open [r (vcf/reader test-bcf-various-bins-file)]
       (let [file-offsets (vcf/read-file-offsets r)
-            computed
+            computed ^CSI
             (csi/offsets->index file-offsets 14 6
                                 {:variant-file-type :bcf
                                  :names (mapv :id
@@ -273,19 +273,19 @@
                                    (map-indexed #(vector (:file-beg %2)
                                                          %1))
                                    (into {}))]
-        (is (= (.n-ref csi) (.n-ref ^CSI computed)))
-        (is (= (.min-shift csi) (.min-shift ^CSI computed)))
-        (is (= (.depth csi) (.depth ^CSI computed)))
-        (is (= (vec (.aux csi)) (vec (.aux ^CSI computed))))
+        (is (= (.n-ref csi) (.n-ref computed)))
+        (is (= (.min-shift csi) (.min-shift computed)))
+        (is (= (.depth csi) (.depth computed)))
+        (is (= (vec (.aux csi)) (vec (.aux computed))))
         (is (= (.bidx csi)
-               (.bidx ^CSI computed)))
+               (.bidx computed)))
         (doseq [chr (keys (.loffset csi))]
           (doseq [beg (keys (get (.loffset csi) chr))]
             (is (or (= (get-in (.loffset csi) [chr beg])
-                       (get-in (.loffset ^CSI computed) [chr beg]))
+                       (get-in (.loffset computed) [chr beg]))
                     (check-loffset file-offsets
                                    file-offset-index
-                                   beg (get-in (.loffset ^CSI computed)
+                                   beg (get-in (.loffset computed)
                                                [chr beg]))))))))))
 
 (deftest-remote large-csi-comparison-test
@@ -294,7 +294,7 @@
       (with-open [r (vcf/reader test-large-vcf-file)]
         (let [file-offsets (vcf/read-file-offsets r)
               csi ^CSI (csi/read-index test-large-vcf-csi-file)
-              computed
+              computed ^CSI
               (csi/offsets->index file-offsets 14 6
                                   {:variant-file-type :vcf
                                    :names (mapv :id
@@ -304,26 +304,26 @@
                                      (map-indexed #(vector (:file-beg %2)
                                                            %1))
                                      (into {}))]
-          (is (= (.n-ref csi) (.n-ref ^CSI computed)))
-          (is (= (.min-shift csi) (.min-shift ^CSI computed)))
-          (is (= (.depth csi) (.depth ^CSI computed)))
-          (is (= (.aux csi) (.aux ^CSI computed)))
+          (is (= (.n-ref csi) (.n-ref computed)))
+          (is (= (.min-shift csi) (.min-shift computed)))
+          (is (= (.depth csi) (.depth computed)))
+          (is (= (.aux csi) (.aux computed)))
           (is (= (update (.bidx csi) 24 dissoc 37450)
-                 (update (.bidx ^CSI computed) 24 dissoc 37450)))
+                 (update (.bidx computed) 24 dissoc 37450)))
           (doseq [chr (keys (.loffset csi))]
             (doseq [beg (keys (get (.loffset csi) chr))]
               (is (or (= (get-in (.loffset csi) [chr beg])
-                         (get-in (.loffset ^CSI computed) [chr beg]))
+                         (get-in (.loffset computed) [chr beg]))
                       (check-loffset file-offsets
                                      file-offset-index
-                                     beg (get-in (.loffset ^CSI computed)
+                                     beg (get-in (.loffset computed)
                                                  [chr beg]))))))))))
   (testing "bcf"
     (with-before-after {:before (prepare-cavia!)}
       (with-open [r (vcf/reader test-large-bcf-file)]
         (let [file-offsets (vcf/read-file-offsets r)
               csi ^CSI (csi/read-index test-large-bcf-csi-file)
-              computed
+              computed ^CSI
               (csi/offsets->index file-offsets 14 5
                                   {:variant-file-type :bcf
                                    :names (mapv :id
@@ -333,17 +333,17 @@
                                      (map-indexed #(vector (:file-beg %2)
                                                            %1))
                                      (into {}))]
-          (is (= (.n-ref csi) (.n-ref ^CSI computed)))
-          (is (= (.min-shift csi) (.min-shift ^CSI computed)))
-          (is (= (.depth csi) (.depth ^CSI computed)))
-          (is (= (vec (.aux csi)) (vec (.aux ^CSI computed))))
+          (is (= (.n-ref csi) (.n-ref computed)))
+          (is (= (.min-shift csi) (.min-shift computed)))
+          (is (= (.depth csi) (.depth computed)))
+          (is (= (vec (.aux csi)) (vec (.aux computed))))
           (is (= (update (.bidx csi) 24 dissoc 4681)
-                 (update (.bidx ^CSI computed) 24 dissoc 4681)))
+                 (update (.bidx computed) 24 dissoc 4681)))
           (doseq [chr (keys (.loffset csi))]
             (doseq [beg (keys (get (.loffset csi) chr))]
               (is (or (= (get-in (.loffset csi) [chr beg])
-                         (get-in (.loffset ^CSI computed) [chr beg]))
+                         (get-in (.loffset computed) [chr beg]))
                       (check-loffset file-offsets
                                      file-offset-index
-                                     beg (get-in (.loffset ^CSI computed)
+                                     beg (get-in (.loffset computed)
                                                  [chr beg])))))))))))

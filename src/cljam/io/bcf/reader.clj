@@ -15,7 +15,7 @@
            [java.nio Buffer ByteBuffer]
            [bgzf4j BGZFInputStream]))
 
-(declare read-variants meta-info read-variants-randomly)
+(declare read-variants meta-info read-variants-randomly read-file-offsets)
 
 (deftype BCFReader
          [^URL url meta-info header ^BGZFInputStream reader
@@ -48,7 +48,9 @@
     ([this] (protocols/read-variants this {}))
     ([this option] (read-variants this option)))
   (read-variants-randomly [this region-option deep-option]
-    (read-variants-randomly this region-option deep-option)))
+    (read-variants-randomly this region-option deep-option))
+  (read-file-offsets [this]
+    (read-file-offsets this)))
 
 (defn- parse-meta-and-header
   "Parses meta-info and header of BCF files and returns them as a map.
@@ -322,3 +324,27 @@
                     (<= pos end)
                     (<= start (get info :END (dec (+ pos (count ref))))))))))
      spans)))
+
+(defn read-file-offsets
+  "Reading CSI and returning position,chrom,beg,end."
+  [^BCFReader rdr]
+  (let [^BGZFInputStream input-stream (.reader rdr)
+        meta-info-contigs (->> (:contig (.meta-info rdr))
+                               (map-indexed (fn [index contig]
+                                              [(:id contig) index]))
+                               (into {}))
+        parse-fn  (make-parse-fn rdr
+                                 (meta->map (:info (.meta-info rdr))) :deep)]
+    (letfn [(step [contigs beg-pointer]
+              (when (pos? (.available input-stream))
+                (when-let [line (read-data-line-buffer input-stream)]
+                  (let [end-pointer (.getFilePointer input-stream)
+                        {:keys [chr pos ref info]} (parse-fn line)
+                        contigs' (if (contains? contigs chr)
+                                   contigs
+                                   (assoc contigs chr (count contigs)))]
+                    (cons {:file-beg beg-pointer, :file-end end-pointer
+                           :chr-index (contigs' chr), :beg pos, :chr chr,
+                           :end (or (:END info) (dec (+ pos (count ref))))}
+                          (lazy-seq (step contigs' end-pointer)))))))]
+      (step meta-info-contigs (.getFilePointer input-stream)))))

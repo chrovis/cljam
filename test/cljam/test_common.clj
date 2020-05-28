@@ -232,8 +232,11 @@
 (def test-bcf-invalid-file "test-resources/bcf/invalid.bcf")
 (def test-bcf-no-samples-file "test-resources/bcf/test-no-samples.bcf")
 (def test-bcf-complex-file "test-resources/bcf/test-v4_3-complex.bcf")
+(def test-bcf-complex-csi-file "test-resources/bcf/test-v4_3-complex.bcf.csi")
 (def test-bcf-various-bins-file "test-resources/bcf/various-bins.bcf")
 (def test-bcf-various-bins-csi-file "test-resources/bcf/various-bins.bcf.csi")
+(def test-bcf-changed-chr-order-file "test-resources/bcf/test-changed-chr-order.bcf")
+(def test-bcf-changed-chr-order-csi-file "test-resources/bcf/test-changed-chr-order.bcf.csi")
 (def test-large-bcf-file (cavia/resource mycavia "large.bcf"))
 (def test-large-bcf-csi-file (cavia/resource mycavia "large.bcf.csi"))
 

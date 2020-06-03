@@ -8,6 +8,8 @@
 * Add support for CSI reader. [#182](https://github.com/chrovis/cljam/pull/182)
 * Add support for random reading of a bcf file. [#187](https://github.com/chrovis/cljam/pull/187)
 * Add support for generating CSI file from bgzip compressed VCF. [#190](https://github.com/chrovis/cljam/pull/190)
+* Add lint actions. [#195](https://github.com/chrovis/cljam/pull/195)
+* Add support for generating CSI file from BCF. [#196](https://github.com/chrovis/cljam/pull/196)
 
 ### Changed
 
@@ -25,6 +27,7 @@
 * Fix a bug in reading bgzipped VCF files. [#184](https://github.com/chrovis/cljam/pull/184)
 * Fix float reader for specific environments such as IcedTea. [#185](https://github.com/chrovis/cljam/pull/185)
 * Fix reading chrs when chrs in index file and chr are not equal. [#194](https://github.com/chrovis/cljam/pull/194)
+* Add base_sha option to clj-lint-action. [#198](https://github.com/chrovis/cljam/pull/198)
 
 ## [0.7.4] - 2019-10-04
 

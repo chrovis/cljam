@@ -25,6 +25,13 @@ jobs:
           ${{ runner.os }}-m2-
     - name: Install dependencies
       run: lein deps
+    - name: Run lein check
+      if: matrix.java == '11'
+      run: >-
+        ! lein check 2>&1 > /dev/null |
+        grep cljam |
+        sed -E 's/^Reflection warning, ([^:]+):([0-9]+):([0-9]+) - (.*)$/::warning file=\1,line=\2,col=\3::\4/' |
+        grep '::warning'
     - name: Run tests
       run: |
         lein with-profile +dev:+1.8:+1.9 test

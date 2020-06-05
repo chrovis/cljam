@@ -46,16 +46,46 @@
   [f]
   (bcf-reader/reader f))
 
+(defn ^VCFReader clone-vcf-reader
+  "Clones vcf reader sharing persistent objects."
+  [^VCFReader rdr]
+  (let [url (.url rdr)
+        input-stream (if (bgzf/bgzip? url)
+                       (bgzf/bgzf-input-stream url)
+                       (cio/reader (util/compressor-input-stream url)))]
+    (VCFReader. url (.meta-info rdr) (.header rdr)
+                input-stream
+                (.index-delay rdr))))
+
+(defn ^BCFReader clone-bcf-reader
+  "Clones bcf reader sharing persistent objects."
+  [^BCFReader rdr]
+  (let [url (.url rdr)
+        input-stream (bgzf/bgzf-input-stream url)]
+    (BCFReader. (.url rdr) (.meta-info rdr) (.header rdr)
+                input-stream (.start-pos rdr) (.index-delay rdr))))
+
+(defn ^Closeable clone-reader
+  "Clones vcf/bcf reader sharing persistent objects."
+  [rdr]
+  (cond
+    (io-util/vcf-reader? rdr) (clone-vcf-reader rdr)
+    (io-util/bcf-reader? rdr) (clone-bcf-reader rdr)
+    :else (throw (IllegalArgumentException. "Invalid file type"))))
+
 (defn ^Closeable reader
   "Selects suitable reader from f's extension, returning the open reader. This
   function supports VCF and BCF formats."
   [f]
-  (case (try (io-util/file-type f)
-             (catch IllegalArgumentException _
-               (io-util/file-type-from-contents f)))
-    :vcf (vcf-reader f)
-    :bcf (bcf-reader f)
-    (throw (IllegalArgumentException. "Invalid file type"))))
+  (if (or (io-util/vcf-reader? f)
+          (io-util/bcf-reader? f))
+    (clone-reader f)
+    (case (try (io-util/file-type f)
+               (catch IllegalArgumentException _
+                 (io-util/file-type-from-contents f)))
+      :vcf (vcf-reader f)
+      :bcf (bcf-reader f)
+      (throw (IllegalArgumentException. "Invalid file type")))))
 
 (defn meta-info
   "Returns meta-info section of VCF/BCF file as a map."

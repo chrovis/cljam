@@ -65,7 +65,7 @@
     (BCFReader. (.url rdr) (.meta-info rdr) (.header rdr)
                 input-stream (.start-pos rdr) (.index-delay rdr))))
 
-(defn clone-reader
+(defn ^Closeable clone-reader
   "Clones vcf/bcf reader sharing persistent objects."
   [rdr]
   (cond

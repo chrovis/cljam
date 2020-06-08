@@ -177,7 +177,7 @@
    `variant-file-type` is one of `:vcf` or `:bcf`.
    If `variant-file-type` is `:vcf`, tabix-like aux data will be created."
   ^CSI [offsets shift depth
-        {:keys [variant-file-type names] :or {variant-file-type :bcf}}]
+        {:keys [variant-file-type] :or {variant-file-type :bcf}}]
   (let [xs (->> offsets
                 (partition-by :chr-index)
                 (map
@@ -191,11 +191,11 @@
                               (map #(util-bin/bin-beg % shift depth)))
                              (keys b))
                             offsets)]
-                     [chr-index
-                      {:bidx b, :loffset l, :chr chr}])))
-                (into (reduce (fn [r [i n]] (assoc r i {:chr n})) {}
-                              (map-indexed vector names)))
-                (intmap->vec))
+                     [chr-index {:bidx b, :loffset l, :chr chr}])))
+                (intmap->vec)
+                ((if (= variant-file-type :vcf)
+                   (partial filterv identity)
+                   identity)))
         aux (when (= variant-file-type :vcf)
               (assoc default-vcf-csi-aux :chrs (mapv :chr xs)))]
     (->CSI (count xs) shift depth (mapv :bidx xs) (mapv :loffset xs) aux)))

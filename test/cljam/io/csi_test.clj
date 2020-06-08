@@ -107,12 +107,11 @@
         bcf (csi/offsets->index data 14 5 {:variant-file-type :bcf,
                                            :names ["chr1" "chr2" "chr3"]})]
     (testing "n-ref"
-      (is (= 3 (.n-ref vcf) (.n-ref vcf')))
+      (is (= 2 (.n-ref vcf) (.n-ref vcf')))
       (is (= 3 (.n-ref bcf))))
     (testing "binning index"
       (is (= [{585 [{:beg 10, :end 30} {:beg 4294967296, :end 4294967400}]
                4682 [{:beg 30, :end 4294967296}]}
-              nil
               {4681 [{:beg 4294967400, :end 4294967800}]}]
              (unrecord (.bidx vcf))
              (unrecord (.bidx vcf'))))
@@ -122,17 +121,15 @@
               {4681 [{:beg 4294967400, :end 4294967800}]}]
              (unrecord (.bidx bcf)))))
     (testing "linear index"
-      (is (= [{1 10, 16385 20} nil {1 4294967400}]
+      (is (= [{1 10, 16385 20} {1 4294967400}]
              (.loffset vcf)
              (.loffset vcf')))
       (is (= [{1 10, 16385 20} nil {1 4294967400}]
              (.loffset bcf))))
     (testing "aux"
       (is (= {:format 2, :col-seq 1, :col-beg 2, :col-end 0,
-              :meta-char \#, :skip 0, :chrs ["chr1" nil "chr3"]}
-             (.aux vcf)))
-      (is (= {:format 2, :col-seq 1, :col-beg 2, :col-end 0,
-              :meta-char \#, :skip 0, :chrs ["chr1" "chr2" "chr3"]}
+              :meta-char \#, :skip 0, :chrs ["chr1" "chr3"]}
+             (.aux vcf)
              (.aux vcf')))
       (is (nil? (.aux bcf))))))
 

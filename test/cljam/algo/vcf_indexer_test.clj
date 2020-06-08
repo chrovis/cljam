@@ -190,22 +190,21 @@
      test-vcf-chr-skipped-file tmp-csi-file {:shift 14 :depth 6})
     (let [computed (csi/read-index tmp-csi-file)
           csi (csi/read-index test-vcf-chr-skipped-csi-file)]
-      (is (= 3 #_(.n-ref csi) (.n-ref computed)))
+      (is (= 2 (.n-ref csi) (.n-ref computed)))
       (is (= 14 (.min-shift csi) (.min-shift computed)))
       (is (= 6 (.depth csi) (.depth computed)))
-      (is (= ["chr1" "" "chr3"]
-             #_(:chrs (.aux csi))
+      (is (= ["chr1" "chr3"]
+             (:chrs (.aux csi))
              (:chrs (.aux computed))))
       (is (= [{37449 [{:beg 117, :end 136}]}
-              {}
               {37449 [{:beg 136, :end 10682368}]}]
              ;; HACK: Overwriting the last pointer due to the implementation
              ;; differences of htslib and bgzf4j
-             #_(-> (unrecord (.bidx csi))
+             (-> (unrecord (.bidx csi))
                  (assoc-in [1 37449 0 :end] 10682368))
              (unrecord (.bidx computed))))
-      (is (= [{1 117} {} {1 136}]
-             #_(.loffset csi)
+      (is (= [{1 117} {1 136}]
+             (.loffset csi)
              (.loffset computed))))))
 
 (deftest about-reading-vcf-skipped-chr-order

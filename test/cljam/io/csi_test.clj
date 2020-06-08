@@ -43,10 +43,18 @@
     (is (= 4 (.n-ref csi-data)))
     (is (= 14 (.min-shift csi-data)))
     (is (= 6 (.depth csi-data)))
-    (is (= [{37449 [{:beg 3904, :end 3973}]}
-            {37451 [{:beg 3973, :end 4031}]}
-            {44450 [{:beg 4031, :end 4783}]}
-            {37449 [{:beg 4783, :end 104333312}]}]
+    (is (= [{37449 [{:beg 3904, :end 3973}],
+             299594 [{:beg 3904, :end 3973}
+                     {:beg 1, :end 0}]}
+            {299594 [{:beg 3973, :end 4031}
+                     {:beg 1, :end 0}],
+             37451 [{:beg 3973, :end 4031}]}
+            {44450 [{:beg 4031, :end 4783}],
+             299594 [{:beg 4031, :end 4783}
+                     {:beg 1, :end 0}]}
+            {37449 [{:beg 4783, :end 104333312}],
+             299594 [{:beg 4783, :end 104333312}
+                     {:beg 1, :end 0}]}]
            (unrecord (.bidx csi-data))))
     (is (= [{1 3904} {32769 3973} {114704385 4031} {1 4783}]
            (.loffset csi-data)))))
@@ -101,36 +109,34 @@
                :file-beg 4294967296, :file-end 4294967400}
               {:chr-index 2, :chr "chr3", :beg 1, :end 1,
                :file-beg 4294967400, :file-end 4294967800}]
-        vcf (csi/offsets->index data 14 5 {:variant-file-type :vcf, :names []})
-        vcf' (csi/offsets->index data 14 5 {:variant-file-type :vcf,
-                                            :names ["chr1" "chr2" "chr3"]})
-        bcf (csi/offsets->index data 14 5 {:variant-file-type :bcf,
-                                           :names ["chr1" "chr2" "chr3"]})]
+        vcf (csi/offsets->index data 14 5 {:variant-file-type :vcf})
+        bcf (csi/offsets->index data 14 5 {:variant-file-type :bcf})]
     (testing "n-ref"
-      (is (= 2 (.n-ref vcf) (.n-ref vcf')))
+      (is (= 2 (.n-ref vcf)))
       (is (= 3 (.n-ref bcf))))
     (testing "binning index"
       (is (= [{585 [{:beg 10, :end 30} {:beg 4294967296, :end 4294967400}]
-               4682 [{:beg 30, :end 4294967296}]}
-              {4681 [{:beg 4294967400, :end 4294967800}]}]
-             (unrecord (.bidx vcf))
-             (unrecord (.bidx vcf'))))
+               4682 [{:beg 30, :end 4294967296}]
+               37450 [{:beg 10, :end 4294967400} {:beg 4, :end 0}]}
+              {4681 [{:beg 4294967400, :end 4294967800}]
+               37450 [{:beg 4294967400, :end 4294967800} {:beg 1, :end 0}]}]
+             (unrecord (.bidx vcf))))
       (is (= [{585 [{:beg 10, :end 30} {:beg 4294967296, :end 4294967400}],
-               4682 [{:beg 30, :end 4294967296}]}
+               4682 [{:beg 30, :end 4294967296}]
+               37450 [{:beg 10, :end 4294967400} {:beg 4, :end 0}]}
               nil
-              {4681 [{:beg 4294967400, :end 4294967800}]}]
+              {4681 [{:beg 4294967400, :end 4294967800}]
+               37450 [{:beg 4294967400, :end 4294967800} {:beg 1, :end 0}]}]
              (unrecord (.bidx bcf)))))
     (testing "linear index"
       (is (= [{1 10, 16385 20} {1 4294967400}]
-             (.loffset vcf)
-             (.loffset vcf')))
+             (.loffset vcf)))
       (is (= [{1 10, 16385 20} nil {1 4294967400}]
              (.loffset bcf))))
     (testing "aux"
       (is (= {:format 2, :col-seq 1, :col-beg 2, :col-end 0,
               :meta-char \#, :skip 0, :chrs ["chr1" "chr3"]}
-             (.aux vcf)
-             (.aux vcf')))
+             (.aux vcf)))
       (is (nil? (.aux bcf))))))
 
 (deftest source-type-test

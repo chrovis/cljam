@@ -97,9 +97,7 @@
         n-ref (lsb/read-int rdr)
         bins (vec (repeatedly n-ref #(read-bin-index rdr)))
         max-bin (util-bin/max-bin depth)
-        bidx (mapv #(into {} (comp
-                              (filter (fn [{:keys [bin]}] (<= bin max-bin)))
-                              (map (juxt :bin :chunks))) %) bins)
+        bidx (mapv #(into {} (map (juxt :bin :chunks)) %) bins)
         loffset (mapv
                  #(into
                    (sorted-map)
@@ -178,20 +176,26 @@
    If `variant-file-type` is `:vcf`, tabix-like aux data will be created."
   ^CSI [offsets shift depth
         {:keys [variant-file-type] :or {variant-file-type :bcf}}]
-  (let [xs (->> offsets
+  (let [pseudo-bin (+ 2 (util-bin/max-bin depth))
+        xs (->> offsets
                 (partition-by :chr-index)
                 (map
                  (fn [[{:keys [chr-index chr]} :as offsets]]
                    (let [b (calc-bidx offsets shift depth)
                          l (calc-loffsets
-                            (into
-                             #{}
-                             (comp
-                              (filter #(<= % (util-bin/max-bin depth)))
-                              (map #(util-bin/bin-beg % shift depth)))
-                             (keys b))
-                            offsets)]
-                     [chr-index {:bidx b, :loffset l, :chr chr}])))
+                            (into #{}
+                                  (comp
+                                   (filter #(<= % (util-bin/max-bin depth)))
+                                   (map #(util-bin/bin-beg % shift depth)))
+                                  (keys b))
+                            offsets)
+                         pseudo-chunks [(chunk/->Chunk
+                                         (:file-beg (first offsets))
+                                         (:file-end (last offsets)))
+                                        (chunk/->Chunk (count offsets) 0)]]
+                     [chr-index
+                      {:bidx (assoc b pseudo-bin pseudo-chunks),
+                       :loffset l, :chr chr}])))
                 (intmap->vec)
                 ((if (= variant-file-type :vcf)
                    (partial filterv identity)
@@ -203,22 +207,26 @@
 (defn write-index
   "Writes CSI file from CSI data."
   [f ^CSI csi]
-  (with-open [w (DataOutputStream. (bgzf/bgzf-output-stream f))]
-    (lsb/write-bytes w (.getBytes ^String csi-magic))
-    (lsb/write-int w (.min-shift csi))
-    (lsb/write-int w (.depth csi))
-    (let [tabix-aux (some-> (.aux csi) create-tabix-aux)]
-      (lsb/write-int w (count tabix-aux))
-      (when tabix-aux
-        (lsb/write-bytes w tabix-aux)))
-    (lsb/write-int w (count (.bidx csi)))
-    (doseq [[offsets loffset] (map vector (.bidx csi) (.loffset csi))]
-      (lsb/write-int w (count offsets))
-      (doseq [[bin chunks] offsets]
-        (lsb/write-int w bin)
-        (lsb/write-long w (get loffset (util-bin/bin-beg
-                                        bin (.min-shift csi) (.depth csi))))
-        (lsb/write-int w (count chunks))
-        (doseq [chunk chunks]
-          (lsb/write-long w (:beg chunk))
-          (lsb/write-long w (:end chunk)))))))
+  (let [max-bin (util-bin/max-bin (.depth csi))]
+    (with-open [w (DataOutputStream. (bgzf/bgzf-output-stream f))]
+      (lsb/write-bytes w (.getBytes ^String csi-magic))
+      (lsb/write-int w (.min-shift csi))
+      (lsb/write-int w (.depth csi))
+      (let [tabix-aux (some-> (.aux csi) create-tabix-aux)]
+        (lsb/write-int w (count tabix-aux))
+        (when tabix-aux
+          (lsb/write-bytes w tabix-aux)))
+      (lsb/write-int w (count (.bidx csi)))
+      (doseq [[offsets loffset] (map vector (.bidx csi) (.loffset csi))]
+        (lsb/write-int w (count offsets))
+        (doseq [[bin chunks] offsets]
+          (lsb/write-int w bin)
+          (lsb/write-long
+           w
+           (if (<= bin max-bin)
+             (get loffset (util-bin/bin-beg bin (.min-shift csi) (.depth csi)))
+             0))
+          (lsb/write-int w (count chunks))
+          (doseq [chunk chunks]
+            (lsb/write-long w (:beg chunk))
+            (lsb/write-long w (:end chunk))))))))

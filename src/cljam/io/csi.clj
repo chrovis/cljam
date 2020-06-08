@@ -128,7 +128,7 @@
     (->> target-bins
          (map (fn [bin]
                 (let [offsets (get bidx bin)
-                      parent-bin (bit-shift-right (dec bin) 3)]
+                      parent-bin (util-bin/parent-bin bin)]
                   (if (and (< (- (bit-shift-right (:file-end (last offsets))
                                                   16)
                                  (bit-shift-right (:file-beg (first offsets))

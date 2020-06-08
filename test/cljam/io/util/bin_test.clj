@@ -6,7 +6,8 @@
               test-csi-file]]
             [cljam.io.tabix :as tabix]
             [cljam.io.csi :as csi]
-            [cljam.io.util.bin :as util-bin]))
+            [cljam.io.util.bin :as util-bin])
+  (:import [clojure.lang ExceptionInfo]))
 
 (deftest max-pos-test
   (are [?min-shift ?depth ?max-pos]
@@ -61,6 +62,24 @@
     4681 5
     37448 5
     37449 6))
+
+(deftest parent-bin-test
+  (is (thrown? ExceptionInfo (util-bin/parent-bin 0)))
+  (are [?bin ?parent-bin]
+       (= ?parent-bin (util-bin/parent-bin ?bin))
+    1 0
+    8 0
+    9 1
+    16 1
+    17 2
+    72 8
+    73 9
+    584 72
+    585 73
+    4680 584
+    4681 585
+    4688 585
+    4689 586))
 
 (deftest bin-beg-test
   (are [?bin ?min-shift ?depth ?bin-beg]

@@ -326,25 +326,22 @@
      spans)))
 
 (defn read-file-offsets
-  "Reading CSI and returning position,chrom,beg,end."
+  "Reads file offsets and a genomic position of variants from BCF and returns
+  them as a lazy sequence. Each element is a map containing :chr, :chr-index,
+  :beg, :end, :file-beg, :file-end."
   [^BCFReader rdr]
   (let [^BGZFInputStream input-stream (.reader rdr)
-        meta-info-contigs (->> (:contig (.meta-info rdr))
-                               (map-indexed (fn [index contig]
-                                              [(:id contig) index]))
-                               (into {}))
-        parse-fn  (make-parse-fn rdr
-                                 (meta->map (:info (.meta-info rdr))) :deep)]
-    (letfn [(step [contigs beg-pointer]
+        contigs (->> (:contig (.meta-info rdr))
+                     (map-indexed (fn [index contig] [(:id contig) index]))
+                     (into {}))
+        parse-fn (make-parse-fn rdr (meta->map (:info (.meta-info rdr))) :deep)]
+    (letfn [(step [beg-pointer]
               (when (pos? (.available input-stream))
                 (when-let [line (read-data-line-buffer input-stream)]
                   (let [end-pointer (.getFilePointer input-stream)
-                        {:keys [chr pos ref info]} (parse-fn line)
-                        contigs' (if (contains? contigs chr)
-                                   contigs
-                                   (assoc contigs chr (count contigs)))]
+                        {:keys [chr pos ref info]} (parse-fn line)]
                     (cons {:file-beg beg-pointer, :file-end end-pointer
-                           :chr-index (contigs' chr), :beg pos, :chr chr,
+                           :chr-index (contigs chr), :beg pos, :chr chr,
                            :end (or (:END info) (dec (+ pos (count ref))))}
-                          (lazy-seq (step contigs' end-pointer)))))))]
-      (step meta-info-contigs (.getFilePointer input-stream)))))
+                          (lazy-seq (step end-pointer)))))))]
+      (step (.getFilePointer input-stream)))))

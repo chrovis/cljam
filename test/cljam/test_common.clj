@@ -1,6 +1,7 @@
 (ns cljam.test-common
   (:require [digest]
             [clojure.java.io :refer [file] :as cio]
+            [clojure.walk :as walk]
             [clojure.tools.logging :refer [*logger-factory*]]
             [clojure.tools.logging.impl :refer [disabled-logger-factory]]
             [stub-http.core :as http]
@@ -208,12 +209,14 @@
 (def test-vcf-complex-file "test-resources/vcf/test-v4_3-complex.vcf")
 (def test-vcf-complex-gz-file "test-resources/vcf/test-v4_3-complex.vcf.gz")
 (def test-vcf-complex-tbi-file "test-resources/vcf/test-v4_3-complex.vcf.gz.tbi")
+(def test-vcf-complex-csi-file "test-resources/csi/test-v4_3-complex.vcf.gz.csi")
 (def test-vcf-various-bins-gz-file "test-resources/vcf/various-bins.vcf.gz")
 (def test-vcf-various-bins-tbi-file "test-resources/vcf/various-bins.vcf.gz.tbi")
 (def test-vcf-various-bins-csi-file "test-resources/vcf/various-bins.vcf.gz.csi")
 (def test-vcf-changed-chr-order-file "test-resources/vcf/test-changed-chr-order.vcf.gz")
 (def test-vcf-changed-chr-order-field-less-file "test-resources/vcf/test-changed-chr-order-field-less.vcf.gz")
 (def test-vcf-chr-skipped-file "test-resources/vcf/test-chr-skipped.vcf.gz")
+(def test-vcf-chr-skipped-csi-file "test-resources/vcf/test-chr-skipped.vcf.gz.csi")
 
 (def test-large-vcf-file (cavia/resource mycavia "large.vcf.gz"))
 (def test-large-vcf-tbi-file (cavia/resource mycavia "large.vcf.gz.tbi"))
@@ -567,6 +570,9 @@
               r2 (cseq/reader f2)]
     (= (cseq/read-all-sequences r1)
        (cseq/read-all-sequences r2))))
+
+(defn unrecord [x]
+  (walk/postwalk #(cond->> % (record? %) (into {})) x))
 
 ;;;; FASTA
 

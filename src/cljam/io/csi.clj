@@ -1,5 +1,5 @@
 (ns cljam.io.csi
-  "Reader of a CSI format file."
+  "Basic I/O of CSI:Coordinate Sorted Index files."
   (:require [clojure.string :as cstr]
             [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.lsb :as lsb]
@@ -9,10 +9,12 @@
            [java.io DataInputStream DataOutputStream IOException]
            [java.nio ByteBuffer ByteOrder]))
 
-(def ^:private default-vcf-csi-aux
-  {:format 2 :col-seq 1 :col-beg 2 :col-end 0 :meta-char \# :skip 0})
+(def ^:const ^:private csi-magic "CSI\1")
 
-(def min-large-chunk-size 0x10000)
+(def ^:private ^:const default-vcf-csi-aux
+  {:format 2, :col-seq 1, :col-beg 2, :col-end 0, :meta-char \#, :skip 0})
+
+(def ^:private ^:const min-large-chunk-size 0x10000)
 
 ;;; 4byte x 7 (format,seq,beg,end,meta,skip,l_nm)
 (def ^:private ^:const tabix-field-size (* 4 7))
@@ -50,123 +52,6 @@
        :meta-char meta-char, :skip skip,
        :chrs (cstr/split (String. ba (.position bb) (.remaining bb)) #"\00")})))
 
-(def ^:const ^:private csi-magic "CSI\1")
-
-(defn- read-chunks!
-  [rdr]
-  (let [n-chunk (lsb/read-int rdr)]
-    (->> #(let [beg (lsb/read-long rdr) end (lsb/read-long rdr)]
-            (chunk/->Chunk beg end))
-         (repeatedly n-chunk)
-         vec)))
-
-(defn- read-bin-index
-  [rdr]
-  (let [n-ref (lsb/read-int rdr)]
-    (->> #(let [bin (lsb/read-int rdr)
-                loffset (lsb/read-long rdr)
-                chunks (read-chunks! rdr)]
-            (hash-map
-             :bin bin
-             :loffset loffset
-             :chunks chunks))
-         (repeatedly n-ref)
-         vec)))
-
-(defn- read-index*
-  [^DataInputStream rdr]
-  (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes csi-magic))
-    (throw (IOException. "Invalid CSI file")))
-  (let [min-shift (lsb/read-int rdr)
-        depth (lsb/read-int rdr)
-        l-aux (lsb/read-int rdr)
-        aux (lsb/read-bytes rdr l-aux)
-        tabix-aux (try (parse-tabix-aux aux) (catch Throwable _ nil))
-        n-ref (lsb/read-int rdr)
-        bins (vec (repeatedly n-ref #(read-bin-index rdr)))
-        max-bin (util-bin/max-bin depth)
-        bidx (->> bins
-                  (map-indexed (fn [index bin]
-                                 [index
-                                  (into {} (comp (map (juxt :bin :chunks))
-                                                 (filter #(<= (first %)
-                                                              max-bin)))
-                                        bin)]))
-                  (into (sorted-map)))
-        loffset (->> bins
-                     (map-indexed
-                      (fn [index bin]
-                        [index
-                         (into (sorted-map)
-                               (comp (map (juxt :bin :loffset))
-                                     (filter #(<= (first %) max-bin))
-                                     (map (fn [[bin loffset]]
-                                            [(util-bin/bin-beg bin
-                                                               min-shift depth)
-                                             loffset])))
-                               bin)]))
-                     (into (sorted-map)))]
-    (->CSI n-ref min-shift depth bidx loffset tabix-aux)))
-
-(defn read-index
-  [f]
-  (with-open [r (DataInputStream. (bgzf/bgzf-input-stream f))]
-    (read-index* r)))
-
-(defn- concatenate-offsets [offsets]
-  (reduce (fn [res chunk]
-            (if (= (:file-end (first res)) (:file-beg chunk))
-              (cons (assoc (first res) :file-beg (:file-beg (first res))
-                           :file-end (:file-end chunk))
-                    (next res))
-              (cons chunk res)))
-          nil
-          offsets))
-
-(defn- compress-bidx [depth bidx]
-  (let [target-bins (filter #(= (util-bin/bin-level %) depth) (keys bidx))]
-    (->> target-bins
-         (map (fn [bin]
-                (let [offsets (get bidx bin)
-                      parent-bin (util-bin/parent-bin bin)]
-                  (if (and (< (- (bit-shift-right (:file-end (last offsets))
-                                                  16)
-                                 (bit-shift-right (:file-beg (first offsets))
-                                                  16))
-                              min-large-chunk-size)
-                           (get bidx parent-bin))
-                    [parent-bin offsets]
-                    [bin offsets]))))
-         (concat (apply dissoc bidx target-bins))
-         (group-by first)
-         (map (fn [[bin offset-array]]
-                [bin (->> (map second offset-array)
-                          (apply concat)
-                          (sort-by :file-beg))]))
-         (into {}))))
-
-(defn- calc-bidx [file-offsets shift depth]
-  (->> file-offsets
-       (map #(assoc %
-                    :bin (util-bin/reg->bin (:beg %)
-                                            (:end %) shift depth)))
-       (group-by :bin)
-       ((apply comp (for [i (range depth)]
-                      #(compress-bidx (inc i) %))))
-       (map (fn [[bin offsets]]
-              [bin (->> (concatenate-offsets offsets)
-                        (map #(chunk/->Chunk (:file-beg %) (:file-end %)))
-                        reverse)]))
-       (into (sorted-map))))
-
-(defn- calc-loffsets [begs file-offsets]
-  (->> begs
-       (map (fn [beg]
-              [beg (->> (drop-while #(< (:end %) beg) file-offsets)
-                        (map :file-beg)
-                        first)]))
-       (into (sorted-map))))
-
 (defn- create-tabix-aux [aux]
   (let [contig-bytes (.getBytes (str (cstr/join (char 0) (:chrs aux)) (char 0)))
         bb (doto (ByteBuffer/wrap
@@ -182,33 +67,138 @@
     (.put bb contig-bytes)
     (.array bb)))
 
+(defn- read-chunks!
+  [rdr]
+  (let [n-chunk (lsb/read-int rdr)]
+    (->> #(let [beg (lsb/read-long rdr) end (lsb/read-long rdr)]
+            (chunk/->Chunk beg end))
+         (repeatedly n-chunk)
+         vec)))
+
+(defn- read-bin-index
+  [rdr]
+  (let [n-ref (lsb/read-int rdr)]
+    (->> #(let [bin (lsb/read-int rdr)
+                loffset (lsb/read-long rdr)
+                chunks (read-chunks! rdr)]
+            {:bin (long bin) :loffset loffset, :chunks chunks})
+         (repeatedly n-ref)
+         vec)))
+
+(defn- read-index*
+  ^CSI [^DataInputStream rdr]
+  (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes csi-magic))
+    (throw (IOException. "Invalid CSI file")))
+  (let [min-shift (lsb/read-int rdr)
+        depth (lsb/read-int rdr)
+        l-aux (lsb/read-int rdr)
+        aux (lsb/read-bytes rdr l-aux)
+        tabix-aux (try (parse-tabix-aux aux) (catch Throwable _ nil))
+        n-ref (lsb/read-int rdr)
+        bins (vec (repeatedly n-ref #(read-bin-index rdr)))
+        max-bin (util-bin/max-bin depth)
+        bidx (mapv #(into {} (comp
+                              (filter (fn [{:keys [bin]}] (<= bin max-bin)))
+                              (map (juxt :bin :chunks))) %) bins)
+        loffset (mapv
+                 #(into
+                   (sorted-map)
+                   (keep
+                    (fn [{:keys [bin loffset]}]
+                      (when (<= bin max-bin)
+                        [(util-bin/bin-beg bin min-shift depth)
+                         loffset]))) %)
+                 bins)]
+    (->CSI n-ref min-shift depth bidx loffset tabix-aux)))
+
+(defn read-index
+  "Reads a CSI file `f` and returns an instance of cljam.io.csi.CSI."
+  ^CSI [f]
+  (with-open [r (DataInputStream. (bgzf/bgzf-input-stream f))]
+    (read-index* r)))
+
+(defn- concatenate-offsets [offsets]
+  (reduce
+   (fn [res chunk]
+     (if (= (:file-end (peek res)) (:file-beg chunk))
+       (assoc-in res [(dec (count res)) :file-end] (:file-end chunk))
+       (conj res chunk)))
+   []
+   (sort-by :file-beg offsets)))
+
+(defn- small-chunks? [chunks]
+  (< (- (bgzf/get-block-address (:file-end (last chunks)))
+        (bgzf/get-block-address (:file-beg (first chunks))))
+     min-large-chunk-size))
+
+(defn- compress-bidx [^long depth bidx]
+  (letfn [(f [^long level bidx]
+            (reduce
+             (fn [ret [bin offsets]]
+               (let [parent-bin (util-bin/parent-bin bin)]
+                 (if (and (= (util-bin/bin-level bin) level)
+                          (contains? bidx parent-bin)
+                          (small-chunks? offsets))
+                   (update ret parent-bin concat offsets)
+                   (assoc ret bin offsets))))
+             {}
+             (sort-by key bidx)))]
+    (reduce (fn [b level] (f level b)) bidx (range depth 0 -1))))
+
+(defn- calc-bidx [file-offsets ^long shift ^long depth]
+  (->> file-offsets
+       (group-by #(util-bin/reg->bin (:beg %) (:end %) shift depth))
+       (compress-bidx depth)
+       (map (fn [[bin offsets]]
+              [bin (->> (concatenate-offsets offsets)
+                        (mapv #(chunk/->Chunk (:file-beg %) (:file-end %))))]))
+       (into (sorted-map))))
+
+(defn- calc-loffsets [begs file-offsets]
+  (->> begs
+       (map (fn [beg]
+              [beg (->> (drop-while #(< (:end %) beg) file-offsets)
+                        (map :file-beg)
+                        first)]))
+       (into (sorted-map))))
+
+(defn- intmap->vec [xs]
+  (reduce
+   (fn [r [k v]]
+     (if (contains? r k)
+       (assoc r k v)
+       (conj (into r (repeat (- k (count r)) nil)) v)))
+   []
+   xs))
+
 (defn offsets->index
   "Calculates loffsets and bidx
-   from offsets {:file-beg :file-end :beg :end :chr :chr-index }.
-   variant-file-type is :vcf or :bcf.
-   If variant-file-type is :vcf, aux data like hts_lib will be created."
-  [offsets shift depth
-   {:keys [variant-file-type names] :or {variant-file-type :bcf}}]
-  (let [chr-offsets (merge (->> (range (count names))
-                                (map #(vector % []))
-                                (into {}))
-                           (group-by :chr-index offsets))
-        bidx (->> chr-offsets
-                  (map (fn [[chr-index offsets]]
-                         [chr-index (calc-bidx offsets shift depth)]))
-                  (into (sorted-map)))
-        loffsets (->> chr-offsets
-                      (map (fn [[chr-index offsets]]
-                             [chr-index (calc-loffsets
-                                         (set (map #(util-bin/bin-beg % shift
-                                                                      depth)
-                                                   (keys (get bidx
-                                                              chr-index))))
-                                         offsets)]))
-                      (into (sorted-map)))
+   from offsets {:file-beg :file-end :beg :end :chr :chr-index}.
+   `variant-file-type` is one of `:vcf` or `:bcf`.
+   If `variant-file-type` is `:vcf`, tabix-like aux data will be created."
+  ^CSI [offsets shift depth
+        {:keys [variant-file-type names] :or {variant-file-type :bcf}}]
+  (let [xs (->> offsets
+                (partition-by :chr-index)
+                (map
+                 (fn [[{:keys [chr-index chr]} :as offsets]]
+                   (let [b (calc-bidx offsets shift depth)
+                         l (calc-loffsets
+                            (into
+                             #{}
+                             (comp
+                              (filter #(<= % (util-bin/max-bin depth)))
+                              (map #(util-bin/bin-beg % shift depth)))
+                             (keys b))
+                            offsets)]
+                     [chr-index
+                      {:bidx b, :loffset l, :chr chr}])))
+                (into (reduce (fn [r [i n]] (assoc r i {:chr n})) {}
+                              (map-indexed vector names)))
+                (intmap->vec))
         aux (when (= variant-file-type :vcf)
-              (assoc default-vcf-csi-aux :chrs names))]
-    (->CSI (count bidx) shift depth bidx loffsets aux)))
+              (assoc default-vcf-csi-aux :chrs (mapv :chr xs)))]
+    (->CSI (count xs) shift depth (mapv :bidx xs) (mapv :loffset xs) aux)))
 
 (defn write-index
   "Writes CSI file from CSI data."
@@ -222,15 +212,12 @@
       (when tabix-aux
         (lsb/write-bytes w tabix-aux)))
     (lsb/write-int w (count (.bidx csi)))
-    (doseq [[chr-index offsets] (.bidx csi)]
+    (doseq [[offsets loffset] (map vector (.bidx csi) (.loffset csi))]
       (lsb/write-int w (count offsets))
       (doseq [[bin chunks] offsets]
         (lsb/write-int w bin)
-        (lsb/write-long w (get-in (.loffset csi)
-                                  [chr-index
-                                   (util-bin/bin-beg bin
-                                                     (.min-shift csi)
-                                                     (.depth csi))]))
+        (lsb/write-long w (get loffset (util-bin/bin-beg
+                                        bin (.min-shift csi) (.depth csi))))
         (lsb/write-int w (count chunks))
         (doseq [chunk chunks]
           (lsb/write-long w (:beg chunk))

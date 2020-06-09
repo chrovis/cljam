@@ -14,8 +14,6 @@
            [cljam.io.bam.decoder BAMPointerBlock]
            [cljam.io.util.chunk Chunk]))
 
-(declare make-index-from-blocks)
-
 ;; BAIWriter
 ;; ---------
 
@@ -111,33 +109,6 @@
                 (update-bin-index (.bin-index index-status) aln)
                 (update-linear-index (.linear-index index-status) aln)))
 
-;; ### Making index
-
-(defn- make-index*
-  "Calculates index from the references and alignments, returning it as a map.
-  Returned index is still intermediate. It must be passed to finalize function
-  in the final stage."
-  [alns]
-  (loop [[^BAMPointerBlock aln & rest] alns
-         rid (.ref-id aln)
-         idx-status (init-index-status)
-         no-coordinate-alns 0
-         indices {}]
-    (if aln
-      (let [rid' (.ref-id aln)
-            new-ref? (not= rid' rid)
-            idx-status' (update-index-status
-                         (if new-ref? (init-index-status) idx-status) aln)
-            no-coordinate-alns' (if (zero? (.pos aln))
-                                  (inc no-coordinate-alns)
-                                  no-coordinate-alns)
-            indices' (if new-ref?
-                       (assoc indices rid idx-status)
-                       indices)]
-        (recur rest rid' idx-status' no-coordinate-alns' indices'))
-      (assoc indices rid idx-status
-             :no-coordinate-alns no-coordinate-alns))))
-
 ;; Merging indices
 ;; -------------
 
@@ -174,20 +145,6 @@
   [lidx1 lidx2]
   (merge-with min lidx1 lidx2))
 
-(defn- merge-index
-  "Merges two intermediate indices, returning the merged intermediate index."
-  [idx1 idx2]
-  (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
-        idx1 (dissoc idx1 :no-coordinate-alns)
-        idx2 (dissoc idx2 :no-coordinate-alns)]
-    (-> (merge-with
-         (fn [^IndexStatus v1 ^IndexStatus v2]
-           (IndexStatus. (merge-meta-data (.meta-data v1) (.meta-data v2))
-                         (merge-bin-index (.bin-index v1) (.bin-index v2))
-                         (merge-linear-index (.linear-index v1) (.linear-index v2))))
-         idx1 idx2)
-        (assoc :no-coordinate-alns no-coordinate-alns))))
-
 ;; Finalizing index
 ;; ----------------
 
@@ -218,20 +175,6 @@
        (complement-linear-index)
        (map second)))
 
-(defn- finalize-index
-  "Converts intermediate BAM index data structure into final one. Must be called
-  in the final stage."
-  [^long nrefs index]
-  (loop [i 0
-         index index]
-    (if (< i nrefs)
-      (if (get index i)
-        (recur (inc i) (-> index
-                           (update-in [i :bin-index] finalize-bin-index)
-                           (update-in [i :linear-index] finalize-linear-index)))
-        (recur (inc i) index))
-      index)))
-
 ;; Writing index
 ;; -----------
 
@@ -253,33 +196,6 @@
   (lsb/write-long w (:aligned-alns meta-data))
   (lsb/write-long w (:unaligned-alns meta-data)))
 
-(defn- write-index*!
-  [wtr ^long nrefs alns]
-  ;; magic
-  (lsb/write-bytes wtr (.getBytes ^String bai-magic))
-  ;; n_ref
-  (lsb/write-int wtr nrefs)
-  (let [indices (make-index-from-blocks nrefs alns)]
-    (dotimes [i nrefs]
-      (let [index (get indices i)
-            n-bin (count (:bin-index index))]
-        ;; bins
-        (if (zero? n-bin)
-          (lsb/write-int wtr 0)
-          (do
-            ;; # of bins
-            (lsb/write-int wtr (inc n-bin))
-            (doseq [bin (:bin-index index)]
-              (write-bin wtr (:bin bin) (:chunks bin)))
-            ;; meta data
-            (write-meta-data wtr (:meta-data index))))
-        ;; linear index
-        (lsb/write-int wtr (count (:linear-index index)))
-        (doseq [l (:linear-index index)]
-          (lsb/write-long wtr l))))
-    ;; no coordinate alignments
-    (lsb/write-long wtr (:no-coordinate-alns indices))))
-
 ;; Public
 ;; ------
 
@@ -287,6 +203,65 @@
   "The number of alignments that is loaded each indexing process. This has an
   effect on performance of concurrent indexing. The default value is 10,000."
   10000)
+
+;; Merging indices
+;; -------------
+
+(defn merge-index
+  "Merges two intermediate indices, returning the merged intermediate index."
+  [idx1 idx2]
+  (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
+        idx1 (dissoc idx1 :no-coordinate-alns)
+        idx2 (dissoc idx2 :no-coordinate-alns)]
+    (-> (merge-with
+         (fn [^IndexStatus v1 ^IndexStatus v2]
+           (IndexStatus. (merge-meta-data (.meta-data v1) (.meta-data v2))
+                         (merge-bin-index (.bin-index v1) (.bin-index v2))
+                         (merge-linear-index (.linear-index v1) (.linear-index v2))))
+         idx1 idx2)
+        (assoc :no-coordinate-alns no-coordinate-alns))))
+
+;; Making index
+;; -----------
+
+(defn finalize-index
+  "Converts intermediate BAM index data structure into final one. Must be called
+  in the final stage."
+  [^long nrefs index]
+  (loop [i 0
+         index index]
+    (if (< i nrefs)
+      (if (get index i)
+        (recur (inc i) (-> index
+                           (update-in [i :bin-index] finalize-bin-index)
+                           (update-in [i :linear-index] finalize-linear-index)))
+        (recur (inc i) index))
+      index)))
+
+(defn make-index*
+  "Calculates index from the references and alignments, returning it as a map.
+  Returned index is still intermediate. It must be passed to finalize function
+  in the final stage."
+  [alns]
+  (loop [[^BAMPointerBlock aln & rest] alns
+         rid (.ref-id aln)
+         idx-status (init-index-status)
+         no-coordinate-alns 0
+         indices {}]
+    (if aln
+      (let [rid' (.ref-id aln)
+            new-ref? (not= rid' rid)
+            idx-status' (update-index-status
+                         (if new-ref? (init-index-status) idx-status) aln)
+            no-coordinate-alns' (if (zero? (.pos aln))
+                                  (inc no-coordinate-alns)
+                                  no-coordinate-alns)
+            indices' (if new-ref?
+                       (assoc indices rid idx-status)
+                       indices)]
+        (recur rest rid' idx-status' no-coordinate-alns' indices'))
+      (assoc indices rid idx-status
+             :no-coordinate-alns no-coordinate-alns))))
 
 (defn make-index-from-blocks
   "Calculates a BAM index from provided references and alignment blocks.
@@ -310,7 +285,57 @@
          make-index-fn
          (finalize-index nrefs))))
 
+(defn update-last-pointer
+  "Update the last pointer of the index to the given value."
+  [index eof-ptr]
+  (if (or (= (keys index) [:no-coordinate-alns])
+          (pos? (get index :no-coordinate-alns 0)))
+    index
+    (let [last-ref (apply max (keys (dissoc index :no-coordinate-alns)))
+          last-key (->> (for [[bin chunks] (get-in index [last-ref :bin-index])
+                              [i {:keys [end]}] (map-indexed vector chunks)]
+                          [end [last-ref :bin-index bin i :end]])
+                        (apply max-key first)
+                        last)]
+      (-> index
+          (assoc-in [last-ref :meta-data :last-offset] eof-ptr)
+          (assoc-in last-key eof-ptr)))))
+
+;; Writing index
+;; -----------
+
+(defn write-index*!
+  "Write the index to a file."
+  [wtr ^long nrefs indices]
+  ;; magic
+  (lsb/write-bytes wtr (.getBytes ^String bai-magic))
+  ;; n_ref
+  (lsb/write-int wtr nrefs)
+  (dotimes [i nrefs]
+    (let [index (get indices i)
+          n-bin (count (:bin-index index))]
+        ;; bins
+      (if (zero? n-bin)
+        (lsb/write-int wtr 0)
+        (do
+            ;; # of bins
+          (lsb/write-int wtr (inc n-bin))
+          (doseq [bin (:bin-index index)]
+            (write-bin wtr (:bin bin) (:chunks bin)))
+            ;; meta data
+          (write-meta-data wtr (:meta-data index))))
+        ;; linear index
+      (lsb/write-int wtr (count (:linear-index index)))
+      (doseq [l (:linear-index index)]
+        (lsb/write-long wtr l))))
+    ;; no coordinate alignments
+  (lsb/write-long wtr (:no-coordinate-alns indices)))
+
+;; ------
+
 (defn write-index!
   "Calculates a BAM index from alns, writing the index to a file."
   [^BAIWriter wtr alns]
-  (write-index*! (.writer wtr) (count (.refs wtr)) alns))
+  (let [nrefs (count (.refs wtr))
+        indices (make-index-from-blocks nrefs alns)]
+    (write-index*! (.writer wtr) nrefs indices)))

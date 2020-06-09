@@ -52,6 +52,13 @@
 ;; Writing
 ;; -------
 
-(defn ^BAMWriter writer [f]
-  (BAMWriter. (util/as-url f)
-              (DataOutputStream. (bgzf/bgzf-output-stream f))))
+(defn ^BAMWriter writer
+  ([f] (writer f false))
+  ([f create-index?]
+   (let [index (if create-index? {:no-coordinate-alns 0} false)
+         w (bgzf/bgzf-output-stream f)]
+     (BAMWriter. (util/as-url f)
+                 w
+                 (DataOutputStream. w)
+                 (atom nil)
+                 (atom index)))))

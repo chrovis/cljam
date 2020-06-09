@@ -90,12 +90,13 @@
   [["-t" "--thread THREAD" "Number of threads (0 is auto)"
     :default 0
     :parse-fn #(Integer/parseInt %)]
+   ["-i" "--index" "Create Index"]
    ["-h" "--help" "Print help"]])
 
 (defn- convert-usage [options-summary]
   (->> ["Convert file format based on the file extension."
         ""
-        "Usage: cljam convert [-t THREAD] <in-file> <out-file> [<out-file-2> [<out-file-3>]]"
+        "Usage: cljam convert [-t THREAD] [-i] <in-file> <out-file> [<out-file-2> [<out-file-3>]]"
         ""
         "Options:"
         options-summary]
@@ -108,18 +109,19 @@
       (not (<= 2 (count arguments) 4)) (exit 1 (convert-usage summary))
       errors (exit 1 (error-msg errors)))
     (let [[in & [out & more :as outs]] arguments]
-      (convert/convert in (if more outs out) :n-threads (:thread options))))
+      (convert/convert in (if more outs out) :n-threads (:thread options) :create-index? (:index options))))
   nil)
 
 ;; ### normalize command
 
 (def ^:private normalize-cli-options
-  [["-h" "--help"]])
+  [["-i" "--index" "Create Index"]
+   ["-h" "--help"]])
 
 (defn- normalize-usage [options-summary]
   (->> ["Normalize references of alignments"
         ""
-        "Usage: cljam normalize <in.bam|sam> <out.bam|sam>"
+        "Usage: cljam normalize [-i] <in.bam|sam> <out.bam|sam>"
         ""
         "Options:"
         options-summary]
@@ -133,7 +135,7 @@
       errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (with-open [r (sam/reader in)
-                  w (sam/writer out)]
+                  w (sam/writer out (:index options))]
         (normal/normalize r w))))
   nil)
 
@@ -145,12 +147,13 @@
    ["-c" "--chunk CHUNK" "Maximum number of alignments sorted per thread."
     :default sorter/default-chunk-size
     :parse-fn #(Integer/parseInt %)]
+   ["-i" "--index" "Create Index"]
    ["-h" "--help" "Print help"]])
 
 (defn- sort-usage [options-summary]
   (->> ["Sort alignments by leftmost coordinates."
         ""
-        "Usage: cljam sort [-o ORDER] [-c CHUNK] <in.bam|sam> <out.bam|sam>"
+        "Usage: cljam sort [-o ORDER] [-c CHUNK] [-i] <in.bam|sam> <out.bam|sam>"
         ""
         "Options:"
         options-summary]
@@ -164,7 +167,7 @@
       errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (with-open [r (sam/reader in)
-                  w (sam/writer out)]
+                  w (sam/writer out (:index options))]
         (condp = (:order options)
           (name header/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
           (name header/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
@@ -298,12 +301,13 @@
 ;; ### level command
 
 (def ^:private level-cli-options
-  [["-h" "--help"]])
+  [["-i" "--index" "Create Index"]
+   ["-h" "--help"]])
 
 (defn- level-usage [options-summary]
   (->> ["Analyze a BAM file and add level information of alignments."
         ""
-        "Usage: cljam level <in.bam> <out.bam>"
+        "Usage: cljam level [-i] <in.bam> <out.bam>"
         ""
         "Options:"
         options-summary]
@@ -317,7 +321,7 @@
       errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (with-open [r (sam/reader in)
-                  w (sam/writer out)]
+                  w (sam/writer out (:index options))]
         (level/add-level r w))))
   nil)
 

@@ -23,6 +23,7 @@
               test-sam-data
               test-sam-refs
               test-sam-sorted-by-pos
+              test-sam-sorted-by-qname
               test-sorted-bam-file
               test-sorted-bam-data
               small-bam-file
@@ -41,6 +42,7 @@
 
 (def temp-sam-file (str temp-dir "/test.sam"))
 (def temp-bam-file (str temp-dir "/test.bam"))
+(def temp-bam-file-2 (str temp-dir "/test2.bam"))
 (def temp-bam-file-sorted (str temp-dir "/test.sorted.bam"))
 (def temp-small-bam-file (str temp-dir "/small.bam"))
 (def temp-medium-bam-file (str temp-dir "/medium.bam"))
@@ -308,6 +310,52 @@
       (are [f] (thrown? Exception (sam/writer (.getAbsolutePath (cio/file temp-dir f))))
         "temp.baam"
         "temp.bai"))))
+
+(deftest writer-index-option-test
+  (testing "sam"
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [w (sam/writer temp-sam-file false)]
+        (sam/write-header w (:header test-sam-sorted-by-pos))
+        (sam/write-refs w (:header test-sam-sorted-by-pos))
+        (sam/write-alignments w (:alignments test-sam-sorted-by-pos) (:header test-sam-sorted-by-pos)))
+      (is (not (.exists (cio/file (str temp-sam-file ".bai")))))))
+  (testing "bam"
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [w (sam/writer temp-bam-file false)]
+        (sam/write-header w (:header test-sam-sorted-by-pos))
+        (sam/write-refs w (:header test-sam-sorted-by-pos))
+        (sam/write-alignments w (:alignments test-sam-sorted-by-pos) (:header test-sam-sorted-by-pos)))
+      (is (not (.exists (cio/file (str temp-bam-file ".bai")))))
+      (with-open [w (sam/writer temp-bam-file true)]
+        (sam/write-header w (:header test-sam))
+        (sam/write-refs w (:header test-sam))
+        (sam/write-alignments w (:alignments test-sam) (:header test-sam)))
+      (is (not (.exists (cio/file (str temp-bam-file ".bai")))))
+      (with-open [w (sam/writer temp-bam-file true)]
+        (sam/write-header w (:header test-sam-sorted-by-qname))
+        (sam/write-refs w (:header test-sam-sorted-by-qname))
+        (sam/write-alignments w (:alignments test-sam-sorted-by-qname) (:header test-sam-sorted-by-qname)))
+      (is (not (.exists (cio/file (str temp-bam-file ".bai")))))
+      (with-open [r (sam/reader test-sorted-bam-file)
+                  w (sam/writer temp-bam-file true)]
+        (sam/write-header w (sam/read-header r))
+        (sam/write-refs w (sam/read-header r))
+        (sam/write-alignments w (sam/read-alignments r) (sam/read-header r)))
+      (is (.exists (cio/file (str temp-bam-file ".bai"))))
+      (is (same-file? test-bai-file (str temp-bam-file ".bai")))
+      (with-open [r (sam/reader test-sorted-bam-file)
+                  w (sam/writer temp-bam-file-2 true)]
+        (sam/write-header w (sam/read-header r))
+        (sam/write-refs w (sam/read-header r))
+        (sam/write-blocks w (sam/read-blocks r)))
+      (is (.exists (cio/file (str temp-bam-file-2 ".bai"))))
+      (is (same-file? test-bai-file (str temp-bam-file-2 ".bai")))))
+  (testing "throws Exception"
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (is (thrown? Exception (sam/writer temp-sam-file true))))))
 
 (def test-options
   [{:Xa {:type "A", :value \p}}

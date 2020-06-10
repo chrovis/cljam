@@ -17,7 +17,7 @@ jobs:
         java-version: ${{ matrix.java }}
         architecture: x64
     - name: Cache m2 repository
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
@@ -53,7 +53,7 @@ jobs:
         jdkFile: ${{ env.JDKFILE }}
         architecture: x64
     - name: Cache m2 repository
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}

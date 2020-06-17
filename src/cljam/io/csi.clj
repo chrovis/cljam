@@ -81,7 +81,7 @@
     (->> #(let [bin (lsb/read-int rdr)
                 loffset (lsb/read-long rdr)
                 chunks (read-chunks! rdr)]
-            {:bin (long bin) :loffset loffset, :chunks chunks})
+            {:bin (long bin), :loffset loffset, :chunks chunks})
          (repeatedly n-ref)
          vec)))
 

@@ -46,10 +46,10 @@
 
 (defn convert-sam
   "Converts file format between SAM and BAM based on the file extension."
-  [in out & {:keys [n-threads num-block]
-             :or {n-threads 0, num-block default-num-block}}]
+  [in out & {:keys [n-threads num-block create-index?]
+             :or {n-threads 0, num-block default-num-block, create-index? false}}]
   (with-open [rdr (sam/reader in)
-              wtr (sam/writer out)]
+              wtr (sam/writer out create-index?)]
     (binding [*n-threads* n-threads]
       (cond
         (io-util/sam-writer? wtr) (convert-sam* rdr wtr num-block sam-write-alignments)

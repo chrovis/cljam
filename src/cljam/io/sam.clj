@@ -89,17 +89,23 @@
 (defn ^BAMWriter bam-writer
   "Returns an open cljam.io.bam.writer.BAMWriter of f. Should be used inside
   with-open to ensure the writer is properly closed."
-  [f]
-  (bam-core/writer f))
+  ([f]
+   (bam-writer f false))
+  ([f create-index?]
+   (bam-core/writer f create-index?)))
 
 (defn ^Closeable writer
   "Selects suitable writer from f's extension, returning the writer. This
   function supports SAM and BAM format."
-  [f]
-  (case (io-util/file-type f)
-    :sam (sam-writer f)
-    :bam (bam-writer f)
-    (throw (IllegalArgumentException. "Invalid file type"))))
+  ([f]
+   (writer f false))
+  ([f create-index?]
+   (case (io-util/file-type f)
+     :sam (if create-index?
+            (throw (ex-info "SAM file indexing is not implemented." {}))
+            (sam-writer f))
+     :bam (bam-writer f create-index?)
+     (throw (IllegalArgumentException. "Invalid file type")))))
 
 (defn write-header
   "Writes header to the SAM/BAM file."

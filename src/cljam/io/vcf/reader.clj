@@ -229,7 +229,9 @@
      spans)))
 
 (defn read-file-offsets
-  "Reading bgzip compressed VCF and returning position,chrom,beg,end."
+  "Reads file offsets and a genomic position of variants from bgzip compressed
+  VCF and returns them as a lazy sequence. Each element is a map containing
+  :chr, :chr-index, :beg, :end, :file-beg, :file-end."
   [^VCFReader rdr]
   (let [^BGZFInputStream input-stream (.reader rdr)
         meta-info-contigs (->> (:contig (.meta-info rdr))

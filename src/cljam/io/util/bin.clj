@@ -23,6 +23,13 @@
   (let [x (inc (quot (- 64 (Long/numberOfLeadingZeros bin)) 3))]
     (cond-> x (< bin (first-bin-of-level x)) dec)))
 
+(defn parent-bin
+  "Returns the bin number of the parent bin."
+  ^long [^long bin]
+  (when-not (pos? bin)
+    (throw (ex-info "A child bin number must be positive." {:bin bin})))
+  (unsigned-bit-shift-right (dec bin) 3))
+
 (defn bin-beg
   "Returns a beginning position of the given `bin`. 1-based."
   ^long [^long bin ^long min-shift ^long depth]

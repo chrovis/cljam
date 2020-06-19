@@ -10,6 +10,8 @@
 * Add support for generating CSI file from bgzip compressed VCF. [#190](https://github.com/chrovis/cljam/pull/190)
 * Add lint actions. [#195](https://github.com/chrovis/cljam/pull/195)
 * Add support for generating CSI file from BCF. [#196](https://github.com/chrovis/cljam/pull/196)
+* Add support cloning VCF/BCF. [#200](https://github.com/chrovis/cljam/pull/200)
+* Create an index file while writing a sorted BAM file. [#197](https://github.com/chrovis/cljam/pull/197)
 
 ### Changed
 
@@ -21,6 +23,9 @@
 * Apply cljfmt. [#191](https://github.com/chrovis/cljam/pull/191)
 * Fix warnings and errors reported by clj-kondo. [#192](https://github.com/chrovis/cljam/pull/192)
 * Update actions/checkout to v2. [#193](https://github.com/chrovis/cljam/pull/193)
+* Run lein check on CI. [#199](https://github.com/chrovis/cljam/pull/199)
+* Refactor cljam.io.util.bin. [#201](https://github.com/chrovis/cljam/pull/201)
+* Refactor cljam.io.csi. [#202](https://github.com/chrovis/cljam/pull/202)
 
 ### Fixed
 

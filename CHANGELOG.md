@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### BREAKING
+* `cljam.io.tabix` is rewritten. [#180](https://github.com/chrovis/cljam/pull/180)
+* `cljam.io.bam-index.writer/pos->lidx-offset` is moved to `cljam.io.util.bin/pos->lidx-offset`. [#180](https://github.com/chrovis/cljam/pull/180)
+* `cljam.io.sam.util/reg->bin` is moved to `cljam.io.util.bin/reg->bin`. Also, a coordinate system of its argument is changed from 0-based half-open to 1-based fully-closed. [#190](https://github.com/chrovis/cljam/pull/190)
+
 ### Added
 
 * Add support for random reading of vcf file. [#180](https://github.com/chrovis/cljam/pull/180)

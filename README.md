@@ -156,6 +156,7 @@ Sorted by first commit.
 - Shunya Kawabata ([@r6eve](https://github.com/r6eve))
 - Yuji Ito ([@yito88](https://github.com/yito88))
 - Akira Inoue ([@niyarin](https://github.com/niyarin))
+- Atsushi Kitahara ([@xckitahara](https://github.com/xckitahara))
 
 ## License
 

@@ -160,7 +160,7 @@ Sorted by first commit.
 
 ## License
 
-Copyright 2013-2019 [Xcoo, Inc.](https://xcoo.jp/)
+Copyright 2013-2020 [Xcoo, Inc.](https://xcoo.jp/)
 
 Licensed under the [Apache License, Version 2.0](LICENSE).
 

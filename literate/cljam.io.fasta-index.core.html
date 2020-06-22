@@ -2886,10 +2886,10 @@ net.brehaut.ClojureTools = (function (SH) {
               w ^FAIWriter (writer out-fai)]
     (try
       (writer/write-index! r w)
-      (catch Exception e (do
-                           (cio/delete-file (.url w))
-                           (logging/error &quot;Failed to create FASTA index&quot;)
-                           (throw e))))))</pre></td></tr><tr><td class="docs"><p>Reading</p>
+      (catch Exception e
+        (cio/delete-file (.url w))
+        (logging/error &quot;Failed to create FASTA index&quot;)
+        (throw e)))))</pre></td></tr><tr><td class="docs"><p>Reading</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn reader
   [f]

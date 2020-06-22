@@ -2902,7 +2902,7 @@ net.brehaut.ClojureTools = (function (SH) {
              normalize-name
              prepend-chromosome-prefix
              normalize-chromosome-prefix)
-         (if version-suffix (cstr/lower-case version-suffix)))))</pre></td></tr><tr><td class="docs">
+         (when version-suffix (cstr/lower-case version-suffix)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn is-primary-chromosome?
   [s]
   (some? (re-matches #&quot;^chr([0-9]{1,2}|X|Y|M|MT)&quot;

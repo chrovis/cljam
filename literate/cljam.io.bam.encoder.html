@@ -2928,7 +2928,7 @@ net.brehaut.ClojureTools = (function (SH) {
                 (lsb/write-bytes writer (byte-array 1 (byte \S)))
                 (lsb/write-int writer (count array))
                 (doseq [v array]
-                 (lsb/write-short writer (Short/parseShort v))))
+                  (lsb/write-short writer (Short/parseShort v))))
            \i nil
            \I nil
            \f nil))))</pre></td></tr><tr><td class="docs">

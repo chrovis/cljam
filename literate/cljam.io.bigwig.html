@@ -3109,8 +3109,9 @@ net.brehaut.ClojureTools = (function (SH) {
                            end-base (lsb/read-uint r)
                            offset (lsb/read-long r)
                            size (lsb/read-long r)]
-                       (if (cir-tree-overlaps? id start end start-chrom-ix
-                                               start-base end-chrom-ix end-base)
+                       (when (cir-tree-overlaps?
+                              id start end start-chrom-ix
+                              start-base end-chrom-ix end-base)
                          {:offset offset, :size size}))))
        (remove nil?)))</pre></td></tr><tr><td class="docs"><p>Returns a sequence that contains overlapping blocks describing CirTree leaves.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- fetch-overlapping-blocks

@@ -2867,19 +2867,38 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bam.writer" name="cljam.io.bam.writer"><h1 class="project-name">cljam.io.bam.writer</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Writer of BAM file format.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bam.writer
-  (:require [cljam.io.protocols :as protocols]
+  (:require [clojure.java.io :as cio]
+            [cljam.io.protocols :as protocols]
             [cljam.io.sam.util.refs :as refs]
             [cljam.io.sam.util.header :as header]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.bam.common :as common]
-            [cljam.io.bam.encoder :as encoder])
-  (:import [java.io Closeable]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(declare write-header* write-refs* write-alignments* write-blocks*)</pre></td></tr><tr><td class="docs"><p>BAMWriter</p>
+            [cljam.io.bam.encoder :as encoder]
+            [cljam.io.bam.decoder :as bam-decoder]
+            [cljam.io.bam-index.writer :as bai-writer])
+  (:import [java.io ByteArrayOutputStream Closeable DataOutputStream]
+           [cljam.io.bam.decoder BAMRawBlock]
+           [bgzf4j BGZFOutputStream]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(declare write-header* write-refs* write-alignments* write-blocks*)</pre></td></tr><tr><td class="docs"><p>Returns true if the bam is sorted by coordinate, false if not.
+   It is detected by<code>@HD SO:coordinate</code> tag in the header.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn- sort-by-pos?
+  [header]
+  (let [so (:SO (:HD header))]
+    (= so (name :coordinate))))</pre></td></tr><tr><td class="docs"><p>BAMWriter</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype BAMWriter [url writer]
+</td><td class="codes"><pre class="brush: clojure">(deftype BAMWriter [url writer data-writer refs index]
   Closeable
   (close [this]
-    (.close ^Closeable (.writer this)))
+    (.close ^Closeable (.data-writer this))
+    (when-let [idx @index]
+      (let [last-pointer (.getFilePointer ^BGZFOutputStream writer)
+            n-refs (count @refs)]
+        (with-open [w (-&gt;&gt; (str url &quot;.bai&quot;)
+                           cio/output-stream
+                           DataOutputStream.)]
+          (-&gt;&gt; (bai-writer/update-last-pointer idx last-pointer)
+               (bai-writer/finalize-index n-refs)
+               (bai-writer/write-index*! w n-refs))))))
   protocols/IWriter
   (writer-url [this]
     (.url this))
@@ -2894,14 +2913,17 @@ net.brehaut.ClojureTools = (function (SH) {
     (write-blocks* this blocks)))</pre></td></tr><tr><td class="docs"><p>write</p>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-header* [^BAMWriter wtr header]
-  (let [w (.writer wtr)
+  (swap! (.index wtr) #(and (sort-by-pos? header) %))
+  (let [w (.data-writer wtr)
         header-string (str (header/stringify-header header) \newline)]
     (lsb/write-bytes w (.getBytes ^String common/bam-magic)) ; magic
     (lsb/write-int w (count header-string))
     (lsb/write-string w header-string)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-refs* [^BAMWriter wtr header]
-  (let [w (.writer wtr)
+  (let [w (.data-writer wtr)
         refs (refs/make-refs header)]
+    (when @(.index wtr)
+      (reset! (.refs wtr) refs))
     (lsb/write-int w (count refs))
     (doseq [ref refs]
       (lsb/write-int w (inc (count (:name ref))))
@@ -2909,16 +2931,52 @@ net.brehaut.ClojureTools = (function (SH) {
       (lsb/write-bytes w (byte-array 1 (byte 0)))
       (lsb/write-int w (:len ref)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-alignments* [^BAMWriter wtr alns header]
-  (let [w (.writer wtr)
+  (let [dw (.data-writer wtr)
+        w ^BGZFOutputStream (.writer wtr)
         refs (refs/make-refs header)]
-    (doseq [a alns]
-      (lsb/write-int w (encoder/get-block-size a))
-      (encoder/encode-alignment w a refs))))</pre></td></tr><tr><td class="docs">
+    (with-open [baos (ByteArrayOutputStream. 4096)
+                dos (DataOutputStream. baos)]
+      (let [pointer-block (map
+                           (fn [a]
+                             (let [pointer-beg (.getFilePointer w)]
+                               (.reset baos)
+                               (encoder/encode-alignment dos a refs)
+                               (lsb/write-int dw (.size baos))
+                               (.writeTo baos dw)
+                               (when @(.index wtr)
+                                 (bam-decoder/decode-pointer-block
+                                  (BAMRawBlock. (.toByteArray baos)
+                                                pointer-beg
+                                                (.getFilePointer w))))))
+                           alns)]
+        (if @(.index wtr)
+          (reset! (.index wtr)
+                  (-&gt;&gt; pointer-block
+                       bai-writer/make-index*
+                       (bai-writer/merge-index @(.index wtr))))
+          (dorun pointer-block))
+        nil))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn write-blocks* [^BAMWriter wtr blocks]
-  (let [w (.writer wtr)]
-    (doseq [b blocks]
-      (lsb/write-int w (alength ^bytes (:data b)))
-      (lsb/write-bytes w (:data b)))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (let [dw (.data-writer wtr)
+        w ^BGZFOutputStream (.writer wtr)
+        pointer-block (map
+                       (fn [{:keys [data]}]
+                         (let [pointer-beg (.getFilePointer w)]
+                           (lsb/write-int dw (alength ^bytes data))
+                           (lsb/write-bytes dw data)
+                           (when @(.index wtr)
+                             (bam-decoder/decode-pointer-block
+                              (BAMRawBlock. data
+                                            pointer-beg
+                                            (.getFilePointer w))))))
+                       blocks)]
+    (if @(.index wtr)
+      (reset! (.index wtr)
+              (-&gt;&gt; pointer-block
+                   bai-writer/make-index*
+                   (bai-writer/merge-index @(.index wtr))))
+      (dorun pointer-block))
+    nil))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

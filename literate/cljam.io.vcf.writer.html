@@ -2919,13 +2919,13 @@ net.brehaut.ClojureTools = (function (SH) {
   [m]
   (-&gt; [(str &quot;ID=&quot; (:id m))]
       (cond-&gt;
-        (:length m) (conj (str &quot;length=&quot; (:length m)))
-        (:assembly m) (conj (str &quot;assembly=&quot; (:assembly m)))
-        (:md-5 m) (conj (str &quot;md5=&quot; (:md-5 m)))
-        (:url m) (conj (str &quot;URL=&quot; (:url m)))
-        (:species m) (conj (str &quot;species=\ (escape-special-chars (:species m)) &quot;\))
-        (:taxonomy m) (conj (str &quot;taxonomy=&quot; (:taxonomy m)))
-        (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
+       (:length m) (conj (str &quot;length=&quot; (:length m)))
+       (:assembly m) (conj (str &quot;assembly=&quot; (:assembly m)))
+       (:md-5 m) (conj (str &quot;md5=&quot; (:md-5 m)))
+       (:url m) (conj (str &quot;URL=&quot; (:url m)))
+       (:species m) (conj (str &quot;species=\ (escape-special-chars (:species m)) &quot;\))
+       (:taxonomy m) (conj (str &quot;taxonomy=&quot; (:taxonomy m)))
+       (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
       (pack-meta-info m [:id :length :assembly :md-5 :url :species :taxonomy :idx])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-info
   [m]
@@ -2934,16 +2934,16 @@ net.brehaut.ClojureTools = (function (SH) {
        (str &quot;Type=&quot; (nil-&gt;dot (:type m)))
        (str &quot;Description=\ (escape-special-chars (:description m)) &quot;\)]
       (cond-&gt;
-        (:source m) (conj (str &quot;Source=\ (escape-special-chars (:source m)) &quot;\))
-        (:version m) (conj (str &quot;Version=\ (escape-special-chars (:version m)) &quot;\))
-        (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
+       (:source m) (conj (str &quot;Source=\ (escape-special-chars (:source m)) &quot;\))
+       (:version m) (conj (str &quot;Version=\ (escape-special-chars (:version m)) &quot;\))
+       (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
       (pack-meta-info m [:id :number :type :description :source :version :idx])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-filter
   [m]
   (-&gt; [(str &quot;ID=&quot; (:id m))
        (str &quot;Description=\ (escape-special-chars (:description m)) &quot;\)]
       (cond-&gt;
-        (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
+       (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
       (pack-meta-info m [:id :description :idx])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-format
   [m]
@@ -2952,7 +2952,7 @@ net.brehaut.ClojureTools = (function (SH) {
        (str &quot;Type=&quot; (nil-&gt;dot (:type m)))
        (str &quot;Description=\ (escape-special-chars (:description m)) &quot;\)]
       (cond-&gt;
-        (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
+       (:idx m) (conj (str &quot;IDX=&quot; (:idx m))))
       (pack-meta-info m [:id :number :type :description :idx])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-alt
   [m]
@@ -2963,8 +2963,8 @@ net.brehaut.ClojureTools = (function (SH) {
   [m]
   (-&gt; [(str &quot;ID=&quot; (:id m))]
       (cond-&gt;
-        (:genomes m) (conj (str &quot;Genomes=&quot; (:genomes m)))
-        (:mixture m) (conj (str &quot;Mixture=&quot; (:mixture m))))
+       (:genomes m) (conj (str &quot;Genomes=&quot; (:genomes m)))
+       (:mixture m) (conj (str &quot;Mixture=&quot; (:mixture m))))
       (conj (str &quot;Description=\ (escape-special-chars (:description m)) &quot;\))
       (pack-meta-info m [:id :genomes :mixture :description])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-meta-info-pedigree
@@ -2990,7 +2990,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (f m)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-meta-info1
   [^VCFWriter wtr k v]
-  (if-not (nil? v)
+  (when-not (nil? v)
     (if (sequential? v)
       (doseq [x v]
         (write-line (.writer wtr) (str meta-info-prefix
@@ -3016,11 +3016,11 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-data-line-alt
   [v]
-  (if v
+  (when v
     (cstr/join \, v)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-data-line-qual
   [x]
-  (if x
+  (when x
     (if (zero? (mod x 1))
       (str (int x))
       (str x))))</pre></td></tr><tr><td class="docs">

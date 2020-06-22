@@ -2867,6 +2867,8 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.cigar" name="cljam.io.sam.util.cigar"><h1 class="project-name">cljam.io.sam.util.cigar</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Parser of CIGAR strings.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam.util.cigar
+  (:require [clojure.core.memoize :as memoize]
+            [proton.core :as proton])
   (:import [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs"><p>Parses CIGAR string, returning a sequence of lengths and operations.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn parse
   [^String s]
@@ -2903,7 +2905,10 @@ net.brehaut.ClojureTools = (function (SH) {
           #{\S} (recur xs r (+ s l) idx)
           #{\I} (recur xs r (+ s l) (update-last! idx (fn [x] [:i x [s (+ l s)]]))))
         (persistent! idx)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def to-index (memoize to-index*))</pre></td></tr><tr><td class="docs"><p>Returns length of CIGAR operations.</p>
+</td><td class="codes"><pre class="brush: clojure">(def to-index
+  (memoize/lu to-index* :lu/threshold
+              (or (proton/as-int (System/getProperty &quot;cljam.sam.cigar.cache-size&quot;))
+                  1024)))</pre></td></tr><tr><td class="docs"><p>Returns length of CIGAR operations.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn count-op
   [^String s]
   (count (parse s)))</pre></td></tr><tr><td class="docs">

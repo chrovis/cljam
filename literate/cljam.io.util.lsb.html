@@ -2868,15 +2868,15 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.util.lsb" name="cljam.io.util.lsb"><h1 class="project-name">cljam.io.util.lsb</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Reading/writing functions of stream and buffer for little-endian data.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.util.lsb
   (:refer-clojure :exclude [read-string])
-  (:require [cljam.util :refer [string-&gt;bytes bytes-&gt;string]])
+  (:require [cljam.util :refer [string-&gt;bytes]])
   (:import [java.io DataInput InputStream DataOutputStream EOFException ByteArrayOutputStream]
            [java.nio Buffer ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs"><p>Generates a new <code>java.nio.ByteBuffer</code> instance with little-endian byte order.
   The default buffer size is 8.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^ByteBuffer gen-byte-buffer
   ([]
-     (.order (ByteBuffer/allocate 8) ByteOrder/LITTLE_ENDIAN))
+   (.order (ByteBuffer/allocate 8) ByteOrder/LITTLE_ENDIAN))
   ([size]
-     (.order (ByteBuffer/allocate size) ByteOrder/LITTLE_ENDIAN)))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
+   (.order (ByteBuffer/allocate size) ByteOrder/LITTLE_ENDIAN)))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Provides feature of reading little-endian values.</p>
 </td><td class="codes"><pre class="brush: clojure">(defprotocol LSBReadable
   (skip [this length] &quot;Skips over 'length' bytes of data, discarding the skipped bytes.&quot;)

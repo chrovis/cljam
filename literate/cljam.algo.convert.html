@@ -2906,10 +2906,10 @@ net.brehaut.ClojureTools = (function (SH) {
     (sam/write-refs wtr hdr)
     (write-alignments-fn rdr wtr hdr num-block)))</pre></td></tr><tr><td class="docs"><p>Converts file format between SAM and BAM based on the file extension.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn convert-sam
-  [in out &amp; {:keys [n-threads num-block]
-             :or {n-threads 0, num-block default-num-block}}]
+  [in out &amp; {:keys [n-threads num-block create-index?]
+             :or {n-threads 0, num-block default-num-block, create-index? false}}]
   (with-open [rdr (sam/reader in)
-              wtr (sam/writer out)]
+              wtr (sam/writer out create-index?)]
     (binding [*n-threads* n-threads]
       (cond
         (io-util/sam-writer? wtr) (convert-sam* rdr wtr num-block sam-write-alignments)

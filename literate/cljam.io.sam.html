@@ -2930,15 +2930,21 @@ net.brehaut.ClojureTools = (function (SH) {
   (sam-writer/writer f))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bam.writer.BAMWriter of f. Should be used inside
   with-open to ensure the writer is properly closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^BAMWriter bam-writer
-  [f]
-  (bam-core/writer f))</pre></td></tr><tr><td class="docs"><p>Selects suitable writer from f's extension, returning the writer. This
+  ([f]
+   (bam-writer f false))
+  ([f create-index?]
+   (bam-core/writer f create-index?)))</pre></td></tr><tr><td class="docs"><p>Selects suitable writer from f's extension, returning the writer. This
   function supports SAM and BAM format.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^Closeable writer
-  [f]
-  (case (io-util/file-type f)
-    :sam (sam-writer f)
-    :bam (bam-writer f)
-    (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Writes header to the SAM/BAM file.</p>
+  ([f]
+   (writer f false))
+  ([f create-index?]
+   (case (io-util/file-type f)
+     :sam (if create-index?
+            (throw (ex-info &quot;SAM file indexing is not implemented.&quot; {}))
+            (sam-writer f))
+     :bam (bam-writer f create-index?)
+     (throw (IllegalArgumentException. &quot;Invalid file type&quot;)))))</pre></td></tr><tr><td class="docs"><p>Writes header to the SAM/BAM file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-header
   [wtr header]
   (protocols/write-header wtr header))</pre></td></tr><tr><td class="docs"><p>Writes references to the SAM/BAM file.</p>

@@ -2943,9 +2943,9 @@ net.brehaut.ClojureTools = (function (SH) {
                           :or {span 1}} (-&gt;&gt; fields rest fields-&gt;map)
                          span (as-long span)
                          track (assoc track :format :variable-step
-                                            :chr chrom
-                                            :span span
-                                            :step nil)]
+                                      :chr chrom
+                                      :span span
+                                      :step nil)]
                      (deserialize (rest lines) nil track))
                    ; declaration line of fixedStep
                    &quot;fixedStep&quot;
@@ -2955,9 +2955,9 @@ net.brehaut.ClojureTools = (function (SH) {
                          pre-start (- (as-long start) step)
                          span (as-long span)
                          track (assoc track :format :fixed-step
-                                            :chr chrom
-                                            :span span
-                                            :step step)]
+                                      :chr chrom
+                                      :span span
+                                      :step step)]
                      (deserialize (rest lines) pre-start track))
                    ; data line
                    (let [m (case (:format track)
@@ -3011,9 +3011,7 @@ net.brehaut.ClojureTools = (function (SH) {
                                        #(- (:end %) (:start %))))
                    (map
                     (fn [[{{:keys [line format span step]} :track
-                           chr :chr
-                           start :start
-                           end :end} :as xs]]
+                           chr :chr start :start} :as xs]]
                       (case format
                         :variable-step
                         (let [declaration-line (-&gt;&gt; (cond-&gt; [&quot;variableStep&quot;

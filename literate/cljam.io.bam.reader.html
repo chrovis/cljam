@@ -2873,9 +2873,8 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.bam-index.core :as bai]
             [cljam.io.bam.decoder :as decoder]
             [cljam.io.util.lsb :as lsb])
-  (:import [java.io Closeable EOFException IOException FileNotFoundException]
+  (:import [java.io Closeable FileNotFoundException]
            [cljam.io.bam.decoder BAMRawBlock]
-           [java.nio ByteBuffer]
            [bgzf4j BGZFInputStream]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare read-blocks-sequentially*
          read-blocks-randomly*)</pre></td></tr><tr><td class="docs"><h2>BAMReader</h2>

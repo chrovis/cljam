@@ -2876,8 +2876,12 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.vcf.reader :as vcf-reader]
             [cljam.io.vcf.writer :as vcf-writer]
             [cljam.io.bcf.reader :as bcf-reader]
-            [cljam.io.bcf.writer :as bcf-writer])
+            [cljam.io.bcf.writer :as bcf-writer]
+            [cljam.io.util.bgzf :as bgzf]
+            [cljam.io.tabix :as tabix]
+            [cljam.io.csi :as csi])
   (:import java.io.Closeable
+           java.io.FileNotFoundException
            cljam.io.vcf.reader.VCFReader
            cljam.io.vcf.writer.VCFWriter
            cljam.io.bcf.reader.BCFReader
@@ -2891,21 +2895,50 @@ net.brehaut.ClojureTools = (function (SH) {
         header (with-open [r (cio/reader (util/compressor-input-stream f))]
                  (vcf-reader/load-header r))]
     (VCFReader. (util/as-url f) meta-info header
-                (cio/reader (util/compressor-input-stream f)))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bcf.reader.BCFReader of f. Should be used inside
+                (if (bgzf/bgzip? f)
+                  (bgzf/bgzf-input-stream f)
+                  (cio/reader (util/compressor-input-stream f)))
+                (delay (try (csi/read-index (str f &quot;.csi&quot;))
+                            (catch FileNotFoundException _
+                              (tabix/read-index (str f &quot;.tbi&quot;))))))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bcf.reader.BCFReader of f. Should be used inside
   with-open to ensure the reader is properly closed. Throws IOException if
   failed to parse BCF file format.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^BCFReader bcf-reader
   [f]
-  (bcf-reader/reader f))</pre></td></tr><tr><td class="docs"><p>Selects suitable reader from f's extension, returning the open reader. This
+  (bcf-reader/reader f))</pre></td></tr><tr><td class="docs"><p>Clones vcf reader sharing persistent objects.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn ^VCFReader clone-vcf-reader
+  [^VCFReader rdr]
+  (let [url (.url rdr)
+        input-stream (if (bgzf/bgzip? url)
+                       (bgzf/bgzf-input-stream url)
+                       (cio/reader (util/compressor-input-stream url)))]
+    (VCFReader. url (.meta-info rdr) (.header rdr)
+                input-stream
+                (.index-delay rdr))))</pre></td></tr><tr><td class="docs"><p>Clones bcf reader sharing persistent objects.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn ^BCFReader clone-bcf-reader
+  [^BCFReader rdr]
+  (let [url (.url rdr)
+        input-stream (bgzf/bgzf-input-stream url)]
+    (BCFReader. (.url rdr) (.meta-info rdr) (.header rdr)
+                input-stream (.start-pos rdr) (.index-delay rdr))))</pre></td></tr><tr><td class="docs"><p>Clones vcf/bcf reader sharing persistent objects.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn ^Closeable clone-reader
+  [rdr]
+  (cond
+    (io-util/vcf-reader? rdr) (clone-vcf-reader rdr)
+    (io-util/bcf-reader? rdr) (clone-bcf-reader rdr)
+    :else (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Selects suitable reader from f's extension, returning the open reader. This
   function supports VCF and BCF formats.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^Closeable reader
   [f]
-  (case (try (io-util/file-type f)
-             (catch IllegalArgumentException _
-               (io-util/file-type-from-contents f)))
-    :vcf (vcf-reader f)
-    :bcf (bcf-reader f)
-    (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Returns meta-info section of VCF/BCF file as a map.</p>
+  (if (or (io-util/vcf-reader? f)
+          (io-util/bcf-reader? f))
+    (clone-reader f)
+    (case (try (io-util/file-type f)
+               (catch IllegalArgumentException _
+                 (io-util/file-type-from-contents f)))
+      :vcf (vcf-reader f)
+      :bcf (bcf-reader f)
+      (throw (IllegalArgumentException. &quot;Invalid file type&quot;)))))</pre></td></tr><tr><td class="docs"><p>Returns meta-info section of VCF/BCF file as a map.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn meta-info
   [rdr]
   (protocols/meta-info rdr))</pre></td></tr><tr><td class="docs"><p>Returns header of VCF/BCF file as a sequence of strings.</p>
@@ -2921,7 +2954,15 @@ net.brehaut.ClojureTools = (function (SH) {
     :raw - Raw map of ByteBufers.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-variants
   ([rdr] (protocols/read-variants rdr))
-  ([rdr option] (protocols/read-variants rdr option)))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
+  ([rdr option] (protocols/read-variants rdr option)))</pre></td></tr><tr><td class="docs"><p>Reads variants of the VCF/BCF file randomly, returning them as a lazy sequence.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-variants-randomly
+  ([rdr span-option depth-option]
+   (protocols/read-variants-randomly
+    rdr
+    span-option
+    depth-option)))</pre></td></tr><tr><td class="docs"><p>Reads offsets {:file-beg :file-end :beg :end :chr } from VCF/BCF file.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-file-offsets
+  [rdr] (protocols/read-file-offsets rdr))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.vcf.writer.VCFWriter of f. Meta-information lines
   and a header line will be written in this function. Should be used inside
   with-open to ensure the writer is properly closed. e.g.</p>

@@ -2869,7 +2869,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.protocols
   (:refer-clojure :exclude [read indexed?]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord SAMAlignment
-  [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])
+           [qname ^int flag rname ^int pos ^int end ^int mapq cigar rnext ^int pnext ^int tlen seq qual options])
 (defrecord SAMRegionBlock [data ^int ref-id ^int pos ^int end])
 (defrecord SAMCoordinateBlock [data ^int ref-id ^int pos ^int flag])
 (defrecord SAMQuerynameBlock [data qname ^int flag])</pre></td></tr><tr><td class="docs">
@@ -2910,7 +2910,11 @@ net.brehaut.ClojureTools = (function (SH) {
   (header [this]
     &quot;Returns header of VCF/BCF file as a sequence of strings.&quot;)
   (read-variants [this] [this option]
-    &quot;Reads variants of the VCF/BCF file, returning them as a lazy sequence.&quot;))</pre></td></tr><tr><td class="docs">
+    &quot;Reads variants of the VCF/BCF file, returning them as a lazy sequence.&quot;)
+  (read-variants-randomly [this region-option depth-option]
+    &quot;Reads randomly variants of the VCF/BCF file, returning them as a lazy sequence.&quot;)
+  (read-file-offsets [rdr]
+    &quot;Reads file-offsets of VCF/BCF file&quot;))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defprotocol IVariantWriter
   (write-variants [this variants]
     &quot;Writes variants to thee VCF/BCF file.&quot;))</pre></td></tr><tr><td class="docs">

@@ -2868,15 +2868,14 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.algo.sorter" name="cljam.algo.sorter"><h1 class="project-name">cljam.algo.sorter</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Sorter of the SAM/BAM format alignments.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.algo.sorter
   (:refer-clojure :exclude [sorted?])
-  (:require [clojure.java.io :as cio]
-            [clojure.tools.logging :as logging]
+  (:require [clojure.tools.logging :as logging]
             [com.climate.claypoole :as cp]
             [cljam.io.protocols :as protocols]
             [cljam.io.sam :as sam]
             [cljam.io.util :as io-util]
             [cljam.util :as util]
             [cljam.io.sam.util.header :as header])
-  (:import [java.io Closeable File]
+  (:import [java.io Closeable]
            [java.util PriorityQueue]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:const default-chunk-size 1500000)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- refmap

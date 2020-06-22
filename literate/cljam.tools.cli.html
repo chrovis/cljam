@@ -2918,9 +2918,9 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn view [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args view-cli-options)]
     (cond
-     (:help options) (exit 0 (view-usage summary))
-     (not= (count arguments) 1) (exit 1 (view-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (view-usage summary))
+      (not= (count arguments) 1) (exit 1 (view-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
       (with-open [^Closeable r (condp = (:format options)
                                  &quot;auto&quot; (sam/reader f)
@@ -2940,40 +2940,42 @@ net.brehaut.ClojureTools = (function (SH) {
   [[&quot;-t&quot; &quot;--thread THREAD&quot; &quot;Number of threads (0 is auto)&quot;
     :default 0
     :parse-fn #(Integer/parseInt %)]
+   [&quot;-i&quot; &quot;--index&quot; &quot;Create Index&quot;]
    [&quot;-h&quot; &quot;--help&quot; &quot;Print help&quot;]])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- convert-usage [options-summary]
   (-&gt;&gt; [&quot;Convert file format based on the file extension.&quot;
-        &quot;Usage: cljam convert [-t THREAD] &lt;in-file&gt; &lt;out-file&gt; [&lt;out-file-2&gt; [&lt;out-file-3&gt;]]&quot;
+        &quot;Usage: cljam convert [-t THREAD] [-i] &lt;in-file&gt; &lt;out-file&gt; [&lt;out-file-2&gt; [&lt;out-file-3&gt;]]&quot;
         &quot;Options:&quot;
         options-summary]
        (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn convert [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args convert-cli-options)]
     (cond
-     (:help options) (exit 0 (convert-usage summary))
-     (not (&lt;= 2 (count arguments) 4)) (exit 1 (convert-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (convert-usage summary))
+      (not (&lt;= 2 (count arguments) 4)) (exit 1 (convert-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [[in &amp; [out &amp; more :as outs]] arguments]
-      (convert/convert in (if more outs out) :n-threads (:thread options))))
+      (convert/convert in (if more outs out) :n-threads (:thread options) :create-index? (:index options))))
   nil)</pre></td></tr><tr><td class="docs"><h3>normalize command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private normalize-cli-options
-  [[&quot;-h&quot; &quot;--help&quot;]])</pre></td></tr><tr><td class="docs">
+  [[&quot;-i&quot; &quot;--index&quot; &quot;Create Index&quot;]
+   [&quot;-h&quot; &quot;--help&quot;]])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- normalize-usage [options-summary]
   (-&gt;&gt; [&quot;Normalize references of alignments&quot;
-        &quot;Usage: cljam normalize &lt;in.bam|sam&gt; &lt;out.bam|sam&gt;&quot;
+        &quot;Usage: cljam normalize [-i] &lt;in.bam|sam&gt; &lt;out.bam|sam&gt;&quot;
         &quot;Options:&quot;
         options-summary]
        (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn normalize [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args normalize-cli-options)]
     (cond
-     (:help options) (exit 0 (normalize-usage summary))
-     (not= (count arguments) 2) (exit 1 (normalize-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (normalize-usage summary))
+      (not= (count arguments) 2) (exit 1 (normalize-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (with-open [r (sam/reader in)
-                  w (sam/writer out)]
+                  w (sam/writer out (:index options))]
         (normal/normalize r w))))
   nil)</pre></td></tr><tr><td class="docs"><h3>sort command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
@@ -2983,22 +2985,23 @@ net.brehaut.ClojureTools = (function (SH) {
    [&quot;-c&quot; &quot;--chunk CHUNK&quot; &quot;Maximum number of alignments sorted per thread.&quot;
     :default sorter/default-chunk-size
     :parse-fn #(Integer/parseInt %)]
+   [&quot;-i&quot; &quot;--index&quot; &quot;Create Index&quot;]
    [&quot;-h&quot; &quot;--help&quot; &quot;Print help&quot;]])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- sort-usage [options-summary]
   (-&gt;&gt; [&quot;Sort alignments by leftmost coordinates.&quot;
-        &quot;Usage: cljam sort [-o ORDER] [-c CHUNK] &lt;in.bam|sam&gt; &lt;out.bam|sam&gt;&quot;
+        &quot;Usage: cljam sort [-o ORDER] [-c CHUNK] [-i] &lt;in.bam|sam&gt; &lt;out.bam|sam&gt;&quot;
         &quot;Options:&quot;
         options-summary]
        (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn sort [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args sort-cli-options)]
     (cond
-     (:help options) (exit 0 (sort-usage summary))
-     (not= (count arguments) 2) (exit 1 (sort-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (sort-usage summary))
+      (not= (count arguments) 2) (exit 1 (sort-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (with-open [r (sam/reader in)
-                  w (sam/writer out)]
+                  w (sam/writer out (:index options))]
         (condp = (:order options)
           (name header/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
           (name header/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
@@ -3018,9 +3021,9 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn index [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args index-cli-options)]
     (cond
-     (:help options) (exit 0 (index-usage summary))
-     (not= (count arguments) 1) (exit 1 (index-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (index-usage summary))
+      (not= (count arguments) 1) (exit 1 (index-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
       (bai/create-index f (str f &quot;.bai&quot;) :n-threads (:thread options))))
   nil)</pre></td></tr><tr><td class="docs"><h3>pileup command</h3>
@@ -3079,9 +3082,9 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn faidx [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args faidx-cli-options)]
     (cond
-     (:help options) (exit 0 (faidx-usage summary))
-     (not= (count arguments) 1) (exit 1 (faidx-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (faidx-usage summary))
+      (not= (count arguments) 1) (exit 1 (faidx-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [f (first arguments)]
       (fai/create-index f (str f &quot;.fai&quot;))))
   nil)</pre></td></tr><tr><td class="docs"><h3>dict command</h3>
@@ -3097,18 +3100,19 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn dict [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args dict-cli-options)]
     (cond
-     (:help options) (exit 0 (dict-usage summary))
-     (not= (count arguments) 2) (exit 1 (dict-usage summary))
-     errors (exit 1 (error-msg errors)))
+      (:help options) (exit 0 (dict-usage summary))
+      (not= (count arguments) 2) (exit 1 (dict-usage summary))
+      errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (dict/create-dict in out)))
   nil)</pre></td></tr><tr><td class="docs"><h3>level command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private level-cli-options
-  [[&quot;-h&quot; &quot;--help&quot;]])</pre></td></tr><tr><td class="docs">
+  [[&quot;-i&quot; &quot;--index&quot; &quot;Create Index&quot;]
+   [&quot;-h&quot; &quot;--help&quot;]])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- level-usage [options-summary]
   (-&gt;&gt; [&quot;Analyze a BAM file and add level information of alignments.&quot;
-        &quot;Usage: cljam level &lt;in.bam&gt; &lt;out.bam&gt;&quot;
+        &quot;Usage: cljam level [-i] &lt;in.bam&gt; &lt;out.bam&gt;&quot;
         &quot;Options:&quot;
         options-summary]
        (cstr/join \newline)))</pre></td></tr><tr><td class="docs">
@@ -3120,11 +3124,11 @@ net.brehaut.ClojureTools = (function (SH) {
       errors (exit 1 (error-msg errors)))
     (let [[in out] arguments]
       (with-open [r (sam/reader in)
-                  w (sam/writer out)]
+                  w (sam/writer out (:index options))]
         (level/add-level r w))))
   nil)</pre></td></tr><tr><td class="docs"><h3>version command</h3>
 </td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn version [args]
+</td><td class="codes"><pre class="brush: clojure">(defn version [_]
   (let [ver (with-open [r (-&gt; &quot;META-INF/maven/cljam/cljam/pom.properties&quot;
                               (clojure.java.io/resource)
                               (clojure.java.io/reader))]

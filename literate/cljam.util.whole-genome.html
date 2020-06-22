@@ -2884,10 +2884,10 @@ net.brehaut.ClojureTools = (function (SH) {
   [refs]
   (into (sorted-map)
         (map vector
-         (-&gt;&gt; refs
-              (map :len)
-              (reductions + 0))
-         refs)))</pre></td></tr><tr><td class="docs"><p>Transforms a whole-genome position to a vector of a chromosome name and a
+             (-&gt;&gt; refs
+                  (map :len)
+                  (reductions + 0))
+             refs)))</pre></td></tr><tr><td class="docs"><p>Transforms a whole-genome position to a vector of a chromosome name and a
   position in the chromosome.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn -&gt;chr-and-pos
   [offset-&gt;ref ^long wg-pos]

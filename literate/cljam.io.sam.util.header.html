@@ -2897,14 +2897,14 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- into-rf
   [to]
   (if (instance? IEditableCollection to)
-      (fn into-rf-editable
-        ([] (transient to))
-        ([x] (with-meta (persistent! x) (meta to)))
-        ([r x] (conj! r x)))
-      (fn into-rf-non-editable
-        ([] to)
-        ([x] x)
-        ([r x] (conj r x)))))</pre></td></tr><tr><td class="docs"><p>Returns a reducing function acts like <code>group-by</code>.
+    (fn into-rf-editable
+      ([] (transient to))
+      ([x] (with-meta (persistent! x) (meta to)))
+      ([r x] (conj! r x)))
+    (fn into-rf-non-editable
+      ([] to)
+      ([x] x)
+      ([r x] (conj r x)))))</pre></td></tr><tr><td class="docs"><p>Returns a reducing function acts like <code>group-by</code>.
   Second argument <code>rf</code> is a reducing function applied to each group. Default is (into-rf []).</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- group-by-rf
   ([keyfn] (group-by-rf keyfn (into-rf [])))

@@ -15,20 +15,20 @@ cljam is available as a Maven artifact from [Clojars](https://clojars.org/cljam)
 Clojure CLI/deps.edn:
 
 ```clojure
-cljam {:mvn/version "0.7.4"}
+cljam {:mvn/version "0.8.0"}
 ```
 
 Leiningen/Boot:
 
 ```clojure
-[cljam "0.7.4"]
+[cljam "0.8.0"]
 ```
 
-## Breaking changes in 0.7.0
+## Breaking changes in 0.8.0
 
-* Strand representation is changed to keyword (`:forward`, `:reverse`).
-* Chromosome name normalization is decoupled from BED i/o.
-* Pileup module is entirely rewritten. See [#140](https://github.com/chrovis/cljam/pull/140) for more information.
+* `cljam.io.tabix` is rewritten. [#180](https://github.com/chrovis/cljam/pull/180)
+* `cljam.io.bam-index.writer/pos->lidx-offset` is moved to `cljam.io.util.bin/pos->lidx-offset`. [#180](https://github.com/chrovis/cljam/pull/180)
+* `cljam.io.sam.util/reg->bin` is moved to `cljam.io.util.bin/reg->bin`. Also, a coordinate system of its argument is changed from 0-based half-open to 1-based fully-closed. [#190](https://github.com/chrovis/cljam/pull/190)
 
 ## Getting started
 

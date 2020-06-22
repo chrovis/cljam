@@ -1,6 +1,6 @@
 # Change Log
 
-## [Unreleased]
+## [0.8.0]
 
 ### BREAKING
 * `cljam.io.tabix` is rewritten. [#180](https://github.com/chrovis/cljam/pull/180)
@@ -421,7 +421,8 @@ represents the first three bases of chromosome 1.
 
 First release
 
-[Unreleased]: https://github.com/chrovis/cljam/compare/0.7.4...HEAD
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/chrovis/cljam/compare/0.7.4...0.8.0
 [0.7.4]: https://github.com/chrovis/cljam/compare/0.7.3...0.7.4
 [0.7.3]: https://github.com/chrovis/cljam/compare/0.7.2...0.7.3
 [0.7.2]: https://github.com/chrovis/cljam/compare/0.7.1...0.7.2

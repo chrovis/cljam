@@ -15,7 +15,7 @@
                  [proton "0.1.8"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.1"]
                                   [cavia "0.5.1"]
-                                  [criterium "0.4.5"]
+                                  [criterium "0.4.6"]
                                   [net.totakke/libra "0.1.1"]
                                   [se.haleby/stub-http "0.2.8"]]
                    :plugins [[lein-binplus "0.6.6" :exclusions [org.clojure/clojure]]

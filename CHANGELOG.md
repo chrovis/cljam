@@ -1,6 +1,14 @@
 # Change Log
 
-## [0.8.0]
+## [Unreleased]
+
+### Changed
+* Update the version of lint-action to read the clj-kondo config file. [#203](https://github.com/chrovis/cljam/pull/203)
+* Introduce GitHub Dependabot to keep dependencies up to date. [#204](https://github.com/chrovis/cljam/pull/204)
+* Bump codecov/codecov-action from v1.0.3 to v1.0.10. [#205](https://github.com/chrovis/cljam/pull/205)
+* Bump codecov/codecov-action from v1.0.10 to v1.0.12. [#207](https://github.com/chrovis/cljam/pull/207)
+
+## [0.8.0] - 2020-06-22
 
 ### BREAKING
 * `cljam.io.tabix` is rewritten. [#180](https://github.com/chrovis/cljam/pull/180)

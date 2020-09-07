@@ -10,7 +10,7 @@
    {:chr "chr2" :start 200 :end 400}])
 
 (deftest sorted-map-intervals-test
-  (let [smi (intervals/make-sorted-map-intervals test-input1)]
+  (let [smi (intervals/index-intervals test-input1)]
     (is (= (intervals/find-overlap-intervals smi "chr1" 1 10)
            [{:chr "chr1" :start 10 :end 100}]))
     (is (= (intervals/find-overlap-intervals smi "chr1" 1 9) []))

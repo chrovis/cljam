@@ -18,14 +18,14 @@
        (->SortedMapIntervals)))
 
 (defn index-intervals
-  "Make index for intervals to find overlaps."
+  "Make indexes for intervals to find overlaps."
   [intervals]
   (->> intervals
        (group-by :chr)
        (into {} (map (fn [[k vs]] [k (make-sorted-map-intervals vs)])))))
 
 (defn find-overlap-intervals
-  "Find intervals that is overlap query : chr and [start end]
-  from index data created by index-intervals."
+  "Find intervals that are on the given `chr` and overlap the given interval
+  [`start` `end`] using indexes created by `index-intervals`."
   [indexed-intervals chr start end]
   (find-overlap-intervals* (get indexed-intervals chr) start end))

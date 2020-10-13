@@ -39,6 +39,7 @@
   (:import bgzf4j.BGZFException))
 
 (def ^:private temp-file (str temp-dir "/test.vcf"))
+(def ^:private temp-gz-file (str temp-dir "/test.vcf.gz"))
 (def ^:private temp-bcf-file (str temp-dir "/test.bcf"))
 
 (defn- slurp-vcf-for-test
@@ -119,6 +120,25 @@
 (deftest header-bcf-test
   (with-open [r (vcf/bcf-reader test-bcf-v4_3-file)]
     (is (= (vcf/header r) test-vcf-v4_3-header))))
+
+(deftest indexed?-test
+  (testing "vcf"
+    (with-open [rdr (vcf/reader test-vcf-v4_0-file)]
+      (is (false? (vcf/indexed? rdr))))
+    (are [f] (with-open [rdr (vcf/reader f)]
+               (true? (vcf/indexed? rdr)))
+      test-vcf-complex-gz-file
+      test-vcf-chr-skipped-file)
+    (with-before-after {:before (do (prepare-cache!)
+                                    (cio/copy (cio/file test-vcf-complex-gz-file) (cio/file temp-gz-file)))
+                        :after (clean-cache!)}
+      (is (with-open [rdr (vcf/reader temp-gz-file)]
+            (false? (vcf/indexed? rdr))))))
+  (testing "bcf"
+    (with-open [rdr (vcf/reader test-bcf-v4_3-file)]
+      (is (false? (vcf/indexed? rdr))))
+    (with-open [rdr (vcf/reader test-bcf-complex-file)]
+      (is (true? (vcf/indexed? rdr))))))
 
 (deftest read-variants-vcf-test
   (testing "VCF v4.0"

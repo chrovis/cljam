@@ -10,7 +10,7 @@
             [cljam.util :as util]
             [cljam.io.util.bin :as util-bin]
             [cljam.io.csi :as csi])
-  (:import [java.io Closeable IOException]
+  (:import [java.io Closeable IOException FileNotFoundException]
            [java.net URL]
            [java.nio Buffer ByteBuffer]
            [bgzf4j BGZFInputStream]))
@@ -27,7 +27,12 @@
   (reader-url [this] (.url this))
   (read [this] (protocols/read this {}))
   (read [this option] (read-variants this option))
-  (indexed? [_] false)
+  (indexed? [_]
+    (try
+      @index-delay
+      true
+      (catch FileNotFoundException _
+        false)))
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))

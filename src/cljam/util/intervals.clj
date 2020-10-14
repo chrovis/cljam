@@ -18,14 +18,12 @@
        (->SortedMapIntervals)))
 
 (defn- find-nclist-overlap-intervals [nclist start end]
-  (when-let [target-intervals
-             (->> (subseq nclist  >= start)
-                  (map second)
-                  (take-while #(<= (:start (first %)) end)))]
-    (mapcat #(cons (first %)
-                   (find-nclist-overlap-intervals (second %)
-                                                  start end))
-            target-intervals)))
+  (->> (subseq nclist >= start)
+       (map second)
+       (take-while #(<= (:start (first %)) end))
+       (mapcat #(cons (first %)
+                      (find-nclist-overlap-intervals (second %)
+                                                     start end)))))
 
 (deftype NclistIntervals [nclist]
   IIntervals

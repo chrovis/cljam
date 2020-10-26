@@ -2,11 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+* Add support for fast interval finder. [#209](https://github.com/chrovis/cljam/pull/209)
+* Add support for nclist. [#211](https://github.com/chrovis/cljam/pull/211)
+* Add support for indexed? for vcf/bcf. [#212](https://github.com/chrovis/cljam/pull/212)
+
 ### Changed
+
 * Update the version of lint-action to read the clj-kondo config file. [#203](https://github.com/chrovis/cljam/pull/203)
 * Introduce GitHub Dependabot to keep dependencies up to date. [#204](https://github.com/chrovis/cljam/pull/204)
 * Bump codecov/codecov-action from v1.0.3 to v1.0.10. [#205](https://github.com/chrovis/cljam/pull/205)
 * Bump codecov/codecov-action from v1.0.10 to v1.0.12. [#207](https://github.com/chrovis/cljam/pull/207)
+* Bump codecov/codecov-action from v1.0.12 to v1.0.13. [#208](https://github.com/chrovis/cljam/pull/208)
+* Bump xcoo/clj-lint-action from v1.1.6 to v1.1.7. [#210](https://github.com/chrovis/cljam/pull/210)
+* Bump codecov/codecov-action from v1.0.13 to v1.0.14. [#213](https://github.com/chrovis/cljam/pull/213)
 
 ## [0.8.0] - 2020-06-22
 

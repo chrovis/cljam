@@ -2,6 +2,7 @@
   "Functions to read and write the VCF (Variant Call Format) format and BCF (its
   binary equivalent). See https://samtools.github.io/hts-specs/ for the detail
   VCF/BCF specifications."
+  (:refer-clojure :exclude [indexed?])
   (:require [clojure.java.io :as cio]
             [cljam.util :as util]
             [cljam.io.protocols :as protocols]
@@ -96,6 +97,12 @@
   "Returns header of VCF/BCF file as a sequence of strings."
   [rdr]
   (protocols/header rdr))
+
+(defn indexed?
+  "Returns true if the reader can be randomly accessed, false if not. Note this
+  function immediately realizes a delayed index."
+  [rdr]
+  (protocols/indexed? rdr))
 
 (defn read-variants
   "Reads variants of the VCF/BCF file, returning them as a lazy sequence. rdr

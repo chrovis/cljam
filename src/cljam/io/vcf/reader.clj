@@ -8,7 +8,7 @@
             [proton.core :refer [as-long]]
             [cljam.io.util.bin :as util-bin]
             [cljam.io.vcf.util :as vcf-util])
-  (:import [java.io Closeable BufferedReader]
+  (:import [java.io Closeable BufferedReader FileNotFoundException]
            [clojure.lang LazilyPersistentVector]
            bgzf4j.BGZFInputStream))
 
@@ -25,7 +25,12 @@
   (reader-url [this] (.url this))
   (read [this] (read-variants this))
   (read [this option] (read-variants this option))
-  (indexed? [_] false)
+  (indexed? [_]
+    (try
+      @index-delay
+      true
+      (catch FileNotFoundException _
+        false)))
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))

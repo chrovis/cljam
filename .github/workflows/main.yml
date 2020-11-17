@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
-        java: [ '1.8', '11', '12' ]
+        java: [ '1.8', '11', '15', '16-ea' ]
     name: Java ${{ matrix.java }}
     steps:
     - uses: actions/checkout@v2
@@ -38,37 +38,8 @@ jobs:
         lein with-profile dev bin
         target/cljam version
 
-  ea-build:
-    runs-on: ubuntu-18.04
-    steps:
-    - uses: actions/checkout@v2
-    - name: Download Early-Access Builds
-      run: curl -sSL https://jdk.java.net/14 | grep -m1 -Eo 'https.*linux-x64_bin.tar.gz' | xargs curl -O
-    - name: Get name of the downloaded jdkFile
-      run: echo -e "::set-env name=JDKFILE::$(find . -name '*linux-x64_bin.tar.gz' | head -n1)"
-    - name: Setup Java
-      uses: actions/setup-java@v1
-      with:
-        java-version: ea
-        jdkFile: ${{ env.JDKFILE }}
-        architecture: x64
-    - name: Cache m2 repository
-      uses: actions/cache@v2
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
-        restore-keys: |
-          ${{ runner.os }}-m2-
-    - name: Install Dependencies
-      run: lein deps
-    - name: Run tests
-      run: |
-        lein with-profile +dev:+1.8:+1.9 test
-        lein with-profile dev bin
-        target/cljam version
-
   deploy:
-    needs: [build, ea-build]
+    needs: [build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-18.04
     steps:

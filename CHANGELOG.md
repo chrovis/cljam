@@ -17,6 +17,8 @@
 * Bump codecov/codecov-action from v1.0.12 to v1.0.13. [#208](https://github.com/chrovis/cljam/pull/208)
 * Bump xcoo/clj-lint-action from v1.1.6 to v1.1.7. [#210](https://github.com/chrovis/cljam/pull/210)
 * Bump codecov/codecov-action from v1.0.13 to v1.0.14. [#213](https://github.com/chrovis/cljam/pull/213)
+* Bump codecov/codecov-action from v1.0.14 to v1.0.15. [#214](https://github.com/chrovis/cljam/pull/214)
+* Update java versions for testing. [#215](https://github.com/chrovis/cljam/pull/215)
 
 ## [0.8.0] - 2020-06-22
 

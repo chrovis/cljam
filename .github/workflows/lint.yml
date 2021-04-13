@@ -2,6 +2,9 @@ name: lint
 
 on: [push, pull_request]
 
+
+
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -11,7 +14,7 @@ jobs:
       id : master_base_sha
       if : github.ref  == 'refs/heads/master'
       run: echo  "::set-output name=base_sha::${{ github.event.before }}"
-    - uses: xcoo/clj-lint-action@v1.1.7
+    - uses: niyarin/clj-lint-action@v1.7.8
       with:
         linters: "[\"clj-kondo\" \"kibit\" \"eastwood\"]"
         github_token: ${{ secrets.GITHUB_TOKEN }}

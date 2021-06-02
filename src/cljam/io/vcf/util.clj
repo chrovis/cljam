@@ -40,7 +40,10 @@
               {}
               (map (fn [ss]
                      (let [[k vs] (cstr/split ss #"\=" 2)]
-                       [(keyword k) ((parser-map k) vs)])))))))))
+                       (if-let [parser (parser-map k)]
+                         [(keyword k) (parser vs)]
+                         (throw (ex-info (str "Undeclared INFO, " k ".")
+                                         {:info ss}))))))))))))
 
 (defn info-stringifier
   "Returns a stringifier function of INFO field.

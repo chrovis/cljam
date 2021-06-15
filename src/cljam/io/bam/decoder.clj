@@ -124,7 +124,10 @@
          cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
          [cigar ^long len] (cigar/decode-cigar-and-ref-length cigar-bytes)
          ref-end     (int ^long (if (zero? len) pos (dec (+ pos len))))
-         seq         (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
+         seq         (if (zero? l-seq)
+                       "*"
+                       (decode-seq (lsb/read-bytes
+                                    buffer (quot (inc l-seq) 2)) l-seq))
          qual        (decode-qual (lsb/read-bytes buffer l-seq))
          rest        (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
          options     (decode-options rest)]
@@ -151,7 +154,9 @@
              [cigar ^long len] (cigar/decode-cigar-and-ref-length cigar-bytes)
              ref-end     (int ^long (if (zero? len) pos (dec (+ pos len))))]
          (when (<= start ref-end)
-           (let [seq     (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
+           (let [seq     (if (zero? l-seq)
+                           "*"
+                           (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq))
                  qual    (decode-qual (lsb/read-bytes buffer l-seq))
                  rest    (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
                  rname   (or (refs/ref-name refs ref-id) "*")

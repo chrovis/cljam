@@ -83,39 +83,42 @@
        ^long (get-options-size aln))))
 
 (defn encode-alignment [wrtr aln refs]
-  ;; refID
-  (lsb/write-int wrtr (or (refs/ref-id refs (:rname aln)) -1))
-  ;; pos
-  (lsb/write-int wrtr (dec (:pos aln)))
-  ;; bin_mq_nl
-  (lsb/write-ubyte wrtr (short (inc (.length ^String (:qname aln)))))
-  (lsb/write-ubyte wrtr (short (:mapq aln)))
-  (lsb/write-ushort wrtr (sam-util/compute-bin aln))
-  ;; flag_nc
-  (lsb/write-ushort wrtr (cigar/count-op (:cigar aln)))
-  (lsb/write-ushort wrtr (:flag aln))
-  ;; l_seq
-  (lsb/write-int wrtr (.length ^String (:seq aln)))
-  ;; next_refID
-  (lsb/write-int wrtr (get-next-ref-id aln refs))
-  ;; next_pos
-  (lsb/write-int wrtr (dec (:pnext aln)))
-  ;; tlen
-  (lsb/write-int wrtr (:tlen aln))
-  ;; read_name
-  (lsb/write-string wrtr (:qname aln))
-  (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
-  ;; cigar
-  (doseq [cigar (cigar/encode-cigar (:cigar aln))]
-    (lsb/write-int wrtr cigar))
-  ;; seq
-  (lsb/write-bytes wrtr (seq/str->compressed-bases (:seq aln)))
-  ;; qual
-  (lsb/write-bytes wrtr (encode-qual aln))
-  ;; options
-  (doseq [op (:options aln)]
-    (let [[tag value] (first (seq op))]
-      (lsb/write-short wrtr (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
-                                           (byte (first (name tag))))))
-      (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
-      (encode-tag-value wrtr (first (:type value)) (:value value)))))
+  (let [aln (update aln :seq #(if (= % "*") "" %))]
+    ;; refID
+    (lsb/write-int wrtr (or (refs/ref-id refs (:rname aln)) -1))
+    ;; pos
+    (lsb/write-int wrtr (dec (:pos aln)))
+    ;; bin_mq_nl
+    (lsb/write-ubyte wrtr (short (inc (.length ^String (:qname aln)))))
+    (lsb/write-ubyte wrtr (short (:mapq aln)))
+    (lsb/write-ushort wrtr (sam-util/compute-bin aln))
+    ;; flag_nc
+    (lsb/write-ushort wrtr (cigar/count-op (:cigar aln)))
+    (lsb/write-ushort wrtr (:flag aln))
+    ;; l_seq
+    (lsb/write-int wrtr (.length ^String (:seq aln)))
+    ;; next_refID
+    (lsb/write-int wrtr (get-next-ref-id aln refs))
+    ;; next_pos
+    (lsb/write-int wrtr (dec (:pnext aln)))
+    ;; tlen
+    (lsb/write-int wrtr (:tlen aln))
+    ;; read_name
+    (lsb/write-string wrtr (:qname aln))
+    (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
+    ;; cigar
+    (doseq [cigar (cigar/encode-cigar (:cigar aln))]
+      (lsb/write-int wrtr cigar))
+    ;; seq
+    (lsb/write-bytes wrtr (seq/str->compressed-bases (:seq aln)))
+    ;; qual
+    (lsb/write-bytes wrtr (encode-qual aln))
+
+    ;; options
+    (doseq [op (:options aln)]
+      (let [[tag value] (first (seq op))]
+        (lsb/write-short
+         wrtr (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
+                             (byte (first (name tag))))))
+        (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
+        (encode-tag-value wrtr (first (:type value)) (:value value))))))

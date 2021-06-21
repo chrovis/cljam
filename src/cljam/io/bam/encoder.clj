@@ -118,7 +118,8 @@
     (doseq [op (:options aln)]
       (let [[tag value] (first (seq op))]
         (lsb/write-short
-         wrtr (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
-                             (byte (first (name tag))))))
+         wrtr
+         (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
+                        (byte (first (name tag))))))
         (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
         (encode-tag-value wrtr (first (:type value)) (:value value))))))

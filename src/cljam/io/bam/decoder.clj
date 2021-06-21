@@ -89,7 +89,9 @@
     (qual/phred-bytes->fastq b)))
 
 (defn decode-seq [seq-bytes length]
-  (sam-seq/compressed-bases->str length seq-bytes 0))
+  (if (zero? length)
+    "*"
+    (sam-seq/compressed-bases->str length seq-bytes 0)))
 
 (defn decode-next-ref-id [refs ^long ref-id ^long next-ref-id]
   (if (= next-ref-id -1)
@@ -124,10 +126,7 @@
          cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
          [cigar ^long len] (cigar/decode-cigar-and-ref-length cigar-bytes)
          ref-end     (int ^long (if (zero? len) pos (dec (+ pos len))))
-         seq         (if (zero? l-seq)
-                       "*"
-                       (decode-seq (lsb/read-bytes
-                                    buffer (quot (inc l-seq) 2)) l-seq))
+         seq         (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
          qual        (decode-qual (lsb/read-bytes buffer l-seq))
          rest        (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
          options     (decode-options rest)]
@@ -154,9 +153,7 @@
              [cigar ^long len] (cigar/decode-cigar-and-ref-length cigar-bytes)
              ref-end     (int ^long (if (zero? len) pos (dec (+ pos len))))]
          (when (<= start ref-end)
-           (let [seq     (if (zero? l-seq)
-                           "*"
-                           (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq))
+           (let [seq     (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
                  qual    (decode-qual (lsb/read-bytes buffer l-seq))
                  rest    (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
                  rname   (or (refs/ref-name refs ref-id) "*")

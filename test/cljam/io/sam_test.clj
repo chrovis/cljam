@@ -295,8 +295,8 @@
                  (sam/write-refs bam-wtr header)
                  (sam/write-alignments bam-wtr alignments header))
                (with-open [bam-rdr (sam/reader temp-bam-file)]
-                 (is (= (map #(into {} %) alignments)
-                        (map #(into {} %) (sam/read-alignments bam-rdr)))))))))
+                 (is (= (seq alignments)
+                        (seq (sam/read-alignments bam-rdr)))))))))
     test-sam-file
     seq-asterisk-sam-file))
 
@@ -313,8 +313,8 @@
                  (sam/write-refs sam-wtr header)
                  (sam/write-alignments sam-wtr alignments header))
                (with-open [sam-rdr (sam/reader temp-sam-file)]
-                 (is (= (map #(into {} %) alignments)
-                        (map #(into {} %) (sam/read-alignments sam-rdr)))))))))
+                 (is (= (seq alignments)
+                        (seq (sam/read-alignments sam-rdr)))))))))
     test-bam-file
     seq-asterisk-bam-file))
 

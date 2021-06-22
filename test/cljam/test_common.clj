@@ -130,6 +130,7 @@
 
 (def opts-sam-file "test-resources/sam/opts.sam")
 
+(def seq-asterisk-sam-file "test-resources/sam/seq-asterisk.sam")
 ;; ### BAM files
 
 (def test-bam-file "test-resources/bam/test.bam")
@@ -137,6 +138,7 @@
 (def test-sorted-bam-file "test-resources/bam/test.sorted.bam")
 (def small-bam-file "test-resources/bam/small.bam")
 (def medium-bam-file "test-resources/bam/medium.bam")
+(def seq-asterisk-bam-file "test-resources/bam/seq-asterisk.bam")
 (def large-bam-file (cavia/resource mycavia "large.bam"))
 
 (def dedupe-before-bam-file "test-resources/bam/dedupe_before.bam")

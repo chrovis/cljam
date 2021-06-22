@@ -32,6 +32,8 @@
               large-bam-file
               large-sam-refs
               opts-sam-file
+              seq-asterisk-sam-file
+              seq-asterisk-bam-file
               opts-bam-file
               test-sam-blocks
               test-bai-file
@@ -203,6 +205,11 @@
     (is (thrown? java.io.IOException (sam/bam-reader invalid-bam-file-2)))
     (is (thrown? java.io.IOException (sam/bam-reader not-found-bam-file)))))
 
+(deftest bam-reader-with-asterisk-seq-test
+  (with-open [rdr (sam/bam-reader  seq-asterisk-bam-file)]
+    (is (= (sam/read-alignments rdr {:chr "ref"})
+           (filter #(= (:rname %) "ref") (sam/read-alignments rdr))))))
+
 (deftest-slow bam-reader-medium-test
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
@@ -274,6 +281,42 @@
         temp-bam-file-sorted
         temp-small-bam-file
         temp-medium-bam-file))))
+
+(deftest sam->bam-convert-test
+  (are [target-sam]
+       (with-before-after {:before (prepare-cache!)
+                           :after (clean-cache!)}
+         (let [temp-bam-file (.getAbsolutePath (cio/file temp-dir "test.bam"))]
+           (with-open [sam-rdr (sam/reader target-sam)]
+             (let [alignments (sam/read-alignments sam-rdr)
+                   header (sam/read-header sam-rdr)]
+               (with-open [bam-wtr (sam/bam-writer temp-bam-file)]
+                 (sam/write-header bam-wtr header)
+                 (sam/write-refs bam-wtr header)
+                 (sam/write-alignments bam-wtr alignments header))
+               (with-open [bam-rdr (sam/reader temp-bam-file)]
+                 (is (= (seq alignments)
+                        (seq (sam/read-alignments bam-rdr)))))))))
+    test-sam-file
+    seq-asterisk-sam-file))
+
+(deftest bam->sam-convert-test
+  (are [target-bam]
+       (with-before-after {:before (prepare-cache!)
+                           :after (clean-cache!)}
+         (let [temp-sam-file (.getAbsolutePath (cio/file temp-dir "test.sam"))]
+           (with-open [bam-rdr (sam/reader target-bam)]
+             (let [alignments (sam/read-alignments bam-rdr)
+                   header (sam/read-header bam-rdr)]
+               (with-open [sam-wtr (sam/sam-writer temp-sam-file)]
+                 (sam/write-header sam-wtr header)
+                 (sam/write-refs sam-wtr header)
+                 (sam/write-alignments sam-wtr alignments header))
+               (with-open [sam-rdr (sam/reader temp-sam-file)]
+                 (is (= (seq alignments)
+                        (seq (sam/read-alignments sam-rdr)))))))))
+    test-bam-file
+    seq-asterisk-bam-file))
 
 (deftest sam-writer-test
   (with-before-after {:before (prepare-cache!)

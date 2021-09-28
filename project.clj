@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/core.memoize "1.0.250"]
                  [org.clojure/tools.logging "1.1.0"]
                  [org.clojure/tools.cli "1.0.206"]
-                 [org.apache.commons/commons-compress "1.20"]
+                 [org.apache.commons/commons-compress "1.21"]
                  [clj-sub-command "0.6.0"]
                  [digest "1.4.9"]
                  [bgzf4j "0.1.0"]

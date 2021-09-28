@@ -17,7 +17,7 @@
                                   [cavia "0.6.0"]
                                   [criterium "0.4.6"]
                                   [net.totakke/libra "0.1.1"]
-                                  [se.haleby/stub-http "0.2.8"]]
+                                  [se.haleby/stub-http "0.2.10"]]
                    :plugins [[lein-binplus "0.6.6" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.7"]
                              [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]

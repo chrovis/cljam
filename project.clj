@@ -12,7 +12,7 @@
                  [bgzf4j "0.1.0"]
                  [com.climate/claypoole "1.1.4"]
                  [camel-snake-kebab "0.4.2"]
-                 [proton "0.1.8"]]
+                 [proton "0.2.2"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.1"]
                                   [cavia "0.5.1"]
                                   [criterium "0.4.6"]

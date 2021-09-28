@@ -2948,7 +2948,9 @@ net.brehaut.ClojureTools = (function (SH) {
     &quot;*&quot;
     (qual/phred-bytes-&gt;fastq b)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn decode-seq [seq-bytes length]
-  (sam-seq/compressed-bases-&gt;str length seq-bytes 0))</pre></td></tr><tr><td class="docs">
+  (if (zero? length)
+    &quot;*&quot;
+    (sam-seq/compressed-bases-&gt;str length seq-bytes 0)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn decode-next-ref-id [refs ^long ref-id ^long next-ref-id]
   (if (= next-ref-id -1)
     &quot;*&quot;

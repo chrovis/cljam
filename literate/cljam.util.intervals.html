@@ -2865,137 +2865,60 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam.util.option" name="cljam.io.sam.util.option"><h1 class="project-name">cljam.io.sam.util.option</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Utility functions for SAM optional fields.</p>
-</td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam.util.option
-  (:require [clojure.string :as cstr]
-            [proton.core :as p]))</pre></td></tr><tr><td class="docs"><p>parse</p>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- parse-tag-single [val-type val]
-  (case val-type
-    \Z val
-    \A (first val)
-    \I (p/as-long val)
-    \i (p/as-long val)
-    \s (p/as-long val)
-    \S (p/as-long val)
-    \c (p/as-long val)
-    \C (p/as-long val)
-    \f (p/as-double val)
-    \H (p/hex-&gt;bytes val)
-    (-&gt; &quot;Unrecognized tag type: %s, for value: %s&quot;
-        (format val-type val)
-        Exception.
-        throw)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn parse-optional-field [op]
-  (let [[tag val-type-str val] (cstr/split op #&quot;:&quot; 3)
-        val-type (first val-type-str)]
-    {(keyword tag) {:type val-type-str
-                    :value (if (= val-type \B)
-                             val
-                             (parse-tag-single val-type val))}}))</pre></td></tr><tr><td class="docs"><p>stringify</p>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn stringify-optional-fields [options]
-  (-&gt;&gt; options
-       (map
-        (fn [op]
-          (let [[tag {:keys [type value]}] (first (seq op))]
-            (cstr/join \: [(name tag) type value]))))
-       (cstr/join \tab)))</pre></td></tr><tr><td class="docs"><p>accessors</p>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn value-for-tag
-  [tag aln]
-  (:value (some tag (:options aln))))</pre></td></tr><tr><td class="docs"><p>CIGAR string of the mate alignment.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  mate-cigar
-  (partial value-for-tag :MC))</pre></td></tr><tr><td class="docs"><p>Score of the alignment.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  score
-  (partial value-for-tag :AS))</pre></td></tr><tr><td class="docs"><p>Barcode sequence.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  barcode
-  (partial value-for-tag :BC))</pre></td></tr><tr><td class="docs"><p>Edit distance from reference of the alignment.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  edit-distance
-  (partial value-for-tag :NM))</pre></td></tr><tr><td class="docs"><p>Parse mismatching positions in the SAM optional fields. Returns a sequence
-  consisting of vectors which are one of [:match matching-length],
-  [:mismatch a-reference-base-char] and [:deletion reference-bases-string].</p>
-</td><td class="codes"><pre class="brush: clojure">(defn parse-mismatching-positions-str
-  [s]
-  (when s
-    (let [[_ head tail] (re-matches #&quot;(\d+)(.*)&quot; s)]
-      (-&gt;&gt; (re-seq #&quot;(([A-Z])|\^([A-Z]+))(\d+)&quot; tail)
-           (mapcat
-            (fn [[_ _ mismatch deletion match]]
-              [(if mismatch
-                 [:mismatch (first mismatch)]
-                 [:deletion deletion])
-               [:match (p/as-long match)]]))
-           (cons [:match (p/as-long head)])))))</pre></td></tr><tr><td class="docs"><p>Mismatching positions and bases of the alignment.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  mismatching-positions
-  (comp parse-mismatching-positions-str (partial value-for-tag :MD)))</pre></td></tr><tr><td class="docs"><p>Ratio of the primary alignment score and the alternative one.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  primary-to-alt-score
-  (partial value-for-tag :pa))</pre></td></tr><tr><td class="docs"><p>Parse serialized supplementary alignments.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn parse-supplementary-alignments-str
-  [s]
-  (when s
-    (-&gt;&gt; (re-seq #&quot;(\S+?),(\d+),([+-]),((?:\d+[MIDSH])+),(\d+),(\d+);&quot; s)
-         (map (fn [[_ &amp; rests]]
-                (-&gt; [:rname :pos :strand :cigar :mapq :edit-distance]
-                    (zipmap rests)
-                    (update :pos p/as-long)
-                    (update :mapq p/as-long)
-                    (update :strand (fn [^String strand]
-                                      (case (.charAt strand 0)
-                                        \+ :forward
-                                        \- :reverse)))
-                    (update :edit-distance p/as-long)))))))</pre></td></tr><tr><td class="docs"><p>List of supplementary alignments.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  supplementary-alignments
-  (comp parse-supplementary-alignments-str (partial value-for-tag :SA)))</pre></td></tr><tr><td class="docs"><p>Parse serialized supplementary alignments.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn parse-alternative-hits-str
-  [s]
-  (when s
-    (-&gt;&gt; (re-seq #&quot;(\S+?),([+-]?\d+),((?:\d+[MIDSH])+),(\d+);&quot; s)
-         (map (fn [[_ &amp; rests]]
-                (-&gt; (zipmap [:rname :pos :cigar :edit-distance] rests)
-                    (update :pos p/as-long)
-                    (update :edit-distance p/as-long)))))))</pre></td></tr><tr><td class="docs"><p>List of alternative alignments.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  alternative-hits
-  (comp parse-alternative-hits-str (partial value-for-tag :XA)))</pre></td></tr><tr><td class="docs"><p>Suboptimal alignment score.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  suboptimal-score
-  (partial value-for-tag :XS))</pre></td></tr><tr><td class="docs"><p>Name of read group of the alignment.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  read-group
-  (partial value-for-tag :RG))</pre></td></tr><tr><td class="docs"><p>Comment of reference sequence.</p>
-</td><td class="codes"><pre class="brush: clojure">(def
-  ^{:doc 
-    :arglists '([aln])}
-  ref-comment
-  (partial value-for-tag :XR))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+</script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.util.intervals" name="cljam.util.intervals"><h1 class="project-name">cljam.util.intervals</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Data structures for interval queries.</p>
+</td><td class="codes"><pre class="brush: clojure">(ns cljam.util.intervals)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defprotocol IIntervals
+  (find-overlap-intervals* [this start end]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(deftype SortedMapIntervals [m]
+  IIntervals
+  (find-overlap-intervals* [this start end]
+    (mapcat (fn [[_ x]] (drop-while #(&lt; (:end %) start) x))
+            (subseq m &lt;= end))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- make-sorted-map-intervals
+  [intervals]
+  (-&gt;&gt; (group-by :start intervals)
+       (map (fn [[k vs]] [k (sort-by :end vs)]))
+       (into (sorted-map))
+       (-&gt;SortedMapIntervals)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- find-nclist-overlap-intervals [nclist start end]
+  (-&gt;&gt; (subseq nclist &gt;= start)
+       (map second)
+       (take-while #(&lt;= (:start (first %)) end))
+       (mapcat #(cons (first %)
+                      (find-nclist-overlap-intervals (second %)
+                                                     start end)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(deftype NclistIntervals [nclist]
+  IIntervals
+  (find-overlap-intervals* [this start end]
+    (find-nclist-overlap-intervals nclist start end)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(declare make-nclist*)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- make-nested-intervals [intervals]
+  (when-first [{:keys [start end] :as head} intervals]
+    (let [[nested-intervals rests]
+          (split-with #(&lt;= start (:start %) (:end %) end)
+                      (next intervals))]
+      (cons [end [head (make-nclist* nested-intervals)]]
+            (lazy-seq (make-nested-intervals rests))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- make-nclist* [intervals]
+  (let [sorted-intervals (sort-by (juxt :start (comp - :end)) intervals)]
+    (into (sorted-map) (make-nested-intervals sorted-intervals))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- make-nclist [intervals]
+  (-&gt;NclistIntervals (make-nclist* intervals)))</pre></td></tr><tr><td class="docs"><p>Make indexes for intervals to find overlaps.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn index-intervals
+  ([intervals]
+   (index-intervals intervals {}))
+  ([intervals {:keys [structure] :or {structure :sorted-map}}]
+   (-&gt;&gt; intervals
+        (group-by :chr)
+        (into {} (map (fn [[k vs]]
+                        [k
+                         (case structure
+                           :sorted-map (make-sorted-map-intervals vs)
+                           :nclist (make-nclist vs))]))))))</pre></td></tr><tr><td class="docs"><p>Find intervals that are on the given <code>chr</code> and overlap the given interval
+  [<code>start</code> <code>end</code>] using indexes created by <code>index-intervals</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn find-overlap-intervals
+  [indexed-intervals chr start end]
+  (find-overlap-intervals* (get indexed-intervals chr) start end))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

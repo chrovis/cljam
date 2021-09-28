@@ -2900,7 +2900,10 @@ net.brehaut.ClojureTools = (function (SH) {
               {}
               (map (fn [ss]
                      (let [[k vs] (cstr/split ss #&quot;\=&quot; 2)]
-                       [(keyword k) ((parser-map k) vs)])))))))))</pre></td></tr><tr><td class="docs"><p>Returns a stringifier function of INFO field.
+                       (if-let [parser (parser-map k)]
+                         [(keyword k) (parser vs)]
+                         (throw (ex-info (str &quot;Undeclared INFO, &quot; k &quot;.&quot;)
+                                         {:info ss}))))))))))))</pre></td></tr><tr><td class="docs"><p>Returns a stringifier function of INFO field.
    Takes a vector of maps from info rows of meta-info.
    The stringifier takes a map and returns a string.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn info-stringifier

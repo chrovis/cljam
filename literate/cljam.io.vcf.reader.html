@@ -2875,7 +2875,7 @@ net.brehaut.ClojureTools = (function (SH) {
             [proton.core :refer [as-long]]
             [cljam.io.util.bin :as util-bin]
             [cljam.io.vcf.util :as vcf-util])
-  (:import [java.io Closeable BufferedReader]
+  (:import [java.io Closeable BufferedReader FileNotFoundException]
            [clojure.lang LazilyPersistentVector]
            bgzf4j.BGZFInputStream))</pre></td></tr><tr><td class="docs"><h2>VCFReader</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
@@ -2888,7 +2888,12 @@ net.brehaut.ClojureTools = (function (SH) {
   (reader-url [this] (.url this))
   (read [this] (read-variants this))
   (read [this option] (read-variants this option))
-  (indexed? [_] false)
+  (indexed? [_]
+    (try
+      @index-delay
+      true
+      (catch FileNotFoundException _
+        false)))
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
@@ -3075,9 +3080,9 @@ net.brehaut.ClojureTools = (function (SH) {
                                (map-indexed (fn [index contig]
                                               [(:id contig) index]))
                                (into {}))
-        kws (mapv keyword (drop 8 (.header rdr)))
-        parse (comp (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
-                    #(parse-data-line % kws))]
+        parse (comp (vcf-util/variant-parser (.meta-info rdr)
+                                             (take 8 (.header rdr)))
+                    #(parse-data-line % nil))]
     (letfn [(step [contigs beg-pointer]
               (when-let [line (.readLine input-stream)]
                 (let [end-pointer (.getFilePointer input-stream)]

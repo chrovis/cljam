@@ -8,7 +8,7 @@
                  [org.clojure/tools.cli "1.0.206"]
                  [org.apache.commons/commons-compress "1.21"]
                  [clj-sub-command "0.6.0"]
-                 [digest "1.4.9"]
+                 [digest "1.4.10"]
                  [bgzf4j "0.1.0"]
                  [com.climate/claypoole "1.1.4"]
                  [camel-snake-kebab "0.4.1"]

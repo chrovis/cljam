@@ -14,7 +14,7 @@
                  [camel-snake-kebab "0.4.2"]
                  [proton "0.2.2"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.1"]
-                                  [cavia "0.5.1"]
+                                  [cavia "0.6.0"]
                                   [criterium "0.4.6"]
                                   [net.totakke/libra "0.1.1"]
                                   [se.haleby/stub-http "0.2.8"]]

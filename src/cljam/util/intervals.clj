@@ -64,4 +64,4 @@
   "Find intervals that are on the given `chr` and overlap the given interval
   [`start` `end`] using indexes created by `index-intervals`."
   [indexed-intervals chr start end]
-  (find-overlap-intervals* (get indexed-intervals chr) start end))
+  (some-> (get indexed-intervals chr) (find-overlap-intervals* start end)))

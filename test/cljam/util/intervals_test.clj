@@ -37,5 +37,6 @@
                      "chr2" 201 240 #{{:chr "chr2" :start 150 :end 250}
                                       {:chr "chr2" :start 180 :end 300}
                                       {:chr "chr2" :start 182 :end 201}
-                                      {:chr "chr2" :start 200 :end 400}})))
+                                      {:chr "chr2" :start 200 :end 400}}
+                     "chr3" 1 10 #{})))
                :sorted-map :nclist))

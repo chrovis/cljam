@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+* Bump xcoo/clj-lint-action from 1.1.9 to 1.1.10. [#246](https://github.com/chrovis/cljam/pull/246)
+
+### Fixed
+* Fix error that occurs when querying intervals for missing chr. [#247](https://github.com/chrovis/cljam/pull/247)
+
 ## [0.8.1] - 2021-09-28
 
 ### Added

@@ -15,13 +15,13 @@ cljam is available as a Maven artifact from [Clojars](https://clojars.org/cljam)
 Clojure CLI/deps.edn:
 
 ```clojure
-cljam {:mvn/version "0.8.1"}
+cljam {:mvn/version "0.8.2"}
 ```
 
 Leiningen/Boot:
 
 ```clojure
-[cljam "0.8.1"]
+[cljam "0.8.2"]
 ```
 
 ## Breaking changes in 0.8.0

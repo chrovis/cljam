@@ -1,6 +1,6 @@
 # Change Log
 
-## [Unreleased]
+## [0.8.2] - 2021-09-30
 
 ### Changed
 * Bump xcoo/clj-lint-action from 1.1.9 to 1.1.10. [#246](https://github.com/chrovis/cljam/pull/246)
@@ -474,7 +474,8 @@ represents the first three bases of chromosome 1.
 
 First release
 
-[Unreleased]: https://github.com/chrovis/cljam/compare/0.8.1...HEAD
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.8.2...HEAD
+[0.8.2]: https://github.com/chrovis/cljam/compare/0.8.1...0.8.2
 [0.8.1]: https://github.com/chrovis/cljam/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/chrovis/cljam/compare/0.7.4...0.8.0
 [0.7.4]: https://github.com/chrovis/cljam/compare/0.7.3...0.7.4

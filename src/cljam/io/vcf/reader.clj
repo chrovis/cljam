@@ -61,7 +61,7 @@
 (defn- dot->nil
   [^String s]
   ;; Avoid calling equiv on strings.
-  (if (and (= 1 (.length s)) (= \. (.charAt s 0))) nil s))
+  (when-not (and (= 1 (.length s)) (= \. (.charAt s 0))) s))
 
 ;; Loading meta-information
 ;; ------------------------

@@ -3,7 +3,7 @@
   :url "https://github.com/chrovis/cljam"
   :license {:name "Apache License, Version 2.0"
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
-  :dependencies [[org.clojure/core.memoize "1.0.250"]
+  :dependencies [[org.clojure/core.memoize "1.0.253"]
                  [org.clojure/tools.logging "1.1.0"]
                  [org.clojure/tools.cli "1.0.206"]
                  [org.apache.commons/commons-compress "1.21"]

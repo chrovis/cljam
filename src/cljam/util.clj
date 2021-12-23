@@ -1,6 +1,7 @@
 (ns cljam.util
   "General utilities."
-  (:require [clojure.java.io :as cio])
+  (:require [clojure.java.io :as cio]
+            [cljam.io.util.bgzf :as bgzf])
   (:import [java.net MalformedURLException URL]
            [java.nio.file Files FileVisitor FileVisitResult]
            [java.nio.file.attribute FileAttribute]
@@ -117,19 +118,22 @@
         is))))
 
 (defn ^java.io.OutputStream compressor-output-stream
-  "Returns a compressor output stream from f and a compressor type k. k must be
-  selected from :gzip or :bzip2. Autodetects the compressor type from the
-  extension of f if k is not passed. Returns java.io.BufferedOutputStream if the
-  compressor type is not known. Should be used inside with-open to ensure the
-  OutputStream is properly closed."
+  "Returns a compressor output stream from `f` and a compressor type `k`. `k`
+  must be selected from `:bgzip`, `:gzip` or `:bzip2`. Autodetects the
+  compressor type from the extension of `f` if `k` is not passed. Returns
+  `java.io.BufferedOutputStream` if the compressor type is not known. Should be
+  used inside with-open to ensure the OutputStream is properly closed."
   ([f]
    (compressor-output-stream f (condp re-find (.getPath (as-url f))
-                                 #"(?i)\.(gz|gzip)$" :gzip
+                                 #"(?i)\.(bgz|bgzip|gz)$" :bgzip
+                                 #"(?i)\.gzip$" :gzip
                                  #"(?i)\.(bz2|bzip2)$" :bzip2
                                  nil)))
   ([f k]
-   (let [os (cio/output-stream f)]
-     (if-let [s (get compressor-map k)]
-       (-> (CompressorStreamFactory.)
-           (.createCompressorOutputStream s os))
-       os))))
+   (if (= :bgzip k)
+     (bgzf/make-bgzf-output-stream f)
+     (let [os (cio/output-stream f)]
+       (if-let [s (get compressor-map k)]
+         (-> (CompressorStreamFactory.)
+             (.createCompressorOutputStream s os))
+         os)))))

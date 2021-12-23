@@ -180,7 +180,7 @@
     (if-not (or (meta-line? line) (header-line? line))
       (cons (parse-data-line line kws)
             (lazy-seq (read-data-lines rdr header kws)))
-      (read-data-lines rdr header kws))))
+      (recur rdr header kws))))
 
 (defn read-variants
   ([rdr]

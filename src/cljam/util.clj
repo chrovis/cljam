@@ -1,6 +1,7 @@
 (ns cljam.util
   "General utilities."
   (:require [clojure.java.io :as cio]
+            [clojure.tools.logging :as logging]
             [cljam.io.util.bgzf :as bgzf])
   (:import [java.net MalformedURLException URL]
            [java.nio.file Files FileVisitor FileVisitResult]
@@ -26,15 +27,21 @@
   (Files/walkFileTree
    (.toPath dir)
    (reify FileVisitor
-     (visitFile [this# file# attrs#]
-       (Files/deleteIfExists file#)
+     (visitFile [_ file _attrs]
+       (when-not (Files/deleteIfExists file)
+         (logging/warnf
+          "The file could not be deleted because it did not exist: %s"
+          (str file)))
        FileVisitResult/CONTINUE)
-     (visitFileFailed [this# file# exc#]
+     (visitFileFailed [_ _file _exc]
        FileVisitResult/CONTINUE)
-     (preVisitDirectory [this# dir# attrs#]
+     (preVisitDirectory [_ _dir _attrs]
        FileVisitResult/CONTINUE)
-     (postVisitDirectory [this# dir# exc#]
-       (Files/deleteIfExists dir#)
+     (postVisitDirectory [_ dir _exc]
+       (when-not (Files/deleteIfExists dir)
+         (logging/warnf
+          "The directory could not be deleted because it did not exist: %s"
+          (str dir)))
        FileVisitResult/CONTINUE))))
 
 (defmacro with-temp-dir
@@ -112,8 +119,7 @@
   [f]
   (let [is (cio/input-stream f)]
     (try
-      (-> (CompressorStreamFactory. true)
-          (.createCompressorInputStream is))
+      (.createCompressorInputStream (CompressorStreamFactory. true) is)
       (catch CompressorException _
         is))))
 
@@ -134,6 +140,5 @@
      (bgzf/make-bgzf-output-stream f)
      (let [os (cio/output-stream f)]
        (if-let [s (get compressor-map k)]
-         (-> (CompressorStreamFactory.)
-             (.createCompressorOutputStream s os))
+         (.createCompressorOutputStream (CompressorStreamFactory.) s os)
          os)))))

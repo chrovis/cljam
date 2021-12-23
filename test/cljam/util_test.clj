@@ -29,12 +29,10 @@
       (is (deleted? d))
       (is (deleted? e))))
   (testing "users can delete temp directories before entering a finally clause"
-    (try
-      (util/with-temp-dir [d "foo", e "bar"]
-        (cio/delete-file d true)
-        (cio/delete-file e true))
-      (catch Exception e (is false e))
-      (finally (is true))))
+    (is (util/with-temp-dir [d "foo", e "bar"]
+          (cio/delete-file d true)
+          (cio/delete-file e true)
+          true)))
   (testing "automatically deletes subdirectories created by users"
     (let [sub-dirs (util/with-temp-dir [d "foo"]
                      (let [sub-dirs [(cio/file d "bar") (cio/file d "qux")]]

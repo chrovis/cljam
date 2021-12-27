@@ -1,5 +1,16 @@
 # Change Log
 
+## [Unreleased]
+
+### Changed
+* Bump actions/checkout from 2.3.4 to 2.3.5. [#248](https://github.com/chrovis/cljam/pull/248)
+* Bump actions/checkout from 2.3.5 to 2.4.0. [#249](https://github.com/chrovis/cljam/pull/249)
+* Bump actions/cache from 2.1.6 to 2.1.7. [#250](https://github.com/chrovis/cljam/pull/250)
+
+### Fixed
+* Avoid StackOverflowError while reading a VCF with many lines of meta. [#252](https://github.com/chrovis/cljam/pull/252)
+* Use bgzip as default for writing `.gz` files. [#253](https://github.com/chrovis/cljam/pull/253)
+
 ## [0.8.2] - 2021-09-30
 
 ### Changed

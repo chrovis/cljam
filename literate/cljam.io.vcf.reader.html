@@ -2919,7 +2919,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- dot-&gt;nil
   [^String s]
   ;; Avoid calling equiv on strings.
-  (if (and (= 1 (.length s)) (= \. (.charAt s 0))) nil s))</pre></td></tr><tr><td class="docs"><h2>Loading meta-information</h2>
+  (when-not (and (= 1 (.length s)) (= \. (.charAt s 0))) s))</pre></td></tr><tr><td class="docs"><h2>Loading meta-information</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- meta-line?
   [line]
@@ -3023,7 +3023,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (if-not (or (meta-line? line) (header-line? line))
       (cons (parse-data-line line kws)
             (lazy-seq (read-data-lines rdr header kws)))
-      (read-data-lines rdr header kws))))</pre></td></tr><tr><td class="docs">
+      (recur rdr header kws))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn read-variants
   ([rdr]
    (read-variants rdr {}))

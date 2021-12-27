@@ -3,8 +3,8 @@
   :url "https://github.com/chrovis/cljam"
   :license {:name "Apache License, Version 2.0"
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
-  :dependencies [[org.clojure/core.memoize "1.0.250"]
-                 [org.clojure/tools.logging "1.1.0"]
+  :dependencies [[org.clojure/core.memoize "1.0.253"]
+                 [org.clojure/tools.logging "1.2.3"]
                  [org.clojure/tools.cli "1.0.206"]
                  [org.apache.commons/commons-compress "1.21"]
                  [clj-sub-command "0.6.0"]
@@ -35,8 +35,8 @@
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
              :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]]}
              :uberjar {:dependencies [[org.clojure/clojure "1.10.3"]
-                                      [org.apache.logging.log4j/log4j-api "2.14.1"]
-                                      [org.apache.logging.log4j/log4j-core "2.14.1"]]
+                                      [org.apache.logging.log4j/log4j-api "2.17.0"]
+                                      [org.apache.logging.log4j/log4j-core "2.17.0"]]
                        :resource-paths ["bin-resources"]
                        :main cljam.tools.main
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]

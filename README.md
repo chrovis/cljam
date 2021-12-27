@@ -157,6 +157,7 @@ Sorted by first commit.
 - Yuji Ito ([@yito88](https://github.com/yito88))
 - Akira Inoue ([@niyarin](https://github.com/niyarin))
 - Atsushi Kitahara ([@xckitahara](https://github.com/xckitahara))
+- Kei Komazaki ([@k-kom](https://github.com/k-kom))
 
 ## License
 

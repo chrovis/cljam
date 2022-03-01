@@ -10,7 +10,7 @@ jobs:
         java: [ '8', '11', '16', '17-ea']
     name: Java ${{ matrix.java }}
     steps:
-    - uses: actions/checkout@v2.4.0
+    - uses: actions/checkout@v3
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
@@ -44,7 +44,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-18.04
     steps:
-    - uses: actions/checkout@v2.4.0
+    - uses: actions/checkout@v3
     - name: Setup Java
       uses: actions/setup-java@v2
       with:

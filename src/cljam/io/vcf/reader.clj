@@ -109,7 +109,7 @@
 
 (defn parse-meta-info-line
   [line]
-  (let [[_ k* v] (re-find #"^##([\w:/\.\?\-]*)=(.*)$" line)
+  (let [[_ k* v] (re-find #"^##([\w:/\.\?\-\s]*)=(.*)$" line)
         k (->kebab-case-keyword k*)]
     [k (if-let [[_ s] (re-find #"^<(.+)>$" v)]
          (cond-> (parse-structured-line s)

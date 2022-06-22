@@ -48,17 +48,18 @@
                     93)))
            short-array))))
 
-(deftype PosBase [^char base indel])
+(deftype PosBase [^char base indel ^int pos])
 
 (defn- seqs-at-ref
   [idx ^String s]
   (->> idx
        (map (fn [[op x xs]]
-              (let [c (if (number? x) (.charAt s x) x)]
+              (let [c (if (number? x) (.charAt s x) x)
+                    rel-pos (if (number? x) (inc x) -1)]
                 (case op
-                  :m (->PosBase c nil)
-                  :d (->PosBase c xs)
-                  :i (->PosBase c (subs s (first xs) (last xs)))))))
+                  :m (->PosBase c nil rel-pos)
+                  :d (->PosBase c xs rel-pos)
+                  :i (->PosBase c (subs s (first xs) (last xs)) rel-pos)))))
        object-array))
 
 (defn index-cigar
@@ -92,7 +93,8 @@
         ^PosBase pb (aget ^objects (:seqs-at-ref aln) relative-pos)
         base (.base pb)
         indel (.indel pb)
-        deletion? (number? indel)]
+        qpos (.pos pb)
+        deletion? (= \* base)]
     (plpio/->PileupBase
      (zero? relative-pos)
      (.mapq aln)
@@ -101,7 +103,8 @@
      (flag/reversed? (.flag aln))
      (= ref-pos (.end aln))
      (when-not deletion? indel)
-     (when deletion? indel)
+     (when deletion? indel) ;; TODO this is incorrect IMO - D in the cigar refers to the base _after_ this in the ref, so this field is set for the wrong column!
+     qpos
      (.qname aln)
      (dissoc aln :seqs-at-ref :quals-at-ref))))
 

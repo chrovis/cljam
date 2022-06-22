@@ -1,23 +1,23 @@
-(defproject cljam "0.8.2-SNAPSHOT"
+(defproject cljam "0.8.4-SNAPSHOT"
   :description "A DNA Sequence Alignment/Map (SAM) library for Clojure"
   :url "https://github.com/chrovis/cljam"
   :license {:name "Apache License, Version 2.0"
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
-  :dependencies [[org.clojure/core.memoize "1.0.236"]
-                 [org.clojure/tools.logging "1.1.0"]
-                 [org.clojure/tools.cli "1.0.194"]
-                 [org.apache.commons/commons-compress "1.20"]
+  :dependencies [[org.clojure/core.memoize "1.0.253"]
+                 [org.clojure/tools.logging "1.2.3"]
+                 [org.clojure/tools.cli "1.0.206"]
+                 [org.apache.commons/commons-compress "1.21"]
                  [clj-sub-command "0.6.0"]
-                 [digest "1.4.9"]
+                 [digest "1.4.10"]
                  [bgzf4j "0.1.0"]
                  [com.climate/claypoole "1.1.4"]
-                 [camel-snake-kebab "0.4.1"]
-                 [proton "0.1.8"]]
-  :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.1"]
+                 [camel-snake-kebab "0.4.2"]
+                 [proton "0.2.2"]]
+  :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.3"]
                                   [cavia "0.5.1"]
                                   [criterium "0.4.6"]
                                   [net.totakke/libra "0.1.1"]
-                                  [se.haleby/stub-http "0.2.8"]]
+                                  [se.haleby/stub-http "0.2.10"]]
                    :plugins [[lein-binplus "0.6.6" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.7"]
                              [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]
@@ -33,10 +33,10 @@
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
-             :1.10 {:dependencies [[org.clojure/clojure "1.10.1"]]}
-             :uberjar {:dependencies [[org.clojure/clojure "1.10.1"]
-                                      [org.apache.logging.log4j/log4j-api "2.13.3"]
-                                      [org.apache.logging.log4j/log4j-core "2.13.3"]]
+             :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]]}
+             :uberjar {:dependencies [[org.clojure/clojure "1.10.3"]
+                                      [org.apache.logging.log4j/log4j-api "2.17.0"]
+                                      [org.apache.logging.log4j/log4j-core "2.17.0"]]
                        :resource-paths ["bin-resources"]
                        :main cljam.tools.main
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]

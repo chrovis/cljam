@@ -61,7 +61,7 @@
 (defn- dot->nil
   [^String s]
   ;; Avoid calling equiv on strings.
-  (if (and (= 1 (.length s)) (= \. (.charAt s 0))) nil s))
+  (when-not (and (= 1 (.length s)) (= \. (.charAt s 0))) s))
 
 ;; Loading meta-information
 ;; ------------------------
@@ -180,7 +180,7 @@
     (if-not (or (meta-line? line) (header-line? line))
       (cons (parse-data-line line kws)
             (lazy-seq (read-data-lines rdr header kws)))
-      (read-data-lines rdr header kws))))
+      (recur rdr header kws))))
 
 (defn read-variants
   ([rdr]
@@ -243,9 +243,9 @@
                                (map-indexed (fn [index contig]
                                               [(:id contig) index]))
                                (into {}))
-        kws (mapv keyword (drop 8 (.header rdr)))
-        parse (comp (vcf-util/variant-parser (.meta-info rdr) (.header rdr))
-                    #(parse-data-line % kws))]
+        parse (comp (vcf-util/variant-parser (.meta-info rdr)
+                                             (take 8 (.header rdr)))
+                    #(parse-data-line % nil))]
     (letfn [(step [contigs beg-pointer]
               (when-let [line (.readLine input-stream)]
                 (let [end-pointer (.getFilePointer input-stream)]

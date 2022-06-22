@@ -89,7 +89,9 @@
     (qual/phred-bytes->fastq b)))
 
 (defn decode-seq [seq-bytes length]
-  (sam-seq/compressed-bases->str length seq-bytes 0))
+  (if (zero? length)
+    "*"
+    (sam-seq/compressed-bases->str length seq-bytes 0)))
 
 (defn decode-next-ref-id [refs ^long ref-id ^long next-ref-id]
   (if (= next-ref-id -1)

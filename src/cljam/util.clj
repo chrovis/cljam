@@ -1,6 +1,8 @@
 (ns cljam.util
   "General utilities."
-  (:require [clojure.java.io :as cio])
+  (:require [clojure.java.io :as cio]
+            [clojure.tools.logging :as logging]
+            [cljam.io.util.bgzf :as bgzf])
   (:import [java.net MalformedURLException URL]
            [java.nio.file Files FileVisitor FileVisitResult]
            [java.nio.file.attribute FileAttribute]
@@ -25,15 +27,21 @@
   (Files/walkFileTree
    (.toPath dir)
    (reify FileVisitor
-     (visitFile [this# file# attrs#]
-       (Files/deleteIfExists file#)
+     (visitFile [_ file _attrs]
+       (when-not (Files/deleteIfExists file)
+         (logging/warnf
+          "The file could not be deleted because it did not exist: %s"
+          (str file)))
        FileVisitResult/CONTINUE)
-     (visitFileFailed [this# file# exc#]
+     (visitFileFailed [_ _file _exc]
        FileVisitResult/CONTINUE)
-     (preVisitDirectory [this# dir# attrs#]
+     (preVisitDirectory [_ _dir _attrs]
        FileVisitResult/CONTINUE)
-     (postVisitDirectory [this# dir# exc#]
-       (Files/deleteIfExists dir#)
+     (postVisitDirectory [_ dir _exc]
+       (when-not (Files/deleteIfExists dir)
+         (logging/warnf
+          "The directory could not be deleted because it did not exist: %s"
+          (str dir)))
        FileVisitResult/CONTINUE))))
 
 (defmacro with-temp-dir
@@ -111,25 +119,26 @@
   [f]
   (let [is (cio/input-stream f)]
     (try
-      (-> (CompressorStreamFactory. true)
-          (.createCompressorInputStream is))
+      (.createCompressorInputStream (CompressorStreamFactory. true) is)
       (catch CompressorException _
         is))))
 
 (defn ^java.io.OutputStream compressor-output-stream
-  "Returns a compressor output stream from f and a compressor type k. k must be
-  selected from :gzip or :bzip2. Autodetects the compressor type from the
-  extension of f if k is not passed. Returns java.io.BufferedOutputStream if the
-  compressor type is not known. Should be used inside with-open to ensure the
-  OutputStream is properly closed."
+  "Returns a compressor output stream from `f` and a compressor type `k`. `k`
+  must be selected from `:bgzip`, `:gzip` or `:bzip2`. Autodetects the
+  compressor type from the extension of `f` if `k` is not passed. Returns
+  `java.io.BufferedOutputStream` if the compressor type is not known. Should be
+  used inside with-open to ensure the OutputStream is properly closed."
   ([f]
    (compressor-output-stream f (condp re-find (.getPath (as-url f))
-                                 #"(?i)\.(gz|gzip)$" :gzip
+                                 #"(?i)\.(bgz|bgzip|gz)$" :bgzip
+                                 #"(?i)\.gzip$" :gzip
                                  #"(?i)\.(bz2|bzip2)$" :bzip2
                                  nil)))
   ([f k]
-   (let [os (cio/output-stream f)]
-     (if-let [s (get compressor-map k)]
-       (-> (CompressorStreamFactory.)
-           (.createCompressorOutputStream s os))
-       os))))
+   (if (= :bgzip k)
+     (bgzf/make-bgzf-output-stream f)
+     (let [os (cio/output-stream f)]
+       (if-let [s (get compressor-map k)]
+         (.createCompressorOutputStream (CompressorStreamFactory.) s os)
+         os)))))

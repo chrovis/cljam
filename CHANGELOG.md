@@ -1,6 +1,25 @@
 # Change Log
 
-## [Unreleased]
+## [0.8.3] - 2021-12-27
+
+### Changed
+* Bump actions/checkout from 2.3.4 to 2.3.5. [#248](https://github.com/chrovis/cljam/pull/248)
+* Bump actions/checkout from 2.3.5 to 2.4.0. [#249](https://github.com/chrovis/cljam/pull/249)
+* Bump actions/cache from 2.1.6 to 2.1.7. [#250](https://github.com/chrovis/cljam/pull/250)
+
+### Fixed
+* Avoid StackOverflowError while reading a VCF with many lines of meta. [#252](https://github.com/chrovis/cljam/pull/252)
+* Use bgzip as default for writing `.gz` files. [#253](https://github.com/chrovis/cljam/pull/253)
+
+## [0.8.2] - 2021-09-30
+
+### Changed
+* Bump xcoo/clj-lint-action from 1.1.9 to 1.1.10. [#246](https://github.com/chrovis/cljam/pull/246)
+
+### Fixed
+* Fix error that occurs when querying intervals for missing chr. [#247](https://github.com/chrovis/cljam/pull/247)
+
+## [0.8.1] - 2021-09-28
 
 ### Added
 
@@ -19,6 +38,31 @@
 * Bump codecov/codecov-action from v1.0.13 to v1.0.14. [#213](https://github.com/chrovis/cljam/pull/213)
 * Bump codecov/codecov-action from v1.0.14 to v1.0.15. [#214](https://github.com/chrovis/cljam/pull/214)
 * Update java versions for testing. [#215](https://github.com/chrovis/cljam/pull/215)
+* Bump codecov/codecov-action from v1.0.15 to v1.1.0. [#216](https://github.com/chrovis/cljam/pull/216)
+* Bump codecov/codecov-action from v1.1.0 to v1.1.1. [#217](https://github.com/chrovis/cljam/pull/217)
+* Bump codecov/codecov-action from v1.1.1 to v1.2.0. [#218](https://github.com/chrovis/cljam/pull/218)
+* Bump codecov/codecov-action from v1.2.0 to v1.2.1. [#219](https://github.com/chrovis/cljam/pull/219)
+* Bump actions/cache from v2 to v2.1.4. [#220](https://github.com/chrovis/cljam/pull/220)
+* Bump codecov/codecov-action from v1.2.1 to v1.2.2. [#221](https://github.com/chrovis/cljam/pull/221)
+* Bump codecov/codecov-action from v1.2.2 to v1.3.1. [#222](https://github.com/chrovis/cljam/pull/222)
+* Bump codecov/codecov-action from v1.3.1 to v1.3.2. [#225](https://github.com/chrovis/cljam/pull/225)
+* Update actions/setup-java to v2. [#226](https://github.com/chrovis/cljam/pull/226)
+* Bump actions/cache from v2.1.4 to v2.1.5. [#227](https://github.com/chrovis/cljam/pull/227)
+* Bump codecov/codecov-action from v1.3.2 to v1.4.0. [#229](https://github.com/chrovis/cljam/pull/229)
+* Bump codecov/codecov-action from v1.4.0 to v1.4.1. [#230](https://github.com/chrovis/cljam/pull/230)
+* Bump xcoo/clj-lint-action from v1.1.7 to v1.1.8. [#231](https://github.com/chrovis/cljam/pull/231)
+* Bump codecov/codecov-action from v1.4.1 to v1.5.0. [#232](https://github.com/chrovis/cljam/pull/232)
+* Bump actions/checkout from 2 to 2.3.4. [#233](https://github.com/chrovis/cljam/pull/233)
+* Bump actions/cache from 2.1.5 to 2.1.6. [#234](https://github.com/chrovis/cljam/pull/234)
+* Bump xcoo/clj-lint-action from 1.1.8 to 1.1.9. [#235](https://github.com/chrovis/cljam/pull/235)
+* Add explanation to info exception. [#236](https://github.com/chrovis/cljam/pull/236)
+* Bump codecov/codecov-action from 1.5.0 to 1.5.2. [#237](https://github.com/chrovis/cljam/pull/237)
+* Fix bam encoder/decoder to convert sam to bam. [#239](https://github.com/chrovis/cljam/pull/239)
+* Fix parser generation not to interpret unnecessary data when calculat…. [#241](https://github.com/chrovis/cljam/pull/241)
+* Bump codecov/codecov-action from 1.5.2 to 2.0.1. [#242](https://github.com/chrovis/cljam/pull/242)
+* Bump codecov/codecov-action from 2.0.1 to 2.0.2. [#243](https://github.com/chrovis/cljam/pull/243)
+* Bump codecov/codecov-action from 2.0.2 to 2.0.3. [#244](https://github.com/chrovis/cljam/pull/244)
+* Bump codecov/codecov-action from 2.0.3 to 2.1.0. [#245](https://github.com/chrovis/cljam/pull/245)
 
 ## [0.8.0] - 2020-06-22
 
@@ -441,7 +485,10 @@ represents the first three bases of chromosome 1.
 
 First release
 
-[Unreleased]: https://github.com/chrovis/cljam/compare/0.8.0...HEAD
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.8.3...HEAD
+[0.8.3]: https://github.com/chrovis/cljam/compare/0.8.2...0.8.3
+[0.8.2]: https://github.com/chrovis/cljam/compare/0.8.1...0.8.2
+[0.8.1]: https://github.com/chrovis/cljam/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/chrovis/cljam/compare/0.7.4...0.8.0
 [0.7.4]: https://github.com/chrovis/cljam/compare/0.7.3...0.7.4
 [0.7.3]: https://github.com/chrovis/cljam/compare/0.7.2...0.7.3

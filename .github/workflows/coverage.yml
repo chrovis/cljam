@@ -6,9 +6,9 @@ jobs:
   coverage:
     runs-on: ubuntu-18.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Cache m2 repository
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
@@ -21,7 +21,7 @@ jobs:
         lein cloverage --codecov
         bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
     - name: Coverage Graph
-      uses: codecov/codecov-action@v1.2.1
+      uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./target/coverage/codecov.json

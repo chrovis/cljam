@@ -15,13 +15,13 @@ cljam is available as a Maven artifact from [Clojars](https://clojars.org/cljam)
 Clojure CLI/deps.edn:
 
 ```clojure
-cljam {:mvn/version "0.8.0"}
+cljam {:mvn/version "0.8.3"}
 ```
 
 Leiningen/Boot:
 
 ```clojure
-[cljam "0.8.0"]
+[cljam "0.8.3"]
 ```
 
 ## Breaking changes in 0.8.0
@@ -157,10 +157,11 @@ Sorted by first commit.
 - Yuji Ito ([@yito88](https://github.com/yito88))
 - Akira Inoue ([@niyarin](https://github.com/niyarin))
 - Atsushi Kitahara ([@xckitahara](https://github.com/xckitahara))
+- Kei Komazaki ([@k-kom](https://github.com/k-kom))
 
 ## License
 
-Copyright 2013-2020 [Xcoo, Inc.](https://xcoo.jp/)
+Copyright 2013-2021 [Xcoo, Inc.](https://xcoo.jp/)
 
 Licensed under the [Apache License, Version 2.0](LICENSE).
 

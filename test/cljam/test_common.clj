@@ -131,6 +131,9 @@
 (def opts-sam-file "test-resources/sam/opts.sam")
 
 (def seq-asterisk-sam-file "test-resources/sam/seq-asterisk.sam")
+
+(def long-cigar-operations-sam-file "test-resources/sam/long_cigar_operations.sam")
+
 ;; ### BAM files
 
 (def test-bam-file "test-resources/bam/test.bam")
@@ -140,6 +143,7 @@
 (def medium-bam-file "test-resources/bam/medium.bam")
 (def seq-asterisk-bam-file "test-resources/bam/seq-asterisk.bam")
 (def large-bam-file (cavia/resource mycavia "large.bam"))
+(def long-cigar-operations-bam-file "test-resources/bam/long_cigar_operations.bam")
 
 (def dedupe-before-bam-file "test-resources/bam/dedupe_before.bam")
 (def dedupe-after-bam-file "test-resources/bam/dedupe_after.bam")

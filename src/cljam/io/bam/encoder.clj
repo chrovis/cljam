@@ -82,8 +82,26 @@
        read-length
        ^long (get-options-size aln))))
 
+(defn- long-cigar->placeholder* [cigar regex op]
+  (->> cigar
+       (re-seq regex)
+       (map #(Integer/parseInt (re-find  #"\d+" %)))
+       (apply +)
+       (#(str % op))))
+
+(defn- long-cigar->placeholder
+  [cigar]
+  (str
+   (long-cigar->placeholder* cigar #"\d+[MIS=X]" "S")
+   (long-cigar->placeholder* cigar #"\d+[MDN=X]" "N")))
+
+(defn- add-cigar-to-options
+  [options cigar]
+  (cons {:CG {:type "Z", :value cigar}} options))
+
 (defn encode-alignment [wrtr aln refs]
-  (let [aln (update aln :seq #(if (= % "*") "" %))]
+  (let [aln (update aln :seq #(if (= % "*") "" %))
+        [cigar op*] (if (> 65536 (cigar/count-op (:cigar aln))) [(:cigar aln) (:options aln)] [(long-cigar->placeholder (:cigar aln)) (add-cigar-to-options (:options aln) (:cigar aln))])]
     ;; refID
     (lsb/write-int wrtr (or (refs/ref-id refs (:rname aln)) -1))
     ;; pos
@@ -93,7 +111,7 @@
     (lsb/write-ubyte wrtr (short (:mapq aln)))
     (lsb/write-ushort wrtr (sam-util/compute-bin aln))
     ;; flag_nc
-    (lsb/write-ushort wrtr (cigar/count-op (:cigar aln)))
+    (lsb/write-ushort wrtr (cigar/count-op cigar))
     (lsb/write-ushort wrtr (:flag aln))
     ;; l_seq
     (lsb/write-int wrtr (.length ^String (:seq aln)))
@@ -107,15 +125,14 @@
     (lsb/write-string wrtr (:qname aln))
     (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
     ;; cigar
-    (doseq [cigar (cigar/encode-cigar (:cigar aln))]
+    (doseq [cigar (cigar/encode-cigar cigar)]
       (lsb/write-int wrtr cigar))
     ;; seq
     (lsb/write-bytes wrtr (seq/str->compressed-bases (:seq aln)))
     ;; qual
     (lsb/write-bytes wrtr (encode-qual aln))
-
     ;; options
-    (doseq [op (:options aln)]
+    (doseq [op op*]
       (let [[tag value] (first (seq op))]
         (lsb/write-short
          wrtr

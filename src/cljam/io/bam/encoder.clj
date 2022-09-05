@@ -66,7 +66,7 @@
                 (lsb/write-bytes writer (byte-array 1 (byte \S)))
                 (lsb/write-int writer (count array))
                 (doseq [v array]
-                  (lsb/write-short writer (Short/parseShort v))))
+                  (lsb/write-ushort writer (Integer/parseInt v))))
            \i nil
            \I nil
            \f nil))))

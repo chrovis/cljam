@@ -34,6 +34,8 @@
               opts-sam-file
               seq-asterisk-sam-file
               seq-asterisk-bam-file
+              include-BS-type-option-sam-file
+              include-BS-type-option-bam-file
               opts-bam-file
               test-sam-blocks
               test-bai-file
@@ -298,7 +300,8 @@
                  (is (= (seq alignments)
                         (seq (sam/read-alignments bam-rdr)))))))))
     test-sam-file
-    seq-asterisk-sam-file))
+    seq-asterisk-sam-file
+    include-BS-type-option-sam-file))
 
 (deftest bam->sam-convert-test
   (are [target-bam]
@@ -316,7 +319,8 @@
                  (is (= (seq alignments)
                         (seq (sam/read-alignments sam-rdr)))))))))
     test-bam-file
-    seq-asterisk-bam-file))
+    seq-asterisk-bam-file
+    include-BS-type-option-bam-file))
 
 (deftest sam-writer-test
   (with-before-after {:before (prepare-cache!)

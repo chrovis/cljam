@@ -131,6 +131,9 @@
 (def opts-sam-file "test-resources/sam/opts.sam")
 
 (def seq-asterisk-sam-file "test-resources/sam/seq-asterisk.sam")
+
+(def include-BS-type-option-sam-file "test-resources/sam/include-BS-type-option.sam")
+
 ;; ### BAM files
 
 (def test-bam-file "test-resources/bam/test.bam")
@@ -147,6 +150,8 @@
 (def normalize-before-bam-file "test-resources/bam/normalize_before.bam")
 (def normalize-after-bam-file "test-resources/bam/normalize_after.bam")
 (def opts-bam-file "test-resources/bam/opts.bam")
+
+(def include-BS-type-option-bam-file "test-resources/bam/include-BS-type-option.bam")
 
 ;; ### BAM index files
 

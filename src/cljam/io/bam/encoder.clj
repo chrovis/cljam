@@ -52,24 +52,35 @@
 (defn- encode-tag-value [writer val-type value]
   (case val-type
     \A (lsb/write-char writer (char value))
+    \c (lsb/write-ubyte writer (byte value))
+    \C (lsb/write-ubyte writer (int value))
+    \s (lsb/write-short writer (short value))
+    \S (lsb/write-ushort writer (int value))
     \i (lsb/write-int writer (int value))
+    \I (lsb/write-uint writer (long value))
     \f (lsb/write-float writer (float value))
     \Z (do (lsb/write-string writer value)
            (lsb/write-char writer (char 0)))
     ;; \H nil
     \B (let [[array-type & array] (cstr/split value #",")]
+         (lsb/write-bytes writer (byte-array 1 (byte (first array-type))))
+         (lsb/write-int writer (count array))
          (case (first array-type)
-           \c nil
-           \C nil
-           \s nil
-           \S (do
-                (lsb/write-bytes writer (byte-array 1 (byte \S)))
-                (lsb/write-int writer (count array))
-                (doseq [v array]
-                  (lsb/write-ushort writer (Integer/parseInt v))))
-           \i nil
-           \I nil
-           \f nil))))
+           \c (doseq [v array]
+                (lsb/write-ubyte writer (Byte/parseByte v)))
+           \C (doseq [v array]
+                (lsb/write-ubyte writer (Integer/parseInt v)))
+           \s (doseq [v array]
+                (lsb/write-short writer (Short/parseShort v)))
+           \S (doseq [v array]
+                (lsb/write-ushort writer (Integer/parseInt v)))
+           \i (doseq [v array]
+                (lsb/write-int writer (Integer/parseInt v)))
+           \I (doseq [v array]
+                (lsb/write-uint writer (Long/parseLong v)))
+           \f (doseq [v array]
+                (lsb/write-float writer (Float/parseFloat v))))
+         writer)))
 
 (defn get-block-size [aln]
   (let [read-length (.length ^String (:seq aln))

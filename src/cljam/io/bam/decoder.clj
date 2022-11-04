@@ -102,6 +102,14 @@
 
 (defrecord BAMRawBlock [data ^long pointer-beg ^long pointer-end])
 
+(defn- B-I-type-cigar-str->cigar-str
+  [B-I-type-cigar]
+  (let [xs (cstr/split (subs B-I-type-cigar 2) #",")
+        bb (doto (ByteBuffer/allocate (* 4 (count xs)))
+             (.order ByteOrder/LITTLE_ENDIAN))]
+    (doseq [x xs] (.putInt bb (Long/parseLong x)))
+    (first (cigar/decode-cigar-and-ref-length (.array bb)))))
+
 (defn decode-alignment
   "Decodes BAM block and creates SAMAlignment instance which is compatible with SAM.
   When called with start and end, this function may return nil if any base of the block
@@ -129,9 +137,14 @@
          seq         (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
          qual        (decode-qual (lsb/read-bytes buffer l-seq))
          rest        (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
-         options     (decode-options rest)]
+         options     (decode-options rest)
+         [cigar* options*]
+         (if-let [cg (and (cigar/placeholder? cigar-bytes)
+                          (:value (some :CG options)))]
+           [(B-I-type-cigar-str->cigar-str cg) (remove :CG options)]
+           [cigar options])]
      (SAMAlignment. qname (int flag) rname (int pos) ref-end (int mapq)
-                    cigar rnext (int pnext) (int tlen) seq qual options)))
+                    cigar* rnext (int pnext) (int tlen) seq qual options*)))
   ([refs block ^long start ^long end]
    (let [buffer          (ByteBuffer/wrap (:data block))
          ref-id          ^int (lsb/read-int buffer)
@@ -157,9 +170,14 @@
                  qual    (decode-qual (lsb/read-bytes buffer l-seq))
                  rest    (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
                  rname   (or (refs/ref-name refs ref-id) "*")
-                 options (decode-options rest)]
+                 options (decode-options rest)
+                 [cigar* options*]
+                 (if-let [cg (and (cigar/placeholder? cigar-bytes)
+                                  (:value (some :CG options)))]
+                   [(B-I-type-cigar-str->cigar-str cg) (remove :CG options)]
+                   [cigar options])]
              (SAMAlignment. qname (int flag) rname (int pos) ref-end (int mapq)
-                            cigar rnext (int pnext) (int tlen) seq qual options))))))))
+                            cigar* rnext (int pnext) (int tlen) seq qual options*))))))))
 
 (defn decode-region-block
   "Decodes BAM block and returns a SAMRegionBlock instance containing covering range of the alignment."

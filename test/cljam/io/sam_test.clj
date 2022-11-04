@@ -31,6 +31,8 @@
               medium-sam-refs
               large-bam-file
               large-sam-refs
+              long-cigar-operations-bam-file
+              long-cigar-operations-sam-file
               opts-sam-file
               seq-asterisk-sam-file
               seq-asterisk-bam-file
@@ -301,7 +303,8 @@
                         (seq (sam/read-alignments bam-rdr)))))))))
     test-sam-file
     seq-asterisk-sam-file
-    include-BS-type-option-sam-file))
+    include-BS-type-option-sam-file
+    long-cigar-operations-sam-file))
 
 (deftest bam->sam-convert-test
   (are [target-bam]
@@ -320,7 +323,8 @@
                         (seq (sam/read-alignments sam-rdr)))))))))
     test-bam-file
     seq-asterisk-bam-file
-    include-BS-type-option-bam-file))
+    include-BS-type-option-bam-file
+    long-cigar-operations-bam-file))
 
 (deftest sam-writer-test
   (with-before-after {:before (prepare-cache!)

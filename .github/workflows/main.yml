@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
-        java: [ '8', '11', '16', '17-ea']
+        java: [ '8', '11', '16', '17-ea', '19']
     name: Java ${{ matrix.java }}
     steps:
     - uses: actions/checkout@v3

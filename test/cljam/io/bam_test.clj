@@ -12,7 +12,7 @@
             (as-> (#'encoder/encode-tag-value
                    (ByteBuffer/allocate 100) ?type ?value) ^ByteBuffer bb
               (.position bb 0)
-              (decoder/parse-tag-single ?type bb) ?type ?value))
+              (decoder/parse-tag-single ?type bb)))
       \A \@
       \A \A
       \A \z
@@ -55,7 +55,7 @@
             (as-> (#'encoder/encode-tag-value
                    (ByteBuffer/allocate 100) ?type ?value) ^ByteBuffer bb
               (.position bb 0)
-              (decoder/parse-tag-single ?type bb) ?type ?value))
+              (decoder/parse-tag-single ?type bb)))
       \Z "aaaBBB0011223344@@@+++"
       \Z (str "!\"#$%&'()*+,-./0123456789:;<=>?@"
               "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")))

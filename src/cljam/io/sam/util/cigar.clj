@@ -98,6 +98,13 @@
           (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
         [(.toString sb) ref-length]))))
 
+(defn placeholder?
+  "Returns a boolean indicating whether a CIGAR is in `kSmN` format."
+  [^bytes cigar-bytes]
+  (and (= 8 (alength cigar-bytes))
+       (= 4 (bit-and 0xF (aget cigar-bytes 0)))   ;; S
+       (= 3 (bit-and 0xF (aget cigar-bytes 4))))) ;; N
+
 (defn encode-cigar
   "Encodes CIGAR string into a sequence of longs."
   [cigar]
@@ -116,3 +123,20 @@
 (defmethod count-ref (Class/forName "[B")
   [b]
   (count-ref-bytes b))
+
+(defn ->placeholder
+  "Creates an encoded placeholder from a given CIGAR string.
+  The placeholder is in the format of kSmN where k is the read length and m is
+  the reference length. Returns a vector of ints."
+  [cigar-str]
+  (transduce
+   identity
+   (fn
+     ([[^long r ^long q]]
+      [(bit-or (bit-shift-left q 4) 4)
+       (bit-or (bit-shift-left r 4) 3)])
+     ([[^long r ^long q] [n op]]
+      [(+ r (case op (\M \D \N \= \X) (long n) 0))
+       (+ q (case op (\M \I \S \= \X) (long n) 0))]))
+   [0 0]
+   (parse cigar-str)))

@@ -2,8 +2,10 @@
   "Tests for cljam.io.bam.encoder."
   (:require [clojure.test :refer [deftest are testing]]
             [clojure.string :as cstr]
-            [cljam.io.bam.encoder :as encoder])
-  (:import [java.nio ByteBuffer]))
+            [cljam.io.bam.encoder :as encoder]
+            [cljam.test-common :as test-common])
+  (:import [java.io ByteArrayOutputStream DataOutputStream]
+           [java.nio ByteBuffer ByteOrder]))
 
 (defn- get-encoded-option-data [?type ?values]
   (let [bb (ByteBuffer/allocate 200)]
@@ -112,3 +114,105 @@
        0x00 0x00 0x00 0x00
        0x00 0x00 0xb8 0x40
        0xff 0xff 0x7f 0x7f])))
+
+(deftest add-cigar-to-options-test
+  (are [?cigar ?sample-option-list ?expected-option-list]
+       (= ?expected-option-list (#'encoder/add-cigar-to-options ?sample-option-list ?cigar))
+    "45S34N"
+    '({:Xa {:type "A", :value \p}}
+      {:XI {:type "B", :value "I,0,2147483647,4294967295"}})
+    '({:CG {:type "B", :value "I,724,547"}}
+      {:Xa {:type "A", :value \p}}
+      {:XI {:type "B", :value "I,0,2147483647,4294967295"}})
+
+    "1M2I4D8N16S32H64P128=65535X"
+    '()
+    '({:CG {:type "B", :value "I,16,33,66,131,260,517,1030,2055,1048568"}})))
+
+(deftest encode-alignment-test
+  (let [cigar-consisting-of-65535-operations (apply str "1S" (repeat 32767 "1I1M"))
+        seq-for-65535-operations-cigar (apply str (repeat 65535 "A"))
+        aln-65535-cigar-operations-byte
+        (vec (concat
+              [0 0 0 0 ;; refID
+               0 0 0 0 ;; pos
+               5 0 ;; l_read_name, mapq
+               73 2 ;; bin
+               -1 -1 ;; n_cigar_ops
+               0 0 ;; flag
+               -1 -1 0 0 ;;　l_seq
+               -1 -1 -1 -1 ;; next_refID
+               -1 -1 -1 -1 ;; next_pos
+               0 0 0 0 ;; tlen
+               82 48 48 49 0] ;; read_name
+              ;; cigar
+              [20 0 0 0] ;; 1S
+              (take (* 8 32767) (cycle [17 0 0 0 16 0 0 0])) ;; repeat 1I1M
+              (repeat 32767 17) '[16] ;; seq
+              (repeat 65535 -1))) ;; qual
+        cigar-consisting-of-65536-operations (apply str (repeat 32768 "1I1M"))
+        seq-for-65536-operations-cigar (apply str (repeat 65536 "A"))
+        aln-65536-cigar-operations-byte
+        (vec (concat
+              [0 0 0 0 ;; refID
+               0 0 0 0 ;; pos
+               5 0 ;; l_read_name, mapq
+               73 2 ;; bin
+               2 0 ;; n_cigar_op
+               0 0 ;; flag
+               0 0 1 0 ;; l_seq
+               -1 -1 -1 -1 ;; next_refID
+               -1 -1 -1 -1 ;; next_pos
+               0 0 0 0 ;; tlen
+               82 48 48 49 0 ;; read_name
+               4 0 16 0 3 0 8 0] ;; cigar replaced by placeholder "65536S32768N"
+              (repeat 32768 17) ;; seq
+              (repeat 65536 -1) ;; qual
+              ;; options
+              [67 71 66 73] ;; tag: CG, val_type: B-I
+              [0 0 1 0] ;; count
+              (take (* 8 32768) (cycle [17 0 0 0 16 0 0 0])) ;; real cigar: repeat 1I1M
+              ))]
+
+    (are [?aln ?expected-byte]
+         (= (doto (ByteBuffer/wrap (byte-array (map unchecked-byte ?expected-byte)))
+              (.order ByteOrder/LITTLE_ENDIAN))
+            (with-open [baos (ByteArrayOutputStream. 4096)
+                        dos (DataOutputStream. baos)]
+              (encoder/encode-alignment dos ?aln '({:name "ref", :len 0}))
+              (ByteBuffer/wrap (byte-array (.toByteArray baos)))))
+
+      (test-common/to-sam-alignment
+       {:qname "r003", :flag 16, :rname "ref", :pos 29, :end 33, :mapq 30,
+        :cigar "6H5M", :rnext "*", :pnext 0, :tlen 0, :seq "TAGGC", :qual "*",
+        :options ()})
+      [0 0 0 0 ;; refID
+       28 0 0 0 ;; pos
+       5 30 ;; l_read_name, mapq
+       73 18 ;; bin
+       2 0 ;; n_cigar_op
+       16 0 ;; flag
+       5 0 0 0 ;; l_seq
+       -1 -1 -1 -1 ;; next_refID
+       -1 -1 -1 -1 ;; next_pos
+       0 0 0 0 ;; tlen
+       114 48 48 51 0 ;; read_name
+       101 0 0 0 80 0 0 0 ;; cigar
+       -127 68 32 ;; seq
+       -1 -1 -1 -1 -1] ;; qual
+
+      (test-common/to-sam-alignment
+       {:qname "R001" :flag (int 0) :rname "ref" :pos (int 1) :end (int 32767)
+        :seq seq-for-65535-operations-cigar :qual "*"
+        :cigar cigar-consisting-of-65535-operations
+        :rnext "*" :pnext (int 0) :tlen (int 0) :mapq (int 0)
+        :options ()})
+      aln-65535-cigar-operations-byte
+
+      (test-common/to-sam-alignment
+       {:qname "R001" :flag (int 0) :rname "ref" :pos (int 1) :end (int 32768)
+        :seq seq-for-65536-operations-cigar :qual "*"
+        :cigar cigar-consisting-of-65536-operations
+        :rnext "*" :pnext (int 0) :tlen (int 0) :mapq (int 0)
+        :options ()})
+      aln-65536-cigar-operations-byte)))

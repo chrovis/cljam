@@ -78,3 +78,25 @@
     "6M14D1I5M"          [0 1 2 3 4 [:d 5 14] \* \* \* \* \* \* \* \* \* \* \* \* \* [:i \* [6 7]] 7 8 9 10 11]  ;; ^]A T G C A T-14NNNNNNNNNNNNNN * * * * * * * * * * * * * *+1C C A T G C$
     "6M14N1I5M"          [0 1 2 3 4 5 \> \> \> \> \> \> \> \> \> \> \> \> \> [:i \> [6 7]] 7 8 9 10 11] ;; ^]A T G C A T > > > > > > > > > > > > > >+1C C A T G C$
     "1S2M2D3M1D4M3D2M3D3M3I4M3D2M3S" [1 [:d 2 2] \* \* 3 4 [:d 5 1] \* 6 7  8 [:d 9 3] \* \* \* 10 [:d 11 3] \* \* \* 12 13 [:i 14 [15 18]] 18 19 20 [:d 21 3] \* \* \* 22 23]))
+
+(deftest placeholder?
+  (are [?cigar ?expected]
+       (= ?expected
+          (-> ?cigar
+              cigar/encode-cigar
+              ints->bytes
+              cigar/placeholder?))
+    "1S2N" true
+    "123456789S987654321N" true
+    "100000S200000N1000000S" false
+    "1S" false
+    "22S33333M" false
+    "444444444H5555555N" false))
+
+(deftest ->plaeholder
+  (are [?cigar ?expected]
+       (= ?expected (cigar/->placeholder ?cigar))
+    "12H30S140M5I32M" [3316 2755] ;; 207S172N
+    "10M20I100M200I1000M2000I" [53284 17763] ;; 3330S1110N
+    "1M2I4D8N16S32H64P128=256X" [6452 6355] ;; 403S397N
+    ))

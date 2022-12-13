@@ -133,6 +133,7 @@
 (def seq-asterisk-sam-file "test-resources/sam/seq-asterisk.sam")
 
 (def include-BS-type-option-sam-file "test-resources/sam/include-BS-type-option.sam")
+(def long-cigar-operations-sam-file "test-resources/sam/long_cigar_operations.sam")
 
 ;; ### BAM files
 
@@ -152,6 +153,7 @@
 (def opts-bam-file "test-resources/bam/opts.bam")
 
 (def include-BS-type-option-bam-file "test-resources/bam/include-BS-type-option.bam")
+(def long-cigar-operations-bam-file "test-resources/bam/long_cigar_operations.bam")
 
 ;; ### BAM index files
 

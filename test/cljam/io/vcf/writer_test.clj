@@ -18,6 +18,11 @@
 
 (deftest stringify-data-line-qual
   (is (= (#'vcf-writer/stringify-data-line-qual 10.0) "10"))
+  (is (= (#'vcf-writer/stringify-data-line-qual 6e+9) "6.0E9"))
+  (is (= (#'vcf-writer/stringify-data-line-qual 1.0E7) "1.0E7"))
+  (is (= (#'vcf-writer/stringify-data-line-qual 9.999999E6) "9999999.0"))
+  (is (= (#'vcf-writer/stringify-data-line-qual (Float/intBitsToFloat 0x4b000000)) "8388608.0"))
+  (is (= (#'vcf-writer/stringify-data-line-qual (Float/intBitsToFloat 0x4afffffe)) "8388607"))
   (is (= (#'vcf-writer/stringify-data-line-qual 9.6) "9.6"))
   (is (= (#'vcf-writer/stringify-data-line-qual nil) nil)))
 

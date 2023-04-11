@@ -5,7 +5,7 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
   :dependencies [[org.clojure/core.memoize "1.0.257"]
                  [org.clojure/tools.logging "1.2.4"]
-                 [org.clojure/tools.cli "1.0.206"]
+                 [org.clojure/tools.cli "1.0.214"]
                  [org.apache.commons/commons-compress "1.21"]
                  [clj-sub-command "0.6.0"]
                  [digest "1.4.10"]

@@ -185,10 +185,13 @@
   (when v
     (cstr/join \, v)))
 
+(def ^:private ^:const precise-integer-limit 0x800000)
+
 (defn- stringify-data-line-qual
   [x]
   (when x
-    (if (zero? (mod x 1))
+    (if (and (zero? (mod x 1))
+             (< x precise-integer-limit))
       (str (int x))
       (str x))))
 

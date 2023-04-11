@@ -13,7 +13,7 @@
                  [com.climate/claypoole "1.1.4"]
                  [camel-snake-kebab "0.4.3"]
                  [proton "0.2.2"]]
-  :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.3"]
+  :profiles {:dev {:dependencies [[org.clojure/clojure "1.11.1"]
                                   [cavia "0.5.1"]
                                   [criterium "0.4.6"]
                                   [net.totakke/libra "0.1.1"]
@@ -34,7 +34,7 @@
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
              :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]]}
-             :uberjar {:dependencies [[org.clojure/clojure "1.10.3"]
+             :uberjar {:dependencies [[org.clojure/clojure "1.11.1"]
                                       [org.apache.logging.log4j/log4j-api "2.20.0"]
                                       [org.apache.logging.log4j/log4j-core "2.20.0"]]
                        :resource-paths ["bin-resources"]

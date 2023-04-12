@@ -11,7 +11,7 @@ jobs:
       uses: actions/setup-java@v3
       with:
         java-version: '11'
-        distribution: 'adopt'
+        distribution: 'temurin'
         architecture: x64
     - name: Cache m2 repository
       uses: actions/cache@v3

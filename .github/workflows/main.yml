@@ -15,7 +15,7 @@ jobs:
       uses: actions/setup-java@v3
       with:
         java-version: ${{ matrix.java }}
-        distribution: 'adopt'
+        distribution: 'temurin'
         architecture: x64
     - name: Cache m2 repository
       uses: actions/cache@v3
@@ -49,7 +49,7 @@ jobs:
       uses: actions/setup-java@v3
       with:
         java-version: '8'
-        distribution: 'adopt'
+        distribution: 'temurin'
         architecture: x64
     - name: Deploy
       env:

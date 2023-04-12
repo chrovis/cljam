@@ -1,5 +1,23 @@
 # Change Log
 
+## [0.8.4] - 2023-04-12
+
+### Changed
+* Bump actions/checkout from 2.4.0 to 3 [#254](https://github.com/chrovis/cljam/pull/254)
+* Bump actions/cache from 2.1.7 to 3 [#255](https://github.com/chrovis/cljam/pull/255)
+* Bump codecov/codecov-action from 2.1.0 to 3 [#256](https://github.com/chrovis/cljam/pull/256)
+* Bump actions/setup-java from 2 to 3 [#257](https://github.com/chrovis/cljam/pull/257)
+* Bump xcoo/clj-lint-action from 1.1.10 to 1.1.11 [#262](https://github.com/chrovis/cljam/pull/262)
+
+### Fixed
+* Fix error that occurs when encoding a value greater than 32767 with ‘B, S’ data type in encoding alignment in encoding alignment. [#264](https://github.com/chrovis/cljam/pull/264)
+* Fix cljam.io.bam-test to work properly [#266](https://github.com/chrovis/cljam/pull/266)
+* fix: overflowing qual value in vcf [#268](https://github.com/chrovis/cljam/pull/268)
+
+### Added
+* Support CIGARs longer than 65535 operations [#263](https://github.com/chrovis/cljam/pull/263)
+* Extend the supported data types in encoding alignment options [#265](https://github.com/chrovis/cljam/pull/265)
+
 ## [0.8.3] - 2021-12-27
 
 ### Changed
@@ -485,7 +503,8 @@ represents the first three bases of chromosome 1.
 
 First release
 
-[Unreleased]: https://github.com/chrovis/cljam/compare/0.8.3...HEAD
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.8.4...HEAD
+[0.8.4]: https://github.com/chrovis/cljam/compare/0.8.3...0.8.4
 [0.8.3]: https://github.com/chrovis/cljam/compare/0.8.2...0.8.3
 [0.8.2]: https://github.com/chrovis/cljam/compare/0.8.1...0.8.2
 [0.8.1]: https://github.com/chrovis/cljam/compare/0.8.0...0.8.1

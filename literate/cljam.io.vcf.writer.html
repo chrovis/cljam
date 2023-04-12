@@ -3018,10 +3018,12 @@ net.brehaut.ClojureTools = (function (SH) {
   [v]
   (when v
     (cstr/join \, v)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const precise-integer-limit 0x800000)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-data-line-qual
   [x]
   (when x
-    (if (zero? (mod x 1))
+    (if (and (zero? (mod x 1))
+             (&lt; x precise-integer-limit))
       (str (int x))
       (str x))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- ^String stringify-data-line

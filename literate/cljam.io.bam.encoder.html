@@ -2914,24 +2914,35 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- encode-tag-value [writer val-type value]
   (case val-type
     \A (lsb/write-char writer (char value))
+    \c (lsb/write-ubyte writer (byte value))
+    \C (lsb/write-ubyte writer (int value))
+    \s (lsb/write-short writer (short value))
+    \S (lsb/write-ushort writer (int value))
     \i (lsb/write-int writer (int value))
+    \I (lsb/write-uint writer (long value))
     \f (lsb/write-float writer (float value))
     \Z (do (lsb/write-string writer value)
            (lsb/write-char writer (char 0)))
     ;; \H nil
     \B (let [[array-type &amp; array] (cstr/split value #&quot;,&quot;)]
+         (lsb/write-bytes writer (byte-array 1 (byte (first array-type))))
+         (lsb/write-int writer (count array))
          (case (first array-type)
-           \c nil
-           \C nil
-           \s nil
-           \S (do
-                (lsb/write-bytes writer (byte-array 1 (byte \S)))
-                (lsb/write-int writer (count array))
-                (doseq [v array]
-                  (lsb/write-short writer (Short/parseShort v))))
-           \i nil
-           \I nil
-           \f nil))))</pre></td></tr><tr><td class="docs">
+           \c (doseq [v array]
+                (lsb/write-ubyte writer (Byte/parseByte v)))
+           \C (doseq [v array]
+                (lsb/write-ubyte writer (Integer/parseInt v)))
+           \s (doseq [v array]
+                (lsb/write-short writer (Short/parseShort v)))
+           \S (doseq [v array]
+                (lsb/write-ushort writer (Integer/parseInt v)))
+           \i (doseq [v array]
+                (lsb/write-int writer (Integer/parseInt v)))
+           \I (doseq [v array]
+                (lsb/write-uint writer (Long/parseLong v)))
+           \f (doseq [v array]
+                (lsb/write-float writer (Float/parseFloat v))))
+         writer)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn get-block-size [aln]
   (let [read-length (.length ^String (:seq aln))
         cigar-length ^long (cigar/count-op (:cigar aln))]
@@ -2942,8 +2953,19 @@ net.brehaut.ClojureTools = (function (SH) {
        (quot (inc read-length) 2)
        read-length
        ^long (get-options-size aln))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- add-cigar-to-options
+  [options cigar]
+  (cons
+   {:CG {:type &quot;B&quot;,:value (str &quot;I,&quot; (cstr/join &quot;,&quot; (cigar/encode-cigar cigar)))}}
+   options))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn encode-alignment [wrtr aln refs]
-  (let [aln (update aln :seq #(if (= % &quot;*&quot;)  %))]
+  (let [aln (update aln :seq #(if (= % &quot;*&quot;)  %))
+        cigar-ops-count (cigar/count-op (:cigar aln))
+        [encoded-cigar cigar-ops-count opts*]
+        (if (&gt; cigar-ops-count 65535)
+          [(cigar/-&gt;placeholder (:cigar aln))
+           2 (add-cigar-to-options (:options aln) (:cigar aln))]
+          [(cigar/encode-cigar (:cigar aln)) cigar-ops-count (:options aln)])]
     ;; refID
     (lsb/write-int wrtr (or (refs/ref-id refs (:rname aln)) -1))
     ;; pos
@@ -2953,7 +2975,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (lsb/write-ubyte wrtr (short (:mapq aln)))
     (lsb/write-ushort wrtr (sam-util/compute-bin aln))
     ;; flag_nc
-    (lsb/write-ushort wrtr (cigar/count-op (:cigar aln)))
+    (lsb/write-ushort wrtr cigar-ops-count)
     (lsb/write-ushort wrtr (:flag aln))
     ;; l_seq
     (lsb/write-int wrtr (.length ^String (:seq aln)))
@@ -2967,15 +2989,14 @@ net.brehaut.ClojureTools = (function (SH) {
     (lsb/write-string wrtr (:qname aln))
     (lsb/write-bytes wrtr (byte-array 1 (byte 0)))
     ;; cigar
-    (doseq [cigar (cigar/encode-cigar (:cigar aln))]
-      (lsb/write-int wrtr cigar))
+    (doseq [cigar encoded-cigar] (lsb/write-int wrtr cigar))
     ;; seq
     (lsb/write-bytes wrtr (seq/str-&gt;compressed-bases (:seq aln)))
     ;; qual
     (lsb/write-bytes wrtr (encode-qual aln))
     ;; options
-    (doseq [op (:options aln)]
-      (let [[tag value] (first (seq op))]
+    (doseq [opt opts*]
+      (let [[tag value] (first (seq opt))]
         (lsb/write-short
          wrtr
          (short (bit-or (bit-shift-left (byte (second (name tag))) 8)

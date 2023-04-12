@@ -2957,7 +2957,14 @@ net.brehaut.ClojureTools = (function (SH) {
     (if (= ref-id next-ref-id)
       &quot;=&quot;
       (refs/ref-name refs next-ref-id))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defrecord BAMRawBlock [data ^long pointer-beg ^long pointer-end])</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and creates SAMAlignment instance which is compatible with SAM.
+</td><td class="codes"><pre class="brush: clojure">(defrecord BAMRawBlock [data ^long pointer-beg ^long pointer-end])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- B-I-type-cigar-str-&gt;cigar-str
+  [B-I-type-cigar]
+  (let [xs (cstr/split (subs B-I-type-cigar 2) #&quot;,&quot;)
+        bb (doto (ByteBuffer/allocate (* 4 (count xs)))
+             (.order ByteOrder/LITTLE_ENDIAN))]
+    (doseq [x xs] (.putInt bb (Long/parseLong x)))
+    (first (cigar/decode-cigar-and-ref-length (.array bb)))))</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and creates SAMAlignment instance which is compatible with SAM.
   When called with start and end, this function may return nil if any base of the block
   is not included in the range.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn decode-alignment
@@ -2984,9 +2991,14 @@ net.brehaut.ClojureTools = (function (SH) {
          seq         (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
          qual        (decode-qual (lsb/read-bytes buffer l-seq))
          rest        (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
-         options     (decode-options rest)]
+         options     (decode-options rest)
+         [cigar* options*]
+         (if-let [cg (and (cigar/placeholder? cigar-bytes)
+                          (:value (some :CG options)))]
+           [(B-I-type-cigar-str-&gt;cigar-str cg) (remove :CG options)]
+           [cigar options])]
      (SAMAlignment. qname (int flag) rname (int pos) ref-end (int mapq)
-                    cigar rnext (int pnext) (int tlen) seq qual options)))
+                    cigar* rnext (int pnext) (int tlen) seq qual options*)))
   ([refs block ^long start ^long end]
    (let [buffer          (ByteBuffer/wrap (:data block))
          ref-id          ^int (lsb/read-int buffer)
@@ -3012,9 +3024,14 @@ net.brehaut.ClojureTools = (function (SH) {
                  qual    (decode-qual (lsb/read-bytes buffer l-seq))
                  rest    (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
                  rname   (or (refs/ref-name refs ref-id) &quot;*&quot;)
-                 options (decode-options rest)]
+                 options (decode-options rest)
+                 [cigar* options*]
+                 (if-let [cg (and (cigar/placeholder? cigar-bytes)
+                                  (:value (some :CG options)))]
+                   [(B-I-type-cigar-str-&gt;cigar-str cg) (remove :CG options)]
+                   [cigar options])]
              (SAMAlignment. qname (int flag) rname (int pos) ref-end (int mapq)
-                            cigar rnext (int pnext) (int tlen) seq qual options))))))))</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and returns a SAMRegionBlock instance containing covering range of the alignment.</p>
+                            cigar* rnext (int pnext) (int tlen) seq qual options*))))))))</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and returns a SAMRegionBlock instance containing covering range of the alignment.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn decode-region-block
   ([^BAMRawBlock block]
    (let [buffer          (ByteBuffer/wrap (.data block))

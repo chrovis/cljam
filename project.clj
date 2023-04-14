@@ -9,7 +9,7 @@
                  [org.apache.commons/commons-compress "1.23.0"]
                  [clj-sub-command "0.6.0"]
                  [digest "1.4.10"]
-                 [bgzf4j "0.1.1"]
+                 [bgzf4j "0.1.2"]
                  [com.climate/claypoole "1.1.4"]
                  [camel-snake-kebab "0.4.3"]
                  [proton "0.2.2"]]

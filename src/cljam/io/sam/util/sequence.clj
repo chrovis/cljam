@@ -42,7 +42,8 @@
              (.put out-bb))))
     (.array out-bb)))
 
-(def ^:const ^:private compressed-bases-to-bases-table
+(def ^:const ^:private ^String
+  compressed-bases-to-bases-table
   ;; Index: compressed base n containing two nibbles => 2n
   ;; Value 2n+0: base for upper nibble of n.
   ;; Value 2n+1: base for lower nibble of n.

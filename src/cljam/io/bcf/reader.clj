@@ -74,10 +74,11 @@
             metas)
      :header (first (map vcf-reader/parse-header-line headers))}))
 
-(defn ^BCFReader reader
+(defn reader
   "Returns an open cljam.bcf.reader.BCFReader of f. Should be used inside with-open to
   ensure the Reader is properly closed.
    Throws IOException if failed to parse BCF file format."
+  ^BCFReader
   [f]
   (let [rdr (bgzf/bgzf-input-stream f)
         magic (lsb/read-bytes rdr 5)]

@@ -17,23 +17,26 @@
 ;; Reading
 ;; -------
 
-(defn ^FASTAReader fasta-reader
+(defn fasta-reader
   "Returns an open cljam.io.fasta.reader.FASTAReader of f. Should be used inside
   with-open to ensure the reader is properly closed."
+  ^FASTAReader
   [f]
   (fa-core/reader f))
 
-(defn ^TwoBitReader twobit-reader
+(defn twobit-reader
   "Returns an open cljam.io.twobit.reader.TwoBitReader of f. Should be used
   inside with-open to ensure the reader is properly closed."
+  ^TwoBitReader
   [f]
   (tb-reader/reader f))
 
-(defn ^Closeable reader
+(defn reader
   "Selects suitable reader from f's extension, returning the open reader. Opens
   a new reader if the arg represents a file such as String path, java.io.File,
   or java.net.URL. If a reader is given, clones the reader. This function
   supports FASTA and TwoBit formats."
+  ^Closeable
   [f]
   (cond
     (io-util/fasta-reader? f) (fa-core/clone-reader f)
@@ -77,29 +80,30 @@
 ;; Writing
 ;; -------
 
-(defn ^FASTAWriter fasta-writer
+(defn fasta-writer
   "Returns an open cljam.io.fasta.writer.FASTAWriter of f with options:
     :cols - Maximum number of characters written in one row.
     :create-index? - If true, .fai will be created simultaneously.
   Should be used inside with-open to ensure the writer is properly closed."
-  ([f]
+  (^FASTAWriter [f]
    (fasta-writer f {}))
-  ([f options]
+  (^FASTAWriter [f options]
    (fa-writer/writer f options)))
 
-(defn ^TwoBitWriter twobit-writer
+(defn twobit-writer
   "Returns an open cljam.io.twobit.writer.TwoBitWriter of f with options:
     :index - metadata of indexed sequences. The amount of memory usage can be
       reduced if index is supplied.
   Should be used inside with-open to ensure the writer is properly closed."
-  ([f]
+  (^TwoBitWriter [f]
    (twobit-writer f {}))
-  ([f options]
+  (^TwoBitWriter [f options]
    (tb-writer/writer f options)))
 
-(defn ^Closeable writer
+(defn writer
   "Selects suitable writer from f's extension, returning the open writer. This
   function supports FASTA and TwoBit format."
+  ^Closeable
   [f & options]
   (case (io-util/file-type f)
     :fasta (apply fasta-writer f options)

@@ -35,7 +35,7 @@
      (delay (bgzip-index f)))
     (RandomAccessFile. (cio/as-file f) "r")))
 
-(defn ^FASTAReader reader
+(defn reader ^FASTAReader
   [f]
   (let [url (util/as-url f)]
     (FASTAReader. (random-accessor url)
@@ -43,8 +43,9 @@
                   url
                   (delay (fasta-index url)))))
 
-(defn ^FASTAReader clone-reader
+(defn clone-reader
   "Clones fasta reader sharing persistent objects."
+  ^FASTAReader
   [^FASTAReader rdr]
   (let [url (.url rdr)
         r (if (instance? RandomAccessFile (.reader rdr))

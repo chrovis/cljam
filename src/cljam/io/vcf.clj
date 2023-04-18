@@ -24,9 +24,10 @@
 ;; Reading
 ;; -------
 
-(defn ^VCFReader vcf-reader
+(defn vcf-reader
   "Returns an open cljam.io.vcf.reader.VCFReader of f. Should be used inside
   with-open to ensure the reader is properly closed."
+  ^VCFReader
   [f]
   (let [meta-info (with-open [r (cio/reader (util/compressor-input-stream f))]
                     (vcf-reader/load-meta-info r))
@@ -40,15 +41,17 @@
                             (catch FileNotFoundException _
                               (tabix/read-index (str f ".tbi"))))))))
 
-(defn ^BCFReader bcf-reader
+(defn bcf-reader
   "Returns an open cljam.io.bcf.reader.BCFReader of f. Should be used inside
   with-open to ensure the reader is properly closed. Throws IOException if
   failed to parse BCF file format."
+  ^BCFReader
   [f]
   (bcf-reader/reader f))
 
-(defn ^VCFReader clone-vcf-reader
+(defn clone-vcf-reader
   "Clones vcf reader sharing persistent objects."
+  ^VCFReader
   [^VCFReader rdr]
   (let [url (.url rdr)
         input-stream (if (bgzf/bgzip? url)
@@ -58,25 +61,28 @@
                 input-stream
                 (.index-delay rdr))))
 
-(defn ^BCFReader clone-bcf-reader
+(defn clone-bcf-reader
   "Clones bcf reader sharing persistent objects."
+  ^BCFReader
   [^BCFReader rdr]
   (let [url (.url rdr)
         input-stream (bgzf/bgzf-input-stream url)]
     (BCFReader. (.url rdr) (.meta-info rdr) (.header rdr)
                 input-stream (.start-pos rdr) (.index-delay rdr))))
 
-(defn ^Closeable clone-reader
+(defn clone-reader
   "Clones vcf/bcf reader sharing persistent objects."
+  ^Closeable
   [rdr]
   (cond
     (io-util/vcf-reader? rdr) (clone-vcf-reader rdr)
     (io-util/bcf-reader? rdr) (clone-bcf-reader rdr)
     :else (throw (IllegalArgumentException. "Invalid file type"))))
 
-(defn ^Closeable reader
+(defn reader
   "Selects suitable reader from f's extension, returning the open reader. This
   function supports VCF and BCF formats."
+  ^Closeable
   [f]
   (if (or (io-util/vcf-reader? f)
           (io-util/bcf-reader? f))
@@ -131,7 +137,7 @@
 ;; Writing
 ;; -------
 
-(defn ^VCFWriter vcf-writer
+(defn vcf-writer
   "Returns an open cljam.io.vcf.writer.VCFWriter of f. Meta-information lines
   and a header line will be written in this function. Should be used inside
   with-open to ensure the writer is properly closed. e.g.
@@ -140,6 +146,7 @@
                                 {:file-date \"20090805\", :source \"myImpu...\" ...}
                                 [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
       (WRITING-VCF))"
+  ^VCFWriter
   [f meta-info header]
   (doto (VCFWriter. (util/as-url f)
                     (cio/writer (util/compressor-output-stream f))
@@ -148,7 +155,7 @@
     (vcf-writer/write-meta-info meta-info)
     (vcf-writer/write-header header)))
 
-(defn ^BCFWriter bcf-writer
+(defn bcf-writer
   "Returns an open cljam.io.bcf.writer.BCFWriter of f. Meta-information lines
   and a header line will be written in this function. Should be used inside
   with-open to ensure the writer is properly closed. e.g.
@@ -157,12 +164,14 @@
                                  {:file-date \"20090805\", :source \"myImpu...\" ...}
                                  [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
        (WRITING-BCF))"
+  ^BCFWriter
   [f meta-info header]
   (bcf-writer/writer f meta-info header))
 
-(defn ^Closeable writer
+(defn writer
   "Selects suitable writer from f's extension, returning the open writer. This
   function supports VCF and BCF formats."
+  ^Closeable
   [f meta-info header]
   (case (io-util/file-type f)
     :vcf (vcf-writer f meta-info header)

@@ -20,7 +20,7 @@
   protocols/IReader
   (reader-url [this] (.url this))
   (read [this] (read-fields this))
-  (read [this option] (read-fields this))
+  (read [this _] (read-fields this))
   (indexed? [_] false))
 
 (defrecord WIGWriter [^BufferedWriter writer ^URL url]
@@ -30,15 +30,17 @@
   protocols/IWriter
   (writer-url [this] (.url this)))
 
-(defn ^WIGReader reader
+(defn reader
   "Returns an open cljam.io.wig.WIGReader of f. Should be used inside with-open
   to ensure the reader is properly closed."
+  ^WIGReader
   [f]
   (WIGReader. (cio/reader (util/compressor-input-stream f)) (util/as-url f)))
 
-(defn ^WIGWriter writer
+(defn writer
   "Returns an open cljam.io.wig.WIGWriter of f. Should be used inside with-open
   to ensure the writer is properly closed."
+  ^WIGWriter
   [f]
   (WIGWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))
 

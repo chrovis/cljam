@@ -19,7 +19,7 @@
 
 (deftype BAIWriter [^DataOutputStream writer refs url]
   Closeable
-  (close [this]
+  (close [_]
     (.close writer)))
 
 

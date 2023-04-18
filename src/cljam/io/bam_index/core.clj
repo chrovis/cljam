@@ -58,7 +58,7 @@
 ;; ## Writing
 
 
-(defn ^BAIWriter writer
+(defn writer ^BAIWriter
   [f refs]
   (BAIWriter. (DataOutputStream. (FileOutputStream. (cio/file f)))
               refs

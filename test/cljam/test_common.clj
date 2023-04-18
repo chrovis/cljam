@@ -804,7 +804,7 @@
     (cio/copy in out)
     (.toByteArray out)))
 
-(defn ^NanoFakeServer http-server []
+(defn http-server ^NanoFakeServer []
   (let [gen-route? (fn [^File f]
                      (< (.length f) (* 1024 1024)))
         gen-route (fn [^File f]

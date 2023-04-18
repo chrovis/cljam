@@ -29,8 +29,9 @@
       (throw (FileNotFoundException.
               (str "Could not find BAM Index file for " bam-url)))))
 
-(defn ^BAMReader reader
+(defn reader
   "Creates a `cljam.io.bam.BAMReader` instance for the given file."
+  ^BAMReader
   [f]
   (let [rdr (bgzf/bgzf-input-stream f)
         data-rdr (DataInputStream. rdr)]
@@ -41,8 +42,9 @@
       (BAMReader. (util/as-url f)
                   header refs rdr data-rdr index-delay (.getFilePointer rdr)))))
 
-(defn ^BAMReader clone-reader
+(defn clone-reader
   "Clones bam reader sharing persistent objects."
+  ^BAMReader
   [^BAMReader rdr]
   (let [bgzf-rdr (bgzf/bgzf-input-stream (.url rdr))
         data-rdr (DataInputStream. bgzf-rdr)]
@@ -52,9 +54,9 @@
 ;; Writing
 ;; -------
 
-(defn ^BAMWriter writer
-  ([f] (writer f false))
-  ([f create-index?]
+(defn writer
+  (^BAMWriter [f] (writer f false))
+  (^BAMWriter [f create-index?]
    (let [index (if create-index? {:no-coordinate-alns 0} false)
          w (bgzf/bgzf-output-stream f)]
      (BAMWriter. (util/as-url f)

@@ -5,12 +5,12 @@
   (:import [java.io DataInput InputStream DataOutputStream EOFException ByteArrayOutputStream]
            [java.nio Buffer ByteBuffer ByteOrder]))
 
-(defn ^ByteBuffer gen-byte-buffer
+(defn gen-byte-buffer
   "Generates a new `java.nio.ByteBuffer` instance with little-endian byte order.
   The default buffer size is 8."
-  ([]
+  (^ByteBuffer []
    (.order (ByteBuffer/allocate 8) ByteOrder/LITTLE_ENDIAN))
-  ([size]
+  (^ByteBuffer [size]
    (.order (ByteBuffer/allocate size) ByteOrder/LITTLE_ENDIAN)))
 
 ;; Reading

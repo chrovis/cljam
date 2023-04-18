@@ -10,7 +10,7 @@
 
 (deftype DICTWriter [^java.io.BufferedWriter writer url]
   java.io.Closeable
-  (close [this]
+  (close [_]
     (.close writer)))
 
 ;; Making dict

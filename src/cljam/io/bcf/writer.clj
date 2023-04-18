@@ -75,7 +75,7 @@
         (update :contig #(map-indexed (fn [i c] (assoc c :idx (str i))) %))
         (merge fif))))
 
-(defn ^BCFWriter writer
+(defn writer
   "Returns an open cljam.bcf.BCFWriter of f.
    Meta-information lines and a header line will be written in this function.
    Should be used inside with-open to ensure the Writer is properly closed. e.g.
@@ -84,6 +84,7 @@
                              {:file-date \"20090805\", :source \"myImpu...\" ...}
                              [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
        (WRITING-BCF))"
+  ^BCFWriter
   [f meta-info header]
   (let [bos (bgzf/bgzf-output-stream f)
         dos (DataOutputStream. bos)

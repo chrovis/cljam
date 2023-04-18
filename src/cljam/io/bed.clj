@@ -21,12 +21,12 @@
   protocols/IReader
   (reader-url [this] (.url this))
   (read [this] (protocols/read this {}))
-  (read [this option] (read-fields this))
+  (read [this _] (read-fields this))
   (indexed? [_] false)
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
-  (read-in-region [this {:keys [chr start end]} option]
+  (read-in-region [this {:keys [chr start end]} _]
     (logging/warn "May cause degradation of performance.")
     (filter (fn [m] (and (or (not chr) (= (:chr m) chr))
                          (or (not start) (<= start (:start m)))
@@ -40,15 +40,17 @@
   protocols/IWriter
   (writer-url [this] (.url this)))
 
-(defn ^BEDReader reader
+(defn reader
   "Returns an open cljam.io.bed.BEDReader of f. Should be used inside with-open
   to ensure the reader is properly closed."
+  ^BEDReader
   [f]
   (BEDReader. (cio/reader (util/compressor-input-stream f)) (util/as-url f)))
 
-(defn ^BEDWriter writer
+(defn writer
   "Returns an open cljam.io.bed.BEDWriter of f. Should be used inside with-open
   to ensure the writer is properly closed."
+  ^BEDWriter
   [f]
   (BEDWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))
 

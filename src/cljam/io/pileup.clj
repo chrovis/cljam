@@ -32,9 +32,10 @@
   (close [this]
     (.close ^Closeable (.reader this))))
 
-(defn ^PileupReader reader
+(defn reader
   "Returns an open instance of cljam.io.pileup.PileupReader of f. Should be used
   inside with-open to ensure the reader is properly closed."
+  ^PileupReader
   [f]
   (PileupReader. (cio/reader f)))
 
@@ -179,13 +180,13 @@
     (.close ^Closeable (.writer this))
     (some-> ^Closeable (.ref-reader this) .close)))
 
-(defn ^PileupWriter writer
+(defn writer
   "Returns an open instance of cljam.io.pileup.PileupWriter of f. Should be used
   inside with-open to ensure the writer is properly closed. A reference sequence
   is used when the second arg `reference-path` is supplied."
-  ([f]
+  (^PileupWriter [f]
    (writer f nil))
-  ([f reference-path]
+  (^PileupWriter [f reference-path]
    (PileupWriter. (cio/writer f) (some-> reference-path cseq/reader))))
 
 (defn write-piles

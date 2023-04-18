@@ -28,8 +28,8 @@
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
-  (read-in-region [this region option]
-    (read-alignments-in-region* this region option))
+  (read-in-region [this region _]
+    (read-alignments-in-region* this region))
   protocols/IAlignmentReader
   (read-header [this]
     (.header this))
@@ -45,7 +45,7 @@
     (protocols/read-blocks this {}))
   (read-blocks [this region]
     (protocols/read-blocks this region {}))
-  (read-blocks [this region option]
+  (read-blocks [this _ option]
     (read-blocks* this option)))
 
 (defn- read-alignments*

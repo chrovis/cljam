@@ -9,13 +9,13 @@
 
 (deftype TwoBitReader [buf url index]
   Closeable
-  (close [this]))
+  (close [_]))
 
 (defrecord ChromHeader [ambs masks ^long header-offset])
 
 (defrecord Chrom [name ^int len ^int offset ^int index header])
 
-(defn- ^TreeMap read-header-block! [^ByteBuffer buf]
+(defn- read-header-block! ^TreeMap [^ByteBuffer buf]
   (let [n-blocks (.getInt buf)
         starts (doto (.slice buf) (.order (.order buf)))
         _ (.position ^Buffer buf (+ (.position buf) (* Integer/BYTES n-blocks)))
@@ -99,12 +99,14 @@
                       (unchecked-add-int
                        (unchecked-int (aget ca i)) 32)))))))))
 
-(defn ^String read-sequence
+(defn read-sequence
   "Reads sequence at the given region from reader.
    Pass {:mask? true} to enable masking of sequence."
-  ([rdr region]
+  (^String [rdr region]
    (read-sequence rdr region {}))
-  ([^TwoBitReader rdr {:keys [chr start end]} {:keys [mask?] :or {mask? false}}]
+  (^String [^TwoBitReader rdr
+            {:keys [chr start end]}
+            {:keys [mask?] :or {mask? false}}]
    (when-let [^Chrom c (get (.index rdr) chr)]
      (let [start' (long (max 1 (or start 1)))
            end' (long (min (.len c) (or end (.len c))))]
@@ -189,10 +191,10 @@
   (read-in-region
     (^String [this region]
      (protocols/read-in-region this region {}))
-    (^String [this {:keys [chr start end] :as region} option]
+    (^String [this region option]
      (read-sequence this region option))))
 
-(defn ^TwoBitReader reader
+(defn reader ^TwoBitReader
   [f]
   (let [url (util/as-url f)]
     (with-open [ch (-> url
@@ -215,8 +217,9 @@
                           {:input f, :url url, :zero zero})))
         (TwoBitReader. buf url (read-file-index! buf n-seqs))))))
 
-(defn ^TwoBitReader clone-reader
+(defn clone-reader
   "Clones .2bit reader sharing persistent objects."
+  ^TwoBitReader
   [^TwoBitReader rdr]
   (let [buf (doto (.duplicate ^ByteBuffer (.buf rdr))
               (.order (.order ^ByteBuffer (.buf rdr))))]

@@ -58,12 +58,13 @@
   protocols/IReader
   (reader-url [this] (.url this))
   (read [this] (read-tracks this))
-  (read [this option] (read-tracks this))
+  (read [this _] (read-tracks this))
   (indexed? [_] false))
 
-(defn ^BIGWIGReader reader
+(defn reader
   "Returns an open cljam.io.bigwig.BIGWIGReader of f. Should be used inside with-open
   to ensure the reader is properly closed."
+  ^BIGWIGReader
   [f]
   (let [f (.getAbsolutePath (cio/file f))
         reader (RandomAccessFile. f "r")

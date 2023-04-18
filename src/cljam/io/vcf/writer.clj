@@ -169,7 +169,7 @@
 ;; Writing header
 ;; --------------
 
-(defn ^String stringify-header
+(defn stringify-header ^String
   [header]
   (str header-prefix (cstr/join \tab header)))
 
@@ -195,7 +195,7 @@
       (str (int x))
       (str x))))
 
-(defn- ^String stringify-data-line
+(defn- stringify-data-line ^String
   [m header]
   (let [m* (-> m
                (update :alt stringify-data-line-alt)

@@ -26,17 +26,19 @@
   protocols/IWriter
   (writer-url [this] (.url this)))
 
-(defn ^FASTQReader reader
+(defn reader
   "Returns an open cljam.io.fastq.FASTQReader of f. Should be used inside
   with-open to ensure the reader is properly closed."
+  ^FASTQReader
   [f]
   (-> (util/compressor-input-stream f)
       cio/reader
       (FASTQReader. (util/as-url f))))
 
-(defn ^FASTQWriter writer
+(defn writer
   "Returns an open cljam.io.fastq.FASTQWriter of f. Should be used inside
   with-open to ensure the writer is properly closed."
+  ^FASTQWriter
   [f]
   (-> (util/compressor-output-stream f)
       cio/writer
@@ -44,8 +46,9 @@
 
 (defrecord FASTQRead [^String name ^String sequence quality])
 
-(defn- ^FASTQRead deserialize-fastq
+(defn- deserialize-fastq
   "Deserialize a read from 4 lines of fastq file."
+  ^FASTQRead
   [[^String name-line ^String seq-line ^String plus-line ^String qual-line]
    {:keys [decode-quality] :or {decode-quality :phred33}}]
   {:pre [(not-empty name-line)
@@ -82,8 +85,9 @@
           (map #(deserialize-fastq % opts)))
     (line-seq (.reader rdr)))))
 
-(defn- ^String serialize-fastq
+(defn- serialize-fastq
   "Serialize a FASTQRead to FASTQ format string."
+  ^String
   [^FASTQRead {:keys [^String name ^String sequence quality]}
    {:keys [encode-quality] :or {encode-quality :phred33}}]
   {:pre [(not-empty name)
@@ -137,8 +141,9 @@
        :index (Integer/parseInt index)
        :pair (Integer/parseInt pair)})))
 
-(defn ^String serialize-casava-name
+(defn serialize-casava-name
   "Encode fastq name map to Casava-style string."
+  ^String
   [{:keys [instrument lane tile x y index pair]}]
   (when (and instrument lane tile x y index pair)
     (str instrument \: lane \: tile \: x \: y \# index \/ pair)))
@@ -163,8 +168,9 @@
        :control (Integer/parseInt control)
        :index index})))
 
-(defn ^String serialize-casava-1_8-name
+(defn serialize-casava-1_8-name
   "Encode fastq name map to Casava1.8-style string."
+  ^String
   [{:keys [instrument run flowcell lane tile x y pair filtered control index]}]
   (when (and instrument run flowcell lane tile x y pair (not (nil? filtered)) control index)
     (str instrument \: run \: flowcell \: lane \: tile \: x \: y " "
@@ -175,7 +181,8 @@
   [^String name]
   (first (keep #(% name) [deserialize-casava-1_8-name deserialize-casava-name])))
 
-(defn ^String serialize-name
+(defn serialize-name
   "Try encoding name of fastq read."
+  ^String
   [name]
   (first (keep #(% name) [serialize-casava-1_8-name serialize-casava-name])))

@@ -14,9 +14,10 @@
 ;; Writing
 ;; -------
 
-(defn ^DICTWriter writer
+(defn writer
   "Opens f, returning a `cljam.dict.writer.DICTWriter`. Should be used inside
   `with-open` to ensure the writer is properly closed."
+  ^DICTWriter
   [f]
   (DICTWriter. (cio/writer f)
                (util/as-url f)))

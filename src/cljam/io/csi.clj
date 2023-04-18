@@ -9,7 +9,7 @@
            [java.io DataInputStream DataOutputStream IOException]
            [java.nio ByteBuffer ByteOrder]))
 
-(def ^:const ^:private ^String csi-magic "CSI\1")
+(def ^:const ^:private csi-magic "CSI\1")
 
 (def ^:private ^:const default-vcf-csi-aux
   {:format 2, :col-seq 1, :col-beg 2, :col-end 0, :meta-char \#, :skip 0})

@@ -17,28 +17,32 @@
 ;; Reading
 ;; -------
 
-(defn ^SAMReader sam-reader
+(defn sam-reader
   "Returns an open cljam.io.sam.reader.SAMReader of f. Should be used inside
   with-open to ensure the reader is properly closed."
+  ^SAMReader
   [f]
   (sam-reader/reader f))
 
-(defn ^BAMReader bam-reader
+(defn bam-reader
   "Returns an open cljam.io.bam.reader.BAMReader of f. Should be used inside
   with-open to ensure the reader is properly closed."
+  ^BAMReader
   [f]
   (bam-core/reader f))
 
-(defn ^BAMReader clone-bam-reader
+(defn clone-bam-reader
   "Clones bam reader sharing persistent objects."
+  ^BAMReader
   [r]
   (bam-core/clone-reader r))
 
-(defn ^Closeable reader
+(defn reader
   "Selects suitable reader from f's extension, returning the reader. Opens a new
   reader if the arg represents a file such as String path, java.io.File, or
   java.net.URL. If a reader is given, clones the reader. This function supports
   SAM and BAM formats."
+  ^Closeable
   [f]
   (if (io-util/bam-reader? f)
     (clone-bam-reader f)
@@ -80,26 +84,27 @@
 ;; Writing
 ;; -------
 
-(defn ^SAMWriter sam-writer
+(defn sam-writer
   "Returns an open cljam.io.sam.writer.SAMWriter of f. Should be used inside
   with-open to ensure the writer is properly closed."
+  ^SAMWriter
   [f]
   (sam-writer/writer f))
 
-(defn ^BAMWriter bam-writer
+(defn bam-writer
   "Returns an open cljam.io.bam.writer.BAMWriter of f. Should be used inside
   with-open to ensure the writer is properly closed."
-  ([f]
+  (^BAMWriter [f]
    (bam-writer f false))
-  ([f create-index?]
+  (^BAMWriter [f create-index?]
    (bam-core/writer f create-index?)))
 
-(defn ^Closeable writer
+(defn writer
   "Selects suitable writer from f's extension, returning the writer. This
   function supports SAM and BAM format."
-  ([f]
+  (^Closeable [f]
    (writer f false))
-  ([f create-index?]
+  (^Closeable [f create-index?]
    (case (io-util/file-type f)
      :sam (if create-index?
             (throw (ex-info "SAM file indexing is not implemented." {}))

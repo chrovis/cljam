@@ -54,7 +54,7 @@
 
 (defn count-op
   "Returns length of CIGAR operations."
-  [^String s]
+  ^long [^String s]
   (count (parse s)))
 
 (defn- count-ref-str*
@@ -69,6 +69,7 @@
 
 (defn count-ref-bytes
   "Count covering length in reference from encoded CIGAR byte-array."
+  ^long
   [cigar-bytes]
   (let [buf (ByteBuffer/wrap cigar-bytes)]
     (.order buf ByteOrder/LITTLE_ENDIAN)
@@ -108,8 +109,9 @@
 (defn encode-cigar
   "Encodes CIGAR string into a sequence of longs."
   [cigar]
-  (mapv #(bit-or (bit-shift-left (first %) 4)
-                 (case (second %) \M 0 \I 1 \D 2 \N 3 \S 4 \H 5 \P 6 \= 7 \X 8))
+  (mapv (fn [[^long n c]]
+          (bit-or (bit-shift-left n 4)
+                  (case c \M 0 \I 1 \D 2 \N 3 \S 4 \H 5 \P 6 \= 7 \X 8)))
         (parse cigar)))
 
 (defmulti count-ref

@@ -71,7 +71,7 @@
   [seq-reader {:keys [chr ^long pos ref alt]
                {:keys [END]} :info :as v} ^long window]
   (let [alleles (cons ref alt)
-        min-end (long (dec (+ pos (apply min (map count alleles)))))
+        min-end (dec (+ pos (long (apply min (map count alleles)))))
         regs (regions-before chr pos window)
         ref-seqs (sequence ;; unchunk
                   (mapcat
@@ -88,10 +88,11 @@
                             long
                             (Math/min (dec min-end)))]
     (if (pos? matched-length)
-      (let [pos' (or (some (fn [{:keys [start end]}]
+      (let [pos' (-> (some (fn [{:keys [start end]}]
                              (when (<= start (- min-end matched-length) end)
                                start)) regs)
-                     pos)
+                     (or pos)
+                     long)
             [ref' & alt'] (map
                            #(->> %2
                                  (take (inc (- (dec (+ pos (count %1))) pos')))

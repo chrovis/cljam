@@ -25,7 +25,7 @@
 
 (defn- exit
   "Exits the program with the status after printing the message."
-  [status message]
+  [^long status message]
   (binding [*out* (if (zero? status) *out* *err*)]
     (println message))
   (System/exit status))

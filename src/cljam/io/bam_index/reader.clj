@@ -15,7 +15,7 @@
 
 (defn- skip-chunks!
   [rdr]
-  (let [n-chunks (lsb/read-int rdr)]
+  (let [n-chunks (int (lsb/read-int rdr))]
     (loop [i 0]
       (when (< i n-chunks)
         (lsb/skip rdr 16)
@@ -23,7 +23,7 @@
 
 (defn- skip-bin-index!
   [rdr]
-  (let [n-bidx (lsb/read-int rdr)]
+  (let [n-bidx (int (lsb/read-int rdr))]
     (loop [i 0]
       (when (< i n-bidx)
         (lsb/skip rdr 4)
@@ -32,14 +32,14 @@
 
 (defn- skip-linear-index!
   [rdr]
-  (let [n-lidx (lsb/read-int rdr)]
+  (let [n-lidx (int (lsb/read-int rdr))]
     (loop [i 0]
       (when (< i n-lidx)
         (lsb/skip rdr 8)
         (recur (inc i))))))
 
 (defn- skip-index!
-  [rdr n]
+  [rdr ^long n]
   (loop [i 0]
     (when (< i n)
       (skip-bin-index! rdr)
@@ -48,7 +48,7 @@
 
 (defn- read-chunks!
   [rdr]
-  (let [n (lsb/read-int rdr)]
+  (let [n (int (lsb/read-int rdr))]
     (loop [i 0, chunks []]
       (if (< i n)
         (recur (inc i) (conj chunks (Chunk. (lsb/read-long rdr) (lsb/read-long rdr))))
@@ -56,7 +56,7 @@
 
 (defn- read-bin-index**!
   [rdr]
-  (let [n (lsb/read-int rdr)]
+  (let [n (int (lsb/read-int rdr))]
     (loop [i 0, bidx []]
       (if (< i n)
         (let [bin (lsb/read-int rdr)
@@ -65,8 +65,8 @@
         bidx))))
 
 (defn- read-bin-index*!
-  [rdr ref-idx]
-  (let [n-ref (lsb/read-int rdr)]
+  [rdr ^long ref-idx]
+  (let [n-ref (int (lsb/read-int rdr))]
     (when (>= ref-idx n-ref)
       (throw (IndexOutOfBoundsException. "The reference index number is invalid")))
     (skip-index! rdr ref-idx)
@@ -74,15 +74,15 @@
 
 (defn- read-linear-index**!
   [rdr]
-  (let [n (lsb/read-int rdr)]
+  (let [n (int (lsb/read-int rdr))]
     (loop [i 0, lidx []]
       (if (< i n)
         (recur (inc i) (conj lidx (lsb/read-long rdr)))
         lidx))))
 
 (defn- read-linear-index*!
-  [rdr ref-idx]
-  (let [n-ref (lsb/read-int rdr)]
+  [rdr ^long ref-idx]
+  (let [n-ref (int (lsb/read-int rdr))]
     (when (>= ref-idx n-ref)
       (throw (IndexOutOfBoundsException. "The reference index number is invalid")))
     (skip-index! rdr ref-idx)

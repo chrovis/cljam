@@ -58,23 +58,26 @@
 
 (defn compare
   "Negative if fp1 is earlier in file than fp2, positive if it is later, 0 if equal."
+  ^long
   [^long fp1 ^long fp2]
   (cond
     (= fp1 fp2)                 0
-   ;; When treating as unsigned, negative number is > positive.
+    ;; When treating as unsigned, negative number is > positive.
     (and (< fp1 0) (>= fp2 0))  1
     (and (>= fp1 0) (< fp2 0)) -1
-   ;; Either both negative or both non-negative, so regular comparison works.
+    ;; Either both negative or both non-negative, so regular comparison works.
     (< fp1 fp2)                -1
     :else                       1))
 
 (defn get-block-address
   "File offset of start of BGZF block for this file pointer."
+  ^long
   [^long fp]
   (bit-and (bit-shift-right fp shift-amount) address-mask))
 
 (defn get-block-offset
   "Offset into uncompressed block for this virtual file pointer."
+  ^long
   [^long fp]
   (bit-and fp offset-mask))
 
@@ -92,8 +95,8 @@
        (= (unchecked-byte 0x1f) (aget b 0))
        (= (unchecked-byte 0x8b) (aget b 1))
        (bit-test (aget b 3) 2) ;; FEXTRA
-       (= (byte \B) (aget b 12)) ;; SI1
-       (= (byte \C) (aget b 13)) ;; SI2
+       (= (byte (int \B)) (aget b 12)) ;; SI1
+       (= (byte (int \C)) (aget b 13)) ;; SI2
        (= 2 (aget b 14)) ;; LEN
        (zero? (aget b 15))))
 

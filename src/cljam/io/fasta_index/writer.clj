@@ -33,7 +33,7 @@
               (reset! current-index i))
             (do (swap! current-index
                        assoc
-                       :len (+ (:len @current-index) llen))
+                       :len (+ (long (:len @current-index)) llen))
                 (when (or (nil? (:line-blen @current-index))
                           (nil? (:line-len @current-index)))
                   (swap! current-index

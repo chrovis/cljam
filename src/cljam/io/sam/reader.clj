@@ -62,8 +62,8 @@
   (eduction
    (filter
     (fn [a] (and (if chr (= (:rname a) chr) true)
-                 (if start (<= start (sam-util/get-end a)) true)
-                 (if end (<= (:pos a) end) true))))
+                 (if start (<= (long start) (sam-util/get-end a)) true)
+                 (if end (<= (long (:pos a)) (long end)) true))))
    (read-alignments* sam-reader)))
 
 (defn- parse-coordinate

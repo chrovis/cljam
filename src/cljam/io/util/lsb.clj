@@ -94,13 +94,13 @@
       (.readFully this (.array bb))
       (.getShort bb)))
   (read-ushort [this]
-    (bit-and (read-short this) 0xFFFF))
+    (bit-and (short (read-short this)) 0xFFFF))
   (read-int [this]
     (let [bb (gen-byte-buffer 4)]
       (.readFully this (.array bb))
       (.getInt bb)))
   (read-uint [this]
-    (bit-and (read-int this) 0xFFFFFFFF))
+    (bit-and (int (read-int this)) 0xFFFFFFFF))
   (read-long [this]
     (let [bb (gen-byte-buffer 8)]
       (.readFully this (.array bb))
@@ -143,13 +143,13 @@
       (read-bytes this (.array bb) 0 2)
       (.getShort bb)))
   (read-ushort [this]
-    (bit-and (read-short this) 0xFFFF))
+    (bit-and (short (read-short this)) 0xFFFF))
   (read-int [this]
     (let [bb (gen-byte-buffer 4)]
       (read-bytes this (.array bb) 0 4)
       (.getInt bb)))
   (read-uint [this]
-    (bit-and (read-int this) 0xFFFFFFFF))
+    (bit-and (int (read-int this)) 0xFFFFFFFF))
   (read-long [this]
     (let [bb (gen-byte-buffer 8)]
       (read-bytes this (.array bb) 0 8)

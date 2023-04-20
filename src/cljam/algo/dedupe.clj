@@ -12,7 +12,7 @@
 (defn- sum-quals [a]
   (when-let [q ^String (:qual a)]
     (when-not (and (= (.length q) 1) (= \* (.charAt q 0)))
-      (reduce (fn [r x] (+ r (- (int x) 33))) 0 q))))
+      (reduce (fn [^long r x] (+ r (- (int x) 33))) 0 q))))
 
 (defn dedupe-xform
   "Returns a transducer which removes PCR duplications."
@@ -23,25 +23,38 @@
      (partition-by (juxt :rname :pos))
      (mapcat
       (fn [alns]
-        (loop [[{:keys [pos tlen qname flag] :as x} :as xs] alns heads {} tails [] dups []]
+        (loop [[{:keys [pos tlen qname flag] :as x} :as xs] alns
+               heads {} tails [] dups []]
           (if x
             (cond
               (not (and (flag/multiple? flag)
                         (not (flag/both-unmapped? flag))
-                        (= (:rnext x) "="))) (recur (next xs) heads (conj tails x) dups)
-              (pos? tlen) (let [k [pos tlen]]
-                            (if-let [v (get heads k)]
-                              (let [[good bad] (if (pos? (compare (cp v) (cp x))) [v x] [x v])]
-                                (swap! removed conj (:qname bad))
-                                (recur (next xs) (assoc heads k good) tails (conj dups bad)))
-                              (recur (next xs) (assoc heads k x) tails dups)))
-              (@removed qname) (do (swap! removed disj qname) (recur (next xs) heads tails (conj dups x)))
-              :else (recur (next xs) heads (conj tails x) dups))
+                        (= (:rnext x) "=")))
+              (recur (next xs) heads (conj tails x) dups)
+
+              (pos? (long tlen))
+              (let [k [pos tlen]]
+                (if-let [v (get heads k)]
+                  (let [[good bad] (if (pos? (compare (cp v) (cp x)))
+                                     [v x]
+                                     [x v])]
+                    (swap! removed conj (:qname bad))
+                    (recur (next xs) (assoc heads k good)
+                           tails (conj dups bad)))
+                  (recur (next xs) (assoc heads k x) tails dups)))
+
+              (@removed qname)
+              (do (swap! removed disj qname)
+                  (recur (next xs) heads tails (conj dups x)))
+
+              :else
+              (recur (next xs) heads (conj tails x) dups))
             (concat
              (vals heads)
              tails
              (when-not remove-dups
-               (map (fn [a] (update a :flag #(bit-or % 1024))) dups))))))))))
+               (map
+                (fn [a] (update a :flag #(bit-or (int %) 1024))) dups))))))))))
 
 (defn dedupe
   "Removes PCR duplications from paired-end alignments."

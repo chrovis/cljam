@@ -66,7 +66,7 @@
 
 (defn ubyte
   "Casts to byte avoiding an error about out of range for byte."
-  [n]
+  [^long n]
   {:pre [(<= 0 n 255)]}
   (byte (if (< n 0x80) n (- n 0x100))))
 
@@ -82,7 +82,7 @@
 (defn graph?
   "Returns true if c is a visible character, false if not."
   [c]
-  (<= 0x20 (byte c) 0x7E))
+  (<= 0x20 (byte (int c)) 0x7E))
 
 (defn space?
   "Returns true if c is a character that creates \"white space\" in displayed

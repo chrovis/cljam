@@ -54,20 +54,20 @@
         (.put m chr (Chrom. chr len offset i header))))
     m))
 
-(def ^:private ^"[[C" twobit-to-str
+(def ^:private ^{:tag (Class/forName "[[C")} twobit-to-str
   (let [table "TCAG"]
     (->> 256
          range
          (map
-          (fn [j] (let [i (byte (- j 128))
-                        n4 (bit-and i 2r11)
-                        n3 (bit-and (unsigned-bit-shift-right i 2) 2r11)
-                        n2 (bit-and (unsigned-bit-shift-right i 4) 2r11)
-                        n1 (bit-and (unsigned-bit-shift-right i 6) 2r11)]
-                    (char-array [(.charAt table n1)
-                                 (.charAt table n2)
-                                 (.charAt table n3)
-                                 (.charAt table n4)]))))
+          (fn [^long j] (let [i (byte (- j 128))
+                              n4 (bit-and i 2r11)
+                              n3 (bit-and (unsigned-bit-shift-right i 2) 2r11)
+                              n2 (bit-and (unsigned-bit-shift-right i 4) 2r11)
+                              n1 (bit-and (unsigned-bit-shift-right i 6) 2r11)]
+                          (char-array [(.charAt table n1)
+                                       (.charAt table n2)
+                                       (.charAt table n3)
+                                       (.charAt table n4)]))))
          (into-array (Class/forName "[C")))))
 
 (defn replace-ambs!
@@ -105,11 +105,11 @@
   (^String [rdr region]
    (read-sequence rdr region {}))
   (^String [^TwoBitReader rdr
-            {:keys [chr start end]}
+            {:keys [chr ^long start ^long end]}
             {:keys [mask?] :or {mask? false}}]
    (when-let [^Chrom c (get (.index rdr) chr)]
      (let [start' (long (max 1 (or start 1)))
-           end' (long (min (.len c) (or end (.len c))))]
+           end' (min (.len c) (long (or end (.len c))))]
        (when (<= start' end')
          ;; Potential seek & read.
          (let [^ChromHeader h @(.header c)

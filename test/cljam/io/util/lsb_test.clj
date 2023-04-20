@@ -71,13 +71,13 @@
 
     (.reset bb)
     (doseq [c "ABCDEFGH"]
-      (.put bb (byte c)))
+      (.put bb (byte (int c))))
     (.reset bb)
     (is (= (lsb/read-string bb 8) "ABCDEFGH"))
 
     (.reset bb)
     (doseq [c [\I \J \K \L 0 \M \N \O]]
-      (.put bb (byte c)))
+      (.put bb (byte (int c))))
     (.reset bb)
     (is (= (lsb/read-null-terminated-string bb) "IJKL"))))
 
@@ -89,9 +89,9 @@
         (let [bb (lsb/gen-byte-buffer 24)]
           (.putLong bb 0x789ABCDEF0123456)
           (doseq [c "ABCDEFGH"]
-            (.put bb (byte c)))
+            (.put bb (byte (int c))))
           (doseq [c [\I \J \K \L 0 \M \N \O]]
-            (.put bb (byte c)))
+            (.put bb (byte (int c))))
           (.write raf (.array bb))))
       (with-open [raf (RandomAccessFile. filename "r")]
         (.seek raf 0)
@@ -164,9 +164,9 @@
         (let [bb (lsb/gen-byte-buffer 24)]
           (.putLong bb 0x789ABCDEF0123456)
           (doseq [c "ABCDEFGH"]
-            (.put bb (byte c)))
+            (.put bb (byte (int c))))
           (doseq [c [\I \J \K \L 0 \M \N \O]]
-            (.put bb (byte c)))
+            (.put bb (byte (int c))))
           (.write raf (.array bb))))
       (with-open [fis (FileInputStream. filename)
                   dis (DataInputStream. fis)]
@@ -251,9 +251,9 @@
         (let [bb (lsb/gen-byte-buffer 24)]
           (.putLong bb 0x789ABCDEF0123456)
           (doseq [c "ABCDEFGH"]
-            (.put bb (byte c)))
+            (.put bb (byte (int c))))
           (doseq [c [\I \J \K \L 0 \M \N \O]]
-            (.put bb (byte c)))
+            (.put bb (byte (int c))))
           (.write bgzfos (.array bb))))
       (with-open [bgzfis (BGZFInputStream. (cio/file filename))]
         (.seek bgzfis 0)

@@ -96,8 +96,8 @@
         win-end (if (zero? aln-end)
                   win-beg
                   (util-bin/pos->lidx-offset aln-end linear-index-shift))
-        min* (fn [x]
-               (if x (min x beg) beg))]
+        min* (fn ^long [x]
+               (if x (min (long x) beg) beg))]
     (loop [i win-beg, ret linear-index]
       (if (<= i win-end)
         (recur (inc i) (assoc ret i (min* (get ret i))))
@@ -159,7 +159,7 @@
   "Complements a linear index.
   e.g. ([1 10] [3 30]) -> ([0 0] [1 10] [2 10] [3 30])"
   [linear-index]
-  (loop [[f & r] (if (zero? (ffirst linear-index))
+  (loop [[f & r] (if (zero? (long (ffirst linear-index)))
                    linear-index
                    (conj linear-index [0 0]))
          ret []]
@@ -210,7 +210,8 @@
 (defn merge-index
   "Merges two intermediate indices, returning the merged intermediate index."
   [idx1 idx2]
-  (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
+  (let [no-coordinate-alns (+ (long (:no-coordinate-alns idx1))
+                              (long (:no-coordinate-alns idx2)))
         idx1 (dissoc idx1 :no-coordinate-alns)
         idx2 (dissoc idx2 :no-coordinate-alns)]
     (-> (merge-with
@@ -289,7 +290,7 @@
   "Update the last pointer of the index to the given value."
   [index eof-ptr]
   (if (or (= (keys index) [:no-coordinate-alns])
-          (pos? (get index :no-coordinate-alns 0)))
+          (pos? (long (get index :no-coordinate-alns 0))))
     index
     (let [last-ref (apply max (keys (dissoc index :no-coordinate-alns)))
           last-key (->> (for [[bin chunks] (get-in index [last-ref :bin-index])

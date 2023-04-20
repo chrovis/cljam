@@ -106,8 +106,8 @@
                    "fixedStep"
                    (let [{:keys [chrom start span step]
                           :or {span 1, step 1}} (->> fields rest fields->map)
-                         step (as-long step)
-                         pre-start (- (as-long start) step)
+                         step (long (as-long step))
+                         pre-start (- (long (as-long start)) step)
                          span (as-long span)
                          track (assoc track :format :fixed-step
                                       :chr chrom
@@ -120,8 +120,8 @@
                              :variable-step
                              (let [{:keys [chr span]} track
                                    [start value] fields
-                                   start (as-long start)
-                                   end (dec (+ start span))
+                                   start (long (as-long start))
+                                   end (dec (+ start (long span)))
                                    value (str->wiggle-track-data value)]
                                {:track track
                                 :chr chr
@@ -131,8 +131,8 @@
 
                              :fixed-step
                              (let [{:keys [chr span step]} track
-                                   start (+ pre-start step)
-                                   end (dec (+ start span))
+                                   start (+ (long pre-start) (long step))
+                                   end (dec (+ start (long span)))
                                    value (-> fields first str->wiggle-track-data)]
                                {:track track
                                 :chr chr
@@ -168,7 +168,7 @@
                  (sequence
                   (comp
                    (partition-by (juxt (comp :format :track)
-                                       #(- (:end %) (:start %))))
+                                       #(- (long (:end %)) (long (:start %)))))
                    (map
                     (fn [[{{:keys [line format span step]} :track
                            chr :chr start :start} :as xs]]

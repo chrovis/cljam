@@ -110,8 +110,8 @@
       (.put cb ^String quality)
       (doseq [q quality]
         (.put cb (char (case encode-quality
-                         :phred33 (+ q 33)
-                         :phred64 (+ q 64)
+                         :phred33 (+ (long q) 33)
+                         :phred64 (+ (long q) 64)
                          q)))))
     (.put cb \newline)
     (.flip ^Buffer cb)

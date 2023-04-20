@@ -190,8 +190,8 @@
 (defn- stringify-data-line-qual
   [x]
   (when x
-    (if (and (zero? (mod x 1))
-             (< x precise-integer-limit))
+    (if (and (zero? (float (mod x 1)))
+             (< (float x) precise-integer-limit))
       (str (int x))
       (str x))))
 

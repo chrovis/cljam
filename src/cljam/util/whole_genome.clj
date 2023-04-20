@@ -41,7 +41,8 @@
   "Transforms a region in whole-genome coordinate into a sequence of chromosomal
   regions."
   [offset->ref ^long start ^long end]
-  (let [wg-len (let [[o r] (first (rsubseq offset->ref >= 0))] (+ o (:len r)))]
+  (let [wg-len (let [[o r] (first (rsubseq offset->ref >= 0))]
+                 (+ (long o) (long (:len r))))]
     (when (and (<= start end)
                (or (pos? start) (pos? end))
                (or (<= start wg-len) (<= end wg-len)))
@@ -53,5 +54,7 @@
                   (fn [[_ r]] {:chr (:name r), :start 1, :end (:len r)})
                   (subseq offset->ref >= s-offset <= e-offset))]
         (-> regs
-            (assoc-in [0 :start] (- start' s-offset))
-            (update-in [(dec (count regs)) :end] min (- end' e-offset)))))))
+            (assoc-in [0 :start] (- start' (long s-offset)))
+            (update-in [(dec (count regs)) :end]
+                       min
+                       (- end' (long e-offset))))))))

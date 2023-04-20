@@ -102,7 +102,7 @@
                  #(into
                    (sorted-map)
                    (keep
-                    (fn [{:keys [bin loffset]}]
+                    (fn [{:keys [^long bin loffset]}]
                       (when (<= bin max-bin)
                         [(util-bin/bin-beg bin min-shift depth)
                          loffset]))) %)
@@ -154,8 +154,9 @@
 
 (defn- calc-loffsets [begs file-offsets]
   (->> begs
-       (map (fn [beg]
-              [beg (->> (drop-while #(< (:end %) beg) file-offsets)
+       (map (fn [^long beg]
+              [beg (->> file-offsets
+                        (drop-while #(< (long (:end %)) beg))
                         (map :file-beg)
                         first)]))
        (into (sorted-map))))
@@ -165,7 +166,7 @@
    (fn [r [k v]]
      (if (contains? r k)
        (assoc r k v)
-       (conj (into r (repeat (- k (count r)) nil)) v)))
+       (conj (into r (repeat (- (long k) (count r)) nil)) v)))
    []
    xs))
 
@@ -185,7 +186,8 @@
                          l (calc-loffsets
                             (into #{}
                                   (comp
-                                   (filter #(<= % (util-bin/max-bin depth)))
+                                   (filter (fn [^long x]
+                                             (<= x (util-bin/max-bin depth))))
                                    (map #(util-bin/bin-beg % shift depth)))
                                   (keys b))
                             offsets)
@@ -223,7 +225,7 @@
           (lsb/write-int w bin)
           (lsb/write-long
            w
-           (if (<= bin max-bin)
+           (if (<= (long bin) max-bin)
              (get loffset (util-bin/bin-beg bin (.min-shift csi) (.depth csi)))
              0))
           (lsb/write-int w (count chunks))

@@ -20,7 +20,7 @@
 (def ^:private default-num-block 100000)
 
 (defn- sam-write-alignments [rdr wtr hdr num-block]
-  (when (and (pos? *n-threads*) (> (get-exec-n-threads) 1))
+  (when (and (pos? (int *n-threads*)) (> (get-exec-n-threads) 1))
     (logging/warn "Concurrent SAM writing is not supported."))
   (doseq [alns (partition-all num-block (sam/read-alignments rdr {}))]
     (sam/write-alignments wtr alns hdr)))

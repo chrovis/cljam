@@ -169,7 +169,7 @@
   [gt]
   (let [parsed-gt (or (cond-> gt (string? gt) parse-genotype) [[nil]])]
     (->> (assoc-in (vec parsed-gt) [0 1] false)
-         (map (fn [[allele phased]]
+         (map (fn [[^long allele phased]]
                 (bit-or
                  (bit-shift-left (if allele (inc allele) 0) 1)
                  (if phased 1 0)))))))
@@ -178,7 +178,9 @@
   "Convert a sequence of integers to genotype string."
   [vs]
   (->> vs
-       (mapcat (fn [i] [(if (odd? i) \| \/) (if (zero? (quot i 2)) "." (dec (quot i 2)))]))
+       (mapcat (fn [^long i]
+                 [(if (odd? i) \| \/)
+                  (if (zero? (quot i 2)) "." (dec (quot i 2)))]))
        rest
        (apply str)
        (#(when-not (dot-or-nil? ^String %) %))))

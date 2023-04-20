@@ -16,11 +16,11 @@
 
 (defn- count-for-positions
   "Piles the alignments up and counts them in the positions, returning it as a seq."
-  [alns beg end]
+  [alns ^long beg ^long end]
   (let [pile (long-array (inc (- end beg)))]
     (doseq [aln alns]
-      (let [left (max (:pos aln) beg)
-            right (min (:end aln) end)
+      (let [left (max (long (:pos aln)) beg)
+            right (min (long (:end aln)) end)
             left-index (- left beg)]
         (dotimes [i (inc (- right left))]
           (aset-long pile (+ i left-index) (inc (aget pile (+ i left-index)))))))
@@ -49,12 +49,16 @@
   Requires a `cljam.io.bam.reader.BAMReader` instance and region.
   If start and end are not supplied, piles whole range up.
   Note that CIGAR code in alignments are ignored and only start/end positions are used."
-  [bam-reader {:keys [chr start end] :or {start 1 end Long/MAX_VALUE}}
+  [bam-reader {:keys [chr ^long start ^long end] :or {start 1 end Long/MAX_VALUE}}
    & [{:keys [step n-threads] :or {step default-step n-threads 1}}]]
-  {:pre [chr start end (pos? start) (pos? end) (<= start end)]}
+  {:pre [chr ^long start ^long end (pos? start) (pos? end) (<= start end)]}
   (when-let [{:keys [len]} (refs/ref-by-name (sam/read-refs bam-reader) chr)]
     (binding [common/*n-threads* n-threads]
-      (lazy-depth* bam-reader chr (min len start) (min len end) step))))
+      (lazy-depth* bam-reader
+                   chr
+                   (min (long len) start)
+                   (min (long len) end)
+                   step))))
 
 ;; eager
 ;; -----
@@ -89,8 +93,8 @@
         end (int end)
         offset (int offset)]
     (doseq [aln alns]
-      (let [left (Math/max ^int (:pos aln) beg)
-            right (int ^long (inc (or (:end aln) (sam-util/get-end aln))))
+      (let [left (Math/max (int (:pos aln)) beg)
+            right (inc (or (long (:end aln)) (sam-util/get-end aln)))
             left-index (+ (- left beg) offset)
             right-index (+ (- right beg) offset)]
         (aset-int pile left-index (inc (aget pile left-index)))
@@ -101,7 +105,7 @@
 
 (defn ^"[I" depth*
   "Internal depth function which returns an int-array."
-  [rdr {:keys [chr start end] :as region}
+  [rdr {:keys [chr ^long start ^long end] :as region}
    & [{:keys [step unchecked? n-threads] :or {step default-step unchecked? false n-threads 1}}]]
   (let [pile (int-array (inc (- end start)))
         f (if unchecked? unchecked-aset-depth-in-region! aset-depth-in-region!)]
@@ -112,7 +116,7 @@
        [[s e] (region/divide-region start end step)]
        (with-open [r (sam/clone-bam-reader rdr)]
          (-> (sam/read-blocks r {:chr chr, :start s, :end e} {:mode :region})
-             (f s e (- s start) pile)))))
+             (f s e (- (long s) start) pile)))))
     pile))
 
 (defn depth
@@ -120,12 +124,14 @@
   Requires a `cljam.io.bam.reader.BAMReader` instance and region.
   If start and end are not supplied, piles whole range up.
   Note that CIGAR code in alignments are ignored and only start/end positions are used."
-  [bam-reader {:keys [chr start end] :or {start 1 end Long/MAX_VALUE}}
+  [bam-reader {:keys [chr ^long start ^long end]
+               :or {start 1 end Long/MAX_VALUE}}
    & [{:keys [step unchecked? n-threads] :or {step default-step unchecked? false n-threads 1}}]]
-  {:pre [chr start end (pos? start) (pos? end) (<= start end)]}
+  {:pre [chr start end
+         (pos? (long start)) (pos? (long end)) (<= (long start) (long end))]}
   (when-let [{:keys [len]} (refs/ref-by-name (sam/read-refs bam-reader) chr)]
     (seq
      (depth*
       bam-reader
-      {:chr chr, :start (min len start), :end (min len end)}
+      {:chr chr, :start (min (long len) start), :end (min (long len) end)}
       {:step step, :unchecked? unchecked?, :n-threads n-threads}))))

@@ -37,9 +37,10 @@
   (read-in-region [this {:keys [chr start end]} option]
     (logging/warn "May cause degradation of performance.")
     (filter
-     (fn [v] (and (if chr (= (:chr v) chr) true)
-                  (if start (<= start (:pos v)) true)
-                  (if end (<= (+ (:pos v) (count (:ref v))) end) true)))
+     (fn [v]
+       (and (if chr (= (:chr v) chr) true)
+            (if start (<= (long start) (long (:pos v))) true)
+            (if end (<= (+ (long (:pos v)) (count (:ref v))) (long end)) true)))
      (read-variants this option))))
 
 ;; need dynamic extension for namespace issue.
@@ -202,7 +203,7 @@
   "Reads variants of the bgzip compressed VCF file randomly using tabix/csi file
    Returning them as a lazy sequence."
   [^VCFReader rdr
-   {:keys [chr start end] :or {start 1 end 4294967296}}
+   {:keys [chr ^long start ^long end] :or {start 1 end 4294967296}}
    {:keys [depth] :or {depth :deep}}]
   (let [kws (mapv keyword (drop 8 (.header rdr)))
         index-data @(.index-delay rdr)
@@ -227,10 +228,11 @@
             repeatedly
             (take-while identity)
             (filter
-             (fn [{chr' :chr :keys [pos ref info]}]
+             (fn [{chr' :chr :keys [^long pos ref info]}]
                (and (= chr' chr)
                     (<= pos end)
-                    (<= start (get info :END (dec (+ pos (count ref))))))))))
+                    (<= start
+                        (long (get info :END (dec (+ pos (count ref)))))))))))
      spans)))
 
 (defn read-file-offsets
@@ -257,6 +259,7 @@
                                      (assoc contigs chr (count contigs)))]
                       (cons {:file-beg beg-pointer, :file-end end-pointer
                              :chr-index (contigs' chr), :beg pos, :chr chr,
-                             :end (or (:END info) (dec (+ pos (count ref))))}
+                             :end (or (:END info)
+                                      (dec (+ (long pos) (count ref))))}
                             (lazy-seq (step contigs' end-pointer))))))))]
       (step meta-info-contigs 0))))

@@ -43,10 +43,14 @@
   upper-table
   (let [ba (byte-array 128)]
     (doseq [c "ATGCN"]
-      (aset-byte ba (byte c) (byte c))
-      (aset-byte ba (+ (byte c) (- (byte \a) (byte \A))) (byte c)))
+      (aset-byte ba (byte (int c)) (byte (int c)))
+      (aset-byte ba
+                 (+ (byte (int c))
+                    (- (byte (int \a))
+                       (byte (int \A))))
+                 (byte (int c))))
     (doseq [[from to] [[\, -1] [\. -1] [\< \>] [\> \>] [\* \*]]]
-      (aset-byte ba (byte from) (byte to)))
+      (aset-byte ba (byte (int from)) (byte (int to))))
     ba))
 
 (defn- parse-bases-col
@@ -82,14 +86,14 @@
                                                       (recur (inc j) (inc k) (+ (* 10 results) (- (int c) 48)))
                                                       [k results]))))
                   indel-seq (when indel-num
-                              (let [s (+ i (if mapq 4 2) indel-num-chars)]
-                                (cstr/upper-case (.substring column s (+ s indel-num)))))
+                              (let [s (+ i (if mapq 4 2) (long indel-num-chars))]
+                                (cstr/upper-case (.substring column s (+ s (long indel-num))))))
                   end? (boolean (or (= \$ x)
                                     (and indel-num
-                                         (not= len (+ i (if mapq 4 2) indel-num-chars indel-num))
-                                         (= \$ (.charAt column (+ i (if mapq 4 2) indel-num-chars indel-num))))))
+                                         (not= len (+ i (if mapq 4 2) (long indel-num-chars) (long indel-num)))
+                                         (= \$ (.charAt column (+ i (if mapq 4 2) (long indel-num-chars) (long indel-num)))))))
                   next-pos (long (+ i 1 (if mapq 2 0)
-                                    (if indel-num (+ 1 indel-num-chars indel-num) 0)
+                                    (if indel-num (+ 1 (long indel-num-chars) (long indel-num)) 0)
                                     (if end? 1 0)))]
               (recur next-pos
                      (conj! results (PileupBase. start? mapq upper-base -1 reverse? end? (when ins? indel-seq) (when del? indel-num) nil nil))))))
@@ -138,12 +142,12 @@
       (.append w (unchecked-char (case-base-fn base))))
     (when deletion
       (.append w \-)
-      (.append w (String/valueOf ^int deletion))
+      (.append w (String/valueOf (int deletion)))
       (.append w ^String (case-fn
                           (if ref-reader
                             (->> {:chr rname
-                                  :start (inc ref-pos)
-                                  :end (+ ref-pos deletion)}
+                                  :start (inc (long ref-pos))
+                                  :end (+ (long ref-pos) (int deletion))}
                                  (cseq/read-sequence ref-reader))
                             (apply str (repeat deletion \N))))))
     (when insertion

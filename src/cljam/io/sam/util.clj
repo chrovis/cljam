@@ -16,7 +16,7 @@
   [line]
   (let [[qname flag rname pos-str mapq cigar rnext pnext tlen seq qual & options] (cstr/split line #"\t")
         pos (Integer/parseInt pos-str)
-        ref-length (cigar/count-ref cigar)
+        ref-length (int (cigar/count-ref cigar))
         end (if (zero? ref-length) 0 (int (dec (+ pos ref-length))))]
     (SAMAlignment. qname (Integer/parseInt flag) rname pos end (Integer/parseInt mapq)
                    cigar rnext (Integer/parseInt pnext) (Integer/parseInt tlen) (cstr/upper-case seq)
@@ -35,11 +35,12 @@
 
 (defn get-end
   "Returns the end position in reference for the given alignment."
-  [aln]
-  (let [ref-length (cigar/count-ref (:cigar aln))]
-    (if (zero? ref-length)
-      (:pos aln)
-      (dec (+ (:pos aln) ref-length)))))
+  ^long
+  [{:keys [^long pos cigar]}]
+  (let [ref-length (cigar/count-ref cigar)]
+    (if (zero? (long ref-length))
+      pos
+      (dec (+ pos (long ref-length))))))
 
 (defn compute-bin
   "Returns indexing bin based on alignment start and end."

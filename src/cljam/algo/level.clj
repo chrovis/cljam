@@ -33,7 +33,7 @@
         lv (loop [i 0 x (first s) xs (next s)]
              (if-not x
                (do (vswap! state conj end) i)
-               (if (< x pos)
+               (if (< (long x) pos)
                  (do (vswap! state assoc i end) i)
                  (recur (inc i) (first xs) (next xs)))))]
     (update a :options conj {:LV {:type "i" :value (int lv)}})))

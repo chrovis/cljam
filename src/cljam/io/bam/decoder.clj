@@ -88,7 +88,7 @@
     "*"
     (qual/phred-bytes->fastq b)))
 
-(defn decode-seq [seq-bytes length]
+(defn decode-seq [seq-bytes ^long length]
   (if (zero? length)
     "*"
     (sam-seq/compressed-bases->str length seq-bytes 0)))
@@ -118,22 +118,22 @@
    (let [buffer      (ByteBuffer/wrap (:data block))
          ref-id      ^int (lsb/read-int buffer)
          rname       (or (refs/ref-name refs ref-id) "*")
-         pos         (inc ^int (lsb/read-int buffer))
-         l-read-name (int ^long (lsb/read-ubyte buffer))
-         mapq        ^long (lsb/read-ubyte buffer)
+         pos         (inc (int (lsb/read-int buffer)))
+         l-read-name (short (lsb/read-ubyte buffer))
+         mapq        (short (lsb/read-ubyte buffer))
          _           (lsb/skip buffer 2) ; bin
-         n-cigar-op  ^long (lsb/read-ushort buffer)
-         flag        ^long (lsb/read-ushort buffer)
-         l-seq       ^int (lsb/read-int buffer)
-         next-ref-id ^int (lsb/read-int buffer)
+         n-cigar-op  (int (lsb/read-ushort buffer))
+         flag        (int (lsb/read-ushort buffer))
+         l-seq       (int (lsb/read-int buffer))
+         next-ref-id (int (lsb/read-int buffer))
          rnext       (decode-next-ref-id refs ref-id next-ref-id)
-         pnext       (inc ^int (lsb/read-int buffer))
-         tlen        ^int (lsb/read-int buffer)
+         pnext       (inc (int (lsb/read-int buffer)))
+         tlen        (int (lsb/read-int buffer))
          qname       (lsb/read-string buffer (dec l-read-name))
          _           (lsb/skip buffer 1)
          cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-         [cigar ^long len] (cigar/decode-cigar-and-ref-length cigar-bytes)
-         ref-end     (int ^long (if (zero? len) pos (dec (+ pos len))))
+         [cigar len] (cigar/decode-cigar-and-ref-length cigar-bytes)
+         ref-end     (if (zero? (long len)) pos (dec (+ pos (long len))))
          seq         (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
          qual        (decode-qual (lsb/read-bytes buffer l-seq))
          rest        (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
@@ -147,24 +147,26 @@
                     cigar* rnext (int pnext) (int tlen) seq qual options*)))
   ([refs block ^long start ^long end]
    (let [buffer          (ByteBuffer/wrap (:data block))
-         ref-id          ^int (lsb/read-int buffer)
-         pos             (inc ^int (lsb/read-int buffer))]
+         ref-id          (int (lsb/read-int buffer))
+         pos             (inc (int (lsb/read-int buffer)))]
      (when (<= pos end)
-       (let [l-read-name (int ^long (lsb/read-ubyte buffer))
-             mapq        ^long (lsb/read-ubyte buffer)
+       (let [l-read-name (short (lsb/read-ubyte buffer))
+             mapq        (short (lsb/read-ubyte buffer))
              _           (lsb/skip buffer 2) ; bin
-             n-cigar-op  ^long (lsb/read-ushort buffer)
-             flag        ^long (lsb/read-ushort buffer)
-             l-seq       ^int (lsb/read-int buffer)
-             next-ref-id ^int (lsb/read-int buffer)
+             n-cigar-op  (int (lsb/read-ushort buffer))
+             flag        (int (lsb/read-ushort buffer))
+             l-seq       (int (lsb/read-int buffer))
+             next-ref-id (int (lsb/read-int buffer))
              rnext       (decode-next-ref-id refs ref-id next-ref-id)
-             pnext       (inc ^int (lsb/read-int buffer))
-             tlen        ^int (lsb/read-int buffer)
+             pnext       (inc (int (lsb/read-int buffer)))
+             tlen        (int (lsb/read-int buffer))
              qname       (lsb/read-string buffer (dec l-read-name))
              _           (lsb/skip buffer 1)
              cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-             [cigar ^long len] (cigar/decode-cigar-and-ref-length cigar-bytes)
-             ref-end     (int ^long (if (zero? len) pos (dec (+ pos len))))]
+             [cigar len] (cigar/decode-cigar-and-ref-length cigar-bytes)
+             ref-end     (int (if (zero? (long len))
+                                pos
+                                (dec (+ pos (long len)))))]
          (when (<= start ref-end)
            (let [seq     (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
                  qual    (decode-qual (lsb/read-bytes buffer l-seq))
@@ -183,28 +185,28 @@
   "Decodes BAM block and returns a SAMRegionBlock instance containing covering range of the alignment."
   ([^BAMRawBlock block]
    (let [buffer          (ByteBuffer/wrap (.data block))
-         ref-id          ^int (lsb/read-int buffer)
-         pos             (inc ^int (lsb/read-int buffer))
-         l-read-name     (int ^long (lsb/read-ubyte buffer))
+         ref-id          (int (lsb/read-int buffer))
+         pos             (inc (int (lsb/read-int buffer)))
+         l-read-name     (short (lsb/read-ubyte buffer))
          _               (lsb/skip buffer 3) ;; MAPQ, bin
-         n-cigar-op      ^long (lsb/read-ushort buffer)
+         n-cigar-op      (int (lsb/read-ushort buffer))
          _               (lsb/skip buffer (+ 18 l-read-name)) ;; flag, l_seq, rnext, pnext, tlen, qname
          cigar-bytes     (lsb/read-bytes buffer (* n-cigar-op 4))
-         ref-length      ^long (cigar/count-ref-bytes cigar-bytes)
-         ref-end         (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+         ref-length      (cigar/count-ref-bytes cigar-bytes)
+         ref-end         (int (if (zero? ref-length) pos (dec (+ pos ref-length))))]
      (SAMRegionBlock. (.data block) ref-id pos ref-end)))
   ([^BAMRawBlock block ^long start ^long end]
    (let [buffer          (ByteBuffer/wrap (.data block))
-         ref-id          ^int (lsb/read-int buffer)
-         pos             (inc ^int (lsb/read-int buffer))]
+         ref-id          (int (lsb/read-int buffer))
+         pos             (inc (int (lsb/read-int buffer)))]
      (when (<= pos end)
-       (let [l-read-name (int ^long (lsb/read-ubyte buffer))
+       (let [l-read-name (short (lsb/read-ubyte buffer))
              _           (lsb/skip buffer 3) ;; MAPQ, bin
-             n-cigar-op  ^long (lsb/read-ushort buffer)
+             n-cigar-op  (int (lsb/read-ushort buffer))
              _           (lsb/skip buffer (+ 18 l-read-name)) ;; flag, l_seq, rnext, pnext, tlen, qname
              cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-             ref-length  ^long (cigar/count-ref-bytes cigar-bytes)
-             ref-end     (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+             ref-length  (cigar/count-ref-bytes cigar-bytes)
+             ref-end     (if (zero? ref-length) pos (dec (+ pos ref-length)))]
          (when (<= start ref-end)
            (SAMRegionBlock. (.data block) ref-id pos ref-end)))))))
 
@@ -212,24 +214,24 @@
   "Decodes BAM block and returns a SAMCoordinateBlock instance containing ref-id, pos and flag."
   ([^BAMRawBlock block]
    (let [buffer     (ByteBuffer/wrap (.data block))
-         ref-id     ^int (lsb/read-int buffer)
-         pos        (inc ^int (lsb/read-int buffer))
+         ref-id     (int (lsb/read-int buffer))
+         pos        (inc (int (lsb/read-int buffer)))
          _          (lsb/skip buffer 6) ;; l_read_name, MAPQ, bin, n_cigar_op
-         flag ^long (lsb/read-ushort buffer)] ;; l_seq, rnext, pnext, tlen, qname
+         flag       (int (lsb/read-ushort buffer))] ;; l_seq, rnext, pnext, tlen, qname
      (SAMCoordinateBlock. (.data block) (int ref-id) (int pos) (int flag))))
   ([^BAMRawBlock block ^long start ^long end]
    (let [buffer          (ByteBuffer/wrap (.data block))
-         ref-id          ^int (lsb/read-int buffer)
-         pos             (inc ^int (lsb/read-int buffer))]
+         ref-id          (int (lsb/read-int buffer))
+         pos             (inc (int (lsb/read-int buffer)))]
      (when (<= pos end)
-       (let [l-read-name (int ^long (lsb/read-ubyte buffer))
+       (let [l-read-name (short (lsb/read-ubyte buffer))
              _           (lsb/skip buffer 3) ;; MAPQ, bin
-             n-cigar-op  ^long (lsb/read-ushort buffer)
-             flag        ^long (lsb/read-ushort buffer)
+             n-cigar-op  (int (lsb/read-ushort buffer))
+             flag        (int (lsb/read-ushort buffer))
              _           (lsb/skip buffer (+ 16 l-read-name)) ;; l_seq, rnext, pnext, tlen, qname
              cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-             ref-length  ^long (cigar/count-ref-bytes cigar-bytes)
-             ref-end     (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+             ref-length  (cigar/count-ref-bytes cigar-bytes)
+             ref-end     (if (zero? ref-length) pos (dec (+ pos ref-length)))]
          (when (<= start ref-end)
            (SAMCoordinateBlock. (.data block) (int ref-id) (int pos) (int flag))))))))
 
@@ -238,26 +240,26 @@
   ([^BAMRawBlock block]
    (let [buffer      (ByteBuffer/wrap (.data block))
          _           (lsb/skip buffer 8) ;; ref-id, pos
-         l-read-name ^long (lsb/read-ubyte buffer)
+         l-read-name (short (lsb/read-ubyte buffer))
          _           (lsb/skip buffer 5) ;; MAPQ, bin, n_cigar_op
-         flag ^long  (lsb/read-ushort buffer)
+         flag        (int (lsb/read-ushort buffer))
          _           (lsb/skip buffer 16) ;; l_seq, rnext, pnext, tlen
          qname       (lsb/read-string buffer l-read-name)]
      (SAMQuerynameBlock. (.data block) qname (int flag))))
   ([^BAMRawBlock block ^long start ^long end]
    (let [buffer          (ByteBuffer/wrap (.data block))
          _               (lsb/skip buffer 4) ;; ref-id
-         pos             (inc ^int (lsb/read-int buffer))]
+         pos             (inc (int (lsb/read-int buffer)))]
      (when (<= pos end)
-       (let [l-read-name ^long (lsb/read-ubyte buffer)
+       (let [l-read-name (short (lsb/read-ubyte buffer))
              _           (lsb/skip buffer 3) ;; MAPQ, bin
-             n-cigar-op  ^long (lsb/read-ushort buffer)
-             flag        ^long (lsb/read-ushort buffer)
+             n-cigar-op  (int (lsb/read-ushort buffer))
+             flag        (int (lsb/read-ushort buffer))
              _           (lsb/skip buffer 16) ;; l_seq, rnext, pnext, tlen
              qname       (lsb/read-string buffer l-read-name)
              cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-             ref-length  ^long (cigar/count-ref-bytes cigar-bytes)
-             ref-end     (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+             ref-length  (cigar/count-ref-bytes cigar-bytes)
+             ref-end     (if (zero? ref-length) pos (dec (+ pos ref-length)))]
          (when (<= start ref-end)
            (SAMQuerynameBlock. (.data block) qname (int flag))))))))
 
@@ -266,30 +268,30 @@
   "Decodes BAM block and returns a BAMPointerBlock instance containing region, flag and block pointers."
   ([^BAMRawBlock block]
    (let [buffer      (ByteBuffer/wrap (.data block))
-         ref-id      ^int (lsb/read-int buffer)
-         pos         (inc ^int (lsb/read-int buffer))
-         l-read-name (int ^long (lsb/read-ubyte buffer))
+         ref-id      (int (lsb/read-int buffer))
+         pos         (inc (int (lsb/read-int buffer)))
+         l-read-name (short (lsb/read-ubyte buffer))
          _           (lsb/skip buffer 3) ;; MAPQ, bin
-         n-cigar-op  ^long (lsb/read-ushort buffer)
-         flag        ^long (lsb/read-ushort buffer)
+         n-cigar-op  (int (lsb/read-ushort buffer))
+         flag        (int (lsb/read-ushort buffer))
          _           (lsb/skip buffer (+ 16 l-read-name)) ;; l_seq, rnext, pnext, tlen, qname
          cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-         ref-length  ^long (cigar/count-ref-bytes cigar-bytes)
-         ref-end     (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+         ref-length  (cigar/count-ref-bytes cigar-bytes)
+         ref-end     (if (zero? ref-length) pos (dec (+ pos ref-length)))]
      (BAMPointerBlock. (.data block) ref-id pos ref-end (int flag) (.pointer-beg block) (.pointer-end block))))
   ([^BAMRawBlock block ^long start ^long end]
    (let [buffer          (ByteBuffer/wrap (.data block))
-         ref-id          ^int (lsb/read-int buffer)
-         pos             (inc ^int (lsb/read-int buffer))]
+         ref-id          (int (lsb/read-int buffer))
+         pos             (inc (int (lsb/read-int buffer)))]
      (when (<= pos end)
-       (let [l-read-name (int ^long (lsb/read-ubyte buffer))
+       (let [l-read-name (short (lsb/read-ubyte buffer))
              _           (lsb/skip buffer 3) ;; MAPQ, bin
-             n-cigar-op  ^long (lsb/read-ushort buffer)
-             flag        ^long (lsb/read-ushort buffer)
+             n-cigar-op  (int (lsb/read-ushort buffer))
+             flag        (int (lsb/read-ushort buffer))
              _           (lsb/skip buffer (+ 16 l-read-name)) ;; l_seq, rnext, pnext, tlen, qname
              cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-             ref-length  ^long (cigar/count-ref-bytes cigar-bytes)
-             ref-end     (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+             ref-length  (cigar/count-ref-bytes cigar-bytes)
+             ref-end     (if (zero? ref-length) pos (dec (+ pos ref-length)))]
          (when (<= start ref-end)
            (BAMPointerBlock. (.data block) ref-id pos ref-end (int flag) (.pointer-beg block) (.pointer-end block))))))))
 

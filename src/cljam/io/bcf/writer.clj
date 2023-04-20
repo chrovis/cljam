@@ -57,7 +57,7 @@
                    (str (char 0)) ;; NULL-terminated
                    .getBytes)
         hlen (alength hdr-ba)]
-    (lsb/write-bytes wtr (byte-array (map byte "BCF\2\2")))
+    (lsb/write-bytes wtr (byte-array (map (comp byte int) "BCF\2\2")))
     (lsb/write-int wtr hlen)
     (lsb/write-bytes wtr hdr-ba)))
 
@@ -146,7 +146,7 @@
          len-bytes (when (<= 15 max-len)
                      (encode-typed-value :int max-len))
          n-bytes (+ (* n-sample max-len (case type-id 1 1 2 2 3 4 5 4 7 1))
-                    1 (if len-bytes (alength ^bytes len-bytes) 0))
+                    1 (if len-bytes (long (alength ^bytes len-bytes)) 0))
          bb (ByteBuffer/allocate n-bytes)]
      (.order bb ByteOrder/LITTLE_ENDIAN)
      (.put bb (unchecked-byte type-byte))
@@ -160,7 +160,7 @@
          3 (.putInt bb (unchecked-int (get int32-special-map b b)))
          5 (.putInt bb (unchecked-int (or (get float32-special-map b)
                                           (Float/floatToRawIntBits b))))
-         7 (.put bb (byte (get {nil 0 :eov 0} b b)))))
+         7 (.put bb (byte (get {nil 0 :eov 0} b (int b))))))
      (.array bb))))
 
 (defn- concat-bytes
@@ -251,7 +251,7 @@
     (-> (apply dissoc variant kws)
         (assoc :n-sample (count indiv-kws)
                :ref-length (if-let [e (get-in variant [:info :END])]
-                             (inc (- e (:pos variant)))
+                             (inc (- (long e) (long (:pos variant))))
                              (count (:ref variant)))
                :format (map (comp :idx second) fmts)
                :genotype genotype)

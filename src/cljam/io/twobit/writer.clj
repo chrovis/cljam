@@ -50,7 +50,7 @@
           (persistent! r))
         (if (<= (int \a) (int (.charAt s (int i))))
           (if p
-            (recur r p (inc l) (inc i))
+            (recur r p (inc (long l)) (inc i))
             (recur r i 1 (inc i)))
           (if p
             (recur (conj! r [p l]) nil nil (inc i))
@@ -70,7 +70,7 @@
           (persistent! r))
         (if (= \N (.charAt s (int i)))
           (if p
-            (recur r p (inc l) (inc i))
+            (recur r p (inc (long l)) (inc i))
             (recur r i 1 (inc i)))
           (if p
             (recur (conj! r [p l]) nil nil (inc i))
@@ -78,7 +78,8 @@
 
 (defn- write-index!
   [w idx]
-  (loop [offset (+ (* 4 4) (reduce + (map #(+ 1 (count (:name %)) 4) idx)))
+  (loop [offset (+ (* 4 4)
+                   (long (reduce + (map #(+ 1 (count (:name %)) 4) idx))))
          idx idx]
     (when-let [{:keys [name len]} (first idx)]
       (lsb/write-ubyte w (count name))
@@ -88,7 +89,7 @@
                 (if-let [{:keys [ambs masks]} (first idx)]
                   (+ 4 4 (* 2 4 (count ambs)) 4 (* 2 4 (count masks)) 4)
                   0) ; dummy
-                (quot (dec (+ len 4)) 4))
+                (quot (dec (+ (long len) 4)) 4))
              (next idx)))))
 
 (def ^:private
@@ -115,10 +116,13 @@
             (aget table (.get bb)))
            unchecked-int
            (.write o)))
-    (when (pos? (mod len 4))
-      (loop [b 0 i (mod len 4) j 1]
+    (when (pos? (rem len 4))
+      (loop [b 0 i (rem len 4) j 1]
         (if (pos? i)
-          (recur (bit-or b (bit-shift-left (aget table (.get bb)) (* 2 (- 4 j)))) (dec i) (inc j))
+          (recur
+           (bit-or b (bit-shift-left (aget table (.get bb)) (* 2 (- 4 j))))
+           (dec i)
+           (inc j))
           (.write o (unchecked-int b)))))))
 
 (defn- write-sequence!

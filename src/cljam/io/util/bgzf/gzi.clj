@@ -39,9 +39,9 @@
   "Returns an uncompressed offset for a given virtual file offset"
   ^long [gzi ^long compressed-offset]
   (let [off (unsigned-bit-shift-right compressed-offset 16)
-        [uncompressed] (->> gzi
-                            rseq
-                            (filter (fn [[_ c]] (= (long c) off)))
-                            first)]
-    (assert uncompressed)
+        uncompressed (->> gzi
+                          rseq
+                          (filter (fn [[_ c]] (= (long c) off)))
+                          ffirst
+                          long)]
     (+ uncompressed (bit-and compressed-offset 0xffff))))

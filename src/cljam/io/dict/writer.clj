@@ -17,11 +17,11 @@
 ;; -----------
 
 (def ^:const ^:private upper-case-offset
-  "Equals to `(- (byte \\A) (byte \\a))`."
+  "Equals to `(- (byte (int \\A)) (byte (int \\a)))`."
   -32)
 
-(defn- upper-case [b]
-  (if (or (< b (byte \a)) (> b (byte \z)))
+(defn- upper-case [^long b]
+  (if (or (< b (byte (int \a))) (> b (byte (int \z))))
     b
     (byte (+ b upper-case-offset))))
 
@@ -42,7 +42,7 @@
 (defn- update-dict-status
   [dict-status sequence]
   {:sequence (str (:sequence dict-status) sequence)
-   :len (+ (:len dict-status) (count (filter graph? sequence)))})
+   :len (+ (long (:len dict-status)) (count (filter graph? sequence)))})
 
 (defn make-dict
   "Calculates sequence dictionary from the headers and sequences, returning it

@@ -1,5 +1,5 @@
 (ns cljam.io.vcf.util-test
-  (:require [clojure.test :refer [deftest are]]
+  (:require [clojure.test :refer [deftest are is]]
             [cljam.test-common :refer
              [test-vcf-v4_3-meta-info
               test-vcf-v4_3-header
@@ -455,3 +455,14 @@
     "TG" "TAC" {:type :complex}
     "TCA" "GGGG" {:type :complex}
     "AAAA" "CAC" {:type :complex}))
+
+(deftest parse-float-test
+  (is (= (#'vcf-util/parse-float "3.2") (Float/parseFloat "3.2")))
+  (is (Float/isNaN (#'vcf-util/parse-float "nan")))
+  (is (Float/isNaN (#'vcf-util/parse-float "NAN")))
+  (is (Float/isNaN (#'vcf-util/parse-float "NaN")))
+  (is (= (#'vcf-util/parse-float "+INF") Float/POSITIVE_INFINITY))
+  (is (= (#'vcf-util/parse-float "-INF") Float/POSITIVE_INFINITY))
+  (is (= (#'vcf-util/parse-float "INF") Float/POSITIVE_INFINITY))
+  (is (= (#'vcf-util/parse-float "inf") Float/POSITIVE_INFINITY))
+  (is (= (#'vcf-util/parse-float "infinity") Float/POSITIVE_INFINITY)))

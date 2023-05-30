@@ -47,10 +47,10 @@
             len (.getInt buf)
             _ (.reset ^Buffer buf)
             header (delay
-                    (let [buf' (.duplicate buf)]
-                      (.order buf' (.order buf))
-                      (.position ^Buffer buf' (+ offset Integer/BYTES))
-                      (read-sequence-header! buf')))]
+                     (let [buf' (.duplicate buf)]
+                       (.order buf' (.order buf))
+                       (.position ^Buffer buf' (+ offset Integer/BYTES))
+                       (read-sequence-header! buf')))]
         (.put m chr (Chrom. chr len offset i header))))
     m))
 

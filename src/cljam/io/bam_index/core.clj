@@ -54,9 +54,7 @@
   [^BAMIndex bai ^long ref-idx ^long beg ^long end]
   (util-bin/get-spans bai ref-idx beg end))
 
-
 ;; ## Writing
-
 
 (defn writer ^BAIWriter
   [f refs]

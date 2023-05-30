@@ -22,12 +22,10 @@
   (close [_]
     (.close writer)))
 
-
 ;; ### Intermediate data definitions
 ;;
 ;; Use record for performance.
 ;; Record is faster than map for retrieving elements.
-
 
 (defrecord MetaData [^long first-offset ^long last-offset ^long aligned-alns ^long unaligned-alns])
 

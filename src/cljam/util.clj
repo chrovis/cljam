@@ -90,10 +90,8 @@
   [c]
   (not (nil? (#{\space \tab \newline \formfeed \return (char 0x0b)} c))))
 
-
 ;; file utils
 ;; ---------
-
 
 (defn as-url ^URL
   [x]

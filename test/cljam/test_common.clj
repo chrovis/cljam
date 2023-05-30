@@ -231,9 +231,7 @@
 (def test-large-vcf-tbi-file (cavia/resource mycavia "large.vcf.gz.tbi"))
 (def test-large-vcf-csi-file (cavia/resource mycavia "large.vcf.gz.csi"))
 
-
 ;; ### pileup files
-
 
 (def test-pileup-file "test-resources/pileup/test.pileup")
 (def test-pileup-dir "test-resources/pileup/")
@@ -253,7 +251,6 @@
 (def test-large-bcf-csi-file (cavia/resource mycavia "large.bcf.csi"))
 
 ;; ### GFF3 files
-
 
 (def test-gff3-file "test-resources/gff3/example.gff3")
 

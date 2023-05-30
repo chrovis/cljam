@@ -36,12 +36,15 @@
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
-  (read-in-region [this {:keys [chr start end]} option]
+  (read-in-region [this {:keys [chr ^long start ^long end]} option]
     (logging/warn "May cause degradation of performance.")
     (filter
-     (fn [v] (and (if chr (= (:chr v) chr) true)
-                  (if start (<= start (:pos v)) true)
-                  (if end (<= (+ (:pos v) (count (:ref v))) end) true)))
+     (fn [{^long v-pos :pos
+           v-chr :chr
+           v-ref :ref}]
+       (and (if chr (= v-chr chr) true)
+            (if start (<= start v-pos) true)
+            (if end (<= (+ v-pos (count v-ref)) end) true)))
      (read-variants this option))))
 
 ;; need dynamic extension for namespace issue.
@@ -74,15 +77,16 @@
             metas)
      :header (first (map vcf-reader/parse-header-line headers))}))
 
-(defn ^BCFReader reader
-  "Returns an open cljam.bcf.reader.BCFReader of f. Should be used inside with-open to
-  ensure the Reader is properly closed.
-   Throws IOException if failed to parse BCF file format."
+(defn reader
+  "Returns an open cljam.bcf.reader.BCFReader of f. Should be used inside
+  with-open to ensure the Reader is properly closed.
+  Throws IOException if failed to parse BCF file format."
+  ^BCFReader
   [f]
   (let [rdr (bgzf/bgzf-input-stream f)
         magic (lsb/read-bytes rdr 5)]
     (if (= (seq magic) (map byte "BCF\2\2"))
-      (let [hlen (lsb/read-int rdr)
+      (let [hlen (int (lsb/read-int rdr))
             header-buf (lsb/read-bytes rdr hlen)]
         (if (zero? (aget ^bytes header-buf (dec hlen))) ;; NULL-terminated
           (let [{:keys [header meta]} (->> (String. ^bytes header-buf
@@ -94,24 +98,29 @@
                         (delay (csi/read-index (str f ".csi")))))
           (do
             (.close rdr)
-            (throw (IOException. (str "Invalid file format. BCF header must be NULL-terminated."))))))
+            (throw
+             (IOException.
+              "Invalid file format. BCF header must be NULL-terminated.")))))
       (do
         (.close rdr)
-        (throw (IOException. (str "Invalid file format. BCF v2.2 magic not found in " f)))))))
+        (throw
+         (IOException.
+          (str "Invalid file format. BCF v2.2 magic not found in " f)))))))
 
 (defn- read-typed-atomic-value
   "Reads an atomic value, which is typed as either
   integer(8,16,32 bit) or float or character."
   [r ^long type-id]
   (case type-id
-    1 (let [i (lsb/read-byte r)]
+    1 (let [i (byte (lsb/read-byte r))]
         (case (bit-and 0xFF i) 0x80 nil 0x81 :eov i))
-    2 (let [i (lsb/read-short r)]
+    2 (let [i (short (lsb/read-short r))]
         (case (bit-and 0xFFFF i) 0x8000 nil 0x8001 :eov i))
-    3 (let [i (lsb/read-int r)]
+    3 (let [i (int (lsb/read-int r))]
         (case (bit-and 0xFFFFFFFF i) 0x80000000 nil 0x80000001 :eov i))
-    5 (let [i (lsb/read-int r)]
-        (case (bit-and 0xFFFFFFFF i) 0x7F800001 nil 0x7F800002 :eov (Float/intBitsToFloat i)))
+    5 (let [i (int (lsb/read-int r))]
+        (case (bit-and 0xFFFFFFFF i) 0x7F800001 nil 0x7F800002
+              :eov (Float/intBitsToFloat i)))
     7 (lsb/read-byte r)))
 
 (defn- bytes->strs
@@ -127,10 +136,10 @@
   after type specifier byte."
   ([rdr]
    (first (read-typed-value rdr 1)))
-  ([rdr n-sample]
-   (let [type-byte (lsb/read-byte rdr)
+  ([rdr ^long n-sample]
+   (let [type-byte (int (lsb/read-byte rdr))
          len (unsigned-bit-shift-right (bit-and 0xF0 type-byte) 4)
-         total-len (if (= len 15) (first (read-typed-value rdr)) len)
+         total-len (if (= len 15) (long (first (read-typed-value rdr))) len)
          type-id (bit-and 0x0F type-byte)]
      (case type-id
        0 (repeat n-sample nil)
@@ -168,7 +177,7 @@
   "Parses only chromosome, position and ref-length. Can be used for position-based querying."
   [contigs {:keys [^ByteBuffer shared] :as m}]
   (let [chrom-id (lsb/read-int shared)
-        pos (inc (lsb/read-int shared))
+        pos (inc (int (lsb/read-int shared)))
         rlen (lsb/read-int shared)]
     (.position ^Buffer shared 0)
     (assoc m :chr (:id (contigs chrom-id)) :pos pos :rlen rlen)))
@@ -177,13 +186,13 @@
   "Parses full data of a variant. Returns a map containing indices for meta-info."
   [{:keys [^ByteBuffer shared ^ByteBuffer individual]}]
   (let [chrom-id (lsb/read-int shared)
-        pos (inc (lsb/read-int shared))
+        pos (inc (int (lsb/read-int shared)))
         rlen (lsb/read-int shared)
         qual (lsb/read-int shared)
-        n-allele-info (lsb/read-int shared)
+        n-allele-info (int (lsb/read-int shared))
         n-allele (unsigned-bit-shift-right n-allele-info 16)
         n-info (bit-and n-allele-info 0xFFFF)
-        n-fmt-sample (lsb/read-uint shared)
+        n-fmt-sample (long (lsb/read-uint shared))
         n-fmt (bit-and 0xFF (unsigned-bit-shift-right n-fmt-sample 24))
         n-sample (bit-and n-fmt-sample 0xFFFFFF)
         id (let [i (read-typed-value shared)] (if (sequential? i) (first i) i))
@@ -304,7 +313,7 @@
   "Reads variants of the BCF file randomly using csi file.
    Returns them as a lazy sequence."
   [^BCFReader rdr
-   {:keys [chr start end] :or {start 1 end 4294967296}}
+   {:keys [chr ^long start ^long end] :or {start 1 end 4294967296}}
    {:keys [depth] :or {depth :deep}}]
   (let [info (meta->map (:info (.meta-info rdr)))
         parse-fn  (make-parse-fn rdr info depth)
@@ -324,10 +333,11 @@
             repeatedly
             (take-while identity)
             (filter
-             (fn [{chr' :chr :keys [pos ref info]}]
+             (fn [{chr' :chr :keys [^long pos ref info]}]
                (and (= chr' chr)
                     (<= pos end)
-                    (<= start (get info :END (dec (+ pos (count ref))))))))))
+                    (<= start
+                        (long (get info :END (dec (+ pos (count ref)))))))))))
      spans)))
 
 (defn read-file-offsets
@@ -344,7 +354,7 @@
               (when (pos? (.available input-stream))
                 (when-let [line (read-data-line-buffer input-stream)]
                   (let [end-pointer (.getFilePointer input-stream)
-                        {:keys [chr pos rlen]} (parse-fn line)]
+                        {:keys [chr ^long pos ^long rlen]} (parse-fn line)]
                     (cons {:file-beg beg-pointer, :file-end end-pointer
                            :chr-index (contigs chr), :beg pos, :chr chr,
                            :end (dec (+ pos rlen))}

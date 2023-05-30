@@ -33,7 +33,7 @@
       (= i 0x3D)
       (= i 0x7F)))
 
-(defn- ^String encode [pred ^String s]
+(defn- encode ^String [pred ^String s]
   (let [cb (CharBuffer/wrap s)
         sb (StringBuilder. (.length s))]
     (while (.hasRemaining cb)
@@ -50,10 +50,10 @@
           (.append sb c))))
     (str sb)))
 
-(defn- ^String encode-in-attr [s]
+(defn- encode-in-attr ^String [s]
   (encode escape-in-attr? s))
 
-(defn- ^String decode [pred ^String s]
+(defn- decode ^String [pred ^String s]
   (when s
     (let [cb (CharBuffer/wrap s)
           sb (StringBuilder. (.length s))]
@@ -75,10 +75,10 @@
             (.append sb c))))
       (str sb))))
 
-(defn- ^String decode-in-attr [s]
+(defn- decode-in-attr ^String [s]
   (decode escape-in-attr? s))
 
-(defn- ^String encode-multiple [xs]
+(defn- encode-multiple ^String [xs]
   (cstr/join \, (map encode-in-attr xs)))
 
 (defn- decode-multiple [s]
@@ -88,7 +88,7 @@
   target-regexp
   #"(\S+) ([1-9]\d*) ([1-9]\d*)(?: ([+-]))?")
 
-(defn- ^String encode-target [{:keys [chr start end strand]}]
+(defn- encode-target ^String [{:keys [chr start end strand]}]
   (cstr/join \space (cond-> [(encode escape-in-target? chr) start end]
                       strand (conj (case strand :forward \+ :reverse \-)))))
 
@@ -99,7 +99,7 @@
              :end (p/as-long end)}
       strand (assoc :strand (case (first strand) \+ :forward \- :reverse)))))
 
-(defn- ^String encode-gap [xs]
+(defn- encode-gap ^String [xs]
   (cstr/join \space (map (fn [[op len]] (str op len)) xs)))
 
 (defn- decode-gap [s]
@@ -109,7 +109,7 @@
         (fn [[_ [op] len]]
           [op (p/as-long len)]))))
 
-(defn- ^String encode-db [xs]
+(defn- encode-db ^String [xs]
   (->> xs
        (map
         (fn [{:keys [db-tag id]}]
@@ -175,9 +175,10 @@
   [^GFFReader reader]
   (.version reader))
 
-(defn ^GFFReader reader
+(defn reader
   "Returns an open `cljam.io.gff.GFFReader` instance of `f`. Should be used
   inside `with-open` to ensure the reader is properly closed."
+  ^GFFReader
   [f]
   (let [r ^BufferedReader (cio/reader (util/compressor-input-stream f))]
     (try
@@ -256,15 +257,15 @@
   (close [this]
     (.close ^Closeable (.writer this))))
 
-(defn ^GFFWriter writer
+(defn writer
   "Returns an open `cljam.io.gff.GFFWriter` instance of `f`. Should be used
   inside `with-open` to ensure the writer is properly closed. Can take an
   optional argument `options`, a map containing `:version`, `:major-revision`,
   `:minor-revision` and `:encoding`. Currently supporting only `:version` 3.
   To compress outputs, set `:encoding` to `:gzip` or `:bzip2`."
-  ([f]
+  (^GFFWriter [f]
    (writer f {}))
-  ([f options]
+  (^GFFWriter [f options]
    (let [{:keys [encoding version] :as opts} (merge {:version 3} options)
          url (try (util/as-url f) (catch Exception _ nil))]
      (when-not (= 3 version)

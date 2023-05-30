@@ -184,7 +184,7 @@
       {:base \A :reverse? true :end? true :deletion 4 :alignment {:flag 16 :mapq 40 :pos 5 :end 10}} "a-4nnnn$"))
   (testing "with-ref"
     (let [r (reify p/ISequenceReader
-              (p/read-sequence [this {:keys [start end]}]
+              (p/read-sequence [_ {:keys [start end]}]
                 (subs "ATGCATGCATGCATGCATGCATGCATGC" (dec start) end)))]
       (are [?in ?out]
            (= ?out (with-string-writer w
@@ -216,7 +216,7 @@
   (reify p/ISequenceReader
     (p/read-sequence [this region]
       (p/read-sequence this region {}))
-    (p/read-sequence [this {:keys [start end]} {:keys [mask?]}]
+    (p/read-sequence [_ {:keys [start end]} {:keys [mask?]}]
       ((if mask? identity cstr/upper-case)
        (subs s (dec start) end)))))
 

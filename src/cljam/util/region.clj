@@ -8,10 +8,15 @@
 
 (defn overlapped-regions?
   "Returns true if two regions are overlapped with each other."
-  [x y]
-  (and (= (:chr x) (:chr y))
-       (<= (:start y) (:end x))
-       (<= (:start x) (:end y))))
+  [{^long x-start :start
+    ^long x-end :end
+    x-chr :chr}
+   {^long y-start :start
+    ^long y-end :end
+    y-chr :chr}]
+  (and (= x-chr y-chr)
+       (<= y-start x-end)
+       (<= x-start y-end)))
 
 ;;; region conversion
 ;;; ----------
@@ -29,17 +34,19 @@
        (fn merge-regions-rf
          ([] (rf))
          ([r] (rf (if-let [l @last-reg] (rf r l) r)))
-         ([r x] (if-let [l @last-reg]
-                  (if (and (= (:chr l) (:chr x))
-                           (<= (- (dec (:start x)) (:end l)) max-gap))
-                    (do (vswap! last-reg merge-fn x) r)
-                    (do (vreset! last-reg x) (rf r l)))
-                  (do (vreset! last-reg x) r)))))))
+         ([r {^long x-start :start :as x}]
+          (if-let [{^long l-end :end :as l} @last-reg]
+            (if (and (= (:chr l) (:chr x))
+                     (<= (- (dec x-start) l-end) max-gap))
+              (do (vswap! last-reg merge-fn x) r)
+              (do (vreset! last-reg x) (rf r l)))
+            (do (vreset! last-reg x) r)))))))
   ([merge-fn ^long max-gap regs]
-   (if-let [f (first regs)]
-     (if-let [s (second regs)]
+   (if-let [{^long f-end :end :as f} (first regs)]
+     (if-let [{^long s-start :start :as s}
+              (second regs)]
        (if (and (= (:chr f) (:chr s))
-                (<= (- (dec (:start s)) (:end f)) max-gap))
+                (<= (- (dec s-start) f-end) max-gap))
          (let [next-regs (cons (merge-fn f s) (nnext regs))]
            (lazy-seq (merge-regions-with merge-fn max-gap next-regs)))
          (cons f (lazy-seq (merge-regions-with merge-fn max-gap (next regs)))))
@@ -61,12 +68,15 @@
 (defn subtract-region
   "Subtract a region from another one.
   Returns a vector of regions."
-  [lhs-reg rhs-reg]
-  (if (= (:chr lhs-reg) (:chr rhs-reg))
+  [lhs-reg
+   {^long rhs-reg-start :start
+    ^long rhs-reg-end :end
+    rhs-reg-chr :chr}]
+  (if (= (:chr lhs-reg) rhs-reg-chr)
     (filterv
-     #(<= (:start %) (:end %))
-     [(update lhs-reg :end min (dec (:start rhs-reg)))
-      (update lhs-reg :start max (inc (:end rhs-reg)))])
+     (fn [{:keys [^long start ^long end]}] (<= start end))
+     [(update lhs-reg :end min (dec rhs-reg-start))
+      (update lhs-reg :start max (inc rhs-reg-end))])
     [lhs-reg]))
 
 (defn complement-regions
@@ -97,11 +107,11 @@
 (defn divide-region
   "Divides a region [start end] into several chunks with maximum length 'step'.
   Returns a lazy sequence of vector."
-  [start end step]
+  [^long start ^long end ^long step]
   (->> [(inc end)]
        (concat (range start (inc end) step))
        (partition 2 1)
-       (map (fn [[s e]] [s (dec e)]))))
+       (map (fn [[^long s ^long e]] [s (dec e)]))))
 
 (defn divide-refs
   "Divides refs into several chunks with maximum length 'step'.
@@ -123,7 +133,7 @@
 
 (defn valid-region?
   "Checks if the given region map is a valid 1-based closed range."
-  [{:keys [chr start end]}]
+  [{:keys [chr ^long start ^long end]}]
   (and start end
        (valid-rname? chr)
        (number? start) (pos? start)

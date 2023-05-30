@@ -63,16 +63,20 @@
 
 (defn get-span
   "Calculate byte spans for FASTA file"
-  [^FAIReader fai name start end]
+  [^FAIReader fai name ^long start ^long end]
   (let [start (max 0 start)
         end (max 0 end)]
-    (when-let [index (get (.indices fai) name nil)]
-      (let [start (min (:len index) start)
-            end (min (:len index) end)
-            proj (fn [pos]
-                   (+ (:offset index)
-                      (+ (* (quot pos (:line-blen index))
-                            (:line-len index))
-                         (rem pos (:line-blen index)))))]
+    (when-let [{^long index-offset :offset
+                ^long index-len :len
+                ^long index-line-len :line-len
+                ^long index-line-blen :line-blen}
+               (get (.indices fai) name nil)]
+      (let [start (min index-len start)
+            end (min index-len end)
+            proj (fn [^long pos]
+                   (+ index-offset
+                      (+ (* (quot pos index-line-blen)
+                            index-line-len)
+                         (rem pos index-line-blen))))]
         (when (< start end)
           [(proj start) (proj end)])))))

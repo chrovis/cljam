@@ -33,7 +33,7 @@
   (read-buffer [this start end]
     (.. this
         getChannel
-        (map FileChannel$MapMode/READ_ONLY start (- end start))))
+        (map FileChannel$MapMode/READ_ONLY start (- (long end) (long start)))))
   (get-file-pointer [this]
     (.getFilePointer this)))
 
@@ -48,7 +48,7 @@
     (.readLine is))
   (read-buffer [_ start end]
     (.seek is (gzi/uncomp->comp @idx start))
-    (let [buf (byte-array (- end start))]
+    (let [buf (byte-array (- (long end) (long start)))]
       (if (neg? (.read is buf))
         (throw (EOFException.))
         (ByteBuffer/wrap buf))))
@@ -118,8 +118,8 @@
   [^FASTAReader rdr name start end {:keys [mask?]}]
   (let [fai @(.index-delay rdr)]
     (when-let [len (:len (fasta-index/get-header fai name))]
-      (let [start' (max 1 (or start 1))
-            end' (min len (or end len))]
+      (let [start' (max 1 (long (or start 1)))
+            end' (min (long len) (long (or end len)))]
         (when (<= start' end')
           (let [buf (CharBuffer/allocate (inc (- end' start')))]
             (when-let [[s e] (fasta-index/get-span fai name (dec start') end')]
@@ -155,8 +155,8 @@
        (.clear ~(with-meta buffer {:tag `Buffer}))
        ba#)))
 
-(def ^:private ^:const gt-byte (byte \>))
-(def ^:private ^:const newline-byte (byte \newline))
+(def ^:private ^:const gt-byte (byte (int \>)))
+(def ^:private ^:const newline-byte (byte (int \newline)))
 
 (defn- read-buffer!
   [^bytes buf ^long size buffers ^bytes byte-map]
@@ -218,7 +218,7 @@
   [stream page-size seq-buf-size]
   (let [byte-map (byte-array (range 128))]
     (doseq [[i v] [[\a 1] [\A 1] [\c 2] [\C 2] [\g 3] [\G 3] [\t 4] [\T 4] [\n 5] [\N 5]]]
-      (aset-byte byte-map (byte i) (byte v)))
+      (aset-byte byte-map (byte (int i)) (byte v)))
     (sequential-read stream page-size seq-buf-size byte-map)))
 
 (defn sequential-read-string
@@ -227,7 +227,7 @@
   (let [byte-map (byte-array (range 128))]
     (when-not mask?
       (doseq [[i v] [[\a \A] [\c \C] [\g \G] [\t \T] [\n \N]]]
-        (aset-byte byte-map (byte i) (byte v))))
+        (aset-byte byte-map (byte (int i)) (byte (int v)))))
     (map (fn [{:keys [^bytes name ^bytes sequence]}]
            {:name (String. name) :sequence (String. sequence)})
          (sequential-read stream page-size seq-buf-size byte-map))))

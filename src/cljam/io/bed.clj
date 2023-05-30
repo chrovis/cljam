@@ -21,16 +21,19 @@
   protocols/IReader
   (reader-url [this] (.url this))
   (read [this] (protocols/read this {}))
-  (read [this option] (read-fields this))
+  (read [this _] (read-fields this))
   (indexed? [_] false)
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
-  (read-in-region [this {:keys [chr start end]} option]
+  (read-in-region [this {:keys [chr ^long start ^long end]} _]
     (logging/warn "May cause degradation of performance.")
-    (filter (fn [m] (and (or (not chr) (= (:chr m) chr))
-                         (or (not start) (<= start (:start m)))
-                         (or (not end) (<= (:end m) end))))
+    (filter (fn [{^long m-start :start
+                  ^long m-end :end
+                  m-chr :chr}]
+              (and (or (not chr) (= m-chr chr))
+                   (or (not start) (<= start m-start))
+                   (or (not end) (<= m-end end))))
             (read-fields this))))
 
 (defrecord BEDWriter [^BufferedWriter writer ^URL url]
@@ -40,15 +43,17 @@
   protocols/IWriter
   (writer-url [this] (.url this)))
 
-(defn ^BEDReader reader
+(defn reader
   "Returns an open cljam.io.bed.BEDReader of f. Should be used inside with-open
   to ensure the reader is properly closed."
+  ^BEDReader
   [f]
   (BEDReader. (cio/reader (util/compressor-input-stream f)) (util/as-url f)))
 
-(defn ^BEDWriter writer
+(defn writer
   "Returns an open cljam.io.bed.BEDWriter of f. Should be used inside with-open
   to ensure the writer is properly closed."
+  ^BEDWriter
   [f]
   (BEDWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))
 
@@ -84,7 +89,7 @@
   {:post [;; First 3 fields are required.
           (:chr %) (:start %) (:end %)
           ;; The chromEnd base is not included in the display of the feature.
-          (< (:start %) (:end %))
+          (< (long (:start %)) (long (:end %)))
           ;; Lower-numbered fields must be populated if higher-numbered fields are used.
           (every? true? (drop-while false? (map nil? ((apply juxt bed-columns) %))))
           ;; A score between 0 and 1000.
@@ -96,9 +101,15 @@
           ;; The first blockStart value must be 0.
           (if-let [[f] (:block-starts %)] (= 0 f) true)
           ;; The final blockStart position plus the final blockSize value must equal chromEnd.
-          (if-let [xs (:block-starts %)] (= (+ (last xs) (last (:block-sizes %))) (- (:end %) (:start %))) true)
+          (if-let [xs (:block-starts %)] (= (+ (long (last xs))
+                                               (long (last (:block-sizes %))))
+                                            (- (long (:end %))
+                                               (long (:start %)))) true)
           ;; Blocks may not overlap.
-          (if-let [xs (:block-starts %)] (apply <= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes %))) true)]}
+          (if-let [xs (:block-starts %)]
+            (apply <= (mapcat (fn [^long a ^long b] [a (+ a b)])
+                              xs (:block-sizes %)))
+            true)]}
   (reduce
    (fn deserialize-bed-reduce-fn [m [k f]] (update-some m k f))
    (zipmap bed-columns (cstr/split s #"\s+"))
@@ -118,7 +129,7 @@
   {:pre [;; First 3 fields are required.
          (:chr m) (:start m) (:end m)
          ;; The chromEnd base is not included in the display of the feature.
-         (< (:start m) (:end m))
+         (< (long (:start m)) (long (:end m)))
          ;; Lower-numbered fields must be populated if higher-numbered fields are used.
          (every? true? (drop-while false? (map nil? ((apply juxt bed-columns) m))))
          ;; A score between 0 and 1000.
@@ -130,9 +141,14 @@
          ;; The first blockStart value must be 0.
          (if-let [[f] (:block-starts m)] (= 0 f) true)
          ;; The final blockStart position plus the final blockSize value must equal chromEnd.
-         (if-let [xs (:block-starts m)] (= (+ (last xs) (last (:block-sizes m))) (- (:end m) (:start m))) true)
+         (if-let [xs (:block-starts m)]
+           (= (+ (long (last xs)) (long (last (:block-sizes m))))
+              (- (long (:end m)) (long (:start m)))) true)
          ;; Blocks may not overlap.
-         (if-let [xs (:block-starts m)] (apply <= (mapcat (fn [a b] [a (+ a b)]) xs (:block-sizes m))) true)]}
+         (if-let [xs (:block-starts m)]
+           (apply <= (mapcat (fn [^long a ^long b] [a (+ a b)])
+                             xs (:block-sizes m)))
+           true)]}
   (->> (-> m
            (update-some :strand #(case % :forward "+" :reverse "-" nil "."))
            (update-some :block-sizes long-list->str)
@@ -275,15 +291,18 @@
     (when-first [{:keys [chr]} (filter #(not (chr->len (:chr %))) xs)]
       (let [msg (str "Length of chromosome " chr " not specified")]
         (throw (IllegalArgumentException. msg))))
-    (letfn [(complement [xs chrs pos]
+    (letfn [(complement [xs chrs ^long pos]
               (lazy-seq
                (when-let [chr (first chrs)]
-                 (let [len (get chr->len chr)
-                       x (first xs)]
-                   (if (and x (= (:chr x) chr))
-                     (cond->> (complement (next xs) chrs (inc (:end x)))
-                       (< pos (:start x))
-                       (cons {:chr chr :start pos :end (dec (:start x))}))
+                 (let [len (long (get chr->len chr))
+                       {^long x-start :start
+                        ^long x-end :end
+                        x-chr :chr
+                        :as x} (first xs)]
+                   (if (and x (= x-chr chr))
+                     (cond->> (complement (next xs) chrs (inc x-end))
+                       (< pos (long (:start x)))
+                       (cons {:chr chr :start pos :end (dec x-start)}))
                      (cond->> (complement xs (next chrs) 1)
                        (< pos len)
                        (cons {:chr chr :start pos :end len})))))))]

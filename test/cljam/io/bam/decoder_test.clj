@@ -1,7 +1,6 @@
 (ns cljam.io.bam.decoder-test
   "Tests for cljam.io.bam.decoder."
   (:require [clojure.test :refer [deftest is are testing]]
-            [cljam.io.protocols]
             [cljam.io.bam.decoder :as decoder]
             [cljam.test-common :as test-common]))
 

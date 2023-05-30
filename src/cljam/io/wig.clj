@@ -20,7 +20,7 @@
   protocols/IReader
   (reader-url [this] (.url this))
   (read [this] (read-fields this))
-  (read [this option] (read-fields this))
+  (read [this _] (read-fields this))
   (indexed? [_] false))
 
 (defrecord WIGWriter [^BufferedWriter writer ^URL url]
@@ -30,15 +30,17 @@
   protocols/IWriter
   (writer-url [this] (.url this)))
 
-(defn ^WIGReader reader
+(defn reader
   "Returns an open cljam.io.wig.WIGReader of f. Should be used inside with-open
   to ensure the reader is properly closed."
+  ^WIGReader
   [f]
   (WIGReader. (cio/reader (util/compressor-input-stream f)) (util/as-url f)))
 
-(defn ^WIGWriter writer
+(defn writer
   "Returns an open cljam.io.wig.WIGWriter of f. Should be used inside with-open
   to ensure the writer is properly closed."
+  ^WIGWriter
   [f]
   (WIGWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))
 
@@ -104,8 +106,8 @@
                    "fixedStep"
                    (let [{:keys [chrom start span step]
                           :or {span 1, step 1}} (->> fields rest fields->map)
-                         step (as-long step)
-                         pre-start (- (as-long start) step)
+                         step (long (as-long step))
+                         pre-start (- (long (as-long start)) step)
                          span (as-long span)
                          track (assoc track :format :fixed-step
                                       :chr chrom
@@ -118,8 +120,8 @@
                              :variable-step
                              (let [{:keys [chr span]} track
                                    [start value] fields
-                                   start (as-long start)
-                                   end (dec (+ start span))
+                                   start (long (as-long start))
+                                   end (dec (+ start (long span)))
                                    value (str->wiggle-track-data value)]
                                {:track track
                                 :chr chr
@@ -129,8 +131,8 @@
 
                              :fixed-step
                              (let [{:keys [chr span step]} track
-                                   start (+ pre-start step)
-                                   end (dec (+ start span))
+                                   start (+ (long pre-start) (long step))
+                                   end (dec (+ start (long span)))
                                    value (-> fields first str->wiggle-track-data)]
                                {:track track
                                 :chr chr
@@ -166,7 +168,7 @@
                  (sequence
                   (comp
                    (partition-by (juxt (comp :format :track)
-                                       #(- (:end %) (:start %))))
+                                       #(- (long (:end %)) (long (:start %)))))
                    (map
                     (fn [[{{:keys [line format span step]} :track
                            chr :chr start :start} :as xs]]

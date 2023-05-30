@@ -74,9 +74,9 @@
   (read-in-region [this region _]
     (protocols/read-alignments this region)))
 
-(defn- ^"[B" read-a-block!
+(defn- read-a-block!
   "Reads a single alignment block from a reader."
-  [rdr]
+  ^"[B" [rdr]
   (let [block-size (lsb/read-int rdr)]
     (lsb/read-bytes rdr block-size)))
 
@@ -133,11 +133,11 @@
   "Reads header section of BAM file and returns it as a map."
   [rdr]
   (let [header (header/parse-header (lsb/read-string rdr (lsb/read-int rdr)))
-        n-ref (lsb/read-int rdr)
+        n-ref (int (lsb/read-int rdr))
         refs (loop [i n-ref, ret []]
                (if (zero? i)
                  ret
-                 (let [l-name (lsb/read-int rdr)
+                 (let [l-name (int (lsb/read-int rdr))
                        name   (lsb/read-string rdr l-name)
                        l-ref  (lsb/read-int rdr)]
                    (recur (dec i)

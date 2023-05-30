@@ -15,7 +15,7 @@
 
 (deftype SAMWriter [^BufferedWriter writer url]
   Closeable
-  (close [this]
+  (close [_]
     (.close writer))
   protocols/IWriter
   (writer-url [this]
@@ -23,7 +23,7 @@
   protocols/IAlignmentWriter
   (write-header [this header]
     (write-header* this header))
-  (write-refs [this refs]
+  (write-refs [_ _]
     (logging/debug "SAMWriter does not support write-refs"))
   (write-alignments [this alignments refs]
     (write-alignments* this alignments refs))
@@ -56,7 +56,8 @@
 ;; Public
 ;; ------
 
-(defn ^SAMWriter writer
+(defn writer
+  ^SAMWriter
   [f]
   (->SAMWriter (cio/writer f)
                (util/as-url f)))

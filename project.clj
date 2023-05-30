@@ -29,7 +29,8 @@
                                     :remote :remote ; Tests with remote resources
                                     :all (constantly true)}
                    :main ^:skip-aot cljam.tools.main
-                   :global-vars {*warn-on-reflection* true}}
+                   :global-vars {*warn-on-reflection* true
+                                 *unchecked-math* :warn-on-boxed}}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}

@@ -50,7 +50,7 @@
 
 (defn pos->lidx-offset
   "Returns an offset of a linear index that the given `pos` belongs to."
-  [^long pos ^long linear-index-shift]
+  ^long [^long pos ^long linear-index-shift]
   (bit-shift-right (if (<= pos 0) 0 (dec pos)) linear-index-shift))
 
 (defn reg->bins

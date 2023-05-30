@@ -6,9 +6,9 @@
 
 (deftype SortedMapIntervals [m]
   IIntervals
-  (find-overlap-intervals* [this start end]
-    (mapcat (fn [[_ x]] (drop-while #(< (:end %) start) x))
-            (subseq m <= end))))
+  (find-overlap-intervals* [_ start end]
+    (mapcat (fn [[_ x]] (drop-while #(< (long (:end %)) (long start)) x))
+            (subseq m <= (long end)))))
 
 (defn- make-sorted-map-intervals
   [intervals]
@@ -17,17 +17,17 @@
        (into (sorted-map))
        (->SortedMapIntervals)))
 
-(defn- find-nclist-overlap-intervals [nclist start end]
+(defn- find-nclist-overlap-intervals [nclist ^long start ^long end]
   (->> (subseq nclist >= start)
        (map second)
-       (take-while #(<= (:start (first %)) end))
+       (take-while #(<= (long (:start (first %))) end))
        (mapcat #(cons (first %)
                       (find-nclist-overlap-intervals (second %)
                                                      start end)))))
 
 (deftype NclistIntervals [nclist]
   IIntervals
-  (find-overlap-intervals* [this start end]
+  (find-overlap-intervals* [_ start end]
     (find-nclist-overlap-intervals nclist start end)))
 
 (declare make-nclist*)

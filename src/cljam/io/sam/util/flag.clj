@@ -81,6 +81,7 @@
 
 (defn r1r2
   "Returns 0 for single-end, 1 for R1 and 2 for R2."
+  ^long
   [^long f]
   (-> f
       (bit-and 0xC0) ;; last-bit first-bit

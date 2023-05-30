@@ -10,7 +10,7 @@ jobs:
     - name : master base sha
       id : master_base_sha
       if : github.ref  == 'refs/heads/master'
-      run: echo  "::set-output name=base_sha::${{ github.event.before }}"
+      run: echo "base_sha=${{ github.event.before }}" >> $GITHUB_OUTPUT
     - uses: xcoo/clj-lint-action@v1.1.11
       with:
         linters: "[\"clj-kondo\" \"kibit\" \"eastwood\"]"
@@ -18,3 +18,4 @@ jobs:
         runner: ":leiningen"
         base_sha: ${{ github.event.pull_request.base.sha||steps.master_base_sha.outputs.base_sha }}
         eastwood_linters: "[:all]"
+        linter_options: "{:eastwood {:exclude-linters [:keyword-typos :unused-namespaces :boxed-math :reflection]}}"

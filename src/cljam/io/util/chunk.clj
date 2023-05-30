@@ -11,6 +11,7 @@
 (defn compare
   "Returns a negative if chunk1 is earlier than chunk2, a positive if it is
   later, 0 if it is equal."
+  ^long
   [^Chunk chunk1 ^Chunk chunk2]
   (let [ret (Long/signum (- (.beg chunk1) (.beg chunk2)))]
     (if (zero? ret)

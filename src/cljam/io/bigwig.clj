@@ -58,12 +58,13 @@
   protocols/IReader
   (reader-url [this] (.url this))
   (read [this] (read-tracks this))
-  (read [this option] (read-tracks this))
+  (read [this _] (read-tracks this))
   (indexed? [_] false))
 
-(defn ^BIGWIGReader reader
+(defn reader
   "Returns an open cljam.io.bigwig.BIGWIGReader of f. Should be used inside with-open
   to ensure the reader is properly closed."
+  ^BIGWIGReader
   [f]
   (let [f (.getAbsolutePath (cio/file f))
         reader (RandomAccessFile. f "r")
@@ -72,25 +73,25 @@
 
 (defn- check-bigwig-magic
   "Checks if the magic is right for bigWig format. Otherwise, throws IOException."
-  [uint]
+  [^long uint]
   (when-not (= uint bigwig-magic)
     (throw (IOException. "Invalid bigWig magic"))))
 
 (defn- check-version
   "Ranged from [1,4]. Throws IOException if the version is out of range."
-  [ushort]
+  [^long ushort]
   (when-not (<= 1 ushort 4)
     (throw (IOException. "Invalid bigWig version"))))
 
 (defn- check-field-count
   "For bigWig 0. Throws IOException if the fieldCount is invalid."
-  [ushort]
+  [^long ushort]
   (when-not (zero? ushort)
     (throw (IOException. "Invalid bigWig fieldCount"))))
 
 (defn- check-defined-field-count
   "For bigWig 0. Throws IOException if the definedFieldCount is invalid."
-  [ushort]
+  [^long ushort]
   (when-not (zero? ushort)
     (throw (IOException. "Invalid bigWig definedFieldCount"))))
 
@@ -128,7 +129,7 @@
 (defn- read-zoom-headers
   "Returns a vector of ZoomHeader from reader."
   [^RandomAccessFile r {:keys [zoom-levels]}]
-  (letfn [(read-zoom-header [n acc]
+  (letfn [(read-zoom-header [^long n acc]
             (if (zero? n)
               acc
               (let [reduction-level (lsb/read-uint r)
@@ -143,7 +144,7 @@
 
 (defn- read-total-summary
   "Returns a totalSummay. If it isn't present, returns nil."
-  [^RandomAccessFile r {:keys [total-summary-offset]}]
+  [^RandomAccessFile r {:keys [^long total-summary-offset]}]
   (when-not (zero? total-summary-offset)
     (.seek r total-summary-offset)
     (let [bases-covered (lsb/read-long r)
@@ -157,7 +158,7 @@
 (defn- read-extended-header
   "Returns an extendedHeader. It it isn't present, returns nil."
   [^RandomAccessFile r {:keys [extension-offset]}]
-  (when-not (zero? extension-offset)
+  (when-not (zero? (long extension-offset))
     (.seek r extension-offset)
     (let [extension-size (lsb/read-ushort r)
           extra-index-count (lsb/read-ushort r)
@@ -208,7 +209,7 @@
   (->> (lsb/read-bytes r length)
        (reduce
         (fn [cs c]
-          (if (zero? c)
+          (if (zero? (byte c))
             (reduced cs)
             (conj cs c)))
         [])
@@ -239,7 +240,7 @@
   [^RandomAccessFile r {:keys [key-size root-offset]}]
   (letfn [(traverse [block-start]
             (.seek r block-start)
-            (let [leaf? (-> r lsb/read-ubyte zero? not)
+            (let [leaf? (-> r lsb/read-ubyte short zero? not)
                   _reversed (lsb/read-ubyte r)
                   child-count (lsb/read-ushort r)]
               (if leaf?
@@ -280,15 +281,15 @@
 (defn- cir-tree-overlaps?
   "Returns true if the given blocks are overlapped."
   [id start end start-chrom-ix start-base end-chrom-ix end-base]
-  (letfn [(cmp [a-hi a-lo b-hi b-lo]
+  (letfn [(cmp ^long [^long a-hi ^long a-lo ^long b-hi ^long b-lo]
             (cond
               (< a-hi b-hi) 1
               (> a-hi b-hi) -1
               (< a-lo b-lo) 1
               (> a-lo b-lo) -1
               :else 0))]
-    (and (pos? (cmp id start end-chrom-ix end-base))
-         (neg? (cmp id end start-chrom-ix start-base)))))
+    (and (pos? (long (cmp id start end-chrom-ix end-base)))
+         (neg? (long (cmp id end start-chrom-ix start-base))))))
 
 (defn- cir-tree-leaves->blocks
   "Convert CirTree leaves into blocks that contain a flat map including offset and size."
@@ -312,7 +313,7 @@
   [^RandomAccessFile r id start end {:keys [root-offset]}]
   (letfn [(make-blocks [index-file-offset]
             (.seek r index-file-offset)
-            (let [leaf? (-> r lsb/read-ubyte zero? not)
+            (let [leaf? (-> r lsb/read-ubyte short zero? not)
                   _reserved (lsb/read-ubyte r)
                   child-count (lsb/read-ushort r)]
               (if leaf?
@@ -347,9 +348,9 @@
 
 (defn- range-intersection
   "Returns a range intersection of two ranges that include `start` and `end`."
-  [a b]
-  (- (min (:end a) (:end b))
-     (max (:start a) (:start b))))
+  ^long [a b]
+  (- (min (long (:end a)) (long (:end b)))
+     (max (long (:start a)) (long (:start b)))))
 
 (defn- ->bedgraph
   "Converts bigWig tracks into BedGraph format (1-based, fully-closed)."
@@ -370,28 +371,30 @@
   "Converts bigWig tracks into variableStep tracks of wig format
   (1-start, fully-closed)."
   [^ByteBuffer bb item-span item-count chrom rng]
-  (->> (repeatedly item-count
-                   (fn []
-                     (let [start (.getInt bb)
-                           value (.getFloat bb)]
-                       (when (pos? (range-intersection rng {:start start
-                                                            :end (+ start item-span)}))
-                         {:track {:line nil :format :variable-step :chr chrom
-                                  :step nil :span item-span}
-                          :chr chrom :start (inc start)
-                          :end (+ start item-span) :value value}))))
-       (remove nil?)
-       doall))
+  (let [item-span (long item-span)]
+    (->> (repeatedly
+          item-count
+          (fn []
+            (let [start (.getInt bb)
+                  value (.getFloat bb)]
+              (when (pos? (range-intersection
+                           rng {:start start, :end (+ start item-span)}))
+                {:track {:line nil :format :variable-step :chr chrom
+                         :step nil :span item-span}
+                 :chr chrom :start (inc start)
+                 :end (+ start item-span) :value value}))))
+         (remove nil?)
+         doall)))
 
 (defn- ->fixed-step
   "Converts bigWig tracks into fixedStep tracks of wig format
   (1-start, fully-closed)."
   [^ByteBuffer bb start item-step item-span item-count chrom rng]
   (reduce
-   (fn [acc i]
+   (fn [acc ^long i]
      (let [value (.getFloat bb)
-           cur-start (+ start (* i item-step))
-           cur-end (+ cur-start item-span)]
+           cur-start (+ (long start) (* i (long item-step)))
+           cur-end (+ cur-start (long item-span))]
        (if (pos? (range-intersection rng {:start cur-start :end cur-end}))
          (conj acc {:track {:line nil :format :fixed-step :chr chrom
                             :step item-step :span item-span}

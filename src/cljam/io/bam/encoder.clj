@@ -10,8 +10,8 @@
             [cljam.io.util.lsb :as lsb]
             [cljam.io.bam.common :as common]))
 
-(def ^:private fixed-tag-size 3)
-(def ^:private fixed-binary-array-tag-size 5)
+(def ^:private ^:const fixed-tag-size 3)
+(def ^:private ^:const fixed-binary-array-tag-size 5)
 
 (defn- get-next-ref-id [sa refs]
   (condp = (:rnext sa)
@@ -19,7 +19,7 @@
     "=" (if-let [id (refs/ref-id refs (:rname sa))] id -1)
     (if-let [id (refs/ref-id refs (:rnext sa))] id -1)))
 
-(defn- get-options-size [sam-alignment]
+(defn- get-options-size ^long [sam-alignment]
   (->> (map
         (fn [op]
           (let [[_ value] (first (seq op))]
@@ -63,7 +63,7 @@
            (lsb/write-char writer (char 0)))
     ;; \H nil
     \B (let [[array-type & array] (cstr/split value #",")]
-         (lsb/write-bytes writer (byte-array 1 (byte (first array-type))))
+         (lsb/write-bytes writer (byte-array 1 (byte (int (first array-type)))))
          (lsb/write-int writer (count array))
          (case (first array-type)
            \c (doseq [v array]
@@ -84,14 +84,14 @@
 
 (defn get-block-size [aln]
   (let [read-length (.length ^String (:seq aln))
-        cigar-length ^long (cigar/count-op (:cigar aln))]
-    (+ ^long common/fixed-block-size
+        cigar-length (cigar/count-op (:cigar aln))]
+    (+ common/fixed-block-size
        (.length ^String (:qname aln))
        1 ;; null
        (* cigar-length 4)
        (quot (inc read-length) 2)
        read-length
-       ^long (get-options-size aln))))
+       (get-options-size aln))))
 
 (defn- add-cigar-to-options
   [options cigar]
@@ -110,7 +110,7 @@
     ;; refID
     (lsb/write-int wrtr (or (refs/ref-id refs (:rname aln)) -1))
     ;; pos
-    (lsb/write-int wrtr (dec (:pos aln)))
+    (lsb/write-int wrtr (dec (long (:pos aln))))
     ;; bin_mq_nl
     (lsb/write-ubyte wrtr (short (inc (.length ^String (:qname aln)))))
     (lsb/write-ubyte wrtr (short (:mapq aln)))
@@ -123,7 +123,7 @@
     ;; next_refID
     (lsb/write-int wrtr (get-next-ref-id aln refs))
     ;; next_pos
-    (lsb/write-int wrtr (dec (:pnext aln)))
+    (lsb/write-int wrtr (dec (long (:pnext aln))))
     ;; tlen
     (lsb/write-int wrtr (:tlen aln))
     ;; read_name
@@ -140,7 +140,7 @@
       (let [[tag value] (first (seq opt))]
         (lsb/write-short
          wrtr
-         (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
-                        (byte (first (name tag))))))
+         (short (bit-or (bit-shift-left (byte (int (second (name tag)))) 8)
+                        (byte (int (first (name tag)))))))
         (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
         (encode-tag-value wrtr (first (:type value)) (:value value))))))

@@ -35,7 +35,7 @@
         out-bb (ByteBuffer/allocate result-len)]
     (dotimes [_ result-len]
       (let [u (.get in-bb)
-            l (byte (if (.hasRemaining in-bb) (.get in-bb) \=))]
+            l (byte (if (.hasRemaining in-bb) (.get in-bb) (byte (int \=))))]
         (->> (bit-and 0x7F l)
              (bit-or (bit-shift-left (bit-and 0x7F u) 7))
              (aget ^bytes two-bytes-to-compressed-bases-table)
@@ -71,6 +71,6 @@
   (dotimes [i (alength bases)]
     (let [b (aget bases i)]
       (cond
-        (= b (byte \.)) (aset-byte bases i (byte \N))
-        (<= (byte \a) b (byte \z)) (aset-byte bases i (- b 32))))) ;; Upper-case ASCII offset
+        (= b (byte (int \.))) (aset-byte bases i (byte (int \N)))
+        (<= (byte (int \a)) b (byte (int \z))) (aset-byte bases i (- b 32))))) ;; Upper-case ASCII offset
   bases)

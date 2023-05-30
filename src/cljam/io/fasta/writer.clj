@@ -28,7 +28,7 @@
     (FASTAWriter. (util/as-url abs-f) cols writer index-writer (volatile! 0))))
 
 (defn- write-name
-  [^FASTAWriter w ^String n]
+  ^long [^FASTAWriter w ^String n]
   (let [wtr ^BufferedWriter (.writer w)]
     (.write wtr (int \>))
     (.write wtr n)
@@ -67,12 +67,12 @@
                               (write-seq w seq-data))]
     (when-let [iwtr ^BufferedWriter (.index-writer w)]
       (let [c (Math/min (.cols w) (int seq-len))
-            offset (+ @(.curr-offset w) name-bytes)]
+            offset (+ (long @(.curr-offset w)) name-bytes)]
         (->> [chr-name seq-len offset c (+ c (.length (System/lineSeparator)))]
              (cstr/join \tab)
              (.write iwtr))
         (.newLine iwtr)
-        (vswap! (.curr-offset w) + name-bytes seq-bytes)))))
+        (vreset! (.curr-offset w) (+ offset (long seq-bytes)))))))
 
 (defn write-sequences
   [w xs]

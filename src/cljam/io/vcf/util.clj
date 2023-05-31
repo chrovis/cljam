@@ -16,7 +16,9 @@
     (if m
       (case (first (second m))
         (\n \N) Float/NaN
-        (\i \I) Float/POSITIVE_INFINITY)
+        (\i \I) (if (= (first s) \-)
+                  Float/NEGATIVE_INFINITY
+                  Float/POSITIVE_INFINITY))
       (Float/parseFloat s))))
 
 (defn- value-parser

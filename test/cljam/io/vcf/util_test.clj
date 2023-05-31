@@ -462,7 +462,7 @@
   (is (Float/isNaN (#'vcf-util/parse-float "NAN")))
   (is (Float/isNaN (#'vcf-util/parse-float "NaN")))
   (is (= (#'vcf-util/parse-float "+INF") Float/POSITIVE_INFINITY))
-  (is (= (#'vcf-util/parse-float "-INF") Float/POSITIVE_INFINITY))
+  (is (= (#'vcf-util/parse-float "-INF") Float/NEGATIVE_INFINITY))
   (is (= (#'vcf-util/parse-float "INF") Float/POSITIVE_INFINITY))
   (is (= (#'vcf-util/parse-float "inf") Float/POSITIVE_INFINITY))
   (is (= (#'vcf-util/parse-float "infinity") Float/POSITIVE_INFINITY)))

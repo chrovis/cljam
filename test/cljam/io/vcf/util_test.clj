@@ -160,6 +160,20 @@
     4 3
     4 4))
 
+(deftest unphase-genotype
+  (are [?genotype ?expected]
+       (= ?expected (vcf-util/unphase-genotype ?genotype))
+    [[0 true]], [[0 false]]
+    [[1 true] [0 true]], [[0 false] [1 false]]
+    [[2 true] [0 true] [1 false]], [[0 false] [1 false] [2 false]])
+  (are [?genotype]
+       (= ?genotype (vcf-util/unphase-genotype ?genotype))
+    nil
+    [[0 false]]
+    [[0 false] [1 false]]
+    [[nil false] [1 false]]
+    [[nil false] [nil false]]))
+
 (deftest biallelic-genotype
   (are [?genotype ?target-allele ?expected]
        (= ?expected (vcf-util/biallelic-genotype ?genotype ?target-allele))

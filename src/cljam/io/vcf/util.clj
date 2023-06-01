@@ -144,6 +144,15 @@
          (map-indexed (fn [^long m ^long k] (combination (+ k m) (inc m))))
          (apply +))))
 
+(defn unphase-genotype
+  "Takes a parsed genotype (i.e. a vector of pairs [allele, phased]) and
+  returns the parsed genotype with each allele unphased."
+  [gt-seq]
+  (some->> (seq gt-seq)
+           (map first)
+           sort
+           (#(map vector % (repeat false)))))
+
 (defn biallelic-genotype
   "Converts a multiallelic `genotype` string into a biallelic one. Ignores all
   alleles other than the reference allele and the `target-allele`."

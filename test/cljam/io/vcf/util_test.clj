@@ -81,13 +81,16 @@
     "0/0" [[0 false] [0 false]]
     "0/1" [[0 false] [1 false]]
     "1/1" [[1 false] [1 false]]
+    "/0|1" [[0 false] [1 true]]
+    "|1/0" [[1 true] [0 false]]
     "./." [[nil false] [nil false]]
     "0|0" [[0 true] [0 true]]
     "0|1" [[0 true] [1 true]]
     "1|1" [[1 true] [1 true]]
     ".|." [[nil true] [nil true]]
     "0/1/2" [[0 false] [1 false] [2 false]]
-    "0/1|2" [[0 false] [1 false] [2 true]]))
+    "0/1|2" [[0 false] [1 false] [2 true]]
+    "|0/1/2" [[0 true] [1 false] [2 false]]))
 
 (deftest about-stringify-genotype
   (are [?gt ?expected]
@@ -95,8 +98,6 @@
     nil nil
     [[0 true]] "0"
     [[1 true]] "1"
-    [[0 false]] "0"
-    [[1 false]] "1"
     [[0 true] [0 true]] "0|0"
     [[0 true] [1 true]] "0|1"
     [[1 true] [1 true]] "1|1"
@@ -104,9 +105,13 @@
     [[0 false] [0 false]] "0/0"
     [[0 false] [1 false]] "0/1"
     [[1 false] [1 false]] "1/1"
+    [[0 false] [1 true]] "/0|1"
+    [[1 true] [0 false]] "|1/0"
     [[nil false] [nil false]] "./."
     [[0 false] [1 false] [2 false]] "0/1/2"
-    [[0 false] [1 false] [2 true]] "0/1|2"))
+    [[0 false] [1 false] [2 true]] "0/1|2"
+    [[0 true] [1 false] [2 false]] "|0/1/2"
+    [[2 false] [0 true] [1 true]] "/2|0|1"))
 
 (deftest genotype-seq
   (are [?ploidy ?n-alt-alleles ?expected]

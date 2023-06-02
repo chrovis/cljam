@@ -101,15 +101,20 @@
                    (= phase "|")
                    (neg? (.indexOf ^String gt "/")))])))))
 
+(defn- stringify-allele [indicator-needed? [allele phase]]
+  [(if indicator-needed?
+     (if phase "|" "/")
+     "")
+   (or allele \.)])
+
 (defn stringify-genotype
-  "Stringifies genotype map into VCF-style GT string."
+  "Stringifies genotype map into VCF-style GT string.
+  The first phasing indicator will be omitted unless necessary."
   [gt-seq]
-  (when-not (or (nil? gt-seq) (empty? gt-seq))
-    (->> gt-seq
-         (mapcat
-          (fn [[allele phase]]
-            [(if phase "|" "/") (or allele \.)]))
-         rest
+  (when-let [[[_ phase :as a1] & as] (seq gt-seq)]
+    (->> as
+         (into (stringify-allele (not= phase (every? second as)) a1)
+               (mapcat (partial stringify-allele true)))
          (apply str))))
 
 (defn genotype-seq

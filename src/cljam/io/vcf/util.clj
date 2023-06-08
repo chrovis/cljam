@@ -10,13 +10,12 @@
        (and (= 1 (.length ~s))
             (= \. (.charAt ~s 0)))))
 
-(defn- parse-float [s]
-  (let [m (re-matches
-           #"[+-]?(?i)(nan|infinity|inf)" s)]
-    (if m
-      (case (first (second m))
+(defn- parse-float [^String s]
+  (let [m (re-matcher #"(?i)[+-]?(nan|inf(?:inity)?)" s)]
+    (if (.matches m)
+      (case (.charAt (.group m 1) 0)
         (\n \N) Float/NaN
-        (\i \I) (if (= (first s) \-)
+        (\i \I) (if (= (.charAt s 0) \-)
                   Float/NEGATIVE_INFINITY
                   Float/POSITIVE_INFINITY))
       (Float/parseFloat s))))

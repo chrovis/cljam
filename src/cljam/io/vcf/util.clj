@@ -10,13 +10,23 @@
        (and (= 1 (.length ~s))
             (= \. (.charAt ~s 0)))))
 
+(defn- parse-float [^String s]
+  (let [m (re-matcher #"(?i)[+-]?(nan|inf(?:inity)?)" s)]
+    (if (.matches m)
+      (case (.charAt (.group m 1) 0)
+        (\n \N) Float/NaN
+        (\i \I) (if (= (.charAt s 0) \-)
+                  Float/NEGATIVE_INFINITY
+                  Float/POSITIVE_INFINITY))
+      (Float/parseFloat s))))
+
 (defn- value-parser
   "Returns a parser function for given type identifier."
   [type]
   (case type
     "Flag" (constantly :exists)
     "Integer" #(when-not (dot-or-nil? ^String %) (Integer/parseInt %))
-    "Float" #(when-not (dot-or-nil? ^String %) (Float/parseFloat %))
+    "Float" #(when-not (dot-or-nil? ^String %) (parse-float %))
     "Character" #(when-not (dot-or-nil? ^String %) (first %))
     "String" #(when-not (dot-or-nil? ^String %) %)))
 

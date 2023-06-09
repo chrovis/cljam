@@ -119,10 +119,8 @@
        line-seq
        (map parse-pileup-line)))
 
-
 ;; Writer
 ;; ------
-
 
 (defn- write-mpileup-alignment!
   [^BufferedWriter w ref-reader rname ref-pos ref

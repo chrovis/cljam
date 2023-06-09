@@ -268,10 +268,8 @@
                                   :pile [{:base \A :qual 40 :alignment {:flag 0 :pos 5}}]}])
            (.toString sw)))))
 
-
 ;; Read & Write
 ;; ------------
-
 
 (deftest regression
   (testing "without-ref"

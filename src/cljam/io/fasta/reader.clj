@@ -71,7 +71,7 @@
             (recur (read-line rdr) (assoc ret :rname ref :offset offset))))
         (if (:rname ret)
           (let [ret' (if (:line-len ret)
-                       (update-in ret [:seq] str line)
+                       (update ret :seq str line)
                        (assoc ret
                               :seq line
                               :line-len (inc (count line))

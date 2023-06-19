@@ -1,5 +1,7 @@
 {:linters
- {:type-mismatch
+ {:single-key-in {:level :warning}
+  :aliased-namespace-symbol {:level :warning}
+  :type-mismatch
   {:namespaces
    {clojure.core
     {long {:arities {1 {:args [#{:byte :number :char}],

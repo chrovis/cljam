@@ -329,8 +329,8 @@
 
 (defn version [_]
   (let [ver (with-open [r (-> "META-INF/maven/cljam/cljam/pom.properties"
-                              (clojure.java.io/resource)
-                              (clojure.java.io/reader))]
+                              (cio/resource)
+                              (cio/reader))]
               (.getProperty (doto (java.util.Properties.) (.load r)) "version"))]
     (exit 0 ver)))
 

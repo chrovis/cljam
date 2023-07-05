@@ -1,6 +1,8 @@
 {:linters
  {:single-key-in {:level :warning}
   :aliased-namespace-symbol {:level :warning}
+  :shadowed-var {:level :warning
+                 :exclude [meta-info version]}
   :type-mismatch
   {:namespaces
    {clojure.core

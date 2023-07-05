@@ -118,8 +118,8 @@
   Returns a lazy sequence of map containing {:chr :start :end}."
   [refs step]
   (mapcat
-   (fn [{:keys [name len]}]
-     (map (fn [[s e]] {:chr name :start s :end e})
+   (fn [{:keys [len] name' :name}]
+     (map (fn [[s e]] {:chr name' :start s :end e})
           (divide-region 1 len step)))
    refs))
 

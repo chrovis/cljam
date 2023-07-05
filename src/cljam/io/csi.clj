@@ -117,10 +117,10 @@
 
 (defn- concatenate-offsets [offsets]
   (reduce
-   (fn [res chunk]
-     (if (= (:file-end (peek res)) (:file-beg chunk))
-       (assoc-in res [(dec (count res)) :file-end] (:file-end chunk))
-       (conj res chunk)))
+   (fn [res chunk']
+     (if (= (:file-end (peek res)) (:file-beg chunk'))
+       (assoc-in res [(dec (count res)) :file-end] (:file-end chunk'))
+       (conj res chunk')))
    []
    (sort-by :file-beg offsets)))
 
@@ -229,6 +229,6 @@
              (get loffset (util-bin/bin-beg bin (.min-shift csi) (.depth csi)))
              0))
           (lsb/write-int w (count chunks))
-          (doseq [chunk chunks]
-            (lsb/write-long w (:beg chunk))
-            (lsb/write-long w (:end chunk))))))))
+          (doseq [chunk' chunks]
+            (lsb/write-long w (:beg chunk'))
+            (lsb/write-long w (:end chunk'))))))))

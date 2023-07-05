@@ -290,15 +290,15 @@
   (are [target-sam]
        (with-before-after {:before (prepare-cache!)
                            :after (clean-cache!)}
-         (let [temp-bam-file (.getAbsolutePath (cio/file temp-dir "test.bam"))]
+         (let [temp-bam-file' (.getAbsolutePath (cio/file temp-bam-file))]
            (with-open [sam-rdr (sam/reader target-sam)]
              (let [alignments (sam/read-alignments sam-rdr)
                    header (sam/read-header sam-rdr)]
-               (with-open [bam-wtr (sam/bam-writer temp-bam-file)]
+               (with-open [bam-wtr (sam/bam-writer temp-bam-file')]
                  (sam/write-header bam-wtr header)
                  (sam/write-refs bam-wtr header)
                  (sam/write-alignments bam-wtr alignments header))
-               (with-open [bam-rdr (sam/reader temp-bam-file)]
+               (with-open [bam-rdr (sam/reader temp-bam-file')]
                  (is (= (seq alignments)
                         (seq (sam/read-alignments bam-rdr)))))))))
     test-sam-file
@@ -310,15 +310,15 @@
   (are [target-bam]
        (with-before-after {:before (prepare-cache!)
                            :after (clean-cache!)}
-         (let [temp-sam-file (.getAbsolutePath (cio/file temp-dir "test.sam"))]
+         (let [temp-sam-file' (.getAbsolutePath (cio/file temp-sam-file))]
            (with-open [bam-rdr (sam/reader target-bam)]
              (let [alignments (sam/read-alignments bam-rdr)
                    header (sam/read-header bam-rdr)]
-               (with-open [sam-wtr (sam/sam-writer temp-sam-file)]
+               (with-open [sam-wtr (sam/sam-writer temp-sam-file')]
                  (sam/write-header sam-wtr header)
                  (sam/write-refs sam-wtr header)
                  (sam/write-alignments sam-wtr alignments header))
-               (with-open [sam-rdr (sam/reader temp-sam-file)]
+               (with-open [sam-rdr (sam/reader temp-sam-file')]
                  (is (= (seq alignments)
                         (seq (sam/read-alignments sam-rdr)))))))))
     test-bam-file

@@ -7,7 +7,8 @@
             [clojure.string :as cstr])
   (:import java.util.Arrays
            [java.io DataInputStream IOException]
-           [cljam.io.util.chunk Chunk]))
+           [cljam.io.util.chunk Chunk])
+  (:refer-clojure :exclude [meta seq]))
 
 (def ^:const linear-index-shift 14)
 (def ^:const linear-index-depth 5)

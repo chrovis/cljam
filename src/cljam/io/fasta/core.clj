@@ -66,10 +66,8 @@
 (defn read-seq-summaries
   "Read summaries of sequences in this FASTA file."
   [^FASTAReader rdr]
-  (mapv
-   (fn [{:keys [name len]}]
-     {:name name, :len len})
-   (fai/get-indices @(.index-delay rdr))))
+  (mapv #(select-keys % [:name :len])
+        (fai/get-indices @(.index-delay rdr))))
 
 (defn read-indices
   [^FASTAReader rdr]

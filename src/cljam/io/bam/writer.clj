@@ -70,11 +70,11 @@
     (when @(.index wtr)
       (reset! (.refs wtr) refs))
     (lsb/write-int w (count refs))
-    (doseq [ref refs]
-      (lsb/write-int w (inc (count (:name ref))))
-      (lsb/write-string w (:name ref))
+    (doseq [{:keys [len] name' :name} refs]
+      (lsb/write-int w (inc (count name')))
+      (lsb/write-string w name')
       (lsb/write-bytes w (byte-array 1 (byte 0)))
-      (lsb/write-int w (:len ref)))))
+      (lsb/write-int w len))))
 
 (defn write-alignments* [^BAMWriter wtr alns header]
   (let [dw (.data-writer wtr)

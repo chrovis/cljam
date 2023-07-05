@@ -303,8 +303,8 @@
      (let [regs (if region
                   [region]
                   (map
-                   (fn [{:keys [name len]}]
-                     {:chr name :start 1 :end len})
+                   (fn [{:keys [len] name' :name}]
+                     {:chr name' :start 1 :end len})
                    (sam/read-refs s)))]
        (doseq [reg regs]
          (plpio/write-piles w (pileup s reg options)))))))

@@ -66,9 +66,9 @@
         (if (seq ret)
           (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
                 (lazy-seq (read* line rdr)))
-          (let [ref (subs line 1)
+          (let [ref' (subs line 1)
                 offset (get-file-pointer rdr)]
-            (recur (read-line rdr) (assoc ret :rname ref :offset offset))))
+            (recur (read-line rdr) (assoc ret :rname ref' :offset offset))))
         (if (:rname ret)
           (let [ret' (if (:line-len ret)
                        (update ret :seq str line)
@@ -94,11 +94,11 @@
       headers)))
 
 (defn- read-sequence*
-  [^FASTAReader rdr name]
+  [^FASTAReader rdr name']
   (when-let [line (read-line (.reader rdr))]
     (if-not (header-line? line)
-      (if name
-        {:name name, :sequence line}
+      (if name'
+        {:name name', :sequence line}
         (throw (ex-info "Missing sequence name" {})))
       (:name (parse-header-line line)))))
 
@@ -107,22 +107,22 @@
   as lazy sequence."
   [^FASTAReader rdr]
   (seek (.reader rdr) 0)
-  (letfn [(read-fn [rdr name]
-            (let [s (read-sequence* rdr name)]
+  (letfn [(read-fn [rdr name']
+            (let [s (read-sequence* rdr name')]
               (cond
                 (string? s) (read-fn rdr s)
-                (map? s) (cons s (lazy-seq (read-fn rdr name))))))]
+                (map? s) (cons s (lazy-seq (read-fn rdr name'))))))]
     (read-fn rdr nil)))
 
 (defn read-sequence
-  [^FASTAReader rdr name start end {:keys [mask?]}]
+  [^FASTAReader rdr name' start end {:keys [mask?]}]
   (let [fai @(.index-delay rdr)]
-    (when-let [len (:len (fasta-index/get-header fai name))]
+    (when-let [len (:len (fasta-index/get-header fai name'))]
       (let [start' (max 1 (long (or start 1)))
             end' (min (long len) (long (or end len)))]
         (when (<= start' end')
           (let [buf (CharBuffer/allocate (inc (- end' start')))]
-            (when-let [[s e] (fasta-index/get-span fai name (dec start') end')]
+            (when-let [[s e] (fasta-index/get-span fai name' (dec start') end')]
               (let [bb ^ByteBuffer (read-buffer (.reader rdr) s e)]
                 (if mask?
                   (while (.hasRemaining bb)
@@ -228,6 +228,7 @@
     (when-not mask?
       (doseq [[i v] [[\a \A] [\c \C] [\g \G] [\t \T] [\n \N]]]
         (aset-byte byte-map (byte (int i)) (byte (int v)))))
-    (map (fn [{:keys [^bytes name ^bytes sequence]}]
-           {:name (String. name) :sequence (String. sequence)})
+    (map (fn [{^bytes name' :name
+               ^bytes sequence' :sequence}]
+           {:name (String. name') :sequence (String. sequence')})
          (sequential-read stream page-size seq-buf-size byte-map))))

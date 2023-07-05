@@ -207,10 +207,10 @@
 (defn- parse-attr [s]
   (let [[raw-tag value] (cstr/split s #"=" 2)
         tag' (decode-in-attr raw-tag)
-        {:keys [key decoder]
-         :or {key tag'
+        {:keys [decoder] key' :key
+         :or {key' tag'
               decoder decode-multiple}} (predefined-tags tag')]
-    [key (decoder value)]))
+    [key' (decoder value)]))
 
 (defn- parse-attrs
   [s]
@@ -234,8 +234,8 @@
 (defn read-features
   "Reads features of the GFF file, returning them as a lazy sequence. `reader`
   must be an instance of `cljam.io.gff.GFFReader`."
-  [^GFFReader reader]
-  (->> reader
+  [^GFFReader gff-reader]
+  (->> gff-reader
        .reader
        line-seq
        (sequence
@@ -280,8 +280,8 @@
 (def ^:const ^:private
   inv-predefined-tags
   (->> predefined-tags
-       (map (fn [[key-str {:keys [key] :as x}]]
-              [key (assoc x :key-str key-str)]))
+       (map (fn [[key-str {key' :key :as x}]]
+              [key' (assoc x :key-str key-str)]))
        (into {})))
 
 (def ^:const ^:private
@@ -291,13 +291,13 @@
 (defn- write-attrs!
   [^BufferedWriter w attrs]
   (let [first? (volatile! true)]
-    (doseq [key (concat predefined-keys
-                        (apply disj (set (keys attrs)) predefined-keys))
-            :let [value (get attrs key)]
+    (doseq [key' (concat predefined-keys
+                         (apply disj (set (keys attrs)) predefined-keys))
+            :let [value (get attrs key')]
             :when value
             :let [{:keys [^String key-str encoder]
-                   :or {key-str key
-                        encoder encode-multiple}} (inv-predefined-tags key)]]
+                   :or {key-str key'
+                        encoder encode-multiple}} (inv-predefined-tags key')]]
       (if @first?
         (vreset! first? false)
         (.append w \;))
@@ -306,14 +306,15 @@
       (.write w ^String (encoder value)))))
 
 (defn- write-feature!
-  [^BufferedWriter w {:keys [chr ^String source ^String type ^long start
+  [^BufferedWriter w {:keys [chr ^String source ^String ^long start
                              ^long end score ^Character strand phase
-                             attributes]}]
+                             attributes]
+                      type' :type}]
   (.write w (encode escape-in-column? chr))
   (.append w \tab)
   (.write w (or (some->> source (encode escape-in-column?)) "."))
   (.append w \tab)
-  (.write w (or (some->> type (encode escape-in-column?)) "."))
+  (.write w (or (some->> type' (encode escape-in-column?)) "."))
   (.append w \tab)
   (.write w (String/valueOf start))
   (.append w \tab)
@@ -332,9 +333,9 @@
 (defn write-features
   "Writes `features` to the GFF file. `writer` must be an instance of
   `cljam.io.gff.GFFWriter`. `features` must be a sequence of feature maps."
-  [^GFFWriter writer features]
-  (let [w ^BufferedWriter (.writer writer)
-        {:keys [^long version major-revision minor-revision]} (.version writer)]
+  [^GFFWriter gff-writer features]
+  (let [w ^BufferedWriter (.writer gff-writer)
+        {:keys [^long version major-revision minor-revision]} (.version gff-writer)]
     (.write w "##gff-version ")
     (.write w (String/valueOf version))
     (when major-revision

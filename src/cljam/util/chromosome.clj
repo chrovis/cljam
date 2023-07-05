@@ -52,7 +52,7 @@
 
 (defn chromosome-order-key [s]
   (if-let [[_ _ chr suffix] (re-find #"(?i)^(chr)?([1-9][0-9]*|X|Y|MT|M)(\S*)" s)]
-    (if-let [num (proton/as-int chr)]
-      [num suffix]
+    (if-let [num' (proton/as-int chr)]
+      [num' suffix]
       [(- Integer/MAX_VALUE (case chr "X" 4 "Y" 3 "M" 2 "MT" 1)) suffix])
     [Integer/MAX_VALUE s]))

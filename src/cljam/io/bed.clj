@@ -208,10 +208,10 @@
   Currently, this function affects only :end and :name fields."
   [xs]
   (region/merge-regions-with
-   (fn [x {:keys [name end]}]
+   (fn [x {:keys [end] name' :name}]
      (-> x
          (update :end max end)
-         (update-some :name str "+" name)))
+         (update-some :name str "+" name')))
    0
    (sort-fields xs)))
 

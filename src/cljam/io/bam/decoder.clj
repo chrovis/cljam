@@ -69,8 +69,8 @@
                    (parse-tag-single typ bb))}})
       (parse-option bb)))))
 
-(defn decode-options [rest]
-  (let [bb (ByteBuffer/wrap rest)]
+(defn decode-options [rest']
+  (let [bb (ByteBuffer/wrap rest')]
     (.order bb ByteOrder/LITTLE_ENDIAN)
     (parse-option bb)))
 
@@ -134,17 +134,17 @@
          cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
          [cigar len] (cigar/decode-cigar-and-ref-length cigar-bytes)
          ref-end     (if (zero? (long len)) pos (dec (+ pos (long len))))
-         seq         (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
+         seq'        (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
          qual        (decode-qual (lsb/read-bytes buffer l-seq))
-         rest        (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
-         options     (decode-options rest)
+         rest'        (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
+         options     (decode-options rest')
          [cigar* options*]
          (if-let [cg (and (cigar/placeholder? cigar-bytes)
                           (:value (some :CG options)))]
            [(B-I-type-cigar-str->cigar-str cg) (remove :CG options)]
            [cigar options])]
      (SAMAlignment. qname (int flag) rname (int pos) ref-end (int mapq)
-                    cigar* rnext (int pnext) (int tlen) seq qual options*)))
+                    cigar* rnext (int pnext) (int tlen) seq' qual options*)))
   ([refs block ^long start ^long end]
    (let [buffer          (ByteBuffer/wrap (:data block))
          ref-id          (int (lsb/read-int buffer))
@@ -168,18 +168,18 @@
                                 pos
                                 (dec (+ pos (long len)))))]
          (when (<= start ref-end)
-           (let [seq     (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
+           (let [seq'    (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
                  qual    (decode-qual (lsb/read-bytes buffer l-seq))
-                 rest    (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
+                 rest'    (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
                  rname   (or (refs/ref-name refs ref-id) "*")
-                 options (decode-options rest)
+                 options (decode-options rest')
                  [cigar* options*]
                  (if-let [cg (and (cigar/placeholder? cigar-bytes)
                                   (:value (some :CG options)))]
                    [(B-I-type-cigar-str->cigar-str cg) (remove :CG options)]
                    [cigar options])]
              (SAMAlignment. qname (int flag) rname (int pos) ref-end (int mapq)
-                            cigar* rnext (int pnext) (int tlen) seq qual options*))))))))
+                            cigar* rnext (int pnext) (int tlen) seq' qual options*))))))))
 
 (defn decode-region-block
   "Decodes BAM block and returns a SAMRegionBlock instance containing covering range of the alignment."

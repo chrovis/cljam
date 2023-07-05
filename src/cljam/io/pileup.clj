@@ -4,7 +4,8 @@
             [cljam.io.sam.util.quality :as qual]
             [cljam.io.sequence :as cseq]
             [proton.core :as p])
-  (:import [java.io Closeable BufferedWriter]))
+  (:import [java.io Closeable BufferedWriter])
+  (:refer-clojure :exclude [ref]))
 
 ;; Records
 ;; -------
@@ -101,11 +102,11 @@
 
 (defn- parse-pileup-line
   [line]
-  (let [[rname pos [ref-base] cnt bases quals & _] (cstr/split line #"\t")
+  (let [[rname pos [ref-base] cnt bases' quals & _] (cstr/split line #"\t")
         ;; TODO: handle extra columns like mapq, qname...
         upper-ref-base (Character/toUpperCase ^char ref-base)
         pile (mapv (fn [b q] (assoc b :qual q))
-                   (some->> bases (parse-bases-col upper-ref-base))
+                   (some->> bases' (parse-bases-col upper-ref-base))
                    (some-> quals qual/fastq->phred))]
     (-> (LocusPile. rname (p/as-long pos) pile)
         (assoc :count (p/as-int cnt) :ref ref-base))))
@@ -113,8 +114,8 @@
 (defn read-piles
   "Reads piled-up bases of the pileup file, returning them as a lazy sequence of
   cljam.io.pileup.LocusPile."
-  [^PileupReader reader]
-  (->> reader
+  [^PileupReader pileup-reader]
+  (->> pileup-reader
        .reader
        line-seq
        (map parse-pileup-line)))
@@ -123,7 +124,7 @@
 ;; ------
 
 (defn- write-mpileup-alignment!
-  [^BufferedWriter w ref-reader rname ref-pos ref
+  [^BufferedWriter w ref-reader rname ref-pos ref'
    {:keys [base reverse? mapq start? end? insertion deletion]}]
   (let [case-base-fn (if-not reverse?
                        identity
@@ -135,7 +136,7 @@
     (when start?
       (.append w \^)
       (.append w (qual/phred-byte->fastq-char mapq)))
-    (if (= base ref) ;; match / deleted / skipped
+    (if (= base ref') ;; match / deleted / skipped
       (.append w (if reverse? \, \.))
       (.append w (unchecked-char (case-base-fn base))))
     (when deletion
@@ -195,9 +196,9 @@
   "Writes piled-up bases to a file. `pileup-writer` must be an instance of
   cljam.io.pileup.PileupWriter."
   [^PileupWriter pileup-writer piles]
-  (let [^BufferedWriter writer (.writer pileup-writer)
+  (let [^BufferedWriter wtr (.writer pileup-writer)
         ref-reader (.ref-reader pileup-writer)]
     (doseq [pile piles]
-      (write-mpileup-line! writer ref-reader pile)
-      (.newLine writer))
-    (.flush writer)))
+      (write-mpileup-line! wtr ref-reader pile)
+      (.newLine wtr))
+    (.flush wtr)))

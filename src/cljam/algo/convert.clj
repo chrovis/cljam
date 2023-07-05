@@ -29,11 +29,11 @@
   (let [refs (refs/make-refs hdr)
         n-threads (get-exec-n-threads)]
     (doseq [blocks (cp/pmap (if (= n-threads 1) :serial (dec n-threads))
-                            (fn [chunk]
+                            (fn [chunk']
                               (mapv #(let [bb (ByteBuffer/allocate (encoder/get-block-size %))]
                                        (encoder/encode-alignment bb % refs)
                                        {:data (.array bb)})
-                                    chunk))
+                                    chunk'))
                             (partition-all num-block (sam/read-alignments rdr {})))]
       (sam/write-blocks wtr blocks))))
 
@@ -116,13 +116,13 @@
 
 (defn aln->read
   "Converts a SAM alignment record to a FASTQ read."
-  [{:keys [flag ^String seq qual qname]}]
+  [{:keys [flag ^String qual qname] ^String seq' :seq}]
   (let [reversed? (flag/reversed? flag)]
     (FASTQRead.
      qname
-     (if reversed? (util-seq/revcomp seq) seq)
+     (if reversed? (util-seq/revcomp seq') seq')
      (if (null-or-star? qual)
-       (cstr/join (repeat (.length seq) \"))
+       (cstr/join (repeat (.length seq') \"))
        (if reversed?
          (cstr/reverse qual)
          qual)))))

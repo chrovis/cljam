@@ -32,10 +32,10 @@
   "Transforms a whole-genome position to a vector of a chromosome name and a
   position in the chromosome."
   [offset->ref ^long wg-pos]
-  (when-let [[^long offset {:keys [name len]}]
+  (when-let [[^long offset {:keys [len] name' :name}]
              (first (rsubseq offset->ref <= (dec wg-pos)))]
     (when (<= 1 (- wg-pos offset) len)
-      [name (- wg-pos offset)])))
+      [name' (- wg-pos offset)])))
 
 (defn ->regions
   "Transforms a region in whole-genome coordinate into a sequence of chromosomal

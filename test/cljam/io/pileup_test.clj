@@ -150,11 +150,11 @@
 ;; Writer
 ;; ------
 
-(defmacro with-string-writer [symbol & exprs]
+(defmacro with-string-writer [sym & exprs]
   `(with-open [sw# (StringWriter.)
-               ~symbol (cio/writer sw#)]
+               ~sym (cio/writer sw#)]
      ~@exprs
-     (.flush ~symbol)
+     (.flush ~sym)
      (str sw#)))
 
 (deftest write-mpileup-alignment!

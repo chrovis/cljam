@@ -26,9 +26,10 @@
 (defn make-splitter
   "Returns a function that splits a multiallelic variant into a sequence of
   biallelic variants."
-  [{:keys [info format]} header]
+  [{:keys [info]
+    format' :format} header]
   (let [info-id->number (get-id->number info)
-        format-id->number (get-id->number format)
+        format-id->number (get-id->number format')
         samples (map keyword (drop 9 header))]
     (fn split [{:keys [alt] :as v}]
       (let [n (count alt)]
@@ -68,9 +69,10 @@
   "Trims all duplicated allele sequences from right. If reached the start,
   reference sequences of length `window` will be read from `seq-reader` and
   be prepended to the alleles."
-  [seq-reader {:keys [chr ^long pos ref alt]
+  [seq-reader {:keys [chr ^long pos alt]
+               ref' :ref
                {:keys [END]} :info :as v} ^long window]
-  (let [alleles (cons ref alt)
+  (let [alleles (cons ref' alt)
         min-end (dec (+ pos (long (apply min (map count alleles)))))
         regs (regions-before chr pos window)
         ref-seqs (sequence ;; unchunk
@@ -93,22 +95,22 @@
                                start)) regs)
                      (or pos)
                      long)
-            [ref' & alt'] (map
-                           #(->> %2
-                                 (take (inc (- (dec (+ pos (count %1))) pos')))
-                                 (drop matched-length)
-                                 reverse
-                                 cstr/join)
-                           alleles
-                           allele-seqs)]
-        (cond-> (assoc v :pos pos' :ref ref' :alt alt')
-          (integer? END) (assoc-in [:info :END] (dec (+ pos' (count ref'))))))
+            [ref'' & alt'] (map
+                            #(->> %2
+                                  (take (inc (- (dec (+ pos (count %1))) pos')))
+                                  (drop matched-length)
+                                  reverse
+                                  cstr/join)
+                            alleles
+                            allele-seqs)]
+        (cond-> (assoc v :pos pos' :ref ref'' :alt alt')
+          (integer? END) (assoc-in [:info :END] (dec (+ pos' (count ref''))))))
       v)))
 
 (defn- trim-left
   "Trims all duplicated allele sequences from left."
-  [{:keys [ref alt] :as v}]
-  (let [alleles (cons ref alt)
+  [{:keys [alt] ref' :ref :as v}]
+  (let [alleles (cons ref' alt)
         n-trim-left (->> alleles
                          (apply map char-equals-ignore-case?)
                          (take-while true?)
@@ -127,16 +129,18 @@
   ([seq-reader variant]
    (realign seq-reader variant {}))
   ([seq-reader
-    {:keys [ref alt] :as variant}
+    {:keys [alt]
+     ref' :ref
+     :as variant}
     {:keys [window] :or {window 100}}]
    (cond
      (some->> (seq alt)
               (every? (comp #{:snv :mnv :insertion :deletion :complex}
                             :type
-                            (partial vcf-util/inspect-allele ref))))
+                            (partial vcf-util/inspect-allele ref'))))
      (trim-left (trim-right seq-reader variant window))
 
-     (and ref (nil? (seq alt)))
+     (and ref' (nil? (seq alt)))
      (cond-> (update variant :ref subs 0 1)
        (integer? (:END (:info variant)))
        (assoc-in [:info :END] (:pos variant)))

@@ -169,8 +169,11 @@
       (with-open [r (sam/reader in)
                   w (sam/writer out (:index options))]
         (condp = (:order options)
-          (name header/order-coordinate) (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
-          (name header/order-queryname) (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
+          (clojure.core/name header/order-coordinate)
+          (sorter/sort-by-pos r w {:chunk-size (:chunk options)})
+
+          (clojure.core/name header/order-queryname)
+          (sorter/sort-by-qname r w {:chunk-size (:chunk options)})))))
   nil)
 
 ;; ### index command
@@ -229,7 +232,8 @@
     (when-not (sorter/sorted? r)
       (exit 1 "Not sorted"))
     (let [regs (or (some-> region parse-region vector)
-                   (map (fn [{:keys [name len]}] {:chr name :start 1 :end len}) (sam/read-refs r)))]
+                   (map (fn [{:keys [len] name' :name}]
+                          {:chr name' :start 1 :end len}) (sam/read-refs r)))]
       (binding [*out* (BufferedWriter. (OutputStreamWriter. System/out))
                 *flush-on-newline* false]
         (doseq [reg regs
@@ -239,7 +243,8 @@
 
 (defn pileup [args]
   (let [{:keys [arguments errors summary]
-         {:keys [help region simple ref thread]} :options} (parse-opts args pileup-cli-options)]
+         {:keys [help region simple thread] ref' :ref} :options}
+        (parse-opts args pileup-cli-options)]
     (cond
       help (exit 0 (pileup-usage summary))
       (not= (count arguments) 1) (exit 1 (pileup-usage summary))
@@ -248,7 +253,7 @@
       (if simple
         (depth f region thread)
         (with-open [w (cio/writer (cio/output-stream System/out))]
-          (plp/create-mpileup f ref w (parse-region region)))))))
+          (plp/create-mpileup f ref' w (parse-region region)))))))
 
 ;; ### faidx command
 

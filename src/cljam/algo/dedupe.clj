@@ -6,8 +6,8 @@
             [cljam.io.sam.util.flag :as flag]))
 
 (defn- refs->regions [refs]
-  (for [{:keys [name len]} refs]
-    {:chr name :start 1 :end len}))
+  (for [{:keys [len] name' :name} refs]
+    {:chr name' :start 1 :end len}))
 
 (defn- sum-quals [a]
   (when-let [q ^String (:qual a)]

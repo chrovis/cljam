@@ -67,10 +67,10 @@
 (defn normalize-bases
   "Converts bases in given buffer to upper-case. Also converts '.' to 'N'.
    Bases are represented as buffer of ASCII characters."
-  ^bytes [^bytes bases]
-  (dotimes [i (alength bases)]
-    (let [b (aget bases i)]
+  ^bytes [^bytes bases']
+  (dotimes [i (alength bases')]
+    (let [b (aget bases' i)]
       (cond
-        (= b (byte (int \.))) (aset-byte bases i (byte (int \N)))
-        (<= (byte (int \a)) b (byte (int \z))) (aset-byte bases i (- b 32))))) ;; Upper-case ASCII offset
-  bases)
+        (= b (byte (int \.))) (aset-byte bases' i (byte (int \N)))
+        (<= (byte (int \a)) b (byte (int \z))) (aset-byte bases' i (- b 32))))) ;; Upper-case ASCII offset
+  bases')

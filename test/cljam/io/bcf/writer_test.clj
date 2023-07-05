@@ -220,10 +220,10 @@
      0x02 0x04]))
 
 (defn- bgzf->bb ^ByteBuffer [f]
-  (with-open [is (bgzf/bgzf-input-stream f)
+  (with-open [input-stream (bgzf/bgzf-input-stream f)
               baos (ByteArrayOutputStream.)]
-    (while (pos? (.available is))
-      (.write baos (.read is)))
+    (while (pos? (.available input-stream))
+      (.write baos (.read input-stream)))
     (.flush baos)
     (doto (ByteBuffer/wrap (.toByteArray baos))
       (.order ByteOrder/LITTLE_ENDIAN))))
@@ -282,7 +282,7 @@
                 (str "#" (cstr/join \tab header) \newline (char 0))]
                (cstr/join \newline))
         _ (with-open [_ (bcf-writer/writer tmp {} header)] nil)
-        bytes (bb->seq (bgzf->bb tmp))]
+        bytes' (bb->seq (bgzf->bb tmp))]
     (is (= (concat (.getBytes "BCF\2\2") [(.length s) 0 0 0] (.getBytes s))
-           bytes))
+           bytes'))
     (.delete tmp)))

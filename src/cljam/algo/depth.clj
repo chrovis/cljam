@@ -9,7 +9,7 @@
             [cljam.io.sam.util.refs :as refs])
   (:import [cljam.io.protocols SAMRegionBlock]))
 
-(def ^:const default-step 1000000)
+(def ^:private ^:const default-step 1000000)
 
 ;; lazy
 ;; ----

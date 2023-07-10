@@ -1,7 +1,7 @@
 (ns cljam.io.sam.util.flag
   "Utility functions for SAM flags.")
 
-(def ^:const flags
+(def ^:private ^:const flags
   {:multiple         1 ; template having multiple segments in sequencing
    :properly-aligned 2 ; each segment properly aligned according to the aligner
    :unmapped         4 ; segment unmapped
@@ -16,7 +16,7 @@
    :supplementary 2048 ; supplementary alignment
    })
 
-(def ^:const flag-keywords
+(def ^:private ^:const flag-keywords
   (vec (map vector (map key (sort-by val flags)) (range))))
 
 (defn- long-bit-test

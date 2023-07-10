@@ -20,8 +20,11 @@
   (write-sequences [this seqs]
     (write-sequences this seqs)))
 
-(defn writer [f {:keys [cols create-index?]
-                 :or {cols 80 create-index? true}}]
+(defn writer
+  "Returns an open `cljam.io.fasta.writer.FASTAWriter` of `f`.
+  Should be used inside with-open to ensure the writer is properly closed."
+  [f {:keys [cols create-index?]
+      :or {cols 80 create-index? true}}]
   (let [abs-f (.getAbsolutePath (cio/file f))
         wtr (cio/writer (util/compressor-output-stream abs-f))
         index-writer (when create-index? (cio/writer (str abs-f ".fai")))]
@@ -78,6 +81,7 @@
         (vreset! (.curr-offset w) (+ offset (long seq-bytes)))))))
 
 (defn write-sequences
+  "Writes all sequences to `w`."
   [w xs]
   (doseq [x xs]
     (write-sequence w x)))

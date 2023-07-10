@@ -93,5 +93,6 @@
                          (:m5 dict))))))
 
 (defn write-dict!
+  "Writes dict for fasta to wtr."
   [^DICTWriter wtr headers sequences ur]
   (write-dict*! (.writer wtr) headers sequences ur))

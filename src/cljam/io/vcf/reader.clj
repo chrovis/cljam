@@ -109,6 +109,7 @@
                         (as-long s)))))
 
 (defn parse-meta-info-line
+  "Parses a single line string as meta-info."
   [line]
   (let [[_ k* v] (re-find #"^##([\w:/\.\?\-]*)=(.*)$" line)
         k (->kebab-case-keyword k*)]
@@ -119,6 +120,7 @@
          v)]))
 
 (defn load-meta-info
+  "Reads from `rdr` and parses them as meta-info."
   [^BufferedReader rdr]
   (loop [line (.readLine rdr), meta-info {}]
     (if (meta-line? line)
@@ -139,10 +141,12 @@
   (not (nil? (re-find #"^#[^#]*$" line))))
 
 (defn parse-header-line
+  "Parses a single line string as header"
   [line]
   (cstr/split (subs line 1) #"\t"))
 
 (defn load-header
+  "Reads from `rdr` and parses them as header."
   [^BufferedReader rdr]
   (loop [line (.readLine rdr)]
     (if (header-line? line)
@@ -184,6 +188,7 @@
       (recur rdr header kws))))
 
 (defn read-variants
+  "Reads variants of the VCF/BCF file, returning them as a lazy sequence."
   ([rdr]
    (read-variants rdr {}))
   ([^VCFReader rdr {:keys [depth] :or {depth :deep}}]

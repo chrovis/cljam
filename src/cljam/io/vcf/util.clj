@@ -189,7 +189,7 @@
    (genotype-seq ploidy n-alt-alleles)))
 
 (defn genotype->ints
-  "Convert genotype to a sequence of integers."
+  "Converts genotype to a sequence of integers."
   [gt]
   (let [parsed-gt (or (cond-> gt (string? gt) parse-genotype) [[nil]])]
     (->> (assoc-in (vec parsed-gt) [0 1] false)
@@ -199,7 +199,7 @@
                  (if phased 1 0)))))))
 
 (defn ints->genotype
-  "Convert a sequence of integers to genotype string."
+  "Converts a sequence of integers to genotype string."
   [vs]
   (->> vs
        (mapcat (fn [^long i]
@@ -229,7 +229,7 @@
            (map vector ks vs)))))))
 
 (defn stringify-sample
-  "Converts sample map into string. formats must be a sequence of keys in sample-map."
+  "Converts sample map into a string. formats must be a sequence of keys in sample-map."
   [formats sample-map]
   (->> formats
        (map (fn [k] [k (get sample-map k)]))

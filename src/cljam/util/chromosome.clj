@@ -4,6 +4,8 @@
             [proton.core :as proton]))
 
 (defn normalize-name
+  "Converts characters ',' or '.' in chromosome name to '_'
+  and erases ' and \"."
   [s]
   (-> s
       (cstr/replace #"[,\.]" "_")
@@ -46,11 +48,19 @@
          (when version-suffix (cstr/lower-case version-suffix)))))
 
 (defn is-primary-chromosome?
+  "Returns `true` if `s` is a primary chromosome name (chr1-chr22, chrX,
+  chrY, chrM, and chrMT), otherwise returns `false`."
   [s]
   (some? (re-matches #"^chr([0-9]{1,2}|X|Y|M|MT)"
                      (normalize-chromosome-key s))))
 
-(defn chromosome-order-key [s]
+(defn chromosome-order-key
+  "Converts a chromosome name into a comparable key.
+  In autosomes (chr1, chr2, ...), they are ordered by their numerical
+  designations, followed by chrX, chrY, chrM, and chrMT.
+  If two chromosome name prefixes are identical, they are sorted
+  in lexicographical order of the succeeding strings."
+  [s]
   (if-let [[_ _ chr suffix] (re-find #"(?i)^(chr)?([1-9][0-9]*|X|Y|MT|M)(\S*)" s)]
     (if-let [num' (proton/as-int chr)]
       [num' suffix]

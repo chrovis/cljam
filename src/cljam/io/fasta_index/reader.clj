@@ -9,6 +9,7 @@
 ;;;; Reader
 
 (defn parse-fai
+  "Parses fasta index."
   [rdr]
   (apply hash-map
          (flatten (map

@@ -44,6 +44,7 @@
 ;; ------------------------
 
 (defn stringify-key
+  "Converts meta-info key to string."
   [k]
   (if (#{:info :filter :format :alt :sample :pedigree} k)
     (cstr/upper-case (name k))
@@ -135,6 +136,7 @@
        (cstr/join \,)))
 
 (defn stringify-structured-line
+  "Converts meta info to string by `k` type."
   [k m]
   (let [f (case k
             :contig stringify-meta-info-contig
@@ -159,6 +161,7 @@
                                      "=" v)))))
 
 (defn write-meta-info
+  "Writes vcf meta-info to the VCF file."
   [^VCFWriter wtr meta-info]
   (write-meta-info1 wtr :fileformat (:fileformat meta-info default-fileformat))
   (doseq [k [:file-date :source :reference :contig :phasing]]
@@ -169,11 +172,14 @@
 ;; Writing header
 ;; --------------
 
-(defn stringify-header ^String
+(defn stringify-header
+  "Converts `header` to string."
+  ^String
   [header]
   (str header-prefix (cstr/join \tab header)))
 
 (defn write-header
+  "Writes vcf `header` to the VCF file."
   [^VCFWriter wtr header]
   (write-line (.writer wtr) (stringify-header header)))
 
@@ -207,6 +213,7 @@
          (cstr/join \tab))))
 
 (defn write-variants
+  "Writes variants to the VCF file."
   [^VCFWriter wtr variants]
   (let [stringify-vals (vcf-util/variant-vals-stringifier (.meta-info wtr) (.header wtr))
         header-kws (drop 8 (map keyword (.header wtr)))]

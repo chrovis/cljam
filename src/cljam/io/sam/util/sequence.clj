@@ -51,7 +51,7 @@
        cstr/join))
 
 (defn compressed-bases->str
-  "Decode a sequence from byte array to String."
+  "Decodes a sequence from byte array to String."
   [^long length ^bytes compressed-bases ^long compressed-offset]
   (let [cb (CharBuffer/allocate (inc length))
         bb (ByteBuffer/wrap compressed-bases)]

@@ -195,7 +195,9 @@
     (^String [this region option]
      (read-sequence this region option))))
 
-(defn reader ^TwoBitReader
+(defn reader
+  "Returns twobit reader of `f`."
+  ^TwoBitReader
   [f]
   (let [url (util/as-url f)]
     (with-open [ch (-> url

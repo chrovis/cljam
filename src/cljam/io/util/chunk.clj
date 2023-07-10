@@ -46,6 +46,7 @@
               (bgzf/get-block-offset (.end chunk2))))))
 
 (defn optimize-chunks
+  "Sorts `chunks` and corrects ends of each chunks."
   [chunks ^long min-offset]
   (let [chunks (sort compare chunks)]
     (loop [[^Chunk f & r] chunks

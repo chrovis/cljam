@@ -11,6 +11,8 @@
 ;;;; Writing
 
 (defn writer
+  "Returns an open `cljam.io.fasta_index.writer.FAIWriter` of `f`.
+   Should be used inside with-open to ensure the writer is properly closed."
   [f]
   (FAIWriter.
    (cio/writer f)
@@ -31,6 +33,8 @@
 ;;;; Reading
 
 (defn reader
+  "Returns an open `cljam.io.fasta_index.reader.FAIReader` of `f`.
+   Should be used inside with-open to ensure the reader is properly closed."
   [f]
   (FAIReader.
    (with-open [rdr (cio/reader f)]
@@ -38,11 +42,18 @@
    (util/as-url f)))
 
 (defn get-header
+  "Returns index data and a name [:name, :len, :offset, :line-blen, :line-len]
+  of the sequence named `name`."
   [^FAIReader fai name']
   (merge {:name name'}
          (get (.indices fai) name' nil)))
 
 (defn get-headers
+  "Get offsets of all sequences in the FASTA file.
+  Returns a vector of maps where each element contains the following keys:
+  - `:name`: The name of the sequence
+  - `:desc`: Always set to \"\"
+  - `:offset`: The file offset value to the sequence"
   [^FAIReader fai]
   (vec
    (sort
@@ -54,6 +65,13 @@
          (.indices fai)))))
 
 (defn get-indices
+  "Get fasta indices with the name of the sequence.
+  Returns a vector of maps where each element contains the following keys:
+  - `:name`: The name of the sequence
+  - `:len`: Length of the sequence
+  - `:offset`: The file offset value to the sequence
+  - `:line-blen`: The number of bases of each line
+  - `:line-len`: Length of each sequence line (including the newline)"
   [^FAIReader fai]
   (vec
    (sort
@@ -62,7 +80,7 @@
          (.indices fai)))))
 
 (defn get-span
-  "Calculate byte spans for FASTA file"
+  "Calculate byte spans for FASTA file."
   [^FAIReader fai name' ^long start ^long end]
   (let [start (max 0 start)
         end (max 0 end)]

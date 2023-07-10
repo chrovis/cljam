@@ -110,7 +110,7 @@
   [ref-pos (mapv (partial resolve-base ref-pos) alns)])
 
 (defn ->locus-pile
-  "Convert a pile into `cljam.io.pileup.LocusPile`."
+  "Converts a pile into `cljam.io.pileup.LocusPile`."
   [chr [pos pile]]
   (when (seq pile)
     (LocusPile. chr pos (object-array pile))))
@@ -143,7 +143,7 @@
            acc))))))
 
 (defn- merge-corrected-quals
-  "Merge corrected quals with the uncorrected part."
+  "Merges corrected quals with the uncorrected part."
   [^SAMAlignment aln ^long correct-start corrected-quals]
   (let [^shorts quals (:quals-at-ref aln)
         start (.pos aln)
@@ -196,7 +196,7 @@
           [new-quals2 new-quals1])))))
 
 (defn- make-corrected-quals-map
-  "Make a map which has corrected quals of all overlapping pairs."
+  "Makes a map which has corrected quals of all overlapping pairs."
   [alns]
   (->> alns
        (group-by (fn [x] (.qname ^SAMAlignment x)))

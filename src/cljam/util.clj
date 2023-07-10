@@ -73,10 +73,14 @@
 ;; string utils
 ;; ------------
 
-(defn string->bytes ^"[B" [^String s]
+(defn string->bytes
+  "Converts a string to bytes."
+  ^"[B" [^String s]
   (.getBytes s))
 
-(defn bytes->string ^String [^bytes b]
+(defn bytes->string
+  "Converts bytes to a string."
+  ^String [^bytes b]
   (String. b 0 (alength b)))
 
 (defn graph?
@@ -93,7 +97,9 @@
 ;; file utils
 ;; ---------
 
-(defn as-url ^URL
+(defn as-url
+  "Converts an object to a URL."
+  ^URL
   [x]
   (try
     (cio/as-url x)
@@ -101,6 +107,7 @@
       (cio/as-url (cio/file x)))))
 
 (defn basename
+  "Returns a file name without the last extension."
   [x]
   (when-let [url (as-url x)]
     (second (re-find #"([^/]+)\.(?=[^\./]+$)" (.getPath url)))))

@@ -14,6 +14,7 @@
 ;;;; Writing
 
 (defn make-indices
+  "Makes indices data from the reader."
   [^java.io.BufferedReader r]
   (let [indices (atom [])
         current-index (atom nil)]
@@ -58,6 +59,7 @@
     (.newLine wtr)))
 
 (defn write-index!
+  "Makes indices from `rdr` and writes it."
   [rdr ^FAIWriter wtr]
   (let [indices (make-indices rdr)]
     (write-index*! (.writer wtr) indices)))

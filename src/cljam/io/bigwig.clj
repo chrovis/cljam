@@ -293,7 +293,7 @@
          (neg? (long (cmp id end start-chrom-ix start-base))))))
 
 (defn- cir-tree-leaves->blocks
-  "Convert CirTree leaves into blocks that contain a flat map including offset and size."
+  "Converts CirTree leaves into blocks that contain a flat map including offset and size."
   [^RandomAccessFile r id start end child-count]
   (->> (repeatedly child-count
                    (fn []

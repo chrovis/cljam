@@ -90,14 +90,20 @@
     (read-linear-index**! rdr)))
 
 (defn read-bin-index!
+  "Reads a binning index eagerly for the given reference index.
+  Returns a vector of maps containing :bin and :chunks."
   [^BAIReader rdr ref-idx]
   (read-bin-index*! (.reader rdr) ref-idx))
 
 (defn read-linear-index!
+  "Reads a linear index eagerly for the given reference index.
+  Returns a vector of linear index numbers"
   [^BAIReader rdr ref-idx]
   (read-linear-index*! (.reader rdr) ref-idx))
 
 (defn read-all-index!
+  "Reads all linear indices and bin indices.
+  Returns a vector of maps containing :bidx and :lidx."
   [^BAIReader r]
   (let [rdr (.reader r)
         n-ref (lsb/read-int rdr)
@@ -113,7 +119,10 @@
     {:bidx bidx
      :lidx lidx}))
 
-(defn reader [f]
+(defn reader
+  "Returns an open cljam.io.bam_index.reader.BAIReader of f.
+  Should be used inside with-open to ensure the reader is properly closed."
+  [f]
   (let [url (util/as-url f)
         r (if (= (.getProtocol url) "file")
             (FileInputStream. (cio/file url))

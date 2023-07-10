@@ -58,10 +58,11 @@
   (BEDWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))
 
 (def ^:const bed-columns
+  "The keywords of bed columns."
   [:chr :start :end :name :score :strand :thick-start :thick-end :item-rgb :block-count :block-sizes :block-starts])
 
 (defn- str->long-list
-  "Convert string of comma-separated long values into list of longs.
+  "Converts string of comma-separated long values into list of longs.
   Comma at the end of input string will be ignored.
   Returns nil if input is nil."
   [^String s]
@@ -124,7 +125,7 @@
     :block-starts str->long-list}))
 
 (defn- serialize-bed
-  "Serialize bed fields into string."
+  "Serializes bed fields into a string."
   [m]
   {:pre [;; First 3 fields are required.
          (:chr m) (:start m) (:end m)
@@ -166,7 +167,7 @@
       (.startsWith s "#")))
 
 (defn- normalize
-  "Normalize BED fields.
+  "Normalizes BED fields.
   BED fields are stored in format: 0-origin and inclusive-start / exclusive-end.
   This function converts the coordinate into cljam style: 1-origin and inclusive-start / inclusive-end."
   [m]
@@ -175,7 +176,7 @@
       (update-some :thick-start inc)))
 
 (defn- denormalize
-  "De-normalize BED fields.
+  "De-normalizes BED fields.
   This is an inverse function of normalize."
   [m]
   (-> m
@@ -309,7 +310,7 @@
       (complement (merge-fields xs) chrs 1))))
 
 (defn write-fields
-  "Write sequence of BED fields to writer."
+  "Writes sequence of BED fields to writer."
   [^BEDWriter wtr xs]
   (let [w ^BufferedWriter (.writer wtr)]
     (->> xs

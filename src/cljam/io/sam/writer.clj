@@ -57,6 +57,7 @@
 ;; ------
 
 (defn writer
+  "Returns a sam writer of `f`."
   ^SAMWriter
   [f]
   (->SAMWriter (cio/writer f)

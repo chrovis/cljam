@@ -1,13 +1,25 @@
 (ns cljam.io.sam.util.validator)
 
-(defn- validate-rname [rname refmap]
-  (cond
-    (not (string? rname)) ["Must be string."]
-    (and (not (= rname "*"))
-         (not (get refmap rname)))
-    [(format "Must be not in header.(%s)" rname)]))
+(defn- error [path msg & args]
+  {:errors {path [(apply format msg args)]}})
 
-(defn- validate-pos [rname pos refmap]
+(defn- merge-validation-results
+  ([] nil)
+  ([res] res)
+  ([res1 res2]
+   (letfn [(rec [x y]
+             (cond (nil? x) y
+                   (nil? y) x
+                   (map? x) (merge-with rec x y)
+                   :else (into x y)))]
+     (rec res1 res2)))
+  ([res1 res2 res3 & more]
+   (reduce (fn [res res']
+             (merge-validation-results res res'))
+           res1
+           (list* res2 res3 more))))
+
+(defn- validate-pos* [rname pos refmap]
   (let [max-len (get-in refmap [rname :LN])]
     (cond
       (not (integer? pos)) ["Must be integer."]
@@ -18,43 +30,68 @@
            (> (int pos) (int max-len)))
       [(format "Must be less than or equal %d." max-len)])))
 
-(defn- validate-qname [qname]
+(defn- validate-pos [{:keys [refmap]} {:keys [pos rname]}]
+  (when-let [err (validate-pos* rname pos refmap)]
+    (apply error :pos err)))
+
+(defn- validate-pnext [{:keys [refmap]} {:keys [pnext rname]}]
+  (when-let [err (validate-pos* rname pnext refmap)]
+    (apply error :pnext err)))
+
+(defn- validate-rname* [rname refmap]
+  (cond
+    (not (string? rname)) ["Must be string."]
+    (and (not (= rname "*"))
+         (not (get refmap rname)))
+    [(format "Must be not in header.(%s)" rname)]))
+
+(defn- validate-rname [{:keys [refmap]} {:keys [rname]}]
+  (when-let [err (validate-rname* rname refmap)]
+    (apply error :rname err)))
+
+(defn- validate-rnext [{:keys [refmap]} {:keys [rnext]}]
+  (when-let [err (validate-rname* rnext refmap)]
+    (error :rnext err)))
+
+(defn- validate-qname [_ {:keys [qname]}]
   (if (not (string? qname))
-    ["Must be string."]
-    (cond-> nil
-      (not (<= (count qname) 254))
-      (conj "Must be less than or equal to 254 characters.")
+    (error :qname "Must be string.")
+    (when-let [res
+               (cond-> nil
+                 (not (<= (count qname) 254))
+                 (conj "Must be less than or equal to 254 characters.")
 
-      (not (re-matches #"^[!-?A-~]+$" qname))
-      (conj "Must not contain illegal characters."))))
+                 (not (re-matches #"^[!-?A-~]+$" qname))
+                 (conj "Must not contain illegal characters."))]
+      {:errors {:qname res}})))
 
-(defn- validate-mapq [mapq]
+(defn- validate-mapq [_ {:keys [mapq]}]
   (cond
-    (not (integer? mapq)) ["Must be integer."]
+    (not (integer? mapq)) (error :mapq "Must be integer.")
     (not (<= 0 (int mapq) 255))
-    ["Must be in the [0-255]."]))
+    (error :mapq "Must be in the [0-255].")))
 
-(defn- validate-cigar [cigar]
+(defn- validate-cigar [_ {:keys [cigar]}]
   (cond
-    (not (string? cigar)) ["Must be string."]
+    (not (string? cigar)) (error :cigar "Must be string.")
     (not (re-matches #"^\*|([0-9]+[MIDNSHPX=])+$" cigar))
-    ["Invalid format."]))
+    (error :cigar "Invalid format.")))
 
-(defn- validate-tlen [tlen]
+(defn- validate-tlen [_ {:keys [tlen]}]
   (cond
-    (not (integer? tlen)) ["Must be integer."]
+    (not (integer? tlen)) (error :tlen "Must be integer.")
     (not (<= (- Integer/MAX_VALUE) tlen Integer/MAX_VALUE))
-    ["Must be in the [-2147483647,2147483647]."]))
+    (error :tlen "Must be in the [-2147483647,2147483647].")))
 
-(defn- validate-qual [qual]
+(defn- validate-qual [_ {:keys [qual]}]
   (cond
-    (not (string? qual)) ["Must be string."]
-    (not (re-matches #"[!-~]+" qual)) ["Must not contain bad character."]))
+    (not (string? qual)) (error :qual "Must be string.")
+    (not (re-matches #"[!-~]+" qual)) (error :qual "Must not contain bad character.")))
 
-(defn- validate-seq [seq]
+(defn- validate-seq [_ {:keys [seq]}]
   (cond
-    (not (string? seq)) ["Must be string."]
-    (not (re-matches #"\*|[A-Za-z=.]+" seq)) ["Must not contain bad character."]))
+    (not (string? seq)) (error :seq "Must be string.")
+    (not (re-matches #"\*|[A-Za-z=.]+" seq)) (error :seq "Must not contain bad character.")))
 
 (defn- validate-option [{:keys [type value]}]
   (case type
@@ -76,68 +113,79 @@
           ["Must be Integer or numeric array string."])
     [(format "Type %s is invalid" (str type))]))
 
-(defn- validate-options [options]
-  (reduce
-   (fn [res option]
-     (let [k (first (keys option))]
-       (if-let [checked (validate-option (get option k))]
-         (assoc res k checked)
-         res)))
-   nil
-   options))
+(defn- validate-options [_ {:keys [options]}]
+  (map-indexed #(when-let [err (validate-option %2)]
+                  (apply error [:options %1] err))
+               options))
 
-(defn- make-validator* [header]
-  (let [refmap (into {} (map (juxt :SN identity) (:SQ header)))]
-    (fn [alignment]
-      (let [checked-rname (validate-rname (:rname alignment) refmap)
-            checked-pos (validate-pos
-                         (:rname alignment) (:pos alignment) refmap)
-            checked-qname (validate-qname (:qname alignment))
-            checked-rnext (validate-rname (:rname alignment) refmap)
-            checked-pnext (validate-pos (:rname alignment) (:pnext alignment)
-                                        refmap)
-            checked-mapq (validate-mapq (:mapq alignment))
-            checked-cigar (validate-cigar (:cigar alignment))
-            checked-tlen (validate-tlen (:tlen alignment))
-            checked-qual (validate-qual (:qual alignment))
-            checked-seq (validate-seq (:seq alignment))
-            checked-options (validate-options (:options alignment))]
-        (merge
-         (cond-> nil
-           checked-qname (assoc :qname checked-qname)
-           checked-rname (assoc :rname checked-rname)
-           checked-pos (assoc :pos checked-pos)
-           checked-rnext (assoc :rnext checked-rnext)
-           checked-mapq (assoc :mapq checked-mapq)
-           checked-cigar (assoc :cigar checked-cigar)
-           checked-pnext (assoc :pnext checked-pnext)
-           checked-tlen (assoc :tlen checked-tlen)
-           checked-qual (assoc :qual checked-qual)
-           checked-seq (assoc :seq checked-seq))
-         checked-options)))))
+(defn- validate-data-record [validator alignment]
+  (if (map? alignment)
+    (let [f (juxt validate-qname
+                  validate-rname
+                  validate-rnext
+                  validate-pos
+                  validate-pnext
+                  validate-mapq
+                  validate-cigar
+                  validate-qual
+                  validate-tlen
+                  validate-seq)]
+      (apply  merge-validation-results
+              (concat (f validator alignment)
+                      (validate-options validator alignment))))
+    (error [] (str "Variant must be a map, but got " (pr-str alignment)))))
 
 (defn make-validator
-  "Variant and return returns a map that explains bad positions."
-  [header]
-  (let [validator (make-validator* header)]
-    (fn [alignments]
-      (map (fn [a]
-             (when-let [info (validator a)]
-               (throw (ex-info "Invalid alignment."
-                               (assoc info :alignment a))))
-             a)
-           alignments))))
+  ([header] (make-validator header {}))
+  ([header {:keys [file-type] :or {file-type :sam}}]
+   {:file-type file-type
+    :refmap (into {} (map (juxt :SN identity) (:SQ header)))}))
+
+(defn validate-alignment
+  [validator alignment]
+  (let [res (validate-data-record validator alignment)]
+    (when (seq res)
+      (assoc res :alignment alignment))))
 
 (defn validate-alignments
-  "Takes a list of alignments and throws an illegal alignment
-   if it contains illegal content.
-   If there is no illegal alignment, the input list is returned as-is.
-   Validation is delayed."
-  [header alignments]
-  (let [validator (make-validator* header)]
-    (map (fn [a]
-           (when-let [info (validator a)]
-             (throw (ex-info "Invalid alignment."
-                             (assoc info :alignment a))))
-           a)
-         alignments)))
+  ([validator]
+   (keep (partial validate-alignment validator)))
+  ([validator alignments]
+   (sequence (validate-alignments validator) alignments)))
+
+(defn- stringify-validation-result-messages [m]
+  (with-out-str
+    (doseq [[i [path msgs]] (map-indexed vector m)
+            :let [path' (str path)
+                  indent (apply str (repeat (+ (count path') 4) \space))]]
+      (when (not= i 0) (newline))
+      (printf " - %s: %s" path (first msgs))
+      (doseq [msg (rest msgs)]
+        (newline)
+        (printf "%s %s" indent msg)))))
+
+(defn check-alignment
+  [validator alignment]
+  (let [{:keys [warnings errors] v :alignment :as res} (validate-alignment validator alignment)]
+    (when warnings
+      (binding [*out* *err*]
+        (printf "Variant validation warning at %s\n%s"
+                (pr-str (cond-> v
+                          (map? v)
+                          (select-keys [:chr :pos :id :ref :alt])))
+                (stringify-validation-result-messages warnings))
+        (newline)))
+    (when errors
+      (let [msg (format "Variant validation error at %s\n%s"
+                        (pr-str (cond-> v
+                                  (map? v)
+                                  (select-keys [:chr :pos :id :ref :alt])))
+                        (stringify-validation-result-messages errors))]
+        (throw (ex-info msg res))))
+    alignment))
+
+(defn check-alignments
+  ([validator]
+   (map (partial check-alignment validator)))
+  ([validator alignments]
+   (sequence (check-alignments validator) alignments)))

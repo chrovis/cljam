@@ -35,61 +35,62 @@
     (is (= (#'validator/validate-option {:type "B" :value "W"})
            ["Must be Integer or numeric array string."]))))
 
-(deftest make-validator*-test
-  (let [validator (#'validator/make-validator*
-                   {:SQ [{:SN "ref", :LN 45}]})
+(deftest validate-data-record-test
+  (let [validator (validator/make-validator {:SQ [{:SN "ref", :LN 45}]})
         valid-align
         {:rname "ref" :pos 10 :qname "a" :mapq 10 :cigar "16M"
          :rnext "*" :tlen 0 :pnext 0 :seq "ATGC" :qual "*"
          :options {}}]
-    (testing "valid patterns"
-      (is (nil? (validator valid-align))))
-    (testing "invalid patterns"
-      (are [k v ans] (= (get (validator (assoc valid-align k v)) k)
-                        ans)
-        :qname 100  ["Must be string."]
-        :qname (apply str (repeat 255 \a))
-        ["Must be less than or equal to 254 characters."]
+    (are [k v ans]
+         (= (get-in (#'validator/validate-data-record validator (assoc valid-align k v))
+                    [:errors k])
+            ans)
+      :qname 100  ["Must be string."]
+      :qname (apply str (repeat 255 \a))
+      ["Must be less than or equal to 254 characters."]
 
-        :qname "@@" ["Must not contain illegal characters."]
+      :qname "@@" ["Must not contain illegal characters."]
 
-        :qname (apply str (repeat 255 \@))
-        ["Must not contain illegal characters."
-         "Must be less than or equal to 254 characters."]
+      :qname (apply str (repeat 255 \@))
+      ["Must not contain illegal characters."
+       "Must be less than or equal to 254 characters."]
 
-        :rname 10 ["Must be string."]
-        :rname "NOT-FOUND" ["Must be not in header.(NOT-FOUND)"]
-        :pos "ABC" ["Must be integer."]
-        :pos 100000000 ["Must be less than or equal 45."]
-        :pos 46 ["Must be less than or equal 45."]
-        :pos -100 ["Must be in the [0, 2147483647]."]
-        :mapq "A" ["Must be integer."]
-        :mapq 300 ["Must be in the [0-255]."]
-        :cigar 10 ["Must be string."]
-        :cigar "3Y" ["Invalid format."]
-        :rname 10 ["Must be string."]
-        :pnext 100000000 ["Must be less than or equal 45."]
-        :pnext "A" ["Must be integer."]
-        :tlen -9900000000 ["Must be in the [-2147483647,2147483647]."]
-        :qual 10 ["Must be string."]
-        :qual "bad qual" ["Must not contain bad character."]
-        :seq 100 ["Must be string."]
-        :seq [\A \B] ["Must be string."]
-        :seq "A!TGC" ["Must not contain bad character."]))))
+      :rname 10 ["Must be string."]
+      :rname "NOT-FOUND" ["Must be not in header.(NOT-FOUND)"]
+      :pos "ABC" ["Must be integer."]
+      :pos 100000000 ["Must be less than or equal 45."]
+      :pos 46 ["Must be less than or equal 45."]
+      :pos -100 ["Must be in the [0, 2147483647]."]
+      :mapq "A" ["Must be integer."]
+      :mapq 300 ["Must be in the [0-255]."]
+      :cigar 10 ["Must be string."]
+      :cigar "3Y" ["Invalid format."]
+      :rname 10 ["Must be string."]
+      :pnext 100000000 ["Must be less than or equal 45."]
+      :pnext "A" ["Must be integer."]
+      :tlen -9900000000 ["Must be in the [-2147483647,2147483647]."]
+      :qual 10 ["Must be string."]
+      :qual "bad qual" ["Must not contain bad character."]
+      :seq 100 ["Must be string."]
+      :seq [\A \B] ["Must be string."]
+      :seq "A!TGC" ["Must not contain bad character."])
+    (is (= (get-in (#'validator/validate-data-record
+                    validator
+                    (assoc valid-align :options [{:type "!" :value \!}]))
+                   [:errors [:options 0]])
+           ["Type ! is invalid"]))))
 
-(deftest make-validator-test
+(deftest check-alignment-test
   (is (thrown? clojure.lang.ExceptionInfo
-               (doall (validator/validate-alignments
-                       {:SQ [{:SN "ref", :LN 45}]}
+               (doall (validator/check-alignments
+                       (validator/make-validator {:SQ [{:SN "ref", :LN 45}]})
                        [{:rname "ref" :pos 10000000
                          :qname "a"
                          :mapq 10 :cigar "16M" :rnext "*"
                          :tlen 0 :pnext 0 :seq "ATGC"
                          :qual "*" :options {}}]))))
-
   (let [input [{:rname "ref" :pos 10 :qname "a" :mapq 10 :cigar "16M"
                 :rnext "*" :tlen 0 :pnext 0 :seq "ATGC" :qual "*"
                 :options {}}]]
-    (is (= (validator/validate-alignments
-            {:SQ [{:SN "ref", :LN 45}]} input)
+    (is (= (validator/check-alignments (validator/make-validator {:SQ [{:SN "ref", :LN 45}]}) input)
            input))))

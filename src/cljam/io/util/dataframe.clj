@@ -44,19 +44,21 @@
 
 (declare make-dataframe-seq make-dataframe-row dataframe-row-accessors)
 
-(deftype DataFrame [^int m ^int n ^int offset columns ^objects types ^objects data]
+(deftype DataFrame
+         [^int m, ^int n, ^int offset, columns
+          ^objects types, ^objects data, accessors]
   clojure.lang.Counted
   (count [_] (- m offset))
   clojure.lang.Indexed
   (nth [this i]
     (let [i' (- i offset)]
       (if (< i' m)
-        (make-dataframe-row this i' (dataframe-row-accessors this))
+        (make-dataframe-row this i' @accessors)
         (throw (IndexOutOfBoundsException.)))))
   (nth [this i not-found]
     (let [i' (- i offset)]
       (if (< i' m)
-        (make-dataframe-row this i' (dataframe-row-accessors this))
+        (make-dataframe-row this i' @accessors)
         not-found)))
   clojure.lang.ILookup
   (valAt [this i]
@@ -67,23 +69,26 @@
     (nth this i not-found))
   clojure.lang.Seqable
   (seq [this]
-    (make-dataframe-seq this offset (dataframe-row-accessors this)))
+    (make-dataframe-seq this offset @accessors))
   clojure.lang.IReduceInit
   (reduce [this f init]
-    (let [accessors (dataframe-row-accessors this)]
+    (let [accessors' @accessors]
       (loop [i offset, acc init]
         (if (>= i m)
           acc
-          (let [row (make-dataframe-row this i accessors)
+          (let [row (make-dataframe-row this i accessors')
                 acc' (f acc row)]
             (recur (inc i) acc'))))))
   clojure.lang.IChunk
   (dropFirst [_]
-    (DataFrame. m n (inc offset) columns types data)))
+    (DataFrame. m n (inc offset) columns types data accessors)))
 
 (defn ->dataframe! [^DataFrameBuffer buffer]
-  (DataFrame. (.-m buffer) (.-n buffer) 0
-              (.-columns buffer) (.-types buffer) (.-data buffer)))
+  (let [accessors (volatile! nil)
+        frame (DataFrame. (.-m buffer) (.-n buffer) 0 (.-columns buffer)
+                          (.-types buffer) (.-data buffer) accessors)]
+    (vreset! accessors (dataframe-row-accessors frame))
+    frame))
 
 (defmethod print-method DataFrame [^DataFrame frame ^java.io.Writer w]
   (.write w "[")
@@ -97,7 +102,7 @@
   clojure.lang.ISeq
   (first [_]
     (when (< offset (.-m frame))
-      (make-dataframe-row frame offset (dataframe-row-accessors frame))))
+      (make-dataframe-row frame offset accessors)))
   (more [_]
     (if (< (inc offset) (.-m frame))
       (DataFrameSeq. frame (inc offset) accessors)

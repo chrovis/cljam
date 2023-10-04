@@ -141,7 +141,10 @@
   clojure.lang.IPersistentCollection
   (empty [_] {})
   (cons [this [k v]]
-    (assoc this k v)))
+    (assoc this k v))
+  clojure.lang.IKeywordLookup
+  (getLookupThunk [_ k]
+    (.get accessors k)))
 
 (defn- dataframe-row->map [^DataFrameRow row]
   (let [^DataFrame frame (.-frame row)
@@ -152,16 +155,29 @@
 (defmethod print-method DataFrameRow [row w]
   (print-method (dataframe-row->map row) w))
 
+(defmacro thunk
+  {:clj-kondo/lint-as 'clojure.core/fn}
+  [[arg] & body]
+  `(reify
+     clojure.lang.IFn
+     (~'invoke [this# arg#]
+       (let [~arg arg#]
+         ~@body))
+     clojure.lang.ILookupThunk
+     (~'get [this# arg#]
+       (let [~arg arg#]
+         ~@body))))
+
 (defn dataframe-row-accessor [^DataFrame frame key]
   (let [^IdentityHashMap columns (.-columns frame)
         col (int (.get columns key))
         t (aget ^objects (.-types frame) col)]
     (case t
-      :long (fn [^DataFrameRow row]
+      :long (thunk [^DataFrameRow row]
               (aget ^longs (aget ^objects (.-data frame) col) (.-row row)))
-      :double (fn [^DataFrameRow row]
+      :double (thunk [^DataFrameRow row]
                 (aget ^doubles (aget ^objects (.-data frame) col) (.-row row)))
-      (fn [^DataFrameRow row]
+      (thunk [^DataFrameRow row]
         (aget ^objects (aget ^objects (.-data frame) col) (.-row row))))))
 
 (defn dataframe-row-accessors [^DataFrame frame]

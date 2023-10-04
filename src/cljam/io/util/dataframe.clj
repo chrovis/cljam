@@ -1,10 +1,11 @@
-(ns cljam.io.util.dataframe)
+(ns cljam.io.util.dataframe
+  (:import [java.util IdentityHashMap]))
 
 (defprotocol IDataFrameBuffer
   (-append-val! [this val]))
 
 (deftype DataFrameBuffer
-         [^int m ^int n ^objects columns ^objects types ^objects data
+         [^int m ^int n columns ^objects types ^objects data
           ^:unsynchronized-mutable ^long i ^:unsynchronized-mutable ^long j]
   IDataFrameBuffer
   (-append-val! [_ val]
@@ -21,7 +22,10 @@
       val)))
 
 (defn make-dataframe-buffer [m columns]
-  (let [columns' (into-array Object (map first columns))
+  (let [n (count columns)
+        columns' (IdentityHashMap. n)
+        _ (doseq [[i [k _]] (map-indexed vector columns)]
+            (.put columns' k i))
         types (into-array Object (map second columns))
         data (->> columns
                   (map (fn [[_ t]]
@@ -30,7 +34,7 @@
                            :double (double-array m)
                            (object-array m))))
                   (into-array Object))]
-    (DataFrameBuffer. m (count columns) columns' types data 0 0)))
+    (DataFrameBuffer. m n columns' types data 0 0)))
 
 (defn append-val! [buffer val]
   (-append-val! buffer val))
@@ -78,8 +82,8 @@
     (DataFrame. m n (inc offset) columns types data)))
 
 (defn ->dataframe! [^DataFrameBuffer buffer]
-  (let [columns (into {} (map-indexed #(vector %2 %1) (.-columns buffer)))]
-    (DataFrame. (.-m buffer) (.-n buffer) 0 columns (.-types buffer) (.-data buffer))))
+  (DataFrame. (.-m buffer) (.-n buffer) 0
+              (.-columns buffer) (.-types buffer) (.-data buffer)))
 
 (defmethod print-method DataFrame [^DataFrame frame ^java.io.Writer w]
   (.write w "[")
@@ -109,15 +113,15 @@
 
 (declare dataframe-row->map)
 
-(deftype DataFrameRow [^DataFrame frame ^int row accessors]
+(deftype DataFrameRow [^DataFrame frame ^int row ^java.util.IdentityHashMap accessors]
   clojure.lang.Counted
   (count [_] (.-n frame))
   clojure.lang.ILookup
   (valAt [this k]
-    (when-let [f (get accessors k)]
+    (when-let [f (.get accessors k)]
       (f this)))
   (valAt [this k not-found]
-    (if-let [f (get accessors k)]
+    (if-let [f (.get accessors k)]
       (f this)
       not-found))
   clojure.lang.Seqable
@@ -129,7 +133,7 @@
   (containsKey [_ k]
     (contains? accessors k))
   (entryAt [this k]
-    (when-let [f (get accessors k)]
+    (when-let [f (.get accessors k)]
       (clojure.lang.MapEntry/create k (f this))))
   clojure.lang.IPersistentMap
   (without [this k]
@@ -149,7 +153,8 @@
   (print-method (dataframe-row->map row) w))
 
 (defn dataframe-row-accessor [^DataFrame frame key]
-  (let [col (int (get (.-columns frame) key))
+  (let [^IdentityHashMap columns (.-columns frame)
+        col (int (.get columns key))
         t (aget ^objects (.-types frame) col)]
     (case t
       :long (fn [^DataFrameRow row]
@@ -160,8 +165,10 @@
         (aget ^objects (aget ^objects (.-data frame) col) (.-row row))))))
 
 (defn dataframe-row-accessors [^DataFrame frame]
-  (into {} (map (juxt identity (partial dataframe-row-accessor frame)))
-        (keys (.-columns frame))))
+  (let [cols (.-columns frame)
+        m (java.util.IdentityHashMap. (count cols))]
+    (run! #(.put m % (dataframe-row-accessor frame %)) (keys cols))
+    m))
 
 (defn make-dataframe-row [frame i accessors]
   (DataFrameRow. frame i accessors))

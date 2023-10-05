@@ -12,7 +12,13 @@
     (let [t (aget types j)
           arr (aget data j)]
       (case t
+        :boolean (aset ^booleans arr i (boolean val))
+        :byte (aset ^bytes arr i (byte val))
+        :char (aset ^chars arr i (char val))
+        :short (aset ^shorts arr i (short val))
+        :int (aset ^ints arr i (int val))
         :long (aset ^longs arr i (long val))
+        :float (aset ^floats arr i (float val))
         :double (aset ^doubles arr i (double val))
         (aset ^objects arr i val))
       (set! j (inc j))
@@ -30,7 +36,13 @@
         data (->> columns
                   (map (fn [[_ t]]
                          (case t
+                           :boolean (boolean-array m)
+                           :byte (byte-array m)
+                           :char (char-array m)
+                           :short (short-array m)
+                           :int (int-array m)
                            :long (long-array m)
+                           :float (float-array m)
                            :double (double-array m)
                            (object-array m))))
                   (into-array Object))]
@@ -178,9 +190,27 @@
         col (int (.get columns key))
         t (aget ^objects (.-types frame) col)]
     (case t
+      :boolean (thunk [^DataFrameRow row]
+                      (aget ^booleans (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                            (.-row row)))
+      :byte (thunk [^DataFrameRow row]
+                   (aget ^bytes (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                         (.-row row)))
+      :char (thunk [^DataFrameRow row]
+                   (aget ^chars (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                         (.-row row)))
+      :int (thunk [^DataFrameRow row]
+                  (aget ^ints (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                        (.-row row)))
+      :short (thunk [^DataFrameRow row]
+                    (aget ^shorts (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                          (.-row row)))
       :long (thunk [^DataFrameRow row]
                    (aget ^longs (aget ^objects (.-data ^DataFrame (.-frame row)) col)
                          (.-row row)))
+      :float (thunk [^DataFrameRow row]
+                    (aget ^floats (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                          (.-row row)))
       :double (thunk [^DataFrameRow row]
                      (aget ^doubles (aget ^objects (.-data ^DataFrame (.-frame row)) col)
                            (.-row row)))

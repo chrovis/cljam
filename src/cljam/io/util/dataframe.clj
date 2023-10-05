@@ -179,11 +179,14 @@
         t (aget ^objects (.-types frame) col)]
     (case t
       :long (thunk [^DataFrameRow row]
-              (aget ^longs (aget ^objects (.-data frame) col) (.-row row)))
+                   (aget ^longs (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                         (.-row row)))
       :double (thunk [^DataFrameRow row]
-                (aget ^doubles (aget ^objects (.-data frame) col) (.-row row)))
+                     (aget ^doubles (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                           (.-row row)))
       (thunk [^DataFrameRow row]
-        (aget ^objects (aget ^objects (.-data frame) col) (.-row row))))))
+             (aget ^objects (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                   (.-row row))))))
 
 (defn dataframe-row-accessors [^DataFrame frame]
   (let [cols (.-columns frame)
@@ -193,6 +196,11 @@
 
 (defn make-dataframe-row [frame i accessors]
   (DataFrameRow. frame i accessors))
+
+(defn column-defs->accessors [defs]
+  (let [buf (make-dataframe-buffer 0 defs)
+        frame (->dataframe! buf)]
+    (dataframe-row-accessors frame)))
 
 (comment
   (def buffer

@@ -1,8 +1,32 @@
 (ns cljam.io.util.dataframe
-  (:import [java.util IdentityHashMap]))
+  (:import [java.util Arrays IdentityHashMap]))
 
 (defprotocol IDataFrameBuffer
   (-append-val! [this val]))
+
+(defn- typed-aget [t arr i]
+  (case t
+    :boolean (aget ^booleans arr i)
+    :byte (aget ^bytes arr i)
+    :char (aget ^chars arr i)
+    :short (aget ^shorts arr i)
+    :int (aget ^ints arr i)
+    :long (aget ^longs arr i)
+    :float (aget ^floats arr i)
+    :double (aget ^doubles arr i)
+    (aget ^objects arr i)))
+
+(defn- typed-aset [t arr i val]
+  (case t
+    :boolean (aset ^booleans arr i (boolean val))
+    :byte (aset ^bytes arr i (byte val))
+    :char (aset ^chars arr i (char val))
+    :short (aset ^shorts arr i (short val))
+    :int (aset ^ints arr i (int val))
+    :long (aset ^longs arr i (long val))
+    :float (aset ^floats arr i (float val))
+    :double (aset ^doubles arr i (double val))
+    (aset ^objects arr i val)))
 
 (deftype DataFrameBuffer
          [^int m ^int n columns ^objects types ^objects data
@@ -11,21 +35,24 @@
   (-append-val! [_ val]
     (let [t (aget types j)
           arr (aget data j)]
-      (case t
-        :boolean (aset ^booleans arr i (boolean val))
-        :byte (aset ^bytes arr i (byte val))
-        :char (aset ^chars arr i (char val))
-        :short (aset ^shorts arr i (short val))
-        :int (aset ^ints arr i (int val))
-        :long (aset ^longs arr i (long val))
-        :float (aset ^floats arr i (float val))
-        :double (aset ^doubles arr i (double val))
-        (aset ^objects arr i val))
+      (typed-aset t arr i val)
       (set! j (inc j))
       (when (>= j n)
         (set! i (inc i))
         (set! j 0))
       val)))
+
+(defn- make-typed-array [t x]
+  (case t
+    :boolean (boolean-array x)
+    :byte (byte-array x)
+    :char (char-array x)
+    :short (short-array x)
+    :int (int-array x)
+    :long (long-array x)
+    :float (float-array x)
+    :double (double-array x)
+    (object-array x)))
 
 (defn make-dataframe-buffer [m columns]
   (let [n (count columns)
@@ -34,17 +61,7 @@
             (.put columns' k i))
         types (into-array Object (map second columns))
         data (->> columns
-                  (map (fn [[_ t]]
-                         (case t
-                           :boolean (boolean-array m)
-                           :byte (byte-array m)
-                           :char (char-array m)
-                           :short (short-array m)
-                           :int (int-array m)
-                           :long (long-array m)
-                           :float (float-array m)
-                           :double (double-array m)
-                           (object-array m))))
+                  (map (fn [[_ t]] (make-typed-array t m)))
                   (into-array Object))]
     (DataFrameBuffer. m n columns' types data 0 0)))
 
@@ -95,12 +112,15 @@
   (dropFirst [_]
     (DataFrame. m n (inc offset) columns types data accessors)))
 
-(defn ->dataframe! [^DataFrameBuffer buffer]
+(defn- make-dataframe* [m n offset columns types data]
   (let [accessors (volatile! nil)
-        frame (DataFrame. (.-m buffer) (.-n buffer) 0 (.-columns buffer)
-                          (.-types buffer) (.-data buffer) accessors)]
+        frame (DataFrame. (int m) (int n) offset columns types data accessors)]
     (vreset! accessors (dataframe-row-accessors frame))
     frame))
+
+(defn ->dataframe! [^DataFrameBuffer buffer]
+  (make-dataframe* (.-m buffer) (.-n buffer) 0 (.-columns buffer)
+                   (.-types buffer) (.-data buffer)))
 
 (defmethod print-method DataFrame [^DataFrame frame ^java.io.Writer w]
   (.write w "[")
@@ -231,6 +251,79 @@
   (let [buf (make-dataframe-buffer 0 defs)
         frame (->dataframe! buf)]
     (dataframe-row-accessors frame)))
+
+(defn- ->array [t coll]
+  (if (.isArray (class coll))
+    coll
+    (make-typed-array t coll)))
+
+(defn add-columns [^DataFrame frame defs new-data]
+  (let [n (.-n frame)
+        n' (+ n (count defs))
+        ^IdentityHashMap columns (.-columns frame)
+        ^IdentityHashMap columns' (.clone columns)
+        ^objects types (.-types frame)
+        ^objects types' (Arrays/copyOf types n')
+        ^objects data (.-data frame)
+        ^objects data' (Arrays/copyOf data n')]
+    (doseq [[^long i [name t] coll] (map vector (range) defs new-data)
+            :let [i' (+ n i)]]
+      (.put columns' name i')
+      (aset types' i' t)
+      (aset data' i' (->array t coll)))
+    (make-dataframe* (.-m frame) n' (.-offset frame) columns' types' data')))
+
+(defn replace-columns [^DataFrame frame col-names defs new-data]
+  (let [n (.-n frame)
+        ^IdentityHashMap columns (.-columns frame)
+        ^IdentityHashMap columns' (.clone columns)
+        ^objects types (.-types frame)
+        ^objects types' (Arrays/copyOf types n)
+        ^objects data (.-data frame)
+        ^objects data' (Arrays/copyOf data n)
+        col-indices (map #(.get columns %) col-names)]
+    (doseq [[^long i [name t] coll] (map vector col-indices defs new-data)]
+      (.put columns' name i)
+      (aset types' i t)
+      (aset data' i (->array t coll)))
+    (make-dataframe* (.-m frame) n (.-offset frame) columns' types' data')))
+
+(defn map-column
+  ([frame col-name f]
+   (map-column frame col-name nil f))
+  ([^DataFrame frame col-name col-type f]
+   (let [m (.-m frame)
+         col-idx (.get ^IdentityHashMap (.-columns frame) col-name)
+         old-col-type (aget ^objects (.-types frame) col-idx)
+         old-col (aget ^objects (.-data frame) col-idx)
+         col-type' (or col-type old-col-type)
+         arr (make-typed-array col-type' m)]
+     (dotimes [i m]
+       (typed-aset col-type' arr i
+                   (f (typed-aget old-col-type old-col i))))
+     (replace-columns frame [col-name] [[col-name col-type']] [arr]))))
+
+(defn drop-columns [^DataFrame frame col-names]
+  (let [n (.-n frame)
+        n' (- n (count col-names))
+        ^IdentityHashMap columns (.-columns frame)
+        ^IdentityHashMap columns' (IdentityHashMap. n')
+        ^objects types (.-types frame)
+        ^objects types' (object-array n')
+        ^objects data (.-data frame)
+        ^objects data' (object-array n')
+        col-names' (set col-names)]
+    (loop [[[col i] & more] (sort-by val columns)
+           i' 0]
+      (when col
+        (if (contains? col-names' col)
+          (recur more i')
+          (do
+            (.put columns' col i')
+            (aset types' i' (aget types i))
+            (aset data' i' (aget data i))
+            (recur more (inc i'))))))
+    (make-dataframe* (.-m frame) n' (.-offset frame) columns' types' data')))
 
 (comment
   (def buffer

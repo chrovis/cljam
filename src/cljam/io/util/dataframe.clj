@@ -1,5 +1,5 @@
 (ns cljam.io.util.dataframe
-  (:import [java.util Arrays IdentityHashMap]))
+  (:import [java.util Arrays IdentityHashMap Map]))
 
 (defprotocol IDataFrameBuffer
   (-append-val! [this val]))
@@ -179,9 +179,9 @@
 (defn- make-dataframe-seq [frame offset accessors]
   (DataFrameSeq. frame offset accessors))
 
-(declare dataframe-row->map)
+(declare dataframe-row->map make-extended-dataframe-row extended-dataframe-row->map)
 
-(deftype DataFrameRow [^DataFrame frame ^int row ^java.util.IdentityHashMap accessors]
+(deftype DataFrameRow [^DataFrame frame ^int row ^Map accessors]
   clojure.lang.Counted
   (count [_] (.-n frame))
   clojure.lang.ILookup
@@ -196,8 +196,8 @@
   (seq [this]
     (seq (dataframe-row->map this)))
   clojure.lang.Associative
-  (assoc [this k v]
-    (assoc (dataframe-row->map this) k v))
+  (assoc [_ k v]
+    (make-extended-dataframe-row frame row {k v} accessors))
   (containsKey [_ k]
     (contains? accessors k))
   (entryAt [this k]
@@ -214,14 +214,70 @@
   (getLookupThunk [_ k]
     (.get accessors k)))
 
+(defn- make-dataframe-row [frame i accessors]
+  (DataFrameRow. frame i accessors))
+
 (defn- dataframe-row->map [^DataFrameRow row]
   (let [^DataFrame frame (.-frame row)
         accessors (.-accessors row)]
     (into {} (map #(vector % ((get accessors %) row)))
           (keys (.-columns frame)))))
 
-(defmethod print-method DataFrameRow [row w]
-  (print-method (dataframe-row->map row) w))
+(deftype ExtendedDataFrameRow
+         [^DataFrame frame ^int row ^Map extra ^Map accessors]
+  clojure.lang.Counted
+  (count [_] (.-n frame))
+  clojure.lang.ILookup
+  (valAt [this k]
+    (let [v (.getOrDefault extra k ::none)]
+      (if (identical? v ::none)
+        (when-let [f (.get accessors k)]
+          (f this))
+        v)))
+  (valAt [this k not-found]
+    (let [v (.getOrDefault extra k ::none)]
+      (if (identical? v ::none)
+        (if-let [f (.get accessors k)]
+          (f this)
+          not-found)
+        v)))
+  clojure.lang.Seqable
+  (seq [this]
+    (seq (extended-dataframe-row->map this)))
+  clojure.lang.Associative
+  (assoc [_ k v]
+    (make-extended-dataframe-row frame row (assoc extra k v) accessors))
+  (containsKey [_ k]
+    (or (contains? extra k) (contains? accessors k)))
+  (entryAt [this k]
+    (let [v (.getOrDefault extra k ::none)]
+      (if (identical? k ::none)
+        (when-let [f (.get accessors k)]
+          (clojure.lang.MapEntry/create k (f this)))
+        v)))
+  clojure.lang.IPersistentMap
+  (without [this k]
+    (if (contains? accessors k)
+      (dissoc (extended-dataframe-row->map this) k)
+      (if (contains? extra k)
+        (make-extended-dataframe-row frame row (dissoc extra k) accessors)
+        this)))
+  clojure.lang.IPersistentCollection
+  (empty [_] {})
+  (cons [this [k v]]
+    (assoc this k v))
+  clojure.lang.IKeywordLookup
+  (getLookupThunk [_ k]
+    (when-not (contains? extra k)
+      (.get accessors k))))
+
+(defn- make-extended-dataframe-row [frame i extra accessors]
+  (ExtendedDataFrameRow. frame i extra accessors))
+
+(defn- extended-dataframe-row->map [^ExtendedDataFrameRow row]
+  (-> (make-dataframe-row (.-frame row) (.-row row) (.-accessors row))
+      dataframe-row->map
+      (merge (.-extra row))))
 
 (defmacro thunk
   {:clj-kondo/lint-as 'clojure.core/fn}
@@ -274,9 +330,6 @@
         m (java.util.IdentityHashMap. (count cols))]
     (run! #(.put m % (dataframe-row-accessor frame %)) (keys cols))
     m))
-
-(defn make-dataframe-row [frame i accessors]
-  (DataFrameRow. frame i accessors))
 
 (defn column-defs->accessors [defs]
   (let [buf (make-dataframe-buffer 0 defs)

@@ -4,6 +4,20 @@
 (defprotocol IDataFrameBuffer
   (-append-val! [this val]))
 
+(def ^:private prim-type->type-key
+  {Byte/TYPE :byte
+   Character/TYPE :char
+   Short/TYPE :short
+   Integer/TYPE :int
+   Long/TYPE :long
+   Float/TYPE :float
+   Double/TYPE :double})
+
+(defn- array-type [arr]
+  (let [t (class arr)]
+    (when (.isArray t)
+      (get prim-type->type-key (.getComponentType t) :object))))
+
 (defn- typed-aget [t arr i]
   (case t
     :boolean (aget ^booleans arr i)
@@ -28,6 +42,23 @@
     :double (aset ^doubles arr i (double val))
     (aset ^objects arr i val)))
 
+(defn- make-typed-array [t x]
+  (case t
+    :boolean (boolean-array x)
+    :byte (byte-array x)
+    :char (char-array x)
+    :short (short-array x)
+    :int (int-array x)
+    :long (long-array x)
+    :float (float-array x)
+    :double (double-array x)
+    (object-array x)))
+
+(defn- ->array [t coll]
+  (if (.isArray (class coll))
+    coll
+    (make-typed-array t coll)))
+
 (deftype DataFrameBuffer
          [^int m ^int n columns ^objects types ^objects data
           ^:unsynchronized-mutable ^long i ^:unsynchronized-mutable ^long j]
@@ -41,18 +72,6 @@
         (set! i (inc i))
         (set! j 0))
       val)))
-
-(defn- make-typed-array [t x]
-  (case t
-    :boolean (boolean-array x)
-    :byte (byte-array x)
-    :char (char-array x)
-    :short (short-array x)
-    :int (int-array x)
-    :long (long-array x)
-    :float (float-array x)
-    :double (double-array x)
-    (object-array x)))
 
 (defn make-dataframe-buffer [m columns]
   (let [n (count columns)
@@ -117,6 +136,18 @@
         frame (DataFrame. (int m) (int n) offset columns types data accessors)]
     (vreset! accessors (dataframe-row-accessors frame))
     frame))
+
+(defn make-dataframe [column-data]
+  (let [m (count (second (first column-data)))
+        n (count column-data)
+        columns (IdentityHashMap. n)
+        types (object-array n)
+        data (object-array n)]
+    (doseq [[^long i [k arr]] (map-indexed vector column-data)]
+      (.put columns k i)
+      (aset types i (array-type arr))
+      (aset data i arr))
+    (make-dataframe* m n 0 columns types data)))
 
 (defn ->dataframe! [^DataFrameBuffer buffer]
   (make-dataframe* (.-m buffer) (.-n buffer) 0 (.-columns buffer)
@@ -251,11 +282,6 @@
   (let [buf (make-dataframe-buffer 0 defs)
         frame (->dataframe! buf)]
     (dataframe-row-accessors frame)))
-
-(defn- ->array [t coll]
-  (if (.isArray (class coll))
-    coll
-    (make-typed-array t coll)))
 
 (defn add-columns [^DataFrame frame defs new-data]
   (let [n (.-n frame)

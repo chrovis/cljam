@@ -99,18 +99,18 @@
   (count [_] (- m offset))
   clojure.lang.Indexed
   (nth [this i]
-    (let [i' (- i offset)]
+    (let [i' (+ i offset)]
       (if (< i' m)
         (make-dataframe-row this i' @accessors)
         (throw (IndexOutOfBoundsException.)))))
   (nth [this i not-found]
-    (let [i' (- i offset)]
+    (let [i' (+ i offset)]
       (if (< i' m)
         (make-dataframe-row this i' @accessors)
         not-found)))
   clojure.lang.ILookup
   (valAt [this i]
-    (let [i' (- (int i) offset)]
+    (let [i' (+ (int i) offset)]
       (when (< i' m)
         (nth this i))))
   (valAt [this i not-found]

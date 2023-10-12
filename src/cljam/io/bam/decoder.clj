@@ -8,7 +8,8 @@
             [cljam.io.sam.util.refs :as refs]
             [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.bam.common :as common]
-            [cljam.io.util.lsb :as lsb])
+            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.dataframe :as df])
   (:import [java.util Arrays]
            [java.nio Buffer ByteBuffer ByteOrder CharBuffer]
            [cljam.io.protocols SAMAlignment SAMRegionBlock SAMCoordinateBlock SAMQuerynameBlock]))
@@ -315,3 +316,25 @@
   ([b ^long s ^long e]
    (when (decode-region-block b s e)
      b)))
+
+(defn decode-into-chunk [^clojure.lang.IChunk blocks]
+  (let [size (count blocks)
+        ref-arr (int-array size)
+        pos-arr (int-array size)
+        end-arr (int-array size)]
+    (dotimes [i size]
+      (let [^BAMRawBlock block (.nth blocks i)
+            buffer      (ByteBuffer/wrap (.data block))
+            ref-id      (int (lsb/read-int buffer))
+            pos         (inc (int (lsb/read-int buffer)))
+            l-read-name (short (lsb/read-ubyte buffer))
+            _           (lsb/skip buffer 3) ;; MAPQ, bin
+            n-cigar-op  (int (lsb/read-ushort buffer))
+            _           (lsb/skip buffer (+ 18 l-read-name)) ;; flag, l_seq, rnext, pnext, tlen, qname
+            cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
+            ref-length  (cigar/count-ref-bytes cigar-bytes)
+            ref-end     (int (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+        (aset ref-arr i ref-id)
+        (aset pos-arr i pos)
+        (aset end-arr i ref-end)))
+    (df/make-dataframe [[:ref-id ref-arr] [:pos pos-arr] [:end end-arr]])))

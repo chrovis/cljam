@@ -80,17 +80,27 @@
   (let [block-size (lsb/read-int rdr)]
     (lsb/read-bytes rdr block-size)))
 
+(def ^:const CHUNK_SIZE 256)
+
 (defn- read-to-finish
   "Reads alignment blocks until reaches to the finish pointer or EOF."
   ([^BAMReader rdr]
-   (let [r ^BGZFInputStream (.reader rdr)
-         dr (.data-reader rdr)
-         start (.getFilePointer r)]
-     (when-not (zero? (.available r))
-       (let [data (read-a-block! dr)
-             curr (.getFilePointer r)]
-         (cons (BAMRawBlock. data start curr)
-               (lazy-seq (read-to-finish rdr)))))))
+   (let [r ^BGZFInputStream (.-reader rdr)
+         dr (.-data-reader rdr)]
+     (letfn [(step []
+               (lazy-seq
+                (let [buf (chunk-buffer CHUNK_SIZE)]
+                  (loop [i CHUNK_SIZE]
+                    (if (> i 0)
+                      (let [start (.getFilePointer r)]
+                        (if (zero? (.available r))
+                          (chunk-cons (chunk buf) nil)
+                          (let [data (read-a-block! dr)
+                                curr (.getFilePointer r)]
+                            (chunk-append buf (BAMRawBlock. data start curr))
+                            (recur (dec i)))))
+                      (chunk-cons (chunk buf) (step)))))))]
+       (step))))
   ([^BAMReader rdr
     ^long start
     ^long finish]
@@ -111,6 +121,17 @@
   (eduction
    (keep decoder)
    (read-to-finish rdr)))
+
+(defn read-blocks-into-chunks
+  ([rdr]
+   (read-blocks-into-chunks rdr {}))
+  ([rdr {:keys [_chunk-size]}]
+   (letfn [(step [blocks]
+             (lazy-seq
+              (when-let [s (seq blocks)]
+                (chunk-cons (decoder/decode-into-chunk (chunk-first s))
+                            (step (chunk-next s))))))]
+     (step (read-to-finish rdr)))))
 
 (defn- read-blocks-randomly*
   "Reads blocks crossing the given range using BAM index.

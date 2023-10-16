@@ -18,29 +18,29 @@
     (when (.isArray t)
       (get prim-type->type-key (.getComponentType t) :object))))
 
-(defn- typed-aget [t arr i]
+(defn- getter-for-type [t]
   (case t
-    :boolean (aget ^booleans arr i)
-    :byte (aget ^bytes arr i)
-    :char (aget ^chars arr i)
-    :short (aget ^shorts arr i)
-    :int (aget ^ints arr i)
-    :long (aget ^longs arr i)
-    :float (aget ^floats arr i)
-    :double (aget ^doubles arr i)
-    (aget ^objects arr i)))
+    :boolean #(aget ^booleans %1 (long %2))
+    :byte #(aget ^bytes %1 (long %2))
+    :char #(aget ^chars %1 (long %2))
+    :short #(aget ^shorts %1 (long %2))
+    :int #(aget ^ints %1 (long %2))
+    :long #(aget ^longs %1 (long %2))
+    :float #(aget ^floats %1 (long %2))
+    :double #(aget ^doubles %1 (long %2))
+    :object #(aget ^objects %1 (long %2))))
 
-(defn- typed-aset [t arr i val]
+(defn- setter-for-type [t]
   (case t
-    :boolean (aset ^booleans arr i (boolean val))
-    :byte (aset ^bytes arr i (byte val))
-    :char (aset ^chars arr i (char val))
-    :short (aset ^shorts arr i (short val))
-    :int (aset ^ints arr i (int val))
-    :long (aset ^longs arr i (long val))
-    :float (aset ^floats arr i (float val))
-    :double (aset ^doubles arr i (double val))
-    (aset ^objects arr i val)))
+    :boolean #(aset ^booleans %1 (long %2) (boolean %3))
+    :byte #(aset ^bytes %1 (long %2) (byte %3))
+    :char #(aset ^chars %1 (long %2) (char %3))
+    :short #(aset ^shorts %1 (long %2) (short %3))
+    :int #(aset ^ints %1 (long %2) (int %3))
+    :long #(aset ^longs %1 (long %2) (long %3))
+    :float #(aset ^floats %1 (long %2) (float %3))
+    :double #(aset ^doubles %1 (long %2) (double %3))
+    :object #(aset ^objects %1 (long %2) %3)))
 
 (defn- make-typed-array [t x]
   (case t
@@ -60,13 +60,13 @@
     (make-typed-array t coll)))
 
 (deftype DataFrameBuffer
-         [^int m ^int n columns ^objects types ^objects data
+         [^int m ^int n columns ^objects types ^objects setters ^objects data
           ^:unsynchronized-mutable ^long i ^:unsynchronized-mutable ^long j]
   IDataFrameBuffer
   (-append-val! [_ val]
-    (let [t (aget types j)
+    (let [setter (aget setters j)
           arr (aget data j)]
-      (typed-aset t arr i val)
+      (setter arr i val)
       (set! j (inc j))
       (when (>= j n)
         (set! i (inc i))
@@ -76,13 +76,16 @@
 (defn make-dataframe-buffer [m columns]
   (let [n (count columns)
         columns' (IdentityHashMap. n)
-        _ (reduce (fn [i k] (.put columns' k i) (inc (long i)))
+        _ (reduce (fn [i [k _]] (.put columns' k i) (inc (long i)))
                   0 columns)
         types (into-array Object (map second columns))
-        data (->> columns
-                  (map (fn [[_ t]] (make-typed-array t m)))
+        setters (->> types
+                     (map setter-for-type)
+                     (into-array Object))
+        data (->> types
+                  (map #(make-typed-array % m))
                   (into-array Object))]
-    (DataFrameBuffer. m n columns' types data 0 0)))
+    (DataFrameBuffer. m n columns' types setters data 0 0)))
 
 (defn append-val! [buffer val]
   (-append-val! buffer val))
@@ -381,12 +384,13 @@
    (let [m (.-m frame)
          col-idx (.get ^IdentityHashMap (.-columns frame) col-name)
          old-col-type (aget ^objects (.-types frame) col-idx)
+         getter (getter-for-type old-col-type)
          old-col (aget ^objects (.-data frame) col-idx)
          col-type' (or col-type old-col-type)
+         setter (setter-for-type col-type')
          arr (make-typed-array col-type' m)]
      (dotimes [i m]
-       (typed-aset col-type' arr i
-                   (f (typed-aget old-col-type old-col i))))
+       (setter arr i (f (getter old-col i))))
      (replace-columns frame [col-name] [[col-name col-type']] [arr]))))
 
 (defn drop-columns [^DataFrame frame col-names]

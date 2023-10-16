@@ -76,8 +76,8 @@
 (defn make-dataframe-buffer [m columns]
   (let [n (count columns)
         columns' (IdentityHashMap. n)
-        _ (doseq [[i [k _]] (map-indexed vector columns)]
-            (.put columns' k i))
+        _ (reduce (fn [i k] (.put columns' k i) (inc (long i)))
+                  0 columns)
         types (into-array Object (map second columns))
         data (->> columns
                   (map (fn [[_ t]] (make-typed-array t m)))
@@ -91,6 +91,7 @@
   (run! (partial append-val! buffer) row))
 
 (declare make-dataframe-seq make-dataframe-row dataframe-row-accessors)
+(alter-meta! #'make-dataframe-row assoc :arglists '([frame ^long i accessors]))
 
 (deftype DataFrame
          [^int m, ^int n, ^int offset, columns
@@ -143,10 +144,13 @@
         columns (IdentityHashMap. n)
         types (object-array n)
         data (object-array n)]
-    (doseq [[^long i [k arr]] (map-indexed vector column-data)]
-      (.put columns k i)
-      (aset types i (array-type arr))
-      (aset data i arr))
+    (reduce (fn [i [k arr]]
+              (let [i' (long i)]
+                (.put columns k i)
+                (aset types i' (array-type arr))
+                (aset data i' arr)
+                (inc i')))
+            0 column-data)
     (make-dataframe* m n 0 columns types data)))
 
 (defn ->dataframe! [^DataFrameBuffer buffer]
@@ -214,7 +218,7 @@
   (getLookupThunk [_ k]
     (.get accessors k)))
 
-(defn- make-dataframe-row [frame i accessors]
+(defn- make-dataframe-row [frame ^long i accessors]
   (DataFrameRow. frame i accessors))
 
 (defn- dataframe-row->map [^DataFrameRow row]
@@ -326,9 +330,12 @@
                    (.-row row))))))
 
 (defn dataframe-row-accessors [^DataFrame frame]
-  (let [cols (.-columns frame)
+  (let [^Map cols (.-columns frame)
         m (java.util.IdentityHashMap. (count cols))]
-    (run! #(.put m % (dataframe-row-accessor frame %)) (keys cols))
+    (.forEach cols
+              (reify java.util.function.BiConsumer
+                (accept [_ k _]
+                  (.put m k (dataframe-row-accessor frame k)))))
     m))
 
 (defn column-defs->accessors [defs]

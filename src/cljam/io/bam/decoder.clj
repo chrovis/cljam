@@ -317,24 +317,54 @@
    (when (decode-region-block b s e)
      b)))
 
-(defn decode-into-chunk [^clojure.lang.IChunk blocks]
-  (let [size (count blocks)
-        ref-arr (int-array size)
-        pos-arr (int-array size)
-        end-arr (int-array size)]
-    (dotimes [i size]
-      (let [^BAMRawBlock block (.nth blocks i)
-            buffer      (ByteBuffer/wrap (.data block))
-            ref-id      (int (lsb/read-int buffer))
-            pos         (inc (int (lsb/read-int buffer)))
-            l-read-name (short (lsb/read-ubyte buffer))
-            _           (lsb/skip buffer 3) ;; MAPQ, bin
-            n-cigar-op  (int (lsb/read-ushort buffer))
-            _           (lsb/skip buffer (+ 18 l-read-name)) ;; flag, l_seq, rnext, pnext, tlen, qname
-            cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-            ref-length  (cigar/count-ref-bytes cigar-bytes)
-            ref-end     (int (if (zero? ref-length) pos (dec (+ pos ref-length))))]
-        (aset ref-arr i ref-id)
-        (aset pos-arr i pos)
-        (aset end-arr i ref-end)))
-    (df/make-dataframe [[:ref-id ref-arr] [:pos pos-arr] [:end end-arr]])))
+(defn decode-blocks-into-chunks
+  ([^clojure.lang.IChunk blocks]
+   (let [size (count blocks)
+         ref-arr (int-array size)
+         pos-arr (int-array size)
+         end-arr (int-array size)]
+     (loop [i 0]
+       (if (< i size)
+         (let [^BAMRawBlock block (.nth blocks i)
+               buffer      (ByteBuffer/wrap (.data block))
+               ref-id      (int (lsb/read-int buffer))
+               pos         (inc (int (lsb/read-int buffer)))
+               l-read-name (short (lsb/read-ubyte buffer))
+               _           (lsb/skip buffer 3) ;; MAPQ, bin
+               n-cigar-op  (int (lsb/read-ushort buffer))
+               _           (lsb/skip buffer (+ 18 l-read-name)) ;; flag, l_seq, rnext, pnext, tlen, qname
+               cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
+               ref-length  (cigar/count-ref-bytes cigar-bytes)
+               ref-end     (int (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+           (aset ref-arr i ref-id)
+           (aset pos-arr i pos)
+           (aset end-arr i ref-end)
+           (recur (inc i)))
+         (df/make-dataframe i [[:ref-id ref-arr] [:pos pos-arr] [:end end-arr]])))))
+  ([^clojure.lang.IChunk blocks ^long start ^long end]
+   (let [size (count blocks)
+         ref-arr (int-array size)
+         pos-arr (int-array size)
+         end-arr (int-array size)]
+     (loop [i 0 i' 0]
+       (if (< i size)
+         (let [^BAMRawBlock block (.nth blocks i)
+               buffer (ByteBuffer/wrap (.data block))
+               ref-id (int (lsb/read-int buffer))
+               pos    (inc (int (lsb/read-int buffer)))]
+           (if (<= pos end)
+             (let [l-read-name (short (lsb/read-ubyte buffer))
+                   _           (lsb/skip buffer 3) ;; MAPQ, bin
+                   n-cigar-op  (int (lsb/read-ushort buffer))
+                   _           (lsb/skip buffer (+ 18 l-read-name)) ;; flag, l_seq, rnext, pnext, tlen, qname
+                   cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
+                   ref-length  (cigar/count-ref-bytes cigar-bytes)
+                   ref-end     (int (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+               (if (<= start ref-end)
+                 (do (aset ref-arr i' ref-id)
+                     (aset pos-arr i' pos)
+                     (aset end-arr i' ref-end)
+                     (recur (inc i) (inc i')))
+                 (recur (inc i) i')))
+             (recur (inc i) i')))
+         (df/make-dataframe i' [[:ref-id ref-arr] [:pos pos-arr] [:end end-arr]]))))))

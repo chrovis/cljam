@@ -23,7 +23,7 @@
             right (min (long (:end aln)) end)
             left-index (- left beg)]
         (dotimes [i (inc (- right left))]
-          (aset-long pile (+ i left-index) (inc (aget pile (+ i left-index)))))))
+          (aset pile (+ i left-index) (inc (aget pile (+ i left-index)))))))
     (seq pile)))
 
 (defn- lazy-depth*
@@ -74,11 +74,11 @@
             right (unchecked-inc-int (.end aln))
             left-index (unchecked-add-int (unchecked-subtract-int left beg) offset)
             right-index (unchecked-add-int (unchecked-subtract-int right beg) offset)]
-        (aset-int pile left-index (unchecked-inc-int (aget pile left-index)))
+        (aset pile left-index (unchecked-inc-int (aget pile left-index)))
         (when (<= right end)
-          (aset-int pile right-index (unchecked-dec-int (aget pile right-index))))))
+          (aset pile right-index (unchecked-dec-int (aget pile right-index))))))
     (dotimes [i (- end beg)]
-      (aset-int
+      (aset
        pile
        (unchecked-add-int (unchecked-inc-int i) offset)
        (unchecked-add-int
@@ -97,11 +97,11 @@
             right (inc (or (long (:end aln)) (sam-util/get-end aln)))
             left-index (+ (- left beg) offset)
             right-index (+ (- right beg) offset)]
-        (aset-int pile left-index (inc (aget pile left-index)))
+        (aset pile left-index (inc (aget pile left-index)))
         (when (<= right end)
-          (aset-int pile right-index (dec (aget pile right-index))))))
+          (aset pile right-index (dec (aget pile right-index))))))
     (dotimes [i (- end beg)]
-      (aset-int pile (+ (inc i) offset) (+ (aget pile (+ i offset)) (aget pile (+ (inc i) offset)))))))
+      (aset pile (+ (inc i) offset) (+ (aget pile (+ i offset)) (aget pile (+ (inc i) offset)))))))
 
 (defn ^"[I" depth*
   "Internal depth function which returns an int-array."

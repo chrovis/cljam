@@ -14,12 +14,12 @@
 (defn parse-alignment
   "Parse an alignment line, returning a map of the alignment."
   [line]
-  (let [[qname flag rname pos-str mapq cigar rnext pnext tlen seq qual & options] (cstr/split line #"\t")
+  (let [[qname flag rname pos-str mapq cigar rnext pnext tlen seq' qual & options] (cstr/split line #"\t")
         pos (Integer/parseInt pos-str)
         ref-length (int (cigar/count-ref cigar))
         end (if (zero? ref-length) 0 (int (dec (+ pos ref-length))))]
     (SAMAlignment. qname (Integer/parseInt flag) rname pos end (Integer/parseInt mapq)
-                   cigar rnext (Integer/parseInt pnext) (Integer/parseInt tlen) (cstr/upper-case seq)
+                   cigar rnext (Integer/parseInt pnext) (Integer/parseInt tlen) (cstr/upper-case seq')
                    qual (map opt/parse-optional-field options))))
 
 ;;; stringify

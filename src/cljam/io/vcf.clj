@@ -147,13 +147,13 @@
                                 [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
       (WRITING-VCF))"
   ^VCFWriter
-  [f meta-info header]
+  [f meta-info' header']
   (doto (VCFWriter. (util/as-url f)
                     (cio/writer (util/compressor-output-stream f))
-                    meta-info
-                    header)
-    (vcf-writer/write-meta-info meta-info)
-    (vcf-writer/write-header header)))
+                    meta-info'
+                    header')
+    (vcf-writer/write-meta-info meta-info')
+    (vcf-writer/write-header header')))
 
 (defn bcf-writer
   "Returns an open cljam.io.bcf.writer.BCFWriter of f. Meta-information lines
@@ -165,17 +165,17 @@
                                  [\"CHROM\" \"POS\" \"ID\" \"REF\" \"ALT\" ...])]
        (WRITING-BCF))"
   ^BCFWriter
-  [f meta-info header]
-  (bcf-writer/writer f meta-info header))
+  [f meta-info' header']
+  (bcf-writer/writer f meta-info' header'))
 
 (defn writer
   "Selects suitable writer from f's extension, returning the open writer. This
   function supports VCF and BCF formats."
   ^Closeable
-  [f meta-info header]
+  [f meta-info' header']
   (case (io-util/file-type f)
-    :vcf (vcf-writer f meta-info header)
-    :bcf (bcf-writer f meta-info header)
+    :vcf (vcf-writer f meta-info' header')
+    :bcf (bcf-writer f meta-info' header')
     (throw (IllegalArgumentException. "Invalid file type"))))
 
 (defn write-variants

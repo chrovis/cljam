@@ -38,9 +38,9 @@
    (util/as-url f)))
 
 (defn get-header
-  [^FAIReader fai name]
-  (merge {:name name}
-         (get (.indices fai) name nil)))
+  [^FAIReader fai name']
+  (merge {:name name'}
+         (get (.indices fai) name' nil)))
 
 (defn get-headers
   [^FAIReader fai]
@@ -63,14 +63,14 @@
 
 (defn get-span
   "Calculate byte spans for FASTA file"
-  [^FAIReader fai name ^long start ^long end]
+  [^FAIReader fai name' ^long start ^long end]
   (let [start (max 0 start)
         end (max 0 end)]
     (when-let [{^long index-offset :offset
                 ^long index-len :len
                 ^long index-line-len :line-len
                 ^long index-line-blen :line-blen}
-               (get (.indices fai) name nil)]
+               (get (.indices fai) name' nil)]
       (let [start (min index-len start)
             end (min index-len end)
             proj (fn [^long pos]

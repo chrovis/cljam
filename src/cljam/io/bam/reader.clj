@@ -138,10 +138,10 @@
                (if (zero? i)
                  ret
                  (let [l-name (int (lsb/read-int rdr))
-                       name   (lsb/read-string rdr l-name)
+                       name'  (lsb/read-string rdr l-name)
                        l-ref  (lsb/read-int rdr)]
                    (recur (dec i)
-                          (conj ret {:name (subs name 0 (dec l-name))
+                          (conj ret {:name (subs name' 0 (dec l-name))
                                      :len  l-ref})))))]
     {:header header
      :refs refs}))

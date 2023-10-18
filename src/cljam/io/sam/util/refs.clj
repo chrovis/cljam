@@ -13,8 +13,8 @@
    (:SQ hdr)))
 
 (defn- ref-id*
-  [refs name]
-  (some #(when (= name (:name (second %))) (first %))
+  [refs name']
+  (some #(when (= name' (:name (second %))) (first %))
         (map-indexed vector refs)))
 
 (def ref-id
@@ -31,5 +31,5 @@
 
 (defn ref-by-name
   "Returns the first reference which has the specified name."
-  [refs name]
-  (some #(when (= (:name %) name) %) refs))
+  [refs name']
+  (some #(when (= (:name %) name') %) refs))

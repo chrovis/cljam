@@ -57,9 +57,9 @@
   "Returns all overlapping bins for the specified region [`beg`, `end`] as a
   vector."
   [^long beg ^long end ^long min-shift ^long depth]
-  (let [max-pos (max-pos min-shift depth)
-        beg (dec (Math/min max-pos (Math/max 1 beg)))
-        end (dec (Math/min max-pos (Math/max 1 end)))]
+  (let [max-pos' (max-pos min-shift depth)
+        beg (dec (Math/min max-pos' (Math/max 1 beg)))
+        end (dec (Math/min max-pos' (Math/max 1 end)))]
     (into [0]
           (mapcat
            (fn [^long d]
@@ -74,9 +74,9 @@
 (defn reg->bin
   "Calculates the smallest bin containing the given region [`beg`, `end`]."
   ^long [^long beg ^long end ^long min-shift ^long depth]
-  (let [max-pos (max-pos min-shift depth)
-        beg (dec (Math/min max-pos (Math/max 1 beg)))
-        end (dec (Math/min max-pos (Math/max 1 end)))]
+  (let [max-pos' (max-pos min-shift depth)
+        beg (dec (Math/min max-pos' (Math/max 1 beg)))
+        end (dec (Math/min max-pos' (Math/max 1 end)))]
     (loop [level depth]
       (if-not (neg? level)
         (let [beg-bins (leading-bins-at-level beg level min-shift depth)]

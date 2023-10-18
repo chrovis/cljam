@@ -228,11 +228,13 @@
             repeatedly
             (take-while identity)
             (filter
-             (fn [{chr' :chr :keys [^long pos ref info]}]
+             (fn [{chr' :chr
+                   ref' :ref
+                   :keys [^long pos info]}]
                (and (= chr' chr)
                     (<= pos end)
                     (<= start
-                        (long (get info :END (dec (+ pos (count ref)))))))))))
+                        (long (get info :END (dec (+ pos (count ref')))))))))))
      spans)))
 
 (defn read-file-offsets
@@ -253,13 +255,13 @@
                 (let [end-pointer (.getFilePointer input-stream)]
                   (if (or (meta-line? line) (header-line? line))
                     (lazy-seq (step contigs end-pointer))
-                    (let [{:keys [chr pos ref info]} (parse line)
+                    (let [{:keys [chr pos info] ref' :ref} (parse line)
                           contigs' (if (contains? contigs chr)
                                      contigs
                                      (assoc contigs chr (count contigs)))]
                       (cons {:file-beg beg-pointer, :file-end end-pointer
                              :chr-index (contigs' chr), :beg pos, :chr chr,
                              :end (or (:END info)
-                                      (dec (+ (long pos) (count ref))))}
+                                      (dec (+ (long pos) (count ref'))))}
                             (lazy-seq (step contigs' end-pointer))))))))]
       (step meta-info-contigs 0))))

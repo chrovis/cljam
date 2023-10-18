@@ -5,7 +5,8 @@
             [cljam.io.protocols :as protocols]
             [cljam.util :as util])
   (:import [java.io Closeable]
-           [java.nio Buffer CharBuffer]))
+           [java.nio Buffer CharBuffer])
+  (:refer-clojure :exclude [name sequence]))
 
 (declare read-sequences write-sequences)
 
@@ -79,7 +80,7 @@
   ([rdr]
    (read-sequences rdr {}))
   ([^FASTQReader rdr opts]
-   (sequence
+   (clojure.core/sequence
     (comp (map string/trim)
           (partition-all 4)
           (map #(deserialize-fastq % opts)))

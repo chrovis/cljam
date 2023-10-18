@@ -1,5 +1,4 @@
 (ns cljam.io.bcf.reader
-  (:refer-clojure :exclude [read])
   (:require [clojure.string :as cstr]
             [clojure.tools.logging :as logging]
             [cljam.io.protocols :as protocols]
@@ -13,7 +12,8 @@
   (:import [java.io Closeable IOException FileNotFoundException]
            [java.net URL]
            [java.nio Buffer ByteBuffer]
-           [bgzf4j BGZFInputStream]))
+           [bgzf4j BGZFInputStream])
+  (:refer-clojure :exclude [read]))
 
 (declare read-variants meta-info read-variants-randomly read-file-offsets)
 
@@ -69,10 +69,10 @@
     {:meta (transduce
             (map vcf-reader/parse-meta-info-line)
             (completing
-             (fn [meta-info [k v]]
+             (fn [meta-info' [k v]]
                (if (#{:contig :info :filter :format :alt :sample :pedigree} k)
-                 (update meta-info k (fnil conj []) v)
-                 (assoc meta-info k v))))
+                 (update meta-info' k (fnil conj []) v)
+                 (assoc meta-info' k v))))
             {}
             metas)
      :header (first (map vcf-reader/parse-header-line headers))}))
@@ -89,12 +89,12 @@
       (let [hlen (int (lsb/read-int rdr))
             header-buf (lsb/read-bytes rdr hlen)]
         (if (zero? (aget ^bytes header-buf (dec hlen))) ;; NULL-terminated
-          (let [{:keys [header meta]} (->> (String. ^bytes header-buf
-                                                    0
-                                                    (int (dec hlen)))
-                                           cstr/split-lines
-                                           parse-meta-and-header)]
-            (BCFReader. (util/as-url f) meta header rdr (.getFilePointer rdr)
+          (let [{:keys [header] meta-info :meta} (->> (String. ^bytes header-buf
+                                                               0
+                                                               (int (dec hlen)))
+                                                      cstr/split-lines
+                                                      parse-meta-and-header)]
+            (BCFReader. (util/as-url f) meta-info header rdr (.getFilePointer rdr)
                         (delay (csi/read-index (str f ".csi")))))
           (do
             (.close rdr)
@@ -251,8 +251,8 @@
 
 (defn- meta->map
   "Creates a map for searching meta-info with indices."
-  [meta]
-  (into {} (map (fn [m] [(Integer/parseInt (:idx m)) (assoc m :kw (keyword (:id m)))])) meta))
+  [meta-info]
+  (into {} (map (fn [m] [(Integer/parseInt (:idx m)) (assoc m :kw (keyword (:id m)))])) meta-info))
 
 (defn meta-info
   "Returns meta-information of the BCF from rdr as a map."
@@ -333,11 +333,11 @@
             repeatedly
             (take-while identity)
             (filter
-             (fn [{chr' :chr :keys [^long pos ref info]}]
+             (fn [{chr' :chr :keys [^long pos info] ref' :ref}]
                (and (= chr' chr)
                     (<= pos end)
                     (<= start
-                        (long (get info :END (dec (+ pos (count ref)))))))))))
+                        (long (get info :END (dec (+ pos (count ref')))))))))))
      spans)))
 
 (defn read-file-offsets

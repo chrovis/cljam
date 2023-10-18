@@ -9,7 +9,8 @@
   (:import [java.net URL]
            [java.io Closeable IOException RandomAccessFile]
            [java.nio ByteBuffer ByteOrder]
-           [java.util.zip Inflater]))
+           [java.util.zip Inflater])
+  (:refer-clojure :exclude [name]))
 
 (def ^:private bigwig-magic 0x888ffc26)
 
@@ -67,9 +68,9 @@
   ^BIGWIGReader
   [f]
   (let [f (.getAbsolutePath (cio/file f))
-        reader (RandomAccessFile. f "r")
-        headers (read-all-headers reader)]
-    (BIGWIGReader. reader (util/as-url f) headers)))
+        rdr (RandomAccessFile. f "r")
+        headers (read-all-headers rdr)]
+    (BIGWIGReader. rdr (util/as-url f) headers)))
 
 (defn- check-bigwig-magic
   "Checks if the magic is right for bigWig format. Otherwise, throws IOException."
@@ -97,8 +98,8 @@
 
 (defn- check-auto-sql-offset
   "For bigWig 0. Throws IOException if the autoSqlOffset is invalid."
-  [^long long]
-  (when-not (zero? long)
+  [^long auto-sql-offset]
+  (when-not (zero? auto-sql-offset)
     (throw (IOException. "Invalid bigWig autoSqlOffset"))))
 
 (defn- read-fixed-width-header

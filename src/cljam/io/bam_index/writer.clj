@@ -181,9 +181,9 @@
   (lsb/write-int w bin)
   ;; chunks
   (lsb/write-int w (count chunks))
-  (doseq [^Chunk chunk chunks]
-    (lsb/write-long w (.beg chunk))
-    (lsb/write-long w (.end chunk))))
+  (doseq [^Chunk chunk' chunks]
+    (lsb/write-long w (.beg chunk'))
+    (lsb/write-long w (.end chunk'))))
 
 (defn- write-meta-data
   [w meta-data]
@@ -242,7 +242,7 @@
   Returned index is still intermediate. It must be passed to finalize function
   in the final stage."
   [alns]
-  (loop [[^BAMPointerBlock aln & rest] alns
+  (loop [[^BAMPointerBlock aln & rest'] alns
          rid (.ref-id aln)
          idx-status (init-index-status)
          no-coordinate-alns 0
@@ -258,7 +258,7 @@
             indices' (if new-ref?
                        (assoc indices rid idx-status)
                        indices)]
-        (recur rest rid' idx-status' no-coordinate-alns' indices'))
+        (recur rest' rid' idx-status' no-coordinate-alns' indices'))
       (assoc indices rid idx-status
              :no-coordinate-alns no-coordinate-alns))))
 

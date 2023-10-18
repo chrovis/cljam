@@ -81,9 +81,9 @@
   (loop [offset (+ (* 4 4)
                    (long (reduce + (map #(+ 1 (count (:name %)) 4) idx))))
          idx idx]
-    (when-let [{:keys [name len]} (first idx)]
-      (lsb/write-ubyte w (count name))
-      (lsb/write-string w name)
+    (when-let [{:keys [len] name' :name} (first idx)]
+      (lsb/write-ubyte w (count name'))
+      (lsb/write-string w name')
       (lsb/write-int w offset)
       (recur (+ offset
                 (if-let [{:keys [ambs masks]} (first idx)]
@@ -127,10 +127,10 @@
 
 (defn- write-sequence!
   "Writes a single sequence entry to writer."
-  [w sequence idx]
-  (let [name (or (:name sequence) (:rname sequence))
-        seq-data (or (:seq sequence) (:sequence sequence))
-        {:keys [len ambs masks]} (first (filter #(= (:name %) name) idx))]
+  [w sequence' idx]
+  (let [name' (or (:name sequence') (:rname sequence'))
+        seq-data (or (:seq sequence') (:sequence sequence'))
+        {:keys [len ambs masks]} (first (filter #(= (:name %) name') idx))]
     (lsb/write-int w len)
     (lsb/write-int w (count ambs))
     (doseq [[s _] ambs]
@@ -147,31 +147,34 @@
 
 (defn- write-sequences-without-index
   [^TwoBitWriter wtr xs]
-  (let [idx (map (fn [{:keys [name rname seq sequence]}]
-                   (let [seq-data (or seq sequence)]
-                     {:name (or name rname)
+  (let [idx (map (fn [{:keys [rname]
+                       seq' :seq
+                       sequence' :sequence
+                       name' :name}]
+                   (let [seq-data (or seq' sequence')]
+                     {:name (or name' rname)
                       :len (count seq-data)
                       :masks (mask-regions seq-data)
                       :ambs (amb-regions seq-data)}))
                  xs)]
     (write-file-header! (.writer wtr) (count xs))
     (write-index! (.writer wtr) idx)
-    (doseq [sequence xs]
-      (write-sequence! (.writer wtr) sequence idx))))
+    (doseq [sequence' xs]
+      (write-sequence! (.writer wtr) sequence' idx))))
 
 (defn- write-sequences-with-index
   [^TwoBitWriter wtr idx xs]
   (let [idx-atom (atom idx)]
     (write-file-header! (.writer wtr) (count @idx-atom))
     (write-index! (.writer wtr) @idx-atom)
-    (doseq [sequence xs]
-      (let [name (or (:name sequence) (:rname sequence))
-            seq-data (or (:seq sequence) (:sequence sequence))
+    (doseq [sequence' xs]
+      (let [name' (or (:name sequence') (:rname sequence'))
+            seq-data (or (:seq sequence') (:sequence sequence'))
             masks (mask-regions seq-data)
             ambs (amb-regions seq-data)
-            i (first (keep-indexed #(when (= (:name %2) name) %1) @idx-atom))]
+            i (first (keep-indexed #(when (= (:name %2) name') %1) @idx-atom))]
         (swap! idx-atom update i assoc :masks masks :ambs ambs))
-      (write-sequence! (.writer wtr) sequence @idx-atom))
+      (write-sequence! (.writer wtr) sequence' @idx-atom))
     ;; finalize
     (.flush ^DataOutputStream (.writer wtr))
     (let [ch (.getChannel ^FileOutputStream (.file-output-stream wtr))]

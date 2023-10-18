@@ -22,7 +22,7 @@
   ([res1 res2 res3 & more]
    (reduce merge-validation-results res1 (list* res2 res3 more))))
 
-(defn- prepend-keys [res keys]
+(defn- prepend-keys [res keys']
   ;; takes {:errors {[:chr] ["foo"]}}
   ;; returns {:errors {[key ... :chr] ["foo"]}}
   (when-not (nil? res)
@@ -30,7 +30,7 @@
           (map (fn [[kind m]]
                  [kind
                   (into {} (map (fn [[path messages]]
-                                  [(into keys path) messages]))
+                                  [(into keys' path) messages]))
                         m)]))
           res)))
 
@@ -111,8 +111,8 @@
              (str ":filter must be a sequence of keywords or nil, but got "
                   (pr-str filt))))))
 
-(defn- make-field-type-validator [{:keys [id type]}]
-  (let [f (case type
+(defn- make-field-type-validator [{:keys [id] type' :type}]
+  (let [f (case type'
             "Integer" #(and (integer? %)
                             (< (+ Integer/MIN_VALUE 7) (long %))
                             (<= (long %) Integer/MAX_VALUE))
@@ -129,7 +129,7 @@
                 (let [id' (keyword id)]
                   (error [id' i]
                          "Wrong type of value: %s expects %s, but got %s"
-                         id' type (pr-str v))))))
+                         id' type' (pr-str v))))))
            (apply merge-validation-results)))))
 
 (defn- make-field-number-validator [ploidy {:keys [id number]}]
@@ -205,19 +205,19 @@
 
 (defn- validate-format [validator {fmt :FORMAT}]
   (if (or (nil? fmt) (sequential? fmt))
-    (->> (for [[i key] (map-indexed vector fmt)]
-           (if (keyword? key)
+    (->> (for [[i key'] (map-indexed vector fmt)]
+           (if (keyword? key')
              (merge-validation-results
-              (when (not (get-in validator [:defs :format key]))
+              (when (not (get-in validator [:defs :format key']))
                 (error-on-bcf validator
                               [:FORMAT i]
-                              "Genotype key %s not defined in meta info" key))
-              (when (and (= i 0) (not= key :GT))
+                              "Genotype key %s not defined in meta info" key'))
+              (when (and (= i 0) (not= key' :GT))
                 (error [:FORMAT i]
-                       (str "First genotype key must be :GT, but got " key))))
+                       (str "First genotype key must be :GT, but got " key'))))
              (error [:FORMAT i]
                     (str "Every genotype key in :FORMAT must be keyword, "
-                         "but got " (pr-str key)))))
+                         "but got " (pr-str key')))))
          (apply merge-validation-results))
     (error [:FORMAT]
            (str ":FORMAT must be a sequence of keywords or nil, but got "
@@ -259,7 +259,9 @@
                  Defaults to :vcf.
    - :ploidy     Specify the ploidy of sample genotypes"
   ([meta-info header] (make-validator meta-info header {}))
-  ([{:keys [contig filter info format]}
+  ([{:keys [contig info]
+     format' :format
+     filter' :filter}
     header
     {:keys [file-type ploidy] :or {file-type :vcf, ploidy 2}}]
    (let [samples (into [] (drop 8) header)
@@ -267,9 +269,9 @@
                     {:ploidy ploidy :file-type file-type :samples samples})]
      (assoc validator :defs
             {:contig (prep-contig-defs validator contig)
-             :filter (prep-filter-defs validator filter)
+             :filter (prep-filter-defs validator filter')
              :info (prep-info-field-defs validator info)
-             :format (prep-format-defs validator format)}))))
+             :format (prep-format-defs validator format')}))))
 
 (defn validate-variant
   "Checks if the given variant data is in the format cljam expects, and returns

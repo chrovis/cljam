@@ -3,11 +3,11 @@
             [cljam.io.sam.util.cigar :as cigar])
   (:import [java.nio ByteBuffer ByteOrder]))
 
-(defn- ints->bytes ^bytes [ints]
-  (let [b (ByteBuffer/allocate (* 4 (count ints)))
+(defn- ints->bytes ^bytes [ints']
+  (let [b (ByteBuffer/allocate (* 4 (count ints')))
         _ (.order b ByteOrder/LITTLE_ENDIAN)
         ib (.asIntBuffer b)]
-    (doseq [i ints]
+    (doseq [i ints']
       (.put ib (unchecked-int i)))
     (.array b)))
 

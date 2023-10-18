@@ -23,9 +23,9 @@
 (defn writer [f {:keys [cols create-index?]
                  :or {cols 80 create-index? true}}]
   (let [abs-f (.getAbsolutePath (cio/file f))
-        writer (cio/writer (util/compressor-output-stream abs-f))
+        wtr (cio/writer (util/compressor-output-stream abs-f))
         index-writer (when create-index? (cio/writer (str abs-f ".fai")))]
-    (FASTAWriter. (util/as-url abs-f) cols writer index-writer (volatile! 0))))
+    (FASTAWriter. (util/as-url abs-f) cols wtr index-writer (volatile! 0))))
 
 (defn- write-name
   ^long [^FASTAWriter w ^String n]
@@ -58,9 +58,12 @@
         [seq-len written]))))
 
 (defn- write-sequence
-  [^FASTAWriter w {:keys [name rname seq sequence]}]
-  (let [chr-name (or name rname)
-        seq-data (or seq sequence)
+  [^FASTAWriter w {:keys [rname]
+                   name' :name
+                   sequence' :sequence
+                   seq' :seq}]
+  (let [chr-name (or name' rname)
+        seq-data (or seq' sequence')
         name-bytes (write-name w chr-name)
         [seq-len seq-bytes] (if (string? seq-data)
                               (write-seq-str w seq-data)

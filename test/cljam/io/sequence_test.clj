@@ -63,10 +63,10 @@
               t (cseq/reader medium-twobit-file)]
     (let [xs (cseq/read-seq-summaries f)]
       (is (->> (repeatedly
-                #(let [{:keys [name len]} (rand-nth xs)
+                #(let [{:keys [len] name' :name} (rand-nth xs)
                        [s e] (sort [(inc (rand-int len))
                                     (inc (rand-int len))])]
-                   {:chr name :start s :end e}))
+                   {:chr name' :start s :end e}))
                (take 100)
                (pmap
                 (fn [region]

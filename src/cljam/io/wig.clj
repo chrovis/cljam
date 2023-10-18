@@ -86,8 +86,8 @@
                  (case (first fields)
                    ; track definition line
                    "track"
-                   (let [type (->> fields rest fields->map :type)]
-                     (if (= type "wiggle_0")
+                   (let [type' (->> fields rest fields->map :type)]
+                     (if (= type' "wiggle_0")
                        (deserialize (rest lines) pre-start {:line line})
                        (throw "The track type with version must be `wiggle_0`")))
 
@@ -159,9 +159,9 @@
          (map (fn [wig] (every? some? ((apply juxt wig-fields) wig))) wigs)
          ;; There are two options for formatting wiggle data.
          (map (fn [wig]
-                (let [format (-> wig :track :format)]
-                  (or (= format :fixed-step)
-                      (= format :variable-step))))
+                (let [format' (-> wig :track :format)]
+                  (or (= format' :fixed-step)
+                      (= format' :variable-step))))
               wigs)]}
   (letfn [(serialize [wigs]
             (->> wigs
@@ -170,9 +170,9 @@
                    (partition-by (juxt (comp :format :track)
                                        #(- (long (:end %)) (long (:start %)))))
                    (map
-                    (fn [[{{:keys [line format span step]} :track
+                    (fn [[{{:keys [line span step] format' :format} :track
                            chr :chr start :start} :as xs]]
-                      (case format
+                      (case format'
                         :variable-step
                         (let [declaration-line (->> (cond-> ["variableStep"
                                                              (str "chrom=" chr)]

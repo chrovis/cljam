@@ -264,11 +264,11 @@
 
 (defn- meta->map
   "Creates a map for searching meta-info with (f id)."
-  [meta f]
+  [meta-info f]
   (into {} (map
             (fn [{:keys [id] t :type :as m}]
               [(f id) (cond-> (update m :idx #(Integer/parseInt %))
-                        t (assoc :type-kw (type-kws t)))])) meta))
+                        t (assoc :type-kw (type-kws t)))])) meta-info))
 
 (defn write-variants
   "Writes data lines on writer. Returns nil. `variants` must be a sequence of

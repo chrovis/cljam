@@ -27,45 +27,45 @@
 
 (defn- make-hash
   "Normalizes the sequence string, calculates its MD5 hash, and returns it."
-  [sequence]
-  (let [bases ^bytes (string->bytes sequence)]
+  [sequence']
+  (let [bases' ^bytes (string->bytes sequence')]
     (loop [i 0]
-      (when (< i (count bases))
-        (aset bases i ^byte (upper-case (nth bases i)))
+      (when (< i (count bases'))
+        (aset bases' i ^byte (upper-case (nth bases' i)))
         (recur (inc i))))
-    (digest/md5 bases)))
+    (digest/md5 bases')))
 
 (defn- init-dict-status
   []
   {:sequence "", :len 0})
 
 (defn- update-dict-status
-  [dict-status sequence]
-  {:sequence (str (:sequence dict-status) sequence)
-   :len (+ (long (:len dict-status)) (count (filter graph? sequence)))})
+  [dict-status sequence']
+  {:sequence (str (:sequence dict-status) sequence')
+   :len (+ (long (:len dict-status)) (count (filter graph? sequence')))})
 
 (defn make-dict
   "Calculates sequence dictionary from the headers and sequences, returning it
   as a map."
   [_headers sequences ur]
-  (loop [[seq* & rest] sequences
-         name (:name seq*)
+  (loop [[seq* & rest'] sequences
+         name' (:name seq*)
          dict-status (init-dict-status)
          dicts {}]
     (if seq*
-      (let [name' (:name seq*)
-            new? (not= name' name)
+      (let [name'' (:name seq*)
+            new? (not= name'' name')
             dict-status' (update-dict-status
                           (if new? (init-dict-status) dict-status) (:sequence seq*))
             dicts' (if new?
-                     (assoc dicts name {:blen (:len dict-status)
-                                        :ur ur
-                                        :m5 (make-hash (:sequence dict-status))})
+                     (assoc dicts name' {:blen (:len dict-status)
+                                         :ur ur
+                                         :m5 (make-hash (:sequence dict-status))})
                      dicts)]
-        (recur rest name' dict-status' dicts'))
-      (assoc dicts name {:blen (:len dict-status)
-                         :ur ur
-                         :m5 (make-hash (:sequence dict-status))}))))
+        (recur rest' name'' dict-status' dicts'))
+      (assoc dicts name' {:blen (:len dict-status)
+                          :ur ur
+                          :m5 (make-hash (:sequence dict-status))}))))
 
 ;; Writing
 ;; -------
@@ -76,8 +76,8 @@
   (.newLine wtr))
 
 (defn- write-sequence!
-  [^BufferedWriter wtr name blen ur m5]
-  (.write wtr (str "@SQ\tSN:" name "\tLN:" blen "\tM5:" m5 "\tUR:" ur))
+  [^BufferedWriter wtr name' blen ur m5]
+  (.write wtr (str "@SQ\tSN:" name' "\tLN:" blen "\tM5:" m5 "\tUR:" ur))
   (.newLine wtr))
 
 (defn- write-dict*!

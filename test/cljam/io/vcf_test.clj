@@ -225,9 +225,9 @@
              (vcf/read-variants-randomly bcf-file index {})
              (let [{:keys [chr start end] :or {start 1 end 4294967296}} index]
                (filter
-                (fn [{chr' :chr :keys [pos ref info]}]
+                (fn [{chr' :chr :keys [pos info] ref' :ref}]
                   (and (= chr chr')
-                       (<= start (get info :END (dec (+ pos (count ref)))))
+                       (<= start (get info :END (dec (+ pos (count ref')))))
                        (>= end pos)))
                 (vcf/read-variants
                  vcf-file))))))))
@@ -303,12 +303,13 @@
 (deftest about-read-write-bcf
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_v4_3.bcf"))]
+    (let [temp-file' (.getAbsolutePath (cio/file temp-dir "test_v4_3.bcf"))]
       (with-open [r (vcf/bcf-reader test-bcf-v4_3-file)
-                  w (vcf/bcf-writer temp-file (vcf/meta-info r) (vcf/header r))]
+                  w (vcf/bcf-writer
+                     temp-file' (vcf/meta-info r) (vcf/header r))]
         (vcf/write-variants w (vcf/read-variants r)))
       (with-open [r1 (vcf/bcf-reader test-bcf-v4_3-file)
-                  r2 (vcf/bcf-reader temp-file)]
+                  r2 (vcf/bcf-reader temp-file')]
         (is (= (vcf/header r2) (vcf/header r1)))
         (is (= (vcf/meta-info r2) (vcf/meta-info r1)))
         (doseq [[x2 x1] (map vector (vcf/read-variants r2) (vcf/read-variants r1))]
@@ -318,61 +319,63 @@
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
     (testing "v4.3"
-      (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_v4_3.bcf"))]
+      (let [temp-file' (.getAbsolutePath (cio/file temp-dir "test_v4_3.bcf"))]
         (with-open [r (vcf/reader test-vcf-v4_3-file)
-                    w (vcf/bcf-writer temp-file (vcf/meta-info r) (vcf/header r))]
+                    w (vcf/bcf-writer
+                       temp-file' (vcf/meta-info r) (vcf/header r))]
           (vcf/write-variants w (vcf/read-variants r)))
         (with-open [r1 (vcf/reader test-vcf-v4_3-file)
-                    r2 (vcf/bcf-reader temp-file)]
+                    r2 (vcf/bcf-reader temp-file')]
           (is (= (vcf/header r2) (vcf/header r1)))
           (is (= (vcf/meta-info r2) (vcf/meta-info r1)))
           (doseq [[x2 x1] (map vector (vcf/read-variants r2) (vcf/read-variants r1))]
             (is (= x2 x1))))))
     (testing "no samples"
-      (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_no_samples.bcf"))]
+      (let [temp-file' (.getAbsolutePath
+                        (cio/file temp-dir "test_no_samples.bcf"))]
         (with-open [v (vcf/reader test-vcf-no-samples-file)]
           (let [xs (vcf/read-variants v)
                 m (vcf/meta-info v)
                 h (vcf/header v)]
-            (with-open [b (vcf/writer temp-file m h)]
+            (with-open [b (vcf/writer temp-file' m h)]
               (vcf/write-variants b xs))
-            (with-open [b (vcf/reader temp-file)]
+            (with-open [b (vcf/reader temp-file')]
               (is (= xs (vcf/read-variants b))))
             (with-open [b1 (vcf/reader test-bcf-no-samples-file)
-                        b2 (vcf/reader temp-file)]
+                        b2 (vcf/reader temp-file')]
               (is (= (vcf/read-variants b1 {:depth :bcf})
                      (vcf/read-variants b2 {:depth :bcf}))))))))
     (testing "v4.3 complex"
-      (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_v4_3_complex.bcf"))]
+      (let [temp-file' (.getAbsolutePath (cio/file temp-dir "test_v4_3_complex.bcf"))]
         (with-open [v (vcf/reader test-vcf-complex-file)]
           (let [xs (vcf/read-variants v)
                 m (vcf/meta-info v)
                 h (vcf/header v)]
-            (with-open [b (vcf/writer temp-file m h)]
+            (with-open [b (vcf/writer temp-file' m h)]
               (vcf/write-variants b xs))
-            (with-open [b (vcf/reader temp-file)]
+            (with-open [b (vcf/reader temp-file')]
               (is (= xs (vcf/read-variants b))))))))
     (testing "v4.3 complex bgzip"
-      (let [temp-file (.getAbsolutePath
-                       (cio/file temp-dir "test_v4_3_complex_bgzip.bcf"))]
+      (let [temp-file' (.getAbsolutePath
+                        (cio/file temp-dir "test_v4_3_complex_bgzip.bcf"))]
         (with-open [v (vcf/reader test-vcf-complex-gz-file)]
           (let [xs (vcf/read-variants v)
                 m (vcf/meta-info v)
                 h (vcf/header v)]
-            (with-open [b (vcf/writer temp-file m h)]
+            (with-open [b (vcf/writer temp-file' m h)]
               (vcf/write-variants b xs))
-            (with-open [b (vcf/reader temp-file)]
+            (with-open [b (vcf/reader temp-file')]
               (is (= xs (vcf/read-variants b))))))))))
 
 (deftest bcf->vcf-conversion-test
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (let [temp-file (.getAbsolutePath (cio/file temp-dir "test_v4_3.vcf"))]
+    (let [temp-file' (.getAbsolutePath (cio/file temp-dir "test_v4_3.vcf"))]
       (with-open [r (vcf/bcf-reader test-bcf-v4_3-file)
-                  w (vcf/writer temp-file (vcf/meta-info r) (vcf/header r))]
+                  w (vcf/writer temp-file' (vcf/meta-info r) (vcf/header r))]
         (vcf/write-variants w (vcf/read-variants r)))
       (with-open [r1 (vcf/reader test-vcf-v4_3-file)
-                  r2 (vcf/reader temp-file)]
+                  r2 (vcf/reader temp-file')]
         (is (= (vcf/header r2) (vcf/header r1)))
         (is (= (vcf/meta-info r2) (vcf/meta-info r1)))
         (doseq [[x2 x1] (map vector (vcf/read-variants r2) (vcf/read-variants r1))]
@@ -418,9 +421,9 @@
             (vcf/read-variants-randomly vcf1* {:chr chr :start start :end end}
                                         {})
             (filter
-             (fn [{chr' :chr :keys [pos ref info]}]
+             (fn [{chr' :chr :keys [pos info] ref' :ref}]
                (and (= chr chr')
-                    (<= start (get info :END (dec (+ pos (count ref)))))
+                    (<= start (get info :END (dec (+ pos (count ref')))))
                     (>= end pos)))
              (vcf/read-variants vcf2*))))
       "chr1" 1 16384
@@ -441,9 +444,9 @@
             (vcf/read-variants-randomly bcf2* {:chr chr :start start :end end} {})
             (vcf/read-variants-randomly vcf {:chr chr :start start :end end} {})
             (filter
-             (fn [{chr' :chr :keys [pos ref info]}]
+             (fn [{chr' :chr :keys [pos info] ref' :ref}]
                (and (= chr chr')
-                    (<= start (get info :END (dec (+ pos (count ref)))))
+                    (<= start (get info :END (dec (+ pos (count ref')))))
                     (>= end pos)))
              (vcf/read-variants bcf1*))))
       "chr1" 1 16384

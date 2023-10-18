@@ -22,8 +22,8 @@
 
 (defn- value-parser
   "Returns a parser function for given type identifier."
-  [type]
-  (case type
+  [type']
+  (case type'
     "Flag" (constantly :exists)
     "Integer" #(when-not (dot-or-nil? ^String %) (Integer/parseInt %))
     "Float" #(when-not (dot-or-nil? ^String %) (parse-float %))
@@ -32,8 +32,8 @@
 
 (defn- meta->parser
   "Creates a key-value paired vector of 'id' and its parser."
-  [{:keys [id number type]}]
-  (let [p (value-parser type)]
+  [{:keys [id number] type' :type}]
+  (let [p (value-parser type')]
     [id (comp (if (or (= number 1) (= number 0)) first identity)
               (fn [x] (map p (cstr/split (or x "") #","))))]))
 
@@ -306,11 +306,11 @@
            :strand (if (= left-bracket \])
                      (if post :forward :reverse)
                      (if post :reverse :forward))})))
-    (when-let [[_ [pre-dot] bases [post-dot]]
+    (when-let [[_ [pre-dot] bases' [post-dot]]
                (re-matches short-breakend-regexp alt)]
       (when (and (or pre-dot post-dot)
                  (not (and pre-dot post-dot)))
-        {:bases bases, :join (if pre-dot :before :after)}))))
+        {:bases bases', :join (if pre-dot :before :after)}))))
 
 (defn stringify-breakend
   "Returns a string representation of a breakend. If the input is malformed,
@@ -326,10 +326,10 @@
       (str (when (= :before join) \.) s (when (= :after join) \.)))))
 
 (defn- inspect-nucleotides-allele
-  [ref alt]
-  (let [ref-length (count ref)
+  [ref' alt]
+  (let [ref-length (count ref')
         alt-length (count alt)
-        upper-ref (cstr/upper-case ref)
+        upper-ref (cstr/upper-case ref')
         upper-alt (cstr/upper-case alt)
         left-match (->> (map = upper-ref upper-alt)
                         (take-while true?)
@@ -352,16 +352,16 @@
 
       (and (< left-match ref-length) (= left-match alt-length))
       {:type :deletion, :offset (dec left-match),
-       :n-bases (- ref-length left-match), :deleted (subs ref left-match)}
+       :n-bases (- ref-length left-match), :deleted (subs ref' left-match)}
 
       (= (inc matched-length) ref-length alt-length)
-      {:type :snv, :ref (nth ref left-match),
+      {:type :snv, :ref (nth ref' left-match),
        :alt (nth alt left-match), :offset left-match}
 
       (= matched-length alt-length)
       {:type :deletion, :offset (dec left-match),
        :n-bases (- ref-length right-match left-match),
-       :deleted (subs ref left-match (- ref-length right-match))}
+       :deleted (subs ref' left-match (- ref-length right-match))}
 
       (= matched-length ref-length)
       {:type :insertion, :offset (dec left-match),
@@ -370,7 +370,7 @@
 
       (= ref-length alt-length)
       {:type :mnv, :offset left-match,
-       :ref (subs ref left-match (- ref-length right-match)),
+       :ref (subs ref' left-match (- ref-length right-match)),
        :alt (subs alt left-match (- alt-length right-match))}
 
       :else {:type :complex})))
@@ -392,9 +392,9 @@
   - `:breakend`           Breakend of a complex rearrangement
   - `:complex`            Complex nucleotide variants other than snv/mnv/indel
   - `:other`              Can't categorize the allele, might be malformed"
-  [ref alt]
+  [ref' alt]
   (or
-   (when (re-matches #"(?i)[ACGTN]+" (or ref ""))
+   (when (re-matches #"(?i)[ACGTN]+" (or ref' ""))
      (condp re-matches (or (not-empty alt) ".")
        #"\." {:type :no-call}
        #"\*" {:type :spanning-deletion}
@@ -406,6 +406,6 @@
        #"(?i)<(.+)>([ACGTN])" :>> (fn [[_ id [base]]]
                                     {:type :complete-insertion,
                                      :join :before, :base base, :id id})
-       #"(?i)[ACGTN]+" (inspect-nucleotides-allele ref alt)
+       #"(?i)[ACGTN]+" (inspect-nucleotides-allele ref' alt)
        (some-> (parse-breakend alt) (assoc :type :breakend))))
    {:type :other}))

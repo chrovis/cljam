@@ -102,8 +102,8 @@
                buf (byte-array (count ?data))]
            (with-open [os (util/compressor-output-stream f)]
              (.write os (.getBytes "compressor-output-stream-test")))
-           (with-open [is (cio/input-stream f)]
-             (.read is buf))
+           (with-open [input-stream (cio/input-stream f)]
+             (.read input-stream buf))
            (= (map unchecked-byte ?data) (seq buf))))
     ;; BGZF
     "test.gz"    [0x1f 0x8b 0x08 0x04 0x00 0x00 0x00 0x00

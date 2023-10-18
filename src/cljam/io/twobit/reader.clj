@@ -5,7 +5,8 @@
            [java.util TreeMap HashMap]
            [java.nio Buffer CharBuffer ByteBuffer ByteOrder]
            [java.nio.channels FileChannel FileChannel$MapMode]
-           [java.nio.file Paths OpenOption StandardOpenOption]))
+           [java.nio.file Paths OpenOption StandardOpenOption])
+  (:refer-clojure :exclude [name]))
 
 (deftype TwoBitReader [buf url index]
   Closeable

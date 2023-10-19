@@ -44,14 +44,14 @@
   upper-table
   (let [ba (byte-array 128)]
     (doseq [c "ATGCN"]
-      (aset-byte ba (byte (int c)) (byte (int c)))
-      (aset-byte ba
-                 (+ (byte (int c))
-                    (- (byte (int \a))
-                       (byte (int \A))))
-                 (byte (int c))))
+      (aset ba (byte (int c)) (byte (int c)))
+      (aset ba
+            (+ (byte (int c))
+               (- (byte (int \a))
+                  (byte (int \A))))
+            (byte (int c))))
     (doseq [[from to] [[\, -1] [\. -1] [\< \>] [\> \>] [\* \*]]]
-      (aset-byte ba (byte (int from)) (byte (int to))))
+      (aset ba (int from) (byte (int to))))
     ba))
 
 (defn- parse-bases-col

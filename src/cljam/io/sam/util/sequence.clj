@@ -13,16 +13,16 @@
   ;; Value: two bases (A,C) => nibbles (1,2) => 2r 0001 0010 => 18
   (let [ba (byte-array (bit-shift-left 1 14))
         byte-to-nibble-table (byte-array (bit-shift-left 1 7) (byte 15))]
-    (doseq [[i c] (map vector (range) nibble-to-base-table)]
-      (aset-byte byte-to-nibble-table (int c) i)
-      (aset-byte byte-to-nibble-table (int (.charAt (cstr/lower-case c) 0)) i))
+    (doseq [[^byte i c] (map vector (range) nibble-to-base-table)]
+      (aset byte-to-nibble-table (int c) i)
+      (aset byte-to-nibble-table (int (.charAt (cstr/lower-case c) 0)) i))
     (dotimes [i (alength ba)]
       (let [u (unchecked-byte (bit-and 0x7F (unsigned-bit-shift-right i 7)))
             l (unchecked-byte (bit-and 0x7F i))]
         (->> (aget byte-to-nibble-table l)
              (bit-or (bit-shift-left (aget byte-to-nibble-table u) 4))
              unchecked-byte
-             (aset-byte ba i))))
+             (aset ba i))))
     ba))
 
 (defn str->compressed-bases
@@ -71,6 +71,6 @@
   (dotimes [i (alength bases')]
     (let [b (aget bases' i)]
       (cond
-        (= b (byte (int \.))) (aset-byte bases' i (byte (int \N)))
-        (<= (byte (int \a)) b (byte (int \z))) (aset-byte bases' i (- b 32))))) ;; Upper-case ASCII offset
+        (= b (byte (int \.))) (aset bases' i (byte (int \N)))
+        (<= (byte (int \a)) b (byte (int \z))) (aset bases' i (byte (- b 32)))))) ;; Upper-case ASCII offset
   bases')

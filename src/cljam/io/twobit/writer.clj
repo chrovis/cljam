@@ -95,12 +95,12 @@
 (def ^:private
   char->twobit
   (doto (byte-array 128)
-    (aset-byte (int \C) 1)
-    (aset-byte (int \c) 1)
-    (aset-byte (int \A) 2)
-    (aset-byte (int \a) 2)
-    (aset-byte (int \G) 3)
-    (aset-byte (int \g) 3)))
+    (aset (int \C) (byte 1))
+    (aset (int \c) (byte 1))
+    (aset (int \A) (byte 2))
+    (aset (int \a) (byte 2))
+    (aset (int \G) (byte 3))
+    (aset (int \g) (byte 3))))
 
 (defn write-twobit!
   "Encodes a sequence into twobit format."

@@ -218,7 +218,7 @@
   [stream page-size seq-buf-size]
   (let [byte-map (byte-array (range 128))]
     (doseq [[i v] [[\a 1] [\A 1] [\c 2] [\C 2] [\g 3] [\G 3] [\t 4] [\T 4] [\n 5] [\N 5]]]
-      (aset-byte byte-map (byte (int i)) (byte v)))
+      (aset byte-map (int i) (byte v)))
     (sequential-read stream page-size seq-buf-size byte-map)))
 
 (defn sequential-read-string
@@ -227,7 +227,7 @@
   (let [byte-map (byte-array (range 128))]
     (when-not mask?
       (doseq [[i v] [[\a \A] [\c \C] [\g \G] [\t \T] [\n \N]]]
-        (aset-byte byte-map (byte (int i)) (byte (int v)))))
+        (aset byte-map (int i) (byte (int v)))))
     (map (fn [{^bytes name' :name
                ^bytes sequence' :sequence}]
            {:name (String. name') :sequence (String. sequence')})

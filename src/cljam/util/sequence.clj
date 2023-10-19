@@ -4,11 +4,11 @@
 
 (def ^:private revcomp-table
   (let [ba (byte-array 128)]
-    (dotimes [i 128] (aset-byte ba i (byte (int \N))))
+    (dotimes [i 128] (aset ba i (byte (int \N))))
     (doseq [s ["AT" "GC" "NN"]
             [a b] [(cstr/upper-case s) (cstr/lower-case s)]]
-      (aset-byte ba (int a) (byte (int b)))
-      (aset-byte ba (int b) (byte (int a))))
+      (aset ba (int a) (byte (int b)))
+      (aset ba (int b) (byte (int a))))
     ba))
 
 (defn revcomp

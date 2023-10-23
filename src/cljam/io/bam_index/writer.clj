@@ -304,7 +304,7 @@
 ;; -----------
 
 (defn write-index*!
-  "Write the index to a file."
+  "Writes the index to a file."
   [wtr ^long nrefs indices]
   ;; magic
   (lsb/write-bytes wtr (.getBytes ^String bai-magic))

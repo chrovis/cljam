@@ -56,7 +56,7 @@
 ;; write
 ;;
 
-(defn write-header* [^BAMWriter wtr header]
+(defn- write-header* [^BAMWriter wtr header]
   (swap! (.index wtr) #(and (sort-by-pos? header) %))
   (let [w (.data-writer wtr)
         header-string (str (header/stringify-header header) \newline)]
@@ -64,7 +64,7 @@
     (lsb/write-int w (count header-string))
     (lsb/write-string w header-string)))
 
-(defn write-refs* [^BAMWriter wtr header]
+(defn- write-refs* [^BAMWriter wtr header]
   (let [w (.data-writer wtr)
         refs (refs/make-refs header)]
     (when @(.index wtr)
@@ -76,7 +76,7 @@
       (lsb/write-bytes w (byte-array 1 (byte 0)))
       (lsb/write-int w len))))
 
-(defn write-alignments* [^BAMWriter wtr alns header]
+(defn- write-alignments* [^BAMWriter wtr alns header]
   (let [dw (.data-writer wtr)
         w ^BGZFOutputStream (.writer wtr)
         refs (refs/make-refs header)]
@@ -103,7 +103,7 @@
           (dorun pointer-block))
         nil))))
 
-(defn write-blocks* [^BAMWriter wtr blocks]
+(defn- write-blocks* [^BAMWriter wtr blocks]
   (let [dw (.data-writer wtr)
         w ^BGZFOutputStream (.writer wtr)
         pointer-block (map

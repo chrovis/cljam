@@ -44,10 +44,14 @@
       (catch MalformedURLException _
         (make-bgzf-output-stream (cio/as-file x))))))
 
-(defn bgzf-input-stream ^BGZFInputStream [x]
+(defn bgzf-input-stream
+  "Make a bgzf input stream from a String, File, URL, etc."
+  ^BGZFInputStream [x]
   (make-bgzf-input-stream x))
 
-(defn bgzf-output-stream ^BGZFOutputStream [x]
+(defn bgzf-output-stream
+  "Make a bgzf output stream from a String, File, URL, etc."
+  ^BGZFOutputStream [x]
   (make-bgzf-output-stream x))
 
 (def ^:private ^:const shift-amount 16)

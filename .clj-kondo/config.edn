@@ -3,6 +3,7 @@
   :aliased-namespace-symbol {:level :warning}
   :shadowed-var {:level :warning
                  :exclude [meta-info version]}
+  :missing-docstring {:level :warning}
   :type-mismatch
   {:namespaces
    {clojure.core

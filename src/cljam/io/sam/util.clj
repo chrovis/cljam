@@ -7,8 +7,8 @@
             [cljam.io.sam.util.option :as opt])
   (:import [cljam.io.protocols SAMAlignment]))
 
-(def ^:const linear-index-shift 14)
-(def ^:const linear-index-depth 5)
+(def ^:private ^:const linear-index-shift 14)
+(def ^:private ^:const linear-index-depth 5)
 ;;; parse
 
 (defn parse-alignment
@@ -24,7 +24,9 @@
 
 ;;; stringify
 
-(defn stringify-alignment [a]
+(defn stringify-alignment
+  "Converts an alignment data to a string representation of the SAM format."
+  [a]
   (->> a
        ((juxt :qname :flag :rname :pos :mapq :cigar :rnext :pnext :tlen :seq :qual
               (comp opt/stringify-optional-fields :options)))

@@ -55,6 +55,8 @@
 ;; -------
 
 (defn writer
+  "Returns an open `cljam.io.bam.BAMWriter` of `f`. Should be used inside with-open
+  to ensure the writer is properly closed."
   (^BAMWriter [f] (writer f false))
   (^BAMWriter [f create-index?]
    (let [index (if create-index? {:no-coordinate-alns 0} false)

@@ -22,7 +22,9 @@
         Exception.
         throw)))
 
-(defn parse-optional-field [op]
+(defn parse-optional-field
+  "Parses an optional field string."
+  [op]
   (let [[tag val-type-str val'] (cstr/split op #":" 3)
         val-type (first val-type-str)]
     {(keyword tag) {:type val-type-str
@@ -32,7 +34,9 @@
 
 ;;; stringify
 
-(defn stringify-optional-fields [options]
+(defn stringify-optional-fields
+  "Converts a sequence of optional fields to a string."
+  [options]
   (->> options
        (map
         (fn [op]
@@ -43,6 +47,7 @@
 ;;; accessors
 
 (defn value-for-tag
+  "Returns a value of an optional field named `tag` of an alignment."
   [tag aln]
   (:value (some tag (:options aln))))
 

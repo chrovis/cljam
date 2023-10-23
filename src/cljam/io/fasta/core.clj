@@ -35,7 +35,9 @@
      (delay (bgzip-index f)))
     (RandomAccessFile. (cio/as-file f) "r")))
 
-(defn reader ^FASTAReader
+(defn reader
+  "Makes FastaReader from the File."
+  ^FASTAReader
   [f]
   (let [url (util/as-url f)]
     (FASTAReader. (random-accessor url)
@@ -57,6 +59,7 @@
     (FASTAReader. r stream url (.index-delay rdr))))
 
 (defn read-headers
+  "Returns fasta headers(offset, name and desc)."
   [^FASTAReader rdr]
   (try
     (fai/get-headers @(.index-delay rdr))
@@ -64,12 +67,13 @@
       (reader/load-headers (.reader rdr)))))
 
 (defn read-seq-summaries
-  "Read summaries of sequences in this FASTA file."
+  "Reads summaries of sequences in this FASTA file."
   [^FASTAReader rdr]
   (mapv #(select-keys % [:name :len])
         (fai/get-indices @(.index-delay rdr))))
 
 (defn read-indices
+  "Reads fasta indices."
   [^FASTAReader rdr]
   (fai/get-indices @(.index-delay rdr)))
 
@@ -80,18 +84,23 @@
   (reader/read-sequences rdr))
 
 (defn read-sequence
+  "Reads the specified range of sequence.
+   Start and end can be null."
   [rdr {:keys [chr start end]} opts]
   (reader/read-sequence rdr chr start end opts))
 
 (defn read
+  "Returns a lazy sequence of maps representing each sequence in FASTA."
   [rdr]
   (reader/read rdr))
 
 (defn reset
+  "Resets the file pointer of rdr."
   [rdr]
   (reader/reset rdr))
 
 (defn sequential-read
+  "Returns a list of maps containing sequence as upper-case string."
   ([rdr]
    (sequential-read rdr {}))
   ([^FASTAReader rdr opts]

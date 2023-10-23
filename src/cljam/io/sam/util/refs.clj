@@ -3,7 +3,7 @@
   (:require [clojure.set :as cset]))
 
 (defn make-refs
-  "Return a reference sequence from the sam header."
+  "Returns a reference sequence from the sam header."
   [hdr]
   (map
    #(cset/rename-keys

@@ -14,6 +14,7 @@
            [cljam.io.protocols SAMAlignment SAMRegionBlock SAMCoordinateBlock SAMQuerynameBlock]))
 
 (definline validate-tag-type
+  "Changes (u)int8 or (u)int16 tag type to int32 tag type."
   [t]
   `(case (long ~t)
      ~(long \I) \i
@@ -23,7 +24,9 @@
      ~(long \C) \i
      (char ~t)))
 
-(definline parse-tag-single [tag-type ^ByteBuffer bb]
+(definline parse-tag-single
+  "Parses a tag according to `tag-type`."
+  [tag-type ^ByteBuffer bb]
   `(case (long ~tag-type)
      ~(long \Z) (lsb/read-null-terminated-string ~bb)
      ~(long \A) (char (.get ~bb))
@@ -69,12 +72,15 @@
                    (parse-tag-single typ bb))}})
       (parse-option bb)))))
 
-(defn decode-options [rest']
+(defn decode-options
+  "Decodes bytes of bam options."
+  [rest']
   (let [bb (ByteBuffer/wrap rest')]
     (.order bb ByteOrder/LITTLE_ENDIAN)
     (parse-option bb)))
 
 (defn options-size
+  "Returns the number of bytes of the trailing optional fields."
   [^long block-size ^long l-read-name ^long n-cigar-op ^long l-seq]
   (- block-size
      common/fixed-block-size
@@ -83,17 +89,25 @@
      (quot (inc l-seq) 2)
      l-seq))
 
-(defn decode-qual [^bytes b]
+(defn decode-qual
+  "Decodes qual from bytes.
+   Returns \"*\" if input is filled with 0xff, otherwise returns qual."
+  [^bytes b]
   (if (Arrays/equals b (byte-array (alength b) (util/ubyte 0xff)))
     "*"
     (qual/phred-bytes->fastq b)))
 
-(defn decode-seq [seq-bytes ^long length]
+(defn decode-seq
+  "Decodes seq from bytes.
+   Returns \"*\" if seq is empty, otherwise returns sequence."
+  [seq-bytes ^long length]
   (if (zero? length)
     "*"
     (sam-seq/compressed-bases->str length seq-bytes 0)))
 
-(defn decode-next-ref-id [refs ^long ref-id ^long next-ref-id]
+(defn decode-next-ref-id
+  "Returns \"=\" if ref and next is same reference, otherwise returns next-ref-name."
+  [refs ^long ref-id ^long next-ref-id]
   (if (= next-ref-id -1)
     "*"
     (if (= ref-id next-ref-id)

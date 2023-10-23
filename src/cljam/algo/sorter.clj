@@ -11,7 +11,9 @@
   (:import [java.io Closeable]
            [java.util PriorityQueue]))
 
-(def ^:const default-chunk-size 1500000)
+(def ^:const default-chunk-size
+  "Default number of alignments to split when sorting."
+  1500000)
 
 (defn- refmap
   [refs]

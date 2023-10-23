@@ -63,7 +63,9 @@
         options-summary]
        (cstr/join \newline)))
 
-(defn view [args]
+(defn view
+  "Parses command line args and prints all or sub alignments of input sam/bam."
+  [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args view-cli-options)]
     (cond
       (:help options) (exit 0 (view-usage summary))
@@ -102,7 +104,9 @@
         options-summary]
        (cstr/join \newline)))
 
-(defn convert [args]
+(defn convert
+  "Parses command line args and converts file format based on the file extension."
+  [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args convert-cli-options)]
     (cond
       (:help options) (exit 0 (convert-usage summary))
@@ -127,7 +131,9 @@
         options-summary]
        (cstr/join \newline)))
 
-(defn normalize [args]
+(defn normalize
+  "Parses command line args and normalizes references of the SAM/BAM format."
+  [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args normalize-cli-options)]
     (cond
       (:help options) (exit 0 (normalize-usage summary))
@@ -159,7 +165,9 @@
         options-summary]
        (cstr/join \newline)))
 
-(defn sort [args]
+(defn sort
+  "Parses command line args and sorts alignments  by the specified method."
+  [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args sort-cli-options)]
     (cond
       (:help options) (exit 0 (sort-usage summary))
@@ -193,7 +201,9 @@
         options-summary]
        (cstr/join \newline)))
 
-(defn index [args]
+(defn index
+  "Parses command line args and creates index file."
+  [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args index-cli-options)]
     (cond
       (:help options) (exit 0 (index-usage summary))
@@ -241,7 +251,9 @@
           (println line))
         (flush)))))
 
-(defn pileup [args]
+(defn pileup
+  "Parses command line args and pileups BAM file."
+  [args]
   (let [{:keys [arguments errors summary]
          {:keys [help region simple thread] ref' :ref} :options}
         (parse-opts args pileup-cli-options)]
@@ -269,7 +281,9 @@
         options-summary]
        (cstr/join \newline)))
 
-(defn faidx [args]
+(defn faidx
+  "Parses command line args and make fasta index."
+  [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args faidx-cli-options)]
     (cond
       (:help options) (exit 0 (faidx-usage summary))
@@ -293,7 +307,9 @@
         options-summary]
        (cstr/join \newline)))
 
-(defn dict [args]
+(defn dict
+  "Parses command line args and make fasta dictionary file."
+  [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args dict-cli-options)]
     (cond
       (:help options) (exit 0 (dict-usage summary))
@@ -318,7 +334,9 @@
         options-summary]
        (cstr/join \newline)))
 
-(defn level [args]
+(defn level
+  "Parses command line args and adds level of alignments."
+  [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args level-cli-options)]
     (cond
       (:help options) (exit 0 (level-usage summary))
@@ -332,7 +350,9 @@
 
 ;; ### version command
 
-(defn version [_]
+(defn version
+  "Prints this software version."
+  [_]
   (let [ver (with-open [r (-> "META-INF/maven/cljam/cljam/pom.properties"
                               (cio/resource)
                               (cio/reader))]
@@ -342,7 +362,9 @@
 ;; Main command
 ;; ------------
 
-(defn run [args]
+(defn run
+  "Executes the specified subcommand."
+  [args]
   (let [[opts cmd args help cands]
         (sub-command args
                      "Usage: cljam {view,convert,normalize,sort,index,pileup,faidx,dict,level,version} ..."

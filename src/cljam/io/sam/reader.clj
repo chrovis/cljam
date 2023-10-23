@@ -110,7 +110,9 @@
          (map header/parse-header-line))
         header/into-header)))
 
-(defn reader [f]
+(defn reader
+  "Returns an open instance of `cljam.io.sam.reader.SAMReader` of the given file `f`."
+  [f]
   (let [header (with-open [r (cio/reader f)]
                  (read-header* r))]
     (->SAMReader (util/as-url f)

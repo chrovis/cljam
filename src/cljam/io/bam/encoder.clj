@@ -82,7 +82,9 @@
                 (lsb/write-float writer (Float/parseFloat v))))
          writer)))
 
-(defn get-block-size [aln]
+(defn get-block-size
+  "Returns the number of bytes required to encode the given alignment."
+  [aln]
   (let [read-length (.length ^String (:seq aln))
         cigar-length (cigar/count-op (:cigar aln))]
     (+ common/fixed-block-size
@@ -99,7 +101,12 @@
    {:CG {:type "B",:value (str "I," (cstr/join "," (cigar/encode-cigar cigar)))}}
    options))
 
-(defn encode-alignment [wrtr aln refs]
+(defn encode-alignment
+  "Converts the alignment `aln` into a byte stream in the BAM file format
+  and writes it to the given writer `wrtr`.
+  `refs` is a sequence of names of reference sequences that can be acquired
+  using `cljam.io.protocols/read-refs`."
+  [wrtr aln refs]
   (let [aln (update aln :seq #(if (= % "*") "" %))
         cigar-ops-count (cigar/count-op (:cigar aln))
         [encoded-cigar cigar-ops-count opts*]

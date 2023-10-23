@@ -11,7 +11,7 @@
     [(Integer/parseInt n) (first op)]))
 
 (defn simplify
-  "Merge contiguous same operations of parsed CIGAR."
+  "Merges contiguous same operations of parsed CIGAR."
   [cigs]
   (loop [[[^long l op :as x] & xs] cigs result (transient [])]
     (if (and l op)
@@ -34,7 +34,7 @@
           coll)))))
 
 (defn to-index*
-  "Convert CIGAR string to sequence of indices."
+  "Converts CIGAR string to sequence of indices."
   [^String s]
   (let [cigs (simplify (remove (comp #{\P \H} second) (parse s)))]
     (loop [[[^long l op] & xs] cigs r 0 s 0 idx (transient [])]
@@ -48,6 +48,8 @@
         (persistent! idx)))))
 
 (def to-index
+  "Converts from CIGAR string to sequence of indices.
+   This function is memoized."
   (memoize/lu to-index* :lu/threshold
               (or (proton/as-int (System/getProperty "cljam.sam.cigar.cache-size"))
                   1024)))
@@ -68,7 +70,7 @@
   (memoize count-ref-str*))
 
 (defn count-ref-bytes
-  "Count covering length in reference from encoded CIGAR byte-array."
+  "Counts covering length in reference from encoded CIGAR byte-array."
   ^long
   [cigar-bytes]
   (let [buf (ByteBuffer/wrap cigar-bytes)]
@@ -82,7 +84,7 @@
         ref-length))))
 
 (defn decode-cigar-and-ref-length
-  "Decode CIGAR string and length of alignment in reference.
+  "Decodes CIGAR string and length of alignment in reference.
   Returns a vector of [cigar, ref-length]."
   [cigar-bytes]
   (let [buf (ByteBuffer/wrap cigar-bytes)

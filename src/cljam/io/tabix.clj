@@ -10,8 +10,8 @@
            [cljam.io.util.chunk Chunk])
   (:refer-clojure :exclude [meta seq]))
 
-(def ^:const linear-index-shift 14)
-(def ^:const linear-index-depth 5)
+(def ^:private ^:const linear-index-shift 14)
+(def ^:private ^:const linear-index-depth 5)
 
 (deftype Tabix [n-ref preset sc bc ec meta skip seq bidx lidx]
   util-bin/IBinningIndex
@@ -26,7 +26,7 @@
   (get-chr-names [_]
     seq))
 
-(def tabix-magic "TBI\1")
+(def ^:private tabix-magic "TBI\1")
 
 (defn- read-chunks!
   [rdr]
@@ -79,6 +79,7 @@
              skip  seq bidx lidx)))
 
 (defn read-index
+  "Reads tabix and returns Tabix object."
   [f]
   (with-open [r (DataInputStream. (bgzf/bgzf-input-stream f))]
     (read-index* r)))

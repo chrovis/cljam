@@ -82,6 +82,7 @@
             nil))))
 
 (defn load-headers
+  "Reads fasta headers."
   [rdr]
   (seek rdr 0)
   (loop [line (read-line rdr), headers []]
@@ -115,6 +116,10 @@
     (read-fn rdr nil)))
 
 (defn read-sequence
+  "Reads the specified sequence range.
+  `start` and `end` can each be set to `nil`, in which case, the first
+  and the last element of the sequence are specified, respectively.
+  `rdr` must be indexed."
   [^FASTAReader rdr name' start end {:keys [mask?]}]
   (let [fai @(.index-delay rdr)]
     (when-let [len (:len (fasta-index/get-header fai name'))]
@@ -144,10 +149,13 @@
     (read* (read-line r) r)))
 
 (defn reset
+  "Moves the file pointer of the given FASTA reader `rdr` to the beginning."
   [^FASTAReader rdr]
   (seek (.reader rdr) 0))
 
-(definline create-ba [^ByteBuffer buffer]
+(definline create-ba
+  "Copies bytes in [0, position) of the given `buffer`."
+  [^ByteBuffer buffer]
   `(when (pos? (.position ~buffer))
      (let [ba# (byte-array (.position ~buffer))]
        (.clear ~(with-meta buffer {:tag `Buffer}))

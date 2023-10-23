@@ -44,7 +44,7 @@
   [f]
   (WIGWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))
 
-(def ^:const wig-fields [:track :chr :start :end :value])
+(def ^:private ^:const wig-fields [:track :chr :start :end :value])
 
 (defn- header-or-comment?
   "Returns true if given string is a blank, header, or comment line."
@@ -54,12 +54,12 @@
       (.startsWith s "#")))
 
 (defn- normalize
-  "Normalize WIG lines."
+  "Normalizes WIG lines."
   [m]
   (update m :chr chr/normalize-chromosome-key))
 
 (defn- fields->map
-  "Convert vector [\"key1=value1\" \"key2=value2\" ...] to map
+  "Converts vector [\"key1=value1\" \"key2=value2\" ...] to map
   {:key1 \"value1\" :key2 \"value2\" ...}."
   [fields]
   (into {}
@@ -69,7 +69,7 @@
         fields))
 
 (defn- str->wiggle-track-data
-  "Convert string to Wiggle track data values which can be integer or real,
+  "Converts string to Wiggle track data values which can be integer or real,
   positive or negative values."
   [^String s]
   (if-let [l (as-long s)]
@@ -77,7 +77,7 @@
     (as-double s)))
 
 (defn- deserialize-wigs
-  "Parse WIG lines and return a lazy sequence of flat map."
+  "Parses WIG lines and return a lazy sequence of flat map."
   [lines]
   (letfn [(deserialize [lines pre-start track]
             (lazy-seq
@@ -153,7 +153,7 @@
                             :span nil})))
 
 (defn- serialize-wigs
-  "Serialize a sequence of WIG fields into a lazy sequence of string."
+  "Serializes a sequence of WIG fields into a lazy sequence of string."
   [wigs]
   {:pre [;; These fields are required.
          (map (fn [wig] (every? some? ((apply juxt wig-fields) wig))) wigs)
@@ -207,7 +207,7 @@
     (serialize wigs)))
 
 (defn read-fields
-  "Read sequence of WIG fields from reader"
+  "Reads sequence of WIG fields from reader"
   [^WIGReader rdr]
   (->> rdr
        .reader
@@ -217,7 +217,7 @@
        (map normalize)))
 
 (defn write-fields
-  "Write sequence of WIG fields to writer."
+  "Writes sequence of WIG fields to writer."
   [^WIGWriter wtr xs]
   (let [w ^BufferedWriter (.writer wtr)]
     (->> xs

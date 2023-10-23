@@ -62,6 +62,7 @@
                 (assoc! x k (rf (rf) y))))))))
 
 (def into-header
+  "A reducing function which builds a map from parsed headers."
   (-> (group-by-rf first ((map second) (into-rf [])))
       (finalize-rf (fn [m] (if (some? (:HD m)) (update m :HD first) m)))))
 
@@ -82,7 +83,9 @@
                       (str (name k) \: v)))
                   kv-map)))
 
-(defn stringify-header [hdr]
+(defn stringify-header
+  "Converts parsed header lines to a string."
+  [hdr]
   (cstr/join \newline
              (map (fn [h]
                     (let [[typ kvs] h]
@@ -99,10 +102,18 @@
   [header]
   (assoc-in header [:HD :VN] sam-common/sam-version))
 
-(def ^:const order-unknown :unknown)
-(def ^:const order-unsorted :unsorted)
-(def ^:const order-coordinate :coordinate)
-(def ^:const order-queryname :queryname)
+(def ^:const order-unknown
+  "Unknown sorting order of alignments."
+  :unknown)
+(def ^:const order-unsorted
+  "Unsorted of alignments."
+  :unsorted)
+(def ^:const order-coordinate
+  "Coordinate sorting order of alignments."
+  :coordinate)
+(def ^:const order-queryname
+  "queryname sorting order of alignments."
+  :queryname)
 
 (defn sorted-by
   "Replaces the sorting order field in SAM header."

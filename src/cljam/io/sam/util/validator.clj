@@ -14,21 +14,18 @@
                    :else (into x y)))]
      (rec res1 res2)))
   ([res1 res2 res3 & more]
-   (reduce (fn [res res']
-             (merge-validation-results res res'))
-           res1
-           (list* res2 res3 more))))
+   (reduce merge-validation-results res1 (list* res2 res3 more))))
 
 (defn- validate-pos* [rname pos refmap]
   (let [max-len (get-in refmap [rname :LN])]
     (cond
-      (not (integer? pos)) ["Must be integer."]
+      (not (integer? pos)) ["Must be an integer."]
       (not (<= 0 (int pos) Integer/MAX_VALUE))
       ["Must be in the [0, 2147483647]."]
 
       (and max-len
            (> (int pos) (int max-len)))
-      [(format "Must be less than or equal %d." max-len)])))
+      [(format "Must be less than or equal to %d." max-len)])))
 
 (defn- validate-pos [{:keys [refmap]} {:keys [pos rname]}]
   (when-let [err (validate-pos* rname pos refmap)]
@@ -40,10 +37,11 @@
 
 (defn- validate-rname* [rname refmap]
   (cond
-    (not (string? rname)) ["Must be string."]
+    (not (string? rname)) ["Must be a string."]
     (and (not (= rname "*"))
          (not (get refmap rname)))
-    [(format "Must be not in header.(%s)" rname)]))
+    [(format (str "Must be declared as the SN value in the SQ line within the"
+                  " header. (%s)") rname)]))
 
 (defn- validate-rname [{:keys [refmap]} {:keys [rname]}]
   (when-let [err (validate-rname* rname refmap)]
@@ -55,7 +53,7 @@
 
 (defn- validate-qname [_ {:keys [qname]}]
   (if (not (string? qname))
-    (error :qname "Must be string.")
+    (error :qname "Must be a string.")
     (when-let [res
                (cond-> nil
                  (not (<= (count qname) 254))
@@ -67,13 +65,13 @@
 
 (defn- validate-mapq [_ {:keys [mapq]}]
   (cond
-    (not (integer? mapq)) (error :mapq "Must be integer.")
+    (not (integer? mapq)) (error :mapq "Must be an integer.")
     (not (<= 0 (int mapq) 255))
     (error :mapq "Must be in the [0-255].")))
 
 (defn- validate-cigar [_ {:keys [cigar]}]
   (cond
-    (not (string? cigar)) (error :cigar "Must be string.")
+    (not (string? cigar)) (error :cigar "Must be a string.")
     (not (re-matches #"^\*|([0-9]+[MIDNSHPX=])+$" cigar))
     (error :cigar "Invalid format.")))
 
@@ -85,32 +83,33 @@
 
 (defn- validate-qual [_ {:keys [qual]}]
   (cond
-    (not (string? qual)) (error :qual "Must be string.")
-    (not (re-matches #"[!-~]+" qual)) (error :qual "Must not contain bad character.")))
+    (not (string? qual)) (error :qual "Must be a string.")
+    (not (re-matches #"[!-~]+" qual)) (error :qual "Must be composed only of ASCII characters within the valid phred33 range [!-~].")))
 
-(defn- validate-seq [_ {:keys [seq]}]
+(defn- validate-seq [{:keys [file-type]} {:keys [seq]}]
   (cond
-    (not (string? seq)) (error :seq "Must be string.")
-    (not (re-matches #"\*|[A-Za-z=.]+" seq)) (error :seq "Must not contain bad character.")))
+    (not (string? seq)) (error :seq "Must be a string.")
+    (and (= file-type :bam) (not (re-matches #"\*|[=ACMGRSVTWYHKDBN]+" seq))) (error :seq "Must not contain bad character.")
+    (and (= file-type :sam) (not (re-matches #"\*|[A-Za-z=.]+" seq))) (error :seq "Must not contain bad character.")))
 
 (defn- validate-option [{:keys [type value]}]
   (case type
     "A" (when-not (and (char? value) (<= (int \!) (int value) (int \~)))
-          ["Must be char [!-~]."])
-    "i" (when-not (and (integer? value) (<= -32767 value 32767))
-          ["Must be 16 bit signed integer."])
+          ["Must be a char [!-~]."])
+    "i" (when-not (and (integer? value) (<= -2147483648 value 2147483647))
+          ["Must be 32 bit signed integer."])
     "f" (when-not (or (float? value) (integer? value))
-          ["Must be float."])
+          ["Must be a float."])
     "Z" (when-not (and (string? value) (re-matches #"[ !-~]*" value))
-          ["Must be printing string [ !-~]*"])
+          ["Must be a printable string [ !-~]*"])
     "H" (when-not (and (sequential? value)
                        (every? (every-pred integer?  #(<= -255 (int %) 255))
                                value))
-          ["Must be byte array."])
+          ["Must be a byte array."])
     "B" (when-not (and (string? value)
                        (re-matches #"[cCsSiIf](,[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)*"
                                    value))
-          ["Must be Integer or numeric array string."])
+          ["Must be a string of comma-separated array of numbers."])
     [(format "Type %s is invalid" (str type))]))
 
 (defn- validate-options [_ {:keys [options]}]
@@ -130,10 +129,10 @@
                   validate-qual
                   validate-tlen
                   validate-seq)]
-      (apply  merge-validation-results
-              (concat (f validator alignment)
-                      (validate-options validator alignment))))
-    (error [] (str "Variant must be a map, but got " (pr-str alignment)))))
+      (apply merge-validation-results
+             (concat (f validator alignment)
+                     (validate-options validator alignment))))
+    (error [] (str "Alignment must be a map, but got " (pr-str alignment)))))
 
 (defn make-validator
   ([header] (make-validator header {}))
@@ -169,17 +168,17 @@
   (let [{:keys [warnings errors] v :alignment :as res} (validate-alignment validator alignment)]
     (when warnings
       (binding [*out* *err*]
-        (printf "Variant validation warning at %s\n%s"
+        (printf "Alignment validation warning at %s\n%s"
                 (pr-str (cond-> v
                           (map? v)
-                          (select-keys [:chr :pos :id :ref :alt])))
+                          (select-keys [:qname :rname :rnext :pos :pnext :mapq :cigar :qual :tlen :seq])))
                 (stringify-validation-result-messages warnings))
         (newline)))
     (when errors
-      (let [msg (format "Variant validation error at %s\n%s"
+      (let [msg (format "Alignment validation error at %s\n%s"
                         (pr-str (cond-> v
                                   (map? v)
-                                  (select-keys [:chr :pos :id :ref :alt])))
+                                  (select-keys [:qname :rname :rnext :pos :pnext :mapq :cigar :qual :tlen :seq])))
                         (stringify-validation-result-messages errors))]
         (throw (ex-info msg res))))
     alignment))

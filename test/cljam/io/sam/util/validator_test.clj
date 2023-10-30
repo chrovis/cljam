@@ -9,31 +9,31 @@
   (testing "type A"
     (is (nil? (#'validator/validate-option {:type "A" :value \!})))
     (is (= (#'validator/validate-option {:type "A" :value 100})
-           ["Must be char [!-~]."])))
+           ["Must be a char [!-~]."])))
   (testing "type i"
     (is (nil? (#'validator/validate-option {:type "i" :value 10})))
     (is (= (#'validator/validate-option {:type "i" :value "10"})
-           ["Must be 16 bit signed integer."]))
-    (is (= (#'validator/validate-option {:type "i" :value 100000000})
-           ["Must be 16 bit signed integer."])))
+           ["Must be 32 bit signed integer."]))
+    (is (= (#'validator/validate-option {:type "i" :value 100000000000})
+           ["Must be 32 bit signed integer."])))
   (testing "type f"
     (is (nil? (#'validator/validate-option {:type "f" :value 10})))
     (is (nil? (#'validator/validate-option {:type "f" :value 10.1})))
     (is (= (#'validator/validate-option {:type "f" :value "A"})
-           ["Must be float."])))
+           ["Must be a float."])))
   (testing "type Z"
     (is (nil? (#'validator/validate-option {:type "Z" :value "!@abc"})))
     (is (= (#'validator/validate-option {:type "Z" :value 10})
-           ["Must be printing string [ !-~]*"])))
+           ["Must be a printable string [ !-~]*"])))
   (testing "type H"
     (is (nil? (#'validator/validate-option {:type "H" :value [1,2]})))
     (is (= (#'validator/validate-option {:type "H" :value "A"})
-           ["Must be byte array."])))
+           ["Must be a byte array."])))
   (testing "type B"
     (is (nil? (#'validator/validate-option
                {:type "B" :value "f,-0.3,0.0,0.3"})))
     (is (= (#'validator/validate-option {:type "B" :value "W"})
-           ["Must be Integer or numeric array string."]))))
+           ["Must be a string of comma-separated array of numbers."]))))
 
 (deftest validate-data-record-test
   (let [validator (validator/make-validator {:SQ [{:SN "ref", :LN 45}]})
@@ -45,7 +45,7 @@
          (= (get-in (#'validator/validate-data-record validator (assoc valid-align k v))
                     [:errors k])
             ans)
-      :qname 100  ["Must be string."]
+      :qname 100  ["Must be a string."]
       :qname (apply str (repeat 255 \a))
       ["Must be less than or equal to 254 characters."]
 
@@ -55,24 +55,24 @@
       ["Must not contain illegal characters."
        "Must be less than or equal to 254 characters."]
 
-      :rname 10 ["Must be string."]
-      :rname "NOT-FOUND" ["Must be not in header.(NOT-FOUND)"]
-      :pos "ABC" ["Must be integer."]
-      :pos 100000000 ["Must be less than or equal 45."]
-      :pos 46 ["Must be less than or equal 45."]
+      :rname 10 ["Must be a string."]
+      :rname "NOT-FOUND" ["Must be declared as the SN value in the SQ line within the header. (NOT-FOUND)"]
+      :pos "ABC" ["Must be an integer."]
+      :pos 100000000 ["Must be less than or equal to 45."]
+      :pos 46 ["Must be less than or equal to 45."]
       :pos -100 ["Must be in the [0, 2147483647]."]
-      :mapq "A" ["Must be integer."]
+      :mapq "A" ["Must be an integer."]
       :mapq 300 ["Must be in the [0-255]."]
-      :cigar 10 ["Must be string."]
+      :cigar 10 ["Must be a string."]
       :cigar "3Y" ["Invalid format."]
-      :rname 10 ["Must be string."]
-      :pnext 100000000 ["Must be less than or equal 45."]
-      :pnext "A" ["Must be integer."]
+      :rname 10 ["Must be a string."]
+      :pnext 100000000 ["Must be less than or equal to 45."]
+      :pnext "A" ["Must be an integer."]
       :tlen -9900000000 ["Must be in the [-2147483647,2147483647]."]
-      :qual 10 ["Must be string."]
-      :qual "bad qual" ["Must not contain bad character."]
-      :seq 100 ["Must be string."]
-      :seq [\A \B] ["Must be string."]
+      :qual 10 ["Must be a string."]
+      :qual "bad qual" ["Must be composed only of ASCII characters within the valid phred33 range [!-~]."]
+      :seq 100 ["Must be a string."]
+      :seq [\A \B] ["Must be a string."]
       :seq "A!TGC" ["Must not contain bad character."])
     (is (= (get-in (#'validator/validate-data-record
                     validator

@@ -1,0 +1,510 @@
+(ns cljam.util.dataframe
+  ;; TODO: add docstrings for public fns
+  {:clj-kondo/ignore [:missing-docstring]}
+  (:import [java.util Arrays IdentityHashMap Map]))
+
+(def ^:private prim-type->type-key
+  {Boolean/TYPE :boolean
+   Byte/TYPE :byte
+   Character/TYPE :char
+   Short/TYPE :short
+   Integer/TYPE :int
+   Long/TYPE :long
+   Float/TYPE :float
+   Double/TYPE :double})
+
+(defn- array-type [arr]
+  (let [t (class arr)]
+    (when (.isArray t)
+      (get prim-type->type-key (.getComponentType t) :object))))
+
+(defn- getter-for-type [t]
+  (case t
+    :boolean #(aget ^booleans %1 (long %2))
+    :byte #(aget ^bytes %1 (long %2))
+    :char #(aget ^chars %1 (long %2))
+    :short #(aget ^shorts %1 (long %2))
+    :int #(aget ^ints %1 (long %2))
+    :long #(aget ^longs %1 (long %2))
+    :float #(aget ^floats %1 (long %2))
+    :double #(aget ^doubles %1 (long %2))
+    :object #(aget ^objects %1 (long %2))))
+
+(defn- setter-for-type [t]
+  (case t
+    :boolean #(aset ^booleans %1 (long %2) (boolean %3))
+    :byte #(aset ^bytes %1 (long %2) (byte %3))
+    :char #(aset ^chars %1 (long %2) (char %3))
+    :short #(aset ^shorts %1 (long %2) (short %3))
+    :int #(aset ^ints %1 (long %2) (int %3))
+    :long #(aset ^longs %1 (long %2) (long %3))
+    :float #(aset ^floats %1 (long %2) (float %3))
+    :double #(aset ^doubles %1 (long %2) (double %3))
+    :object #(aset ^objects %1 (long %2) %3)))
+
+(defn- make-typed-array [t x]
+  (case t
+    :boolean (boolean-array x)
+    :byte (byte-array x)
+    :char (char-array x)
+    :short (short-array x)
+    :int (int-array x)
+    :long (long-array x)
+    :float (float-array x)
+    :double (double-array x)
+    :object (object-array x)))
+
+(defn- ->array [t coll]
+  (if (.isArray (class coll))
+    coll
+    (make-typed-array t coll)))
+
+(defprotocol IDataFrameBuffer
+  (-append-val! [this val])
+  (-to-dataframe [this]))
+
+(declare make-dataframe*)
+
+(deftype DataFrameBuffer
+         [^int m ^int n columns ^objects types ^objects setters ^objects data
+          ^:unsynchronized-mutable ^long i ^:unsynchronized-mutable ^long j]
+  IDataFrameBuffer
+  (-append-val! [_ v]
+    (let [setter (aget setters j)
+          arr (aget data j)]
+      (setter arr i v)
+      (set! j (inc j))
+      (when (>= j n)
+        (set! i (inc i))
+        (set! j 0))
+      v))
+  (-to-dataframe [_]
+    (make-dataframe* m n 0 i columns types data)))
+
+(defn make-dataframe-buffer [m columns]
+  (let [n (count columns)
+        columns' (IdentityHashMap. n)
+        _ (reduce (fn [i [k _]] (.put columns' k i) (inc (long i)))
+                  0 columns)
+        types (into-array Object (map second columns))
+        setters (->> types
+                     (map setter-for-type)
+                     (into-array Object))
+        data (->> types
+                  (map #(make-typed-array % m))
+                  (into-array Object))]
+    (DataFrameBuffer. m n columns' types setters data 0 0)))
+
+(defn ->dataframe! [^DataFrameBuffer buffer]
+  (-to-dataframe buffer))
+
+(defn append-val! [buffer v]
+  (-append-val! buffer v))
+
+(defn append-row! [buffer row]
+  (run! (partial append-val! buffer) row))
+
+(declare make-dataframe-seq make-dataframe-row dataframe-row-accessors)
+(alter-meta! #'make-dataframe-row assoc :arglists '([frame ^long i accessors]))
+
+(deftype DataFrame
+         [^int m, ^int n, ^int offset, ^int limit, columns
+          ^objects types, ^objects data, accessors]
+  clojure.lang.Counted
+  (count [_] (- limit offset))
+  clojure.lang.Indexed
+  (nth [this i]
+    (let [i' (+ i offset)]
+      (if (< i' limit)
+        (make-dataframe-row this i' @accessors)
+        (throw (IndexOutOfBoundsException.)))))
+  (nth [this i not-found]
+    (let [i' (+ i offset)]
+      (if (< i' limit)
+        (make-dataframe-row this i' @accessors)
+        not-found)))
+  clojure.lang.ILookup
+  (valAt [this i]
+    (let [i' (+ (int i) offset)]
+      (when (< i' limit)
+        (nth this i))))
+  (valAt [this i not-found]
+    (nth this i not-found))
+  clojure.lang.Seqable
+  (seq [this]
+    (make-dataframe-seq this offset @accessors))
+  clojure.lang.IReduceInit
+  (reduce [this f init]
+    (let [accessors' @accessors]
+      (loop [i offset, acc init]
+        (if (>= i limit)
+          acc
+          (let [row (make-dataframe-row this i accessors')
+                acc' (f acc row)]
+            (recur (inc i) acc'))))))
+  clojure.lang.IChunk
+  (dropFirst [_]
+    (DataFrame. m n (inc offset) limit columns types data accessors)))
+
+(defn- resize [limit ^objects types ^objects data]
+  (let [n (count data)
+        data' (object-array n)]
+    (dotimes [i n]
+      (let [t (aget types i)
+            arr (aget data i)
+            arr' (make-typed-array t limit)]
+        (System/arraycopy arr 0 arr' 0 limit)
+        (aset data' i arr')))
+    data'))
+
+(defn- make-dataframe* [m n offset limit columns types data]
+  (let [m (long m)
+        limit (long limit)
+        accessors (volatile! nil)
+        should-resize? (<= limit (bit-shift-right m 1))
+        m' (if should-resize? limit m)
+        data' (if should-resize?
+                (resize limit types data)
+                data)
+        frame (DataFrame. m' (int n) offset limit columns types data' accessors)]
+    (vreset! accessors (dataframe-row-accessors frame))
+    frame))
+
+(defn make-dataframe
+  ([column-data]
+   (make-dataframe nil column-data))
+  ([limit column-data]
+   (let [m (count (second (first column-data)))
+         n (count column-data)
+         columns (IdentityHashMap. n)
+         types (object-array n)
+         data (object-array n)
+         ;; to avoid Eastwood's false alarm of unused-ret-vals
+         _ (reduce (fn [i [k arr]]
+                     (let [i' (long i)]
+                       (.put columns k i)
+                       (aset types i' (array-type arr))
+                       (aset data i' arr)
+                       (inc i')))
+                   0 column-data)]
+     (make-dataframe* m n 0 (or limit m) columns types data))))
+
+(defmethod print-method DataFrame [^DataFrame frame ^java.io.Writer w]
+  (.write w "[")
+  (doseq [[i row] (map-indexed vector frame)]
+    (.write w (pr-str row))
+    (when-not (= (long i) (dec (.-limit frame)))
+      (.write w " ")))
+  (.write w "]"))
+
+(deftype DataFrameSeq [^DataFrame frame ^int offset accessors]
+  clojure.lang.Sequential
+  clojure.lang.ISeq
+  (first [_]
+    (when (< offset (.-limit frame))
+      (make-dataframe-row frame offset accessors)))
+  (more [_]
+    (if (< (inc offset) (.-limit frame))
+      (DataFrameSeq. frame (inc offset) accessors)
+      ()))
+  (next [_]
+    (when (< (inc offset) (.-limit frame))
+      (DataFrameSeq. frame (inc offset) accessors)))
+  clojure.lang.Seqable
+  (seq [this] this)
+  clojure.lang.Counted
+  (count [_] (.count frame))
+  clojure.lang.IPersistentCollection
+  (cons [this v] (cons v this))
+  (empty [_] ())
+  (equiv [this other]
+    (and (instance? clojure.lang.Sequential other)
+         (or (not (instance? clojure.lang.Counted other))
+             (= (.count this) (.count ^clojure.lang.Counted other)))
+         (loop [s this, s' (seq other)]
+           (if (nil? s)
+             (nil? s')
+             (and (= (.first s) (.first s'))
+                  (recur (.next s) (.next s'))))))))
+
+(defn- make-dataframe-seq [frame offset accessors]
+  (DataFrameSeq. frame offset accessors))
+
+(declare dataframe-row->map make-extended-dataframe-row extended-dataframe-row->map)
+
+(deftype DataFrameRow [^DataFrame frame ^int row ^Map accessors]
+  clojure.lang.Counted
+  (count [_] (.-n frame))
+  clojure.lang.ILookup
+  (valAt [this k]
+    (when-let [f (.get accessors k)]
+      (f this)))
+  (valAt [this k not-found]
+    (if-let [f (.get accessors k)]
+      (f this)
+      not-found))
+  clojure.lang.Seqable
+  (seq [this]
+    (seq (dataframe-row->map this)))
+  clojure.lang.Associative
+  (assoc [this k v]
+    (make-extended-dataframe-row this {k v} (dissoc accessors k)))
+  (containsKey [_ k]
+    (contains? accessors k))
+  (entryAt [this k]
+    (when-let [f (.get accessors k)]
+      (clojure.lang.MapEntry/create k (f this))))
+  clojure.lang.IPersistentMap
+  (without [this k]
+    (dissoc (dataframe-row->map this) k))
+  clojure.lang.IKeywordLookup
+  (getLookupThunk [_ k]
+    (.get accessors k))
+  clojure.lang.IPersistentCollection
+  (empty [_] {})
+  (cons [this [k v]]
+    (assoc this k v))
+  (equiv [this other]
+    (and (instance? Map other)
+         (instance? clojure.lang.MapEquivalence other)
+         (let [^Map m other]
+           (and (= (.size this) (.size m))
+                (reduce (fn [_ k]
+                          (let [f (.get accessors k)]
+                            (or (= (f this) (.getOrDefault m k ::none))
+                                (reduced false))))
+                        true
+                        (.keySet accessors))))))
+  clojure.lang.MapEquivalence
+  Map
+  (size [this] (.count this))
+  (get [this k] (.valAt this k)))
+
+(defn- make-dataframe-row [frame ^long i accessors]
+  (DataFrameRow. frame i accessors))
+
+(defn- dataframe-row->map [^DataFrameRow row]
+  (persistent!
+   (reduce-kv (fn [m k f] (assoc! m k (f row)))
+              (transient {})
+              (.-accessors row))))
+
+(deftype ExtendedDataFrameRow [^DataFrameRow row ^Map extra ^Map accessors]
+  clojure.lang.Counted
+  (count [_]
+    (+ (count accessors) (count extra)))
+  clojure.lang.ILookup
+  (valAt [_ k]
+    (let [v (.getOrDefault extra k ::none)]
+      (if (identical? v ::none)
+        (when-let [f (.get accessors k)]
+          (f row))
+        v)))
+  (valAt [_ k not-found]
+    (let [v (.getOrDefault extra k ::none)]
+      (if (identical? v ::none)
+        (if-let [f (.get accessors k)]
+          (f row)
+          not-found)
+        v)))
+  clojure.lang.Seqable
+  (seq [this]
+    (seq (extended-dataframe-row->map this)))
+  clojure.lang.Associative
+  (assoc [_ k v]
+    (make-extended-dataframe-row row (assoc extra k v) (dissoc accessors k)))
+  (containsKey [_ k]
+    (or (contains? extra k) (contains? accessors k)))
+  (entryAt [_ k]
+    (let [v (.getOrDefault extra k ::none)]
+      (if (identical? v ::none)
+        (when-let [f (.get accessors k)]
+          (clojure.lang.MapEntry/create k (f row)))
+        (clojure.lang.MapEntry/create k v))))
+  clojure.lang.IPersistentMap
+  (without [this k]
+    (if (contains? accessors k)
+      (dissoc (extended-dataframe-row->map this) k)
+      (if (contains? extra k)
+        (make-extended-dataframe-row row (dissoc extra k) accessors)
+        this)))
+  clojure.lang.IPersistentCollection
+  (empty [_] {})
+  (cons [this [k v]]
+    (assoc this k v))
+  (equiv [this other]
+    (and (instance? Map other)
+         (instance? clojure.lang.MapEquivalence other)
+         (let [^Map m other]
+           (and (= (.size this) (.size m))
+                (reduce (fn [_ k]
+                          (let [f (.get accessors k)]
+                            (or (= (f row) (.getOrDefault m k ::none))
+                                (reduced false))))
+                        true
+                        (.keySet accessors))
+                (reduce-kv (fn [_ k v]
+                             (or (= v (.getOrDefault m k ::none))
+                                 (reduced false)))
+                           true extra)))))
+  clojure.lang.MapEquivalence
+  Map
+  (size [this] (.count this))
+  (get [this k] (.valAt this k)))
+
+(defn- make-extended-dataframe-row [row extra accessors]
+  (ExtendedDataFrameRow. row extra accessors))
+
+(defn- extended-dataframe-row->map [^ExtendedDataFrameRow row]
+  (merge (dataframe-row->map (.-row row))
+         (.-extra row)))
+
+(defmacro thunk
+  {:clj-kondo/lint-as 'clojure.core/fn}
+  [[arg] & body]
+  `(reify
+     clojure.lang.IFn
+     (~'invoke [this# arg#]
+       (let [~arg arg#]
+         ~@body))
+     clojure.lang.ILookupThunk
+     (~'get [this# arg#]
+       (let [~arg arg#]
+         ~@body))))
+
+(defn dataframe-row-accessor [^DataFrame frame k]
+  (let [^IdentityHashMap columns (.-columns frame)
+        col (int (.get columns k))
+        t (aget ^objects (.-types frame) col)]
+    (case t
+      :boolean (thunk [^DataFrameRow row]
+                      (aget ^booleans (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                            (.-row row)))
+      :byte (thunk [^DataFrameRow row]
+                   (aget ^bytes (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                         (.-row row)))
+      :char (thunk [^DataFrameRow row]
+                   (aget ^chars (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                         (.-row row)))
+      :int (thunk [^DataFrameRow row]
+                  (aget ^ints (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                        (.-row row)))
+      :short (thunk [^DataFrameRow row]
+                    (aget ^shorts (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                          (.-row row)))
+      :long (thunk [^DataFrameRow row]
+                   (aget ^longs (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                         (.-row row)))
+      :float (thunk [^DataFrameRow row]
+                    (aget ^floats (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                          (.-row row)))
+      :double (thunk [^DataFrameRow row]
+                     (aget ^doubles (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                           (.-row row)))
+      :object (thunk [^DataFrameRow row]
+                     (aget ^objects (aget ^objects (.-data ^DataFrame (.-frame row)) col)
+                           (.-row row))))))
+
+(defn dataframe-row-accessors [^DataFrame frame]
+  (persistent!
+   (reduce (fn [m k]
+             (assoc! m k (dataframe-row-accessor frame k)))
+           (transient {})
+           (.keySet ^Map (.-columns frame)))))
+
+(defn add-columns
+  ([^DataFrame frame new-cols]
+   (let [defs (mapv (fn [[cname col]] [cname (array-type col)]) new-cols)
+         new-data (mapv second new-cols)]
+     (add-columns frame defs new-data)))
+  ([^DataFrame frame defs new-data]
+   (let [m (.-m frame)
+         n (.-n frame)
+         n' (+ n (count defs))
+         ^IdentityHashMap columns (.-columns frame)
+         ^IdentityHashMap columns' (.clone columns)
+         ^objects types (.-types frame)
+         ^objects types' (Arrays/copyOf types n')
+         ^objects data (.-data frame)
+         ^objects data' (Arrays/copyOf data n')]
+     (doseq [[^long i [cname t] coll] (map vector (range) defs new-data)
+             :let [i' (+ n i)]]
+       (.put columns' cname i')
+       (aset types' i' t)
+       (aset data' i' (->array t coll)))
+     (make-dataframe* m n' (.-offset frame) m columns' types' data'))))
+
+(defn replace-columns [^DataFrame frame col-names defs new-data]
+  (let [m (.-m frame)
+        n (.-n frame)
+        ^IdentityHashMap columns (.-columns frame)
+        ^IdentityHashMap columns' (.clone columns)
+        ^objects types (.-types frame)
+        ^objects types' (Arrays/copyOf types n)
+        ^objects data (.-data frame)
+        ^objects data' (Arrays/copyOf data n)
+        col-indices (map #(.get columns %) col-names)]
+    (doseq [[^long i [cname t] coll] (map vector col-indices defs new-data)]
+      (.put columns' cname i)
+      (aset types' i t)
+      (aset data' i (->array t coll)))
+    (make-dataframe* m n (.-offset frame) m columns' types' data')))
+
+(defn map-column
+  ([frame col-name f]
+   (map-column frame col-name nil f))
+  ([^DataFrame frame col-name col-type f]
+   (let [m (.-m frame)
+         col-idx (.get ^IdentityHashMap (.-columns frame) col-name)
+         old-col-type (aget ^objects (.-types frame) col-idx)
+         getter (getter-for-type old-col-type)
+         old-col (aget ^objects (.-data frame) col-idx)
+         col-type' (or col-type old-col-type)
+         setter (setter-for-type col-type')
+         arr (make-typed-array col-type' m)]
+     (dotimes [i m]
+       (setter arr i (f (getter old-col i))))
+     (replace-columns frame [col-name] [[col-name col-type']] [arr]))))
+
+(defn drop-columns [^DataFrame frame col-names]
+  (let [m (.-m frame)
+        n (.-n frame)
+        n' (- n (count col-names))
+        ^IdentityHashMap columns (.-columns frame)
+        ^IdentityHashMap columns' (IdentityHashMap. n')
+        ^objects types (.-types frame)
+        ^objects types' (object-array n')
+        ^objects data (.-data frame)
+        ^objects data' (object-array n')
+        col-names' (set col-names)]
+    (loop [[[col i] & more] (sort-by val columns)
+           i' 0]
+      (when col
+        (if (contains? col-names' col)
+          (recur more i')
+          (do
+            (.put columns' col i')
+            (aset types' i' (aget types i))
+            (aset data' i' (aget data i))
+            (recur more (inc i'))))))
+    (make-dataframe* m n' (.-offset frame) m columns' types' data')))
+
+(comment
+  (def buffer
+    (doto (make-dataframe-buffer 3 [[:chr :object] [:pos :long] [:qual :double]])
+      (append-row! ["chr1" 123 30])
+      (append-row! ["chr2" 456 0])
+      (append-row! ["chr3" 789 20])))
+
+  (def frame (->dataframe! buffer))
+  (get (nth frame 0) :chr)
+  (get (nth frame 1) :pos)
+  (get (nth frame 2) :qual)
+  (select-keys (nth frame 2) [:chr :pos])
+  (let [{:keys [chr pos qual]} (dataframe-row-accessors frame)]
+    (run! (fn [row]
+            (println "chr:" (chr row))
+            (println "pos:" (pos row))
+            (println "qual:" (qual row)))
+          frame))
+  (chunk-cons frame nil))

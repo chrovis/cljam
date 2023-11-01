@@ -135,18 +135,37 @@
     (error [] (str "Alignment must be a map, but got " (pr-str alignment)))))
 
 (defn make-validator
+  "Creates a sam validator that is necessary for variant validation.
+  Takes the following three arguments:
+   - header: SAM's header columns (including mandatory columns)
+   - options: Validation options
+  The available validation options are:
+   - :file-type  Specify the file type (either of :sam and :bam).
+                 Defaults to :sam"
   ([header] (make-validator header {}))
   ([header {:keys [file-type] :or {file-type :sam}}]
    {:file-type file-type
     :refmap (into {} (map (juxt :SN identity) (:SQ header)))}))
 
 (defn validate-alignment
+  "Checks if the given alignments data is in the format cljam expects, and returns
+  a validation result map pointing out the problematic portion of data that does
+  not conform to the format. Otherwise returns nil.
+  The validation result map looks like:
+   {:errors {[:chr] [\"...\"]
+    :warnings {[:pos] [\"...\"]}
+    alignment { ... alignment data ...}}}"
+
   [validator alignment]
   (let [res (validate-data-record validator alignment)]
     (when (seq res)
       (assoc res :alignment alignment))))
 
 (defn validate-alignments
+  "Applies `validation-alignment` to each element of the given sequence and collects
+  non-nil validation results into a lazy sequence.
+  Returns a transducer if `alignments` is not specified."
+
   ([validator]
    (keep (partial validate-alignment validator)))
   ([validator alignments]
@@ -164,6 +183,11 @@
         (printf "%s %s" indent msg)))))
 
 (defn check-alignment
+  "Checks if the given alignment data is in the format cljam expects, and throws
+  an error if it doesn't conform to the format. Otherwise returns the input alignment
+  data.
+  Also, if any validation warning is found, it will be reported to stderr."
+
   [validator alignment]
   (let [{:keys [warnings errors] v :alignment :as res} (validate-alignment validator alignment)]
     (when warnings
@@ -184,6 +208,12 @@
     alignment))
 
 (defn check-alignments
+  "Applies `check-alignments` to each element of the given sequence.
+  Returns a lazy sequence of the same elements of the input if there are no
+  invalid alignment The validation is evaluated lazily and throws an exception
+  at the first invalid alignment
+  Returns a transducer if `alignments` is not specified."
+
   ([validator]
    (map (partial check-alignment validator)))
   ([validator alignments]

@@ -86,14 +86,14 @@
     (not (string? qual)) (error :qual "Must be a string.")
     (not (re-matches #"[!-~]+" qual)) (error :qual "Must be composed only of ASCII characters within the valid phred33 range [!-~].")))
 
-(defn- validate-seq [{:keys [file-type]} {:keys [seq]}]
+(defn- validate-seq [{:keys [file-type]} {seq' :seq}]
   (cond
-    (not (string? seq)) (error :seq "Must be a string.")
-    (and (= file-type :bam) (not (re-matches #"\*|[=ACMGRSVTWYHKDBN]+" seq))) (error :seq "Must not contain bad character.")
-    (and (= file-type :sam) (not (re-matches #"\*|[A-Za-z=.]+" seq))) (error :seq "Must not contain bad character.")))
+    (not (string? seq')) (error :seq "Must be a string.")
+    (and (= file-type :bam) (not (re-matches #"\*|[=ACMGRSVTWYHKDBN]+" seq'))) (error :seq "Must not contain bad character.")
+    (and (= file-type :sam) (not (re-matches #"\*|[A-Za-z=.]+" seq'))) (error :seq "Must not contain bad character.")))
 
-(defn- validate-option [{:keys [type value]}]
-  (case type
+(defn- validate-option [{:keys [value] type' :type}]
+  (case type'
     "A" (when-not (and (char? value) (<= (int \!) (int value) (int \~)))
           ["Must be a char [!-~]."])
     "i" (when-not (and (integer? value) (<= -2147483648 value 2147483647))
@@ -110,7 +110,7 @@
                        (re-matches #"[cCsSiIf](,[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)*"
                                    value))
           ["Must be a string of comma-separated array of numbers."])
-    [(format "Type %s is invalid" (str type))]))
+    [(format "Type %s is invalid" (str type'))]))
 
 (defn- validate-options [_ {:keys [options]}]
   (map-indexed #(when-let [err (validate-option %2)]

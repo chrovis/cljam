@@ -45,8 +45,8 @@
                                end Long/MAX_VALUE}}]
     (let [decoder (partial decoder/decode-alignment (.refs this))]
       (if (nil? chr)
-        (read-blocks-sequentially* this decoder)
-        (read-blocks-randomly* this chr start end decoder))))
+        (read-blocks-sequentially* this 64 decoder)
+        (read-blocks-randomly* this chr start end 64 decoder))))
   (read-blocks [this]
     (protocols/read-blocks this {} {}))
   (read-blocks [this region]
@@ -55,8 +55,9 @@
                 {:keys [chr start end]
                  :or {start 1
                       end Long/MAX_VALUE}}
-                {:keys [mode]
-                 :or {mode :normal}}]
+                {:keys [mode chunk-size]
+                 :or {mode :normal
+                      chunk-size 64}}]
     (let [decoder (if (fn? mode)
                     mode
                     (case mode
@@ -66,8 +67,8 @@
                       :queryname decoder/decode-queryname-block
                       :pointer decoder/decode-pointer-block))]
       (if (nil? chr)
-        (read-blocks-sequentially* this decoder)
-        (read-blocks-randomly* this chr start end decoder))))
+        (read-blocks-sequentially* this chunk-size decoder)
+        (read-blocks-randomly* this chr start end chunk-size decoder))))
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
@@ -82,51 +83,68 @@
 
 (defn- read-to-finish
   "Reads alignment blocks until reaches to the finish pointer or EOF."
-  ([^BAMReader rdr]
-   (let [r ^BGZFInputStream (.reader rdr)
-         dr (.data-reader rdr)
-         start (.getFilePointer r)]
-     (when-not (zero? (.available r))
-       (let [data (read-a-block! dr)
-             curr (.getFilePointer r)]
-         (cons (BAMRawBlock. data start curr)
-               (lazy-seq (read-to-finish rdr)))))))
+  ([^BAMReader rdr ^long chunk-size]
+   (let [r ^BGZFInputStream (.-reader rdr)
+         dr (.-data-reader rdr)]
+     (letfn [(step [^long start]
+               (lazy-seq
+                (let [buf (chunk-buffer chunk-size)]
+                  (loop [i chunk-size, start start]
+                    (if (> i 0)
+                      (if (zero? (.available r))
+                        (chunk-cons (chunk buf) nil)
+                        (let [data (read-a-block! dr)
+                              curr (.getFilePointer r)]
+                          (chunk-append buf (BAMRawBlock. data start curr))
+                          (recur (dec i) curr)))
+                      (chunk-cons (chunk buf) (step start)))))))]
+       (step (.getFilePointer r)))))
   ([^BAMReader rdr
     ^long start
-    ^long finish]
+    ^long finish
+    ^long chunk-size]
    (let [r ^BGZFInputStream (.reader rdr)
          dr (.data-reader rdr)]
-     (when (< start finish)
+     (letfn [(step [^long start]
+               (lazy-seq
+                (let [buf (chunk-buffer chunk-size)]
+                  (loop [i chunk-size, start start]
+                    (.seek r start)
+                    (if (> i 0)
+                      (if (and (< start finish)
+                               (> (.available r) 0))
+                        (let [data (read-a-block! dr)
+                              curr (.getFilePointer r)]
+                          (chunk-append buf (BAMRawBlock. data start curr))
+                          (recur (dec i) curr))
+                        (chunk-cons (chunk buf) nil))
+                      (chunk-cons (chunk buf) (step start)))))))]
        (.seek r start)
-       (when-not (zero? (.available r))
-         (let [data (read-a-block! dr)
-               curr (.getFilePointer r)]
-           (cons (BAMRawBlock. data start curr)
-                 (lazy-seq (read-to-finish rdr curr finish)))))))))
+       (step start)))))
 
 (defn- read-blocks-sequentially*
   "Reads blocks sequentially from current position.
   Returns an eduction of decoded blocks."
-  [^BAMReader rdr decoder]
+  [^BAMReader rdr chunk-size decoder]
   (eduction
    (keep decoder)
-   (read-to-finish rdr)))
+   (read-to-finish rdr chunk-size)))
 
 (defn- read-blocks-randomly*
   "Reads blocks crossing the given range using BAM index.
   Returns an eduction of decoded blocks."
-  [^BAMReader rdr chr start end decoder]
+  [^BAMReader rdr chr start end chunk-size decoder]
   (let [bai @(.index-delay rdr)]
     (if (= chr "*")
       (do (.seek ^BGZFInputStream (.reader rdr) (ffirst (bai/get-unplaced-spans bai)))
-          (read-blocks-sequentially* rdr decoder))
+          (read-blocks-sequentially* rdr chunk-size decoder))
       (let [refs (.refs rdr)]
         (->> (bai/get-spans bai (refs/ref-id refs chr) start end)
              (eduction
               (comp
                (mapcat
                 (fn [[begin finish]]
-                  (read-to-finish rdr begin finish)))
+                  (read-to-finish rdr begin finish chunk-size)))
                (keep #(decoder % start end)))))))))
 
 (defn load-headers

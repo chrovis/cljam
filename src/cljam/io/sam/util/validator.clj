@@ -96,7 +96,7 @@
   (case type'
     "A" (when-not (and (char? value) (<= (int \!) (int value) (int \~)))
           ["Must be a char [!-~]."])
-    "i" (when-not (and (integer? value) (<= -2147483648 value 2147483647))
+    "i" (when-not (and (integer? value) (<= -2147483648 value 4294967295))
           ["Must be 32 bit signed integer."])
     "f" (when-not (or (float? value) (integer? value))
           ["Must be a float."])

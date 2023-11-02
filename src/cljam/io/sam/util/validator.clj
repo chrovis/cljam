@@ -92,7 +92,7 @@
     (and (= file-type :bam) (not (re-matches #"\*|[=ACMGRSVTWYHKDBN]+" seq'))) (error :seq "Must not contain bad character.")
     (and (= file-type :sam) (not (re-matches #"\*|[A-Za-z=.]+" seq'))) (error :seq "Must not contain bad character.")))
 
-(defn- validate-option [{:keys [value] type' :type}]
+(defn- validate-sam-option [{:keys [value] type' :type}]
   (case type'
     "A" (when-not (and (char? value) (<= (int \!) (int value) (int \~)))
           ["Must be a char [!-~]."])
@@ -112,8 +112,43 @@
           ["Must be a string of comma-separated array of numbers."])
     [(format "Type %s is invalid" (str type'))]))
 
-(defn- validate-options [_ {:keys [options]}]
-  (map-indexed #(when-let [err (validate-option %2)]
+(defn- validate-bam-option [{:keys [value] type' :type}]
+  (case type'
+    "A" (when-not (and (char? value) (<= (int \!) (int value) (int \~)))
+          ["Must be a char [!-~]."])
+    "c" (when-not (and (integer? value) (<= 0 value 127))
+          ["Must be 8 bit signed integer."])
+    "C" (when-not (and (integer? value) (<= 0 value 255))
+          ["Must be 8 bit unsigned integer."])
+    "s" (when-not (and (integer? value) (<= -32768 value 32767))
+          ["Must be 16 bit signed integer."])
+    "S" (when-not (and (integer? value) (<= 0 value 65535))
+          ["Must be 16 bit usgned integer."])
+    "i" (when-not (and (integer? value) (<= -2147483648 value 2147483647))
+          ["Must be 32 bit signed integer."])
+    "I" (when-not (and (integer? value) (<= 0 value 4294967296))
+          ["Must be 32 bit signed integer."])
+    "f" (when-not (or (float? value) (integer? value))
+          ["Must be a float."])
+    "Z" (when-not (and (string? value) (re-matches #"[ !-~]*" value))
+          ["Must be a printable string [ !-~]*"])
+    "H" (when-not (and (sequential? value)
+                       (every? (every-pred integer?  #(<= -255 (int %) 255))
+                               value))
+          ["Must be a byte array."])
+    "B" (when-not (and (string? value)
+                       (re-matches #"[cCsSiIf](,[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)*"
+                                   value))
+          ["Must be a string of comma-separated array of numbers."])
+    [(format "Type %s is invalid" (str type'))]))
+
+(defn- validate-option [v file-type]
+  (case file-type
+    :sam (validate-sam-option v)
+    :bam (validate-bam-option v)))
+
+(defn- validate-options [{:keys [file-type]} {:keys [options]}]
+  (map-indexed #(when-let [err (validate-option %2 file-type)]
                   (apply error [:options %1] err))
                options))
 

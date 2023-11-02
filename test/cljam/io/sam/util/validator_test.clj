@@ -4,35 +4,40 @@
 
 (deftest validate-option-test
   (testing "bad type"
-    (is (= (#'validator/validate-option {:type "!" :value \!})
+    (is (= (#'validator/validate-option {:type "!" :value \!} :sam)
            ["Type ! is invalid"])))
   (testing "type A"
-    (is (nil? (#'validator/validate-option {:type "A" :value \!})))
-    (is (= (#'validator/validate-option {:type "A" :value 100})
+    (is (nil? (#'validator/validate-option {:type "A" :value \!} :sam)))
+    (is (= (#'validator/validate-option {:type "A" :value 100} :sam)
            ["Must be a char [!-~]."])))
+  (testing "type c bam"
+    (is (nil? (#'validator/validate-option {:type "c" :value 10} :bam)))
+    (is (= (#'validator/validate-option {:type "c" :value 300} :bam)
+           ["Must be 8 bit signed integer."])))
   (testing "type i"
-    (is (nil? (#'validator/validate-option {:type "i" :value 10})))
-    (is (= (#'validator/validate-option {:type "i" :value "10"})
+    (is (nil? (#'validator/validate-option {:type "i" :value 10} :sam)))
+    (is (= (#'validator/validate-option {:type "i" :value "10"} :sam)
            ["Must be 32 bit signed integer."]))
-    (is (= (#'validator/validate-option {:type "i" :value 100000000000})
+    (is (= (#'validator/validate-option {:type "i" :value 100000000000} :sam)
            ["Must be 32 bit signed integer."])))
   (testing "type f"
-    (is (nil? (#'validator/validate-option {:type "f" :value 10})))
-    (is (nil? (#'validator/validate-option {:type "f" :value 10.1})))
-    (is (= (#'validator/validate-option {:type "f" :value "A"})
+    (is (nil? (#'validator/validate-option {:type "f" :value 10} :sam)))
+    (is (nil? (#'validator/validate-option {:type "f" :value 10.1} :sam)))
+    (is (= (#'validator/validate-option {:type "f" :value "A"} :sam)
            ["Must be a float."])))
   (testing "type Z"
-    (is (nil? (#'validator/validate-option {:type "Z" :value "!@abc"})))
-    (is (= (#'validator/validate-option {:type "Z" :value 10})
+    (is (nil? (#'validator/validate-option {:type "Z" :value "!@abc"} :sam)))
+    (is (= (#'validator/validate-option {:type "Z" :value 10} :sam)
            ["Must be a printable string [ !-~]*"])))
   (testing "type H"
-    (is (nil? (#'validator/validate-option {:type "H" :value [1,2]})))
-    (is (= (#'validator/validate-option {:type "H" :value "A"})
+    (is (nil? (#'validator/validate-option {:type "H" :value [1,2]} :sam)))
+    (is (= (#'validator/validate-option {:type "H" :value "A"} :sam)
            ["Must be a byte array."])))
   (testing "type B"
     (is (nil? (#'validator/validate-option
-               {:type "B" :value "f,-0.3,0.0,0.3"})))
-    (is (= (#'validator/validate-option {:type "B" :value "W"})
+               {:type "B" :value "f,-0.3,0.0,0.3"}
+               :sam)))
+    (is (= (#'validator/validate-option {:type "B" :value "W"} :sam)
            ["Must be a string of comma-separated array of numbers."]))))
 
 (deftest validate-data-record-test

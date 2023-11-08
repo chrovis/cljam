@@ -4,13 +4,12 @@
             [clojure.string :as cstr]
             [cljam.io.bam.encoder :as encoder]
             [cljam.test-common :as test-common])
-  (:import [java.io ByteArrayOutputStream DataOutputStream]
-           [java.nio ByteBuffer ByteOrder]))
+  (:import [java.io ByteArrayOutputStream DataOutputStream]))
 
 (defn- get-encoded-option-data [?type ?values]
-  (let [bb (ByteBuffer/allocate 200)]
-    (#'encoder/encode-tag-value bb ?type ?values)
-    (take (.position bb) (.array bb))))
+  (let [baos (ByteArrayOutputStream.)]
+    (#'encoder/encode-tag-value baos ?type ?values)
+    (seq (.toByteArray baos))))
 
 (deftest encode-tag-value-test
   (testing "non-array types"
@@ -175,12 +174,11 @@
               ))]
 
     (are [?aln ?expected-byte]
-         (= (doto (ByteBuffer/wrap (byte-array (map unchecked-byte ?expected-byte)))
-              (.order ByteOrder/LITTLE_ENDIAN))
-            (with-open [baos (ByteArrayOutputStream. 4096)
+         (= ?expected-byte
+            (with-open [baos (ByteArrayOutputStream.)
                         dos (DataOutputStream. baos)]
               (encoder/encode-alignment dos ?aln '({:name "ref", :len 0}))
-              (ByteBuffer/wrap (byte-array (.toByteArray baos)))))
+              (seq (.toByteArray baos))))
 
       (test-common/to-sam-alignment
        {:qname "r003", :flag 16, :rname "ref", :pos 29, :end 33, :mapq 30,

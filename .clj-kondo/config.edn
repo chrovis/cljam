@@ -25,4 +25,7 @@
            libra.bench/defbench clojure.test/deftest,
            libra.bench/is clojure.test/is,
            libra.bench/are clojure.test/are,
-           com.climate.claypoole/with-shutdown! clojure.core/with-open}}
+           com.climate.claypoole/with-shutdown! clojure.core/with-open}
+ :ns-groups [{:pattern ".*-test|cljam\\.test-common"
+              :name test-namespaces}]
+ :config-in-ns {test-namespaces {:linters {:missing-docstring {:level :off}}}}}

@@ -4,7 +4,7 @@
             [cljam.io.protocols :as protocols]
             [cljam.io.sam.util.refs :as refs]
             [cljam.io.sam.util.header :as header]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.bam.common :as common]
             [cljam.io.bam.encoder :as encoder]
             [cljam.io.bam.decoder :as bam-decoder]

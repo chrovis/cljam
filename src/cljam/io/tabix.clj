@@ -2,7 +2,7 @@
   "Alpha - subject to change.
   Reader of a TABIX format file."
   (:require [cljam.io.util.bgzf :as bgzf]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.data-io :as lsb]
             [cljam.io.util.bin :as util-bin]
             [clojure.string :as cstr])
   (:import java.util.Arrays

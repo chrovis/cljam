@@ -1,6 +1,6 @@
 (ns cljam.io.bam-index.reader
   (:require [clojure.java.io :as cio]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.bam-index.common :refer [bai-magic]]
             [cljam.io.util.chunk :as chunk]
             [cljam.util :as util])

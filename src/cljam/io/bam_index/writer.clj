@@ -2,7 +2,7 @@
   (:require [com.climate.claypoole :as cp]
             [cljam.common :refer [get-exec-n-threads]]
             [cljam.io.util.bgzf :as bgzf]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.util.bin :as util-bin]
             [cljam.io.bam-index.common :refer [linear-index-shift
                                                linear-index-depth

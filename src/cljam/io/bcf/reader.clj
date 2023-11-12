@@ -4,7 +4,7 @@
             [cljam.io.protocols :as protocols]
             [cljam.io.util.bgzf :as bgzf]
             [cljam.io.util.byte-buffer :as bb]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.vcf.reader :as vcf-reader]
             [cljam.io.vcf.util :as vcf-util]
             [cljam.util :as util]

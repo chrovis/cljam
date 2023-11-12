@@ -1,13 +1,14 @@
 (ns cljam.io.csi
   "Basic I/O of CSI:Coordinate Sorted Index files."
-  (:require [clojure.string :as cstr]
-            [cljam.io.util.bgzf :as bgzf]
-            [cljam.io.util.lsb :as lsb]
+  (:require [cljam.io.util.bgzf :as bgzf]
+            [cljam.io.util.bin :as util-bin]
             [cljam.io.util.chunk :as chunk]
-            [cljam.io.util.bin :as util-bin])
-  (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException]
-           [java.nio ByteBuffer ByteOrder]))
+            [cljam.io.util.lsb.data-io :as lsb.data]
+            [cljam.io.util.lsb.io-stream :as lsb.stream]
+            [clojure.string :as cstr])
+  (:import [java.io DataInputStream DataOutputStream IOException]
+           [java.nio ByteBuffer ByteOrder]
+           java.util.Arrays))
 
 (def ^:const ^:private csi-magic "CSI\1")
 
@@ -69,17 +70,17 @@
 
 (defn- read-chunks!
   [rdr]
-  (let [n-chunk (lsb/read-int rdr)]
-    (->> #(let [beg (lsb/read-long rdr) end (lsb/read-long rdr)]
+  (let [n-chunk (lsb.data/read-int rdr)]
+    (->> #(let [beg (lsb.data/read-long rdr) end (lsb.data/read-long rdr)]
             (chunk/->Chunk beg end))
          (repeatedly n-chunk)
          vec)))
 
 (defn- read-bin-index
   [rdr]
-  (let [n-ref (lsb/read-int rdr)]
-    (->> #(let [bin (lsb/read-int rdr)
-                loffset (lsb/read-long rdr)
+  (let [n-ref (lsb.data/read-int rdr)]
+    (->> #(let [bin (lsb.data/read-int rdr)
+                loffset (lsb.data/read-long rdr)
                 chunks (read-chunks! rdr)]
             {:bin (long bin), :loffset loffset, :chunks chunks})
          (repeatedly n-ref)
@@ -87,14 +88,14 @@
 
 (defn- read-index*
   ^CSI [^DataInputStream rdr]
-  (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes csi-magic))
+  (when-not (Arrays/equals ^bytes (lsb.data/read-bytes rdr 4) (.getBytes csi-magic))
     (throw (IOException. "Invalid CSI file")))
-  (let [min-shift (lsb/read-int rdr)
-        depth (lsb/read-int rdr)
-        l-aux (lsb/read-int rdr)
-        aux (lsb/read-bytes rdr l-aux)
+  (let [min-shift (lsb.data/read-int rdr)
+        depth (lsb.data/read-int rdr)
+        l-aux (lsb.data/read-int rdr)
+        aux (lsb.data/read-bytes rdr l-aux)
         tabix-aux (try (parse-tabix-aux aux) (catch Throwable _ nil))
-        n-ref (lsb/read-int rdr)
+        n-ref (lsb.data/read-int rdr)
         bins (vec (repeatedly n-ref #(read-bin-index rdr)))
         max-bin (util-bin/max-bin depth)
         bidx (mapv #(into {} (map (juxt :bin :chunks)) %) bins)
@@ -211,24 +212,24 @@
   [f ^CSI csi]
   (let [max-bin (util-bin/max-bin (.depth csi))]
     (with-open [w (DataOutputStream. (bgzf/bgzf-output-stream f))]
-      (lsb/write-bytes w (.getBytes ^String csi-magic))
-      (lsb/write-int w (.min-shift csi))
-      (lsb/write-int w (.depth csi))
+      (lsb.stream/write-bytes w (.getBytes ^String csi-magic))
+      (lsb.stream/write-int w (.min-shift csi))
+      (lsb.stream/write-int w (.depth csi))
       (let [tabix-aux (some-> (.aux csi) create-tabix-aux)]
-        (lsb/write-int w (count tabix-aux))
+        (lsb.stream/write-int w (count tabix-aux))
         (when tabix-aux
-          (lsb/write-bytes w tabix-aux)))
-      (lsb/write-int w (count (.bidx csi)))
+          (lsb.stream/write-bytes w tabix-aux)))
+      (lsb.stream/write-int w (count (.bidx csi)))
       (doseq [[offsets loffset] (map vector (.bidx csi) (.loffset csi))]
-        (lsb/write-int w (count offsets))
+        (lsb.stream/write-int w (count offsets))
         (doseq [[bin chunks] offsets]
-          (lsb/write-int w bin)
-          (lsb/write-long
+          (lsb.stream/write-int w bin)
+          (lsb.stream/write-long
            w
            (if (<= (long bin) max-bin)
              (get loffset (util-bin/bin-beg bin (.min-shift csi) (.depth csi)))
              0))
-          (lsb/write-int w (count chunks))
+          (lsb.stream/write-int w (count chunks))
           (doseq [chunk' chunks]
-            (lsb/write-long w (:beg chunk'))
-            (lsb/write-long w (:end chunk'))))))))
+            (lsb.stream/write-long w (:beg chunk'))
+            (lsb.stream/write-long w (:end chunk'))))))))

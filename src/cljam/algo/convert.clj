@@ -1,19 +1,19 @@
 (ns cljam.algo.convert
   "Converters between equivalent formats: SAM/BAM and FASTA/TwoBit."
-  (:require [clojure.tools.logging :as logging]
-            [clojure.string :as cstr]
-            [cljam.common :refer [*n-threads* get-exec-n-threads]]
-            [cljam.io.sam :as sam]
+  (:require [cljam.common :refer [*n-threads* get-exec-n-threads]]
             [cljam.io.bam.encoder :as encoder]
+            [cljam.io.fastq :as fq]
+            [cljam.io.sam :as sam]
             [cljam.io.sam.util.flag :as flag]
             [cljam.io.sam.util.refs :as refs]
-            [cljam.util.sequence :as util-seq]
             [cljam.io.sequence :as cseq]
-            [cljam.io.fastq :as fq]
             [cljam.io.util :as io-util]
+            [cljam.util.sequence :as util-seq]
+            [clojure.string :as cstr]
+            [clojure.tools.logging :as logging]
             [com.climate.claypoole :as cp])
-  (:import [java.nio ByteBuffer]
-           [cljam.io.fastq FASTQRead]))
+  (:import [cljam.io.fastq FASTQRead]
+           [java.io ByteArrayOutputStream]))
 
 ;;; SAM <-> BAM
 
@@ -30,9 +30,9 @@
         n-threads (get-exec-n-threads)]
     (doseq [blocks (cp/pmap (if (= n-threads 1) :serial (dec n-threads))
                             (fn [chunk']
-                              (mapv #(let [bb (ByteBuffer/allocate (encoder/get-block-size %))]
-                                       (encoder/encode-alignment bb % refs)
-                                       {:data (.array bb)})
+                              (mapv #(let [baos (ByteArrayOutputStream. (encoder/get-block-size %))]
+                                       (encoder/encode-alignment baos % refs)
+                                       {:data (.toByteArray baos)})
                                     chunk'))
                             (partition-all num-block (sam/read-alignments rdr {})))]
       (sam/write-blocks wtr blocks))))

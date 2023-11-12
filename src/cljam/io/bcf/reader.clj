@@ -3,6 +3,7 @@
             [clojure.tools.logging :as logging]
             [cljam.io.protocols :as protocols]
             [cljam.io.util.bgzf :as bgzf]
+            [cljam.io.util.byte-buffer :as bb]
             [cljam.io.util.lsb :as lsb]
             [cljam.io.vcf.reader :as vcf-reader]
             [cljam.io.vcf.util :as vcf-util]
@@ -110,18 +111,18 @@
 (defn- read-typed-atomic-value
   "Reads an atomic value, which is typed as either
   integer(8,16,32 bit) or float or character."
-  [r ^long type-id]
+  [^ByteBuffer bb ^long type-id]
   (case type-id
-    1 (let [i (byte (lsb/read-byte r))]
+    1 (let [i (.get bb)]
         (case (bit-and 0xFF i) 0x80 nil 0x81 :eov i))
-    2 (let [i (short (lsb/read-short r))]
+    2 (let [i (.getShort bb)]
         (case (bit-and 0xFFFF i) 0x8000 nil 0x8001 :eov i))
-    3 (let [i (int (lsb/read-int r))]
+    3 (let [i (.getInt bb)]
         (case (bit-and 0xFFFFFFFF i) 0x80000000 nil 0x80000001 :eov i))
-    5 (let [i (int (lsb/read-int r))]
+    5 (let [i (.getInt bb)]
         (case (bit-and 0xFFFFFFFF i) 0x7F800001 nil 0x7F800002
               :eov (Float/intBitsToFloat i)))
-    7 (lsb/read-byte r)))
+    7 (.get bb)))
 
 (defn- bytes->strs
   [ba]
@@ -132,20 +133,20 @@
        (cstr/split (String. (byte-array ba)) #",")))
 
 (defn- read-typed-value
-  "Reads typed value from BCF file. n-sample is a number of values repeated
+  "Reads typed value from byte buffer. n-sample is a number of values repeated
   after type specifier byte."
-  ([rdr]
-   (first (read-typed-value rdr 1)))
-  ([rdr ^long n-sample]
-   (let [type-byte (int (lsb/read-byte rdr))
+  ([bb]
+   (first (read-typed-value bb 1)))
+  ([^ByteBuffer bb ^long n-sample]
+   (let [type-byte (int (.get bb))
          len (unsigned-bit-shift-right (bit-and 0xF0 type-byte) 4)
-         total-len (if (= len 15) (long (first (read-typed-value rdr))) len)
+         total-len (if (= len 15) (long (first (read-typed-value bb))) len)
          type-id (bit-and 0x0F type-byte)]
      (case type-id
        0 (repeat n-sample nil)
        7 (doall (repeatedly n-sample
-                            #(bytes->strs (lsb/read-bytes rdr total-len))))
-       (->> #(read-typed-atomic-value rdr type-id)
+                            #(bytes->strs (bb/read-bytes bb total-len))))
+       (->> #(read-typed-atomic-value bb type-id)
             (repeatedly (* n-sample total-len))
             (partition total-len)
             (map (fn [xs] (take-while #(not= % :eov) xs)))
@@ -153,19 +154,19 @@
 
 (defn- read-typed-kv
   "Reads a key-value pair."
-  ([rdr]
-   (let [[k [v]] (read-typed-kv rdr 1)]
+  ([bb]
+   (let [[k [v]] (read-typed-kv bb 1)]
      [k v]))
-  ([rdr n-sample]
-   [(first (read-typed-value rdr)) (read-typed-value rdr n-sample)]))
+  ([bb n-sample]
+   [(first (read-typed-value bb)) (read-typed-value bb n-sample)]))
 
 (defn- read-data-line-buffer
   "Reads a single record of variant and store to the ByteBuffer objects."
   [rdr]
   (let [l-shared (lsb/read-uint rdr)
         l-indv (lsb/read-uint rdr)
-        shared-bb (ByteBuffer/allocate l-shared)
-        indv-bb (ByteBuffer/allocate l-indv)]
+        shared-bb (bb/allocate-lsb-byte-buffer l-shared)
+        indv-bb (bb/allocate-lsb-byte-buffer l-indv)]
     (lsb/read-bytes rdr (.array shared-bb) 0 l-shared)
     (lsb/read-bytes rdr (.array indv-bb) 0 l-indv)
     {:l-shared l-shared
@@ -176,23 +177,23 @@
 (defn- parse-data-line-shallow
   "Parses only chromosome, position and ref-length. Can be used for position-based querying."
   [contigs {:keys [^ByteBuffer shared] :as m}]
-  (let [chrom-id (lsb/read-int shared)
-        pos (inc (int (lsb/read-int shared)))
-        rlen (lsb/read-int shared)]
+  (let [chrom-id (.getInt shared)
+        pos (inc (.getInt shared))
+        rlen (.getInt shared)]
     (.position ^Buffer shared 0)
     (assoc m :chr (:id (contigs chrom-id)) :pos pos :rlen rlen)))
 
 (defn- parse-data-line-deep
   "Parses full data of a variant. Returns a map containing indices for meta-info."
   [{:keys [^ByteBuffer shared ^ByteBuffer individual]}]
-  (let [chrom-id (lsb/read-int shared)
-        pos (inc (int (lsb/read-int shared)))
-        rlen (lsb/read-int shared)
-        qual (lsb/read-int shared)
-        n-allele-info (int (lsb/read-int shared))
+  (let [chrom-id (.getInt shared)
+        pos (inc (.getInt shared))
+        rlen (.getInt shared)
+        qual (.getInt shared)
+        n-allele-info (.getInt shared)
         n-allele (unsigned-bit-shift-right n-allele-info 16)
         n-info (bit-and n-allele-info 0xFFFF)
-        n-fmt-sample (long (lsb/read-uint shared))
+        n-fmt-sample (long (bb/read-uint shared))
         n-fmt (bit-and 0xFF (unsigned-bit-shift-right n-fmt-sample 24))
         n-sample (bit-and n-fmt-sample 0xFFFFFF)
         id (let [i (read-typed-value shared)] (if (sequential? i) (first i) i))
@@ -293,7 +294,7 @@
      :vcf     VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.
      :bcf     BCF-style map. CHROM, FILTER, INFO and :genotype contains indices to meta-info.
      :shallow Only CHROM, POS and ref-length are parsed.
-     :raw     Raw map of ByteBufers."
+     :raw     Raw map of ByteBuffers."
   ([rdr]
    (read-variants rdr {}))
   ([^BCFReader rdr {:keys [depth] :or {depth :deep}}]

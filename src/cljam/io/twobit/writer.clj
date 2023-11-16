@@ -57,43 +57,43 @@
 
 (defn- mask-regions
   "Returns a sequence of [start length] of masked regions."
-  [^String s]
-  (let [len (.length s)]
+  [^bytes bs]
+  (let [len (count bs)]
     (loop [r (transient [])
-           p nil
-           l nil
+           p -1
+           l -1
            i 0]
       (if (= i len)
-        (if p
+        (if (pos? l)
           (persistent! (conj! r [p l]))
           (persistent! r))
-        (if (<= (int \a) (int (.charAt s (int i))))
-          (if p
-            (recur r p (inc (long l)) (inc i))
+        (if (<= (int \a) (int (aget bs i)))
+          (if (pos? l)
+            (recur r p (inc l) (inc i))
             (recur r i 1 (inc i)))
-          (if p
-            (recur (conj! r [p l]) nil nil (inc i))
-            (recur r nil nil (inc i))))))))
+          (if (pos? l)
+            (recur (conj! r [p l]) -1 -1 (inc i))
+            (recur r -1 -1 (inc i))))))))
 
 (defn- amb-regions
   "Returns a sequence of [start length] of N regions."
-  [^String s]
-  (let [len (.length s)]
+  [^bytes bs]
+  (let [len (count bs)]
     (loop [r (transient [])
-           p nil
-           l nil
+           p -1
+           l -1
            i 0]
       (if (= i len)
-        (if p
+        (if (pos? l)
           (persistent! (conj! r [p l]))
           (persistent! r))
-        (if (= \N (.charAt s (int i)))
-          (if p
-            (recur r p (inc (long l)) (inc i))
+        (if (= (int \N) (aget bs i))
+          (if (pos? l)
+            (recur r p (inc l) (inc i))
             (recur r i 1 (inc i)))
-          (if p
-            (recur (conj! r [p l]) nil nil (inc i))
-            (recur r nil nil (inc i))))))))
+          (if (pos? l)
+            (recur (conj! r [p l]) -1 -1 (inc i))
+            (recur r -1 -1 (inc i))))))))
 
 (defn- write-index!
   [^TwoBitWriter w idx]
@@ -125,18 +125,16 @@
     (aset (int \G) (byte 3))
     (aset (int \g) (byte 3))))
 
-(defn write-twobit!
-  "Encodes a sequence into twobit format."
-  [^TwoBitWriter w ^String s]
-  (let [len (.length s)
-        in (ByteBuffer/wrap (.getBytes s))
+(defn- write-twobit-bytes! [^TwoBitWriter w ^bytes bs]
+  (let [len (count bs)
+        in (ByteBuffer/wrap bs)
         out ^ByteBuffer (.-buffer w)
         table ^bytes char->twobit
         encode-four-bases #(->> (bit-or
-                                 (bit-shift-left (aget table (.get in)) 6)
-                                 (bit-shift-left (aget table (.get in)) 4)
-                                 (bit-shift-left (aget table (.get in)) 2)
-                                 (aget table (.get in)))
+                                 (bit-shift-left (long (aget table (.get in))) 6)
+                                 (bit-shift-left (long (aget table (.get in))) 4)
+                                 (bit-shift-left (long (aget table (.get in))) 2)
+                                 (long (aget table (.get in))))
                                 unchecked-byte
                                 (.put out))]
     ;; write out per chunk of size smaller than buffer capacity
@@ -153,65 +151,63 @@
           (loop [b 0 i (rem remaining 4) j 1]
             (if (pos? i)
               (recur
-               (bit-or b (bit-shift-left (aget table (.get in)) (* 2 (- 4 j))))
+               (bit-or b (bit-shift-left (long (aget table (.get in))) (* 2 (- 4 j))))
                (dec i)
                (inc j))
               (.put out (unchecked-byte b)))))))))
 
+(defn write-twobit!
+  "Encodes a sequence into twobit format."
+  [w ^String s]
+  (write-twobit-bytes! w (.getBytes s)))
+
 (defn- write-sequence!
   "Writes a single sequence entry to writer."
-  [^TwoBitWriter w sequence' idx]
-  (let [name' (or (:name sequence') (:rname sequence'))
-        seq-data (or (:seq sequence') (:sequence sequence'))
-        {:keys [len ambs masks]} (first (filter #(= (:name %) name') idx))
-        ^ByteBuffer bb (.-buffer w)
+  [^TwoBitWriter w {:keys [len ambs masks]} bs]
+  (let [^ByteBuffer bb (.-buffer w)
         write-int (fn [n]
                     (ensure-buffer-room! w 4)
                     (.putInt bb n))]
     (write-int len)
     (write-int (count ambs))
-    (doseq [[s _] ambs]
-      (write-int s))
-    (doseq [[_ l] ambs]
-      (write-int l))
+    (run! #(write-int (nth % 0)) ambs)
+    (run! #(write-int (nth % 1)) ambs)
     (write-int (count masks))
-    (doseq [[s _] masks]
-      (write-int s))
-    (doseq [[_ l] masks]
-      (write-int l))
+    (run! #(write-int (nth % 0)) masks)
+    (run! #(write-int (nth % 1)) masks)
     (write-int 0)
-    (write-twobit! w seq-data)))
+    (write-twobit-bytes! w bs)))
 
 (defn- write-sequences-without-index
   [wtr xs]
-  (let [idx (map (fn [{:keys [rname]
-                       seq' :seq
-                       sequence' :sequence
-                       name' :name}]
-                   (let [seq-data (or seq' sequence')]
-                     {:name (or name' rname)
-                      :len (count seq-data)
-                      :masks (mask-regions seq-data)
-                      :ambs (amb-regions seq-data)}))
+  (let [idx (map (fn [x]
+                   (let [^String cs (or (:seq x) (:sequence x))
+                         bs (some-> cs (.getBytes))]
+                     {:name (or (:name x) (:rname x))
+                      :seq bs
+                      :len (count bs)
+                      :masks (mask-regions bs)
+                      :ambs (amb-regions bs)}))
                  xs)]
     (write-file-header! wtr (count xs))
     (write-index! wtr idx)
-    (doseq [sequence' xs]
-      (write-sequence! wtr sequence' idx))))
+    (doseq [entry idx]
+      (write-sequence! wtr entry (:seq entry)))))
 
 (defn- write-sequences-with-index
   [^TwoBitWriter wtr idx xs]
-  (let [idx-atom (atom idx)]
+  (let [idx-atom (volatile! idx)]
     (write-file-header! wtr (count @idx-atom))
     (write-index! wtr @idx-atom)
-    (doseq [sequence' xs]
-      (let [name' (or (:name sequence') (:rname sequence'))
-            seq-data (or (:seq sequence') (:sequence sequence'))
-            masks (mask-regions seq-data)
-            ambs (amb-regions seq-data)
+    (doseq [x xs]
+      (let [name' (or (:name x) (:rname x))
+            ^String cs (or (:seq x) (:sequence x))
+            bs (some-> cs (.getBytes))
+            masks (mask-regions bs)
+            ambs (amb-regions bs)
             i (first (keep-indexed #(when (= (:name %2) name') %1) @idx-atom))]
-        (swap! idx-atom update i assoc :masks masks :ambs ambs))
-      (write-sequence! wtr sequence' @idx-atom))
+        (vswap! idx-atom update i assoc :masks masks :ambs ambs)
+        (write-sequence! wtr (nth @idx-atom i) bs)))
     ;; finalize
     (flush-buffer! wtr)
     (.position ^FileChannel (.-channel wtr) 16)

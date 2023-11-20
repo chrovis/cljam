@@ -55,45 +55,39 @@
     (.putInt nseq)
     (.putInt 0)))
 
-(defn- mask-regions
-  "Returns a sequence of [start length] of masked regions."
-  [^bytes bs]
-  (let [len (count bs)]
-    (loop [r (transient [])
-           p -1
-           l -1
-           i 0]
-      (if (= i len)
-        (if (pos? l)
-          (persistent! (conj! r [p l]))
-          (persistent! r))
-        (if (<= (int \a) (int (aget bs i)))
-          (if (pos? l)
-            (recur r p (inc l) (inc i))
-            (recur r i 1 (inc i)))
-          (if (pos? l)
-            (recur (conj! r [p l]) -1 -1 (inc i))
-            (recur r -1 -1 (inc i))))))))
+(defmacro ^:private long-pair [x y]
+  `(doto (long-array 2)
+     (aset 0 ~x)
+     (aset 1 ~y)))
 
-(defn- amb-regions
-  "Returns a sequence of [start length] of N regions."
-  [^bytes bs]
-  (let [len (count bs)]
-    (loop [r (transient [])
-           p -1
-           l -1
-           i 0]
-      (if (= i len)
-        (if (pos? l)
-          (persistent! (conj! r [p l]))
-          (persistent! r))
-        (if (= (int \N) (aget bs i))
-          (if (pos? l)
-            (recur r p (inc l) (inc i))
-            (recur r i 1 (inc i)))
-          (if (pos? l)
-            (recur (conj! r [p l]) -1 -1 (inc i))
-            (recur r -1 -1 (inc i))))))))
+(defn- masked-regions [^bytes bs]
+  (let [len (alength bs)]
+    (loop [i 0
+           masks (transient [])
+           mask-start -1
+           ambs (transient [])
+           amb-start -1]
+      (let [mask? (>= mask-start 0)
+            amb? (>= amb-start 0)]
+        (if (= i len)
+          [(persistent!
+            (cond-> masks mask? (conj! (long-pair mask-start (- i mask-start)))))
+           (persistent!
+            (cond-> ambs amb? (conj! (long-pair amb-start (- i amb-start)))))]
+          (let [b (int (aget bs i))]
+            (if (< b (int \a))
+              (let [masks' (cond-> masks mask? (conj! (long-pair mask-start (- i mask-start))))]
+                (if (= b (int \N))
+                  (let [amb-start' (if amb? amb-start i)]
+                    (recur (inc i) masks' -1 ambs amb-start'))
+                  (let [ambs' (cond-> ambs amb? (conj! (long-pair amb-start (- i amb-start))))]
+                    (recur (inc i) masks' -1 ambs' -1))))
+              (let [mask-start' (if mask? mask-start i)]
+                (if (= b (int \n))
+                  (let [amb-start' (if amb? amb-start i)]
+                    (recur (inc i) masks mask-start' ambs amb-start'))
+                  (let [ambs' (cond-> ambs amb? (conj! (long-pair amb-start (- i amb-start))))]
+                    (recur (inc i) masks mask-start' ambs' -1)))))))))))
 
 (defn- write-index!
   [^TwoBitWriter w idx]
@@ -170,11 +164,11 @@
                     (.putInt bb n))]
     (write-int len)
     (write-int (count ambs))
-    (run! #(write-int (nth % 0)) ambs)
-    (run! #(write-int (nth % 1)) ambs)
+    (run! #(write-int (aget ^longs % 0)) ambs)
+    (run! #(write-int (aget ^longs % 1)) ambs)
     (write-int (count masks))
-    (run! #(write-int (nth % 0)) masks)
-    (run! #(write-int (nth % 1)) masks)
+    (run! #(write-int (aget ^longs % 0)) masks)
+    (run! #(write-int (aget ^longs % 1)) masks)
     (write-int 0)
     (write-twobit-bytes! w bs)))
 
@@ -182,12 +176,13 @@
   [wtr xs]
   (let [idx (map (fn [x]
                    (let [^String cs (or (:seq x) (:sequence x))
-                         bs (some-> cs (.getBytes))]
+                         bs (some-> cs (.getBytes))
+                         [masks ambs] (masked-regions bs)]
                      {:name (or (:name x) (:rname x))
                       :seq bs
                       :len (count bs)
-                      :masks (mask-regions bs)
-                      :ambs (amb-regions bs)}))
+                      :masks masks
+                      :ambs ambs}))
                  xs)]
     (write-file-header! wtr (count xs))
     (write-index! wtr idx)
@@ -203,8 +198,7 @@
       (let [name' (or (:name x) (:rname x))
             ^String cs (or (:seq x) (:sequence x))
             bs (some-> cs (.getBytes))
-            masks (mask-regions bs)
-            ambs (amb-regions bs)
+            [masks ambs] (masked-regions bs)
             i (first (keep-indexed #(when (= (:name %2) name') %1) @idx-atom))]
         (vswap! idx-atom update i assoc :masks masks :ambs ambs)
         (write-sequence! wtr (nth @idx-atom i) bs)))

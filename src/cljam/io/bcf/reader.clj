@@ -144,13 +144,13 @@
          type-id (bit-and 0x0F type-byte)]
      (case type-id
        0 (repeat n-sample nil)
-       7 (doall (repeatedly n-sample
-                            #(bytes->strs (bb/read-bytes bb total-len))))
-       (->> #(read-typed-atomic-value bb type-id)
-            (repeatedly (* n-sample total-len))
-            (partition total-len)
-            (map (fn [xs] (take-while #(not= % :eov) xs)))
-            doall)))))
+       7  (mapv (fn [_] (bytes->strs (bb/read-bytes bb total-len)))
+                (range n-sample))
+       (into []
+             (comp (map (fn [_] (read-typed-atomic-value bb type-id)))
+                   (partition-all total-len)
+                   (map (fn [xs] (take-while #(not= % :eov) xs))))
+             (range (* n-sample total-len)))))))
 
 (defn- read-typed-kv
   "Reads a key-value pair."

@@ -40,9 +40,10 @@
   (are [f decode-opts?]
        (c/quick-bench
         (with-open [r (sam/reader f)]
-          (doseq [a (sam/read-alignments r)
-                  opts (when decode-opts? (:options a))]
-            opts)))
+          (run! (fn [aln]
+                  (when decode-opts?
+                    (dorun (:options aln))))
+                (sam/read-alignments r))))
     tcommon/test-bam-file false
     tcommon/test-bam-file true
     tcommon/medium-bam-file false
@@ -53,7 +54,8 @@
   (are [f]
        (c/quick-bench
         (with-open [r (sam/reader f)]
-          (doseq [a (vec (take 10000000 (sam/read-alignments r)))
-                  opts (:options a)]
-            opts)))
+          (transduce (take 10000000)
+                     (completing #(dorun (:options %2)))
+                     nil
+                     (sam/read-alignments r))))
     tcommon/large-bam-file))

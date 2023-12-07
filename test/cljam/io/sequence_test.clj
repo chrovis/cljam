@@ -194,8 +194,8 @@
         {} {} nil
         {:chr "badref"} {} nil
         {:chr "ref"} {} "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"
-        {:chr "ref2"} {} "AGNNNTTATAAAACAATTANNNCTACAGAGCAACTANNNN"
-        {:chr "ref2"} {:mask? true} "agNNNttataaaacaattaNNNctacagagcaactaNNNN"
+        {:chr "ref2"} {} "AGNNNTTATAAAACAATTANNNCTACANNGCAACTANNNN"
+        {:chr "ref2"} {:mask? true} "agNNNttataaaacaattaNNNctacanngcaactaNNNN"
         {:chr "ref" :start 10} {} "GATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"
         {:chr "ref" :end 10} {} "NNNNNGTTAG"
         {:chr "ref" :start -3 :end 0} {} nil
@@ -206,8 +206,8 @@
         {:chr "ref" :start 0 :end 4} {} "NNNN"
         {:chr "ref" :start 41 :end 50} {} "NCCAT"
         {:chr "ref" :start 1 :end 45} {} "NNNNNGTTAGATAAGATAGCNNTGCTAGTAGGCAGTCNNNNCCAT"
-        {:chr "ref2" :start 1 :end 40} {} "AGNNNTTATAAAACAATTANNNCTACAGAGCAACTANNNN"
-        {:chr "ref2" :start 1 :end 40} {:mask? true} "agNNNttataaaacaattaNNNctacagagcaactaNNNN"
+        {:chr "ref2" :start 1 :end 40} {} "AGNNNTTATAAAACAATTANNNCTACANNGCAACTANNNN"
+        {:chr "ref2" :start 1 :end 40} {:mask? true} "agNNNttataaaacaattaNNNctacanngcaactaNNNN"
         {:chr "chr1" :start 1 :end 40} {} nil)
       (is (= (for [i (range 1 45) j (range i 46)]
                (cseq/read-sequence r {:chr "ref" :start i :end j}))

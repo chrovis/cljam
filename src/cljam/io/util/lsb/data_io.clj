@@ -1,5 +1,8 @@
 (ns cljam.io.util.lsb.data-io
-  "Functions for reading little-endian data using DataInput."
+  "Functions for reading little-endian data using DataInput.
+
+  NOTE: This namespace is intended to be used only from within cljam, and should
+  not be used outside cljam."
   (:refer-clojure :exclude [read-string])
   (:require [cljam.io.util.byte-buffer :as bb])
   (:import [java.io ByteArrayOutputStream DataInput]))

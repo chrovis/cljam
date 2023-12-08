@@ -1,5 +1,8 @@
 (ns cljam.io.util.lsb.io-stream
-  "Functions for reading/writing little-endian data using InputStream/OutputStream."
+  "Functions for reading/writing little-endian data using InputStream/OutputStream.
+
+  NOTE: This namespace is intended to be used only from within cljam, and should
+  not be used outside cljam."
   (:refer-clojure :exclude [read-string])
   (:require [cljam.io.util.byte-buffer :as bb]
             [cljam.util :refer [string->bytes]])

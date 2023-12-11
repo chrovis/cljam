@@ -7,7 +7,7 @@
             [cljam.io.sam.util.quality :as qual]
             [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.sam.util.sequence :as seq]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.bam.common :as common]))
 
 (def ^:private ^:const fixed-tag-size 3)

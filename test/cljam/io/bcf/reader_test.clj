@@ -1,17 +1,15 @@
 (ns cljam.io.bcf.reader-test
-  (:require [clojure.test :refer [deftest are]]
-            [cljam.io.bcf.reader :as bcf-reader])
-  (:import [java.nio ByteBuffer ByteOrder]))
+  (:require [cljam.io.bcf.reader :as bcf-reader]
+            [clojure.test :refer [are deftest]])
+  (:import [java.io ByteArrayInputStream]))
 
 (deftest parse-data-line-deep
   (are [?bytes ?var]
        (= ?var
           (@#'bcf-reader/parse-data-line-deep
            (@#'bcf-reader/read-data-line-buffer
-            (doto (ByteBuffer/wrap
-                   (byte-array
-                    (map unchecked-byte ?bytes)))
-              (.order ByteOrder/LITTLE_ENDIAN)))))
+            (ByteArrayInputStream.
+             (byte-array (map unchecked-byte ?bytes))))))
     [0x1c 0x00 0x00 0x00
      0x00 0x00 0x00 0x00
      0x00 0x00 0x00 0x00

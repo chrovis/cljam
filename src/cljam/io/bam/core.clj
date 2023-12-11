@@ -6,7 +6,7 @@
              [writer :as writer]]
             [cljam.io.bam-index :as bai]
             [cljam.io.util.bgzf :as bgzf]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.data-io :as lsb]
             [cljam.util :as util])
   (:import java.util.Arrays
            [java.io DataInputStream DataOutputStream IOException FileNotFoundException]

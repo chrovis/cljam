@@ -1,18 +1,18 @@
 (ns cljam.io.bam-test
   "Tests for Processing BAM files."
-  (:require [clojure.test :refer [deftest are testing]]
+  (:require [cljam.io.bam.decoder :as decoder]
             [cljam.io.bam.encoder :as encoder]
-            [cljam.io.bam.decoder :as decoder])
-  (:import [java.nio ByteBuffer]))
+            [cljam.io.util.byte-buffer :as bb]
+            [clojure.test :refer [are deftest testing]])
+  (:import [java.io ByteArrayOutputStream]))
 
 (deftest aux-data-codec-test
   (testing "non-array types"
     (are [?type ?value]
          (= ?value
-            (as-> (#'encoder/encode-tag-value
-                   (ByteBuffer/allocate 100) ?type ?value) ^ByteBuffer bb
-              (.position bb 0)
-              (decoder/parse-tag-single ?type bb)))
+            (let [baos (ByteArrayOutputStream.)]
+              (#'encoder/encode-tag-value baos ?type ?value)
+              (decoder/parse-tag-single ?type (bb/make-lsb-byte-buffer (.toByteArray baos)))))
       \A \@
       \A \A
       \A \z
@@ -52,10 +52,9 @@
   (testing "NULL-terminated text"
     (are [?type ?value]
          (= ?value
-            (as-> (#'encoder/encode-tag-value
-                   (ByteBuffer/allocate 100) ?type ?value) ^ByteBuffer bb
-              (.position bb 0)
-              (decoder/parse-tag-single ?type bb)))
+            (let [baos (ByteArrayOutputStream.)]
+              (#'encoder/encode-tag-value baos ?type ?value)
+              (decoder/parse-tag-single ?type (bb/make-lsb-byte-buffer (.toByteArray baos)))))
       \Z "aaaBBB0011223344@@@+++"
       \Z (str "!\"#$%&'()*+,-./0123456789:;<=>?@"
               "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")))
@@ -63,11 +62,9 @@
   (testing "array types"
     (are [?value]
          (= ?value
-            (as->
-             (#'encoder/encode-tag-value
-              (ByteBuffer/allocate 100) \B ?value) ^ByteBuffer bb
-              (.position bb 0)
-              (#'decoder/parse-tag-array bb)))
+            (let [baos (ByteArrayOutputStream.)]
+              (#'encoder/encode-tag-value baos \B ?value)
+              (#'decoder/parse-tag-array (bb/make-lsb-byte-buffer (.toByteArray baos)))))
       "c,0"
       "C,0"
       "s,0"

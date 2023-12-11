@@ -2,7 +2,7 @@
   (:require [clojure.string :as cstr]
             [cljam.io.protocols :as protocols]
             [cljam.io.util.bgzf :as bgzf]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.vcf.writer :as vw]
             [cljam.io.vcf.util :as vcf-util]
             [cljam.util :as util])

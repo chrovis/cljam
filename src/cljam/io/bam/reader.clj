@@ -5,7 +5,7 @@
             [cljam.io.sam.util.header :as header]
             [cljam.io.bam-index.core :as bai]
             [cljam.io.bam.decoder :as decoder]
-            [cljam.io.util.lsb :as lsb])
+            [cljam.io.util.lsb.data-io :as lsb])
   (:import [java.io Closeable FileNotFoundException]
            [cljam.io.bam.decoder BAMRawBlock]
            [bgzf4j BGZFInputStream]))

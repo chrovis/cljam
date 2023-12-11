@@ -4,7 +4,7 @@
   specifications."
   (:require [clojure.java.io :as cio]
             [cljam.io.protocols :as protocols]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.data-io :as lsb]
             [cljam.util :as util])
   (:import [java.net URL]
            [java.io Closeable IOException RandomAccessFile]

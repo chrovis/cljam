@@ -1,5 +1,6 @@
 (ns cljam.io.util.lsb
   "Reading/writing functions of stream and buffer for little-endian data."
+  {:deprecated "0.8.5"}
   (:refer-clojure :exclude [read-string])
   (:require [cljam.util :refer [string->bytes]])
   (:import [java.io DataInput InputStream DataOutputStream EOFException ByteArrayOutputStream]

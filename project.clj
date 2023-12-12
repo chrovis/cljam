@@ -46,8 +46,7 @@
                                       :username [:env/clojars_username :gpg]
                                       :password [:env/clojars_password :gpg]}]]
   :aliases {"docs" ["do" "codox" ["marg" "-d" "target/literate" "-m"]]}
-  :bin {:name "cljam"
-        :bootclasspath true}
+  :bin {:name "cljam"}
   :codox {:namespaces [#"^cljam\.(?!tools)[\w\-]+(\.[\w\-]+)?$"]
           :output-path "target/docs"
           :source-uri "https://github.com/chrovis/cljam/blob/{version}/{filepath}#L{line}"}

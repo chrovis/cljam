@@ -5,6 +5,7 @@
             cljam.io.sam.writer
             cljam.io.bam.reader
             cljam.io.bam.writer
+            cljam.io.cram.reader
             cljam.io.vcf.reader
             cljam.io.vcf.writer
             cljam.io.bcf.reader
@@ -49,6 +50,11 @@
   "Checks if given object is an instance of BAMWriter."
   [wtr]
   (instance? cljam.io.bam.writer.BAMWriter wtr))
+
+(defn cram-reader?
+  "Checks if given object is an instance of CRAMReader."
+  [rdr]
+  (instance? cljam.io.cram.reader.CRAMReader rdr))
 
 (defn variant-reader?
   "Checks if given object implements protocol IVariantReader."
@@ -153,6 +159,7 @@
     #"(?i)\.sam$" :sam
     #"(?i)\.bai$" :bai
     #"(?i)\.bam$" :bam
+    #"(?i)\.cram$" :cram
     #"(?i)\.f(ast)?q" :fastq
     #"(?i)\.fai$" :fai
     #"(?i)\.(fa|fasta|fas|fsa|seq|fna|faa|ffn|frn|mpfa)" :fasta
@@ -183,6 +190,7 @@
       (condp re-find s
         #"^BAM\01" :bam
         #"^BAI\01" :bai
+        #"^CRAM" :cram
         #"^BCF\02" :bcf
         #"^TBI\01" :tbi
         #"^##fileformat=VCF" :vcf

@@ -75,6 +75,8 @@
     "foo.bai" :bai
     "foo.sam" :sam
     "foo.SAM" :sam
+    "foo.cram" :cram
+    "foo.CRAM" :cram
     "foo.fa"  :fasta
     "foo.fasta" :fasta
     "foo.fa.gz" :fasta
@@ -125,8 +127,6 @@
        (are [?path] (thrown? Exception (io-util/file-type (cio/file ?dir ?path)))
          "foo.bam.gz"
          "foo.SAM.gz"
-         "foo.cram"
-         "foo.CRAM"
          "foo.2bit.gz"
          "foo.bcf.gz")
     ""
@@ -193,6 +193,7 @@
         io-util/alignment-reader? true
         io-util/sam-reader? true
         io-util/bam-reader? false
+        io-util/cram-reader? false
         io-util/variant-reader? false
         io-util/vcf-reader? false
         io-util/bcf-reader? false
@@ -209,6 +210,7 @@
         io-util/alignment-reader? true
         io-util/sam-reader? false
         io-util/bam-reader? true
+        io-util/cram-reader? false
         io-util/variant-reader? false
         io-util/vcf-reader? false
         io-util/bcf-reader? false
@@ -230,6 +232,7 @@
         io-util/alignment-reader? false
         io-util/sam-reader? false
         io-util/bam-reader? false
+        io-util/cram-reader? false
         io-util/variant-reader? true
         io-util/vcf-reader? true
         io-util/bcf-reader? false
@@ -246,6 +249,7 @@
         io-util/alignment-reader? false
         io-util/sam-reader? false
         io-util/bam-reader? false
+        io-util/cram-reader? false
         io-util/variant-reader? true
         io-util/vcf-reader? false
         io-util/bcf-reader? true
@@ -262,6 +266,7 @@
         io-util/alignment-reader? false
         io-util/sam-reader? false
         io-util/bam-reader? false
+        io-util/cram-reader? false
         io-util/variant-reader? false
         io-util/vcf-reader? false
         io-util/bcf-reader? false
@@ -278,6 +283,7 @@
         io-util/alignment-reader? false
         io-util/sam-reader? false
         io-util/bam-reader? false
+        io-util/cram-reader? false
         io-util/variant-reader? false
         io-util/vcf-reader? false
         io-util/bcf-reader? false
@@ -294,6 +300,7 @@
         io-util/alignment-reader? false
         io-util/sam-reader? false
         io-util/bam-reader? false
+        io-util/cram-reader? false
         io-util/variant-reader? false
         io-util/vcf-reader? false
         io-util/bcf-reader? false
@@ -310,6 +317,7 @@
         io-util/alignment-reader? false
         io-util/sam-reader? false
         io-util/bam-reader? false
+        io-util/cram-reader? false
         io-util/variant-reader? false
         io-util/vcf-reader? false
         io-util/bcf-reader? false
@@ -326,6 +334,7 @@
         io-util/alignment-reader? false
         io-util/sam-reader? false
         io-util/bam-reader? false
+        io-util/cram-reader? false
         io-util/variant-reader? false
         io-util/vcf-reader? false
         io-util/bcf-reader? false
@@ -342,6 +351,7 @@
         io-util/alignment-reader? false
         io-util/sam-reader? false
         io-util/bam-reader? false
+        io-util/cram-reader? false
         io-util/variant-reader? false
         io-util/vcf-reader? false
         io-util/bcf-reader? false

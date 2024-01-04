@@ -61,11 +61,7 @@
 (defn- decode0 [bb ^long n-out]
   (let [freqs (read-frequencies0 bb)
         cum-freqs (cumulative-frequencies freqs)
-        states (doto (int-array 4)
-                 (aset 0 (int (bb/read-uint bb)))
-                 (aset 1 (int (bb/read-uint bb)))
-                 (aset 2 (int (bb/read-uint bb)))
-                 (aset 3 (int (bb/read-uint bb))))
+        states (bb/read-ints bb 4)
         out (byte-array n-out)]
     (dotimes [i n-out]
       (let [j (rem i 4)
@@ -87,11 +83,7 @@
                               freqs))
         quarter (quot n-out 4)
         truncated (* 4 quarter)
-        states (doto (int-array 4)
-                 (aset 0 (int (bb/read-uint bb)))
-                 (aset 1 (int (bb/read-uint bb)))
-                 (aset 2 (int (bb/read-uint bb)))
-                 (aset 3 (int (bb/read-uint bb))))
+        states (bb/read-ints bb 4)
         last-syms (int-array 4)
         out (byte-array n-out)]
     (dotimes [i quarter]

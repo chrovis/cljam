@@ -57,6 +57,15 @@
    (.get bb buffer (int offset) (int length))
    buffer))
 
+(defn read-ints
+  "Reads 'length' ints to buffer starting from offset ints. Returns a new int-array if called without buffer."
+  (^ints [bb length]
+   (read-ints bb (int-array length) 0 length))
+  (^ints [^ByteBuffer bb ^ints buffer ^long offset ^long length]
+   (dotimes [i length]
+     (aset buffer (+ offset i) (.getInt bb)))
+   buffer))
+
 (defn read-string
   "Reads 'length' bytes. Returns a String."
   [^ByteBuffer bb ^long length]

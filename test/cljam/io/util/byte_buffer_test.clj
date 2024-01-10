@@ -61,6 +61,17 @@
       (is (= [0 0 0x34 0x12 0xF0 0]
              (map #(bit-and % 0xFF) (bb/read-bytes bb (byte-array 6) 2 3)))))
 
+    (testing "read-ints"
+      (.reset bb)
+      (let [arr (bb/read-ints bb 2)]
+        (is (instance? (class (int-array 0)) arr))
+        (is (= [0xF0123456 0x789ABCDE] (map #(bit-and % 0xFFFFFFFF) arr))))
+
+      (.reset bb)
+      (bb/skip bb 1)
+      (is (= [0 0 0xDEF01234 0]
+             (map #(bit-and % 0xFFFFFFFF) (bb/read-ints bb (int-array 4) 2 1)))))
+
     (testing "read-string"
       (.reset bb)
       (doseq [c "ABCDEFGH"]

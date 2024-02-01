@@ -19,9 +19,9 @@ jobs:
     - name: Generate Coverage Report
       run: |
         lein cloverage --codecov
-        bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
     - name: Coverage Graph
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./target/coverage/codecov.json
+        files: ./target/coverage/codecov.json
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

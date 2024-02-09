@@ -160,6 +160,10 @@
 (def test-bai-file "test-resources/bam/test.sorted.bam.bai")
 (def test-large-bai-file (cavia/resource mycavia "large.bai"))
 
+;; ### CRAM file
+
+(def medium-with-standard-tags-cram-file "test-resources/cram/medium_with_standard_tags.cram")
+
 ;; ### FASTA files
 
 (def test-fa-file  "test-resources/fasta/test.fa")

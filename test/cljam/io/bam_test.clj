@@ -43,11 +43,11 @@
       \f -17.75
       \f 0.0
       \f 5.75
-      \f (Float/MAX_VALUE)
-      \f (Float/MIN_NORMAL)
-      \f (Float/MIN_VALUE)
-      \f (Float/NEGATIVE_INFINITY)
-      \f (Float/POSITIVE_INFINITY)))
+      \f Float/MAX_VALUE
+      \f Float/MIN_NORMAL
+      \f Float/MIN_VALUE
+      \f Float/NEGATIVE_INFINITY
+      \f Float/POSITIVE_INFINITY))
 
   (testing "NULL-terminated text"
     (are [?type ?value]

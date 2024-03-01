@@ -32,7 +32,10 @@
   (expand-deftest (with-meta sym {:remote true}) args body))
 
 (defprofile mycavia
-  {:resources [{:id "large.bam"
+  {:resources [{:id "hg19.2bit"
+                :url "https://test.chrov.is/data/refs/hg19.2bit"
+                :sha1 "95e5806aee9ecc092d30a482aaa008ef66cbc468"}
+               {:id "large.bam"
                 :url "https://test.chrov.is/data/GSM721144_H3K36me3.nodup.bam"
                 :sha1 "ad282c3779120057abc274ad8fad1910a4ad867b"}
                {:id "large.bai"
@@ -162,6 +165,8 @@
 
 ;; ### CRAM file
 
+(def test-cram-file "test-resources/cram/test.cram")
+(def medium-cram-file "test-resources/cram/medium.cram")
 (def medium-with-standard-tags-cram-file "test-resources/cram/medium_with_standard_tags.cram")
 
 ;; ### FASTA files
@@ -187,6 +192,7 @@
 (def test-twobit-be-file "test-resources/twobit/be-test.2bit")
 (def test-twobit-be-n-file "test-resources/twobit/be-test-n.2bit")
 (def medium-twobit-file "test-resources/twobit/medium.2bit")
+(def hg19-twobit-file (cavia/resource mycavia "hg19.2bit"))
 
 ;; ### FASTQ files
 

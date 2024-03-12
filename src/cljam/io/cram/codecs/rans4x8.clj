@@ -23,23 +23,24 @@
 (defn- read-frequencies1 [bb]
   (read-frequencies* bb read-frequencies0))
 
-(defn- cumulative-frequencies [freqs]
-  (loop [i 0
-         sum 0
-         cum-freqs (transient [])]
-    (if (< i 256)
-      (let [f (get freqs i 0)]
-        (recur (inc i) (+ sum (long f)) (conj! cum-freqs sum)))
-      (persistent! (conj! cum-freqs sum)))))
+(defn- cumulative-frequencies ^ints [freqs]
+  (let [cum-freqs (int-array 256)]
+    (loop [i 0
+           sum 0]
+      (when (< i 256)
+        (let [f (get freqs i 0)]
+          (aset cum-freqs i sum)
+          (recur (inc i) (+ sum (long f))))))
+    cum-freqs))
 
-(defn- lookup-symbol ^long [cum-freqs ^long f]
+(defn- lookup-symbol ^long [^ints cum-freqs ^long f]
   (loop [l 0
-         r (dec (count cum-freqs))]
+         r (dec (alength cum-freqs))]
     (if (< l r)
       (let [m (quot (+ l r) 2)
-            fm (long (nth cum-freqs m))]
+            fm (long (aget cum-freqs m))]
         (cond (and (<= fm f)
-                   (< f (long (nth cum-freqs (inc m)))))
+                   (< f (long (aget cum-freqs (inc m)))))
               m
 
               (< f fm) (recur l (dec m))
@@ -69,7 +70,7 @@
             f (bit-and state 0xfff)
             sym (lookup-symbol cum-freqs f)
             state' (->> state
-                        (advance-step (nth cum-freqs sym) (get freqs sym 0))
+                        (advance-step (aget cum-freqs sym) (get freqs sym 0))
                         (renormalize-state bb))]
         (aset out i (byte sym))
         (aset states j state')))
@@ -91,10 +92,10 @@
         (let [state (aget states j)
               f (bit-and state 0xfff)
               last-sym (aget last-syms j)
-              cfreqs (get cum-freqs last-sym)
+              ^ints cfreqs (get cum-freqs last-sym)
               sym (lookup-symbol cfreqs f)
               state' (->> state
-                          (advance-step (nth cfreqs sym)
+                          (advance-step (aget cfreqs sym)
                                         (get-in freqs [last-sym sym] 0))
                           (renormalize-state bb))]
           (aset out (+ i (* j quarter)) (byte sym))
@@ -104,10 +105,10 @@
       (let [state (aget states 3)
             f (bit-and state 0xfff)
             last-sym (aget last-syms 3)
-            cfreq (get cum-freqs last-sym)
+            ^ints cfreq (get cum-freqs last-sym)
             sym (lookup-symbol cfreq f)
             state' (->> state
-                        (advance-step (nth cfreq sym)
+                        (advance-step (aget cfreq sym)
                                       (get-in freqs [last-sym sym] 0))
                         (renormalize-state bb))]
         (aset out (+ i truncated) (byte sym))

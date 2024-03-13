@@ -21,7 +21,8 @@
             0x63 0x174
             0x64 0x174
             0x72 0x2e8}
-           (#'rans/read-frequencies0 bb)))
+           (into {} (keep-indexed (fn [i x] (when (pos? x) [i x])))
+                 (#'rans/read-frequencies0 bb))))
     (is (zero? (.remaining bb)))))
 
 (deftest read-frequencies1-test
@@ -62,7 +63,18 @@
             0x63 {0x61 0xfff}
             0x64 {0x61 0xfff}
             0x72 {0x61 0xfff}}
-           (#'rans/read-frequencies1 bb)))
+           (into {}
+                 (keep-indexed
+                  (fn [i arr]
+                    (when-let [m (->> arr
+                                      (into {}
+                                            (keep-indexed
+                                             (fn [j x]
+                                               (when (pos? x)
+                                                 [j x]))))
+                                      not-empty)]
+                      [i m])))
+                 (#'rans/read-frequencies1 bb))))
     (is (zero? (.remaining bb)))))
 
 (defn- read-as-buffer ^ByteBuffer [file]

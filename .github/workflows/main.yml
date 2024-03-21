@@ -36,8 +36,6 @@ jobs:
     - name: Run tests
       run: |
         lein with-profile +dev:+1.8:+1.9 test
-        lein with-profile dev bin
-        target/cljam version
 
   deploy:
     needs: [build]

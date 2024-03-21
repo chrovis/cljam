@@ -5,9 +5,7 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
   :dependencies [[org.clojure/core.memoize "1.1.266"]
                  [org.clojure/tools.logging "1.3.0"]
-                 [org.clojure/tools.cli "1.1.230"]
                  [org.apache.commons/commons-compress "1.26.1"]
-                 [clj-sub-command "0.6.0"]
                  [digest "1.4.10"]
                  [bgzf4j "0.1.2"]
                  [com.climate/claypoole "1.1.4"]
@@ -18,8 +16,7 @@
                                   [criterium "0.4.6"]
                                   [net.totakke/libra "0.1.1"]
                                   [se.haleby/stub-http "0.2.14"]]
-                   :plugins [[lein-binplus "0.6.8" :exclusions [org.clojure/clojure]]
-                             [lein-codox "0.10.8"]
+                   :plugins [[lein-codox "0.10.8"]
                              [lein-marginalia "0.9.2" :exclusions [org.clojure/clojure]]
                              [lein-cloverage "1.2.4"]
                              [net.totakke/lein-libra "0.1.2"]
@@ -28,28 +25,17 @@
                                     :slow :slow ; Slow tests with local resources
                                     :remote :remote ; Tests with remote resources
                                     :all (constantly true)}
-                   :main ^:skip-aot cljam.tools.main
                    :global-vars {*warn-on-reflection* true
                                  *unchecked-math* :warn-on-boxed}}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
-             :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]]}
-             :uberjar {:dependencies [[org.clojure/clojure "1.11.3"]
-                                      [org.apache.logging.log4j/log4j-api "2.23.1"]
-                                      [org.apache.logging.log4j/log4j-core "2.23.1"]]
-                       :resource-paths ["bin-resources"]
-                       :main cljam.tools.main
-                       :jvm-opts ["-Dclojure.compiler.direct-linking=true"]
-                       :aot :all}}
+             :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]]}}
   :deploy-repositories [["snapshots" {:url "https://clojars.org/repo/"
                                       :username [:env/clojars_username :gpg]
                                       :password [:env/clojars_password :gpg]}]]
   :aliases {"docs" ["do" "codox" ["marg" "-d" "target/literate" "-m"]]}
-  :bin {:name "cljam"
-        :bootclasspath true}
-  :codox {:namespaces [#"^cljam\.(?!tools)[\w\-]+(\.[\w\-]+)?$"]
-          :output-path "target/docs"
+  :codox {:output-path "target/docs"
           :source-uri "https://github.com/chrovis/cljam/blob/{version}/{filepath}#L{line}"}
   :repl-options {:init-ns user}
   :signing {:gpg-key "developer@xcoo.jp"})

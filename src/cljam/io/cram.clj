@@ -13,7 +13,10 @@
 
   The function also takes an optional argument `option`, which is a map that
   consists of:
-    - reference: a string representing the path to a reference file"
+    - reference: A string representing the path to the reference file, or
+                 a sequence reader that reads sequences from the reference file.
+                 This may be omitted only when the CRAM file to be read does not
+                 require a reference file."
   (^CRAMReader [f] (reader f {}))
   (^CRAMReader [f option]
    (if (io-util/cram-reader? f)

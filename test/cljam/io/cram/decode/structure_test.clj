@@ -48,9 +48,9 @@
               :records 10000
               :counter 0
               :bases 760000
-              :blocks 29
+              :blocks 31
               :landmarks [207]
-              :crc [246 184 214 91]}
+              :crc [125 112 223 241]}
              (decode-container-header bb)))
       (is (= {:preservation-map
               {:RN true
@@ -156,9 +156,9 @@
                 :records 2271
                 :counter 10000
                 :bases 172596
-                :blocks 29
+                :blocks 31
                 :landmarks [171]
-                :crc [228 46 96 120]}
+                :crc [111 230 105 210]}
                container-header))
         (bb/skip bb (:length container-header))
         (is (struct/eof-container? (decode-container-header bb)))))))

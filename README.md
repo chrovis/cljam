@@ -84,6 +84,11 @@ If you are Clojure beginner, read [Getting Started for Clojure Beginners](https:
 
 cljam provides a command-line tool to use the features easily.
 
+**NOTICE**
+The command-line tool functionality will be removed from cljam on the next
+release. The functionality has been already integrated into
+[Gnife](https://github.com/chrovis/gnife), which is a pure command-line tool.
+
 ### Executable installation
 
 `lein bin` creates standalone console executable into `target` directory.

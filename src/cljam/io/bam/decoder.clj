@@ -3,6 +3,7 @@
   (:require [clojure.string :as cstr]
             [proton.core :as proton]
             [cljam.util :as util]
+            cljam.io.protocols
             [cljam.io.sam.util.quality :as qual]
             [cljam.io.sam.util.sequence :as sam-seq]
             [cljam.io.sam.util.refs :as refs]

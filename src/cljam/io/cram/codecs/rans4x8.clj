@@ -62,8 +62,7 @@
 (defn- renormalize-state ^long [bb ^long state]
   (loop [state state]
     (if (< state 0x800000)
-      (recur (+ (bit-shift-left state 8)
-                (long (bb/read-ubyte bb))))
+      (recur (bit-or (bit-shift-left state 8) (long (bb/read-ubyte bb))))
       state)))
 
 (defn- decode0 [bb ^long n-out]

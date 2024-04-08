@@ -21,7 +21,8 @@
             0x63 0x174
             0x64 0x174
             0x72 0x2e8}
-           (#'rans/read-frequencies0 bb)))
+           (into {} (keep-indexed (fn [i x] (when (pos? x) [i x])))
+                 (#'rans/read-frequencies0 bb))))
     (is (zero? (.remaining bb)))))
 
 (deftest read-frequencies1-test
@@ -62,8 +63,45 @@
             0x63 {0x61 0xfff}
             0x64 {0x61 0xfff}
             0x72 {0x61 0xfff}}
-           (#'rans/read-frequencies1 bb)))
+           (into {}
+                 (keep-indexed
+                  (fn [i arr]
+                    (when-let [m (->> arr
+                                      (into {}
+                                            (keep-indexed
+                                             (fn [j x]
+                                               (when (pos? x)
+                                                 [j x]))))
+                                      not-empty)]
+                      [i m])))
+                 (#'rans/read-frequencies1 bb))))
     (is (zero? (.remaining bb)))))
+
+(deftest cumulative-frequencies-test
+  (let [freqs (-> [0x000 0x747 0x000 0x2e8 0x000 0x174 0x174 0x2e8]
+                  (concat (repeat 248 0x000))
+                  int-array)]
+    (is (= (concat [0x000 0x000 0x747 0x747 0xa2f 0xa2f 0xba3 0xd17 0xfff 0xfff]
+                   (repeat 246 0xfff))
+           (vec (#'rans/cumulative-frequencies freqs))))))
+
+(deftest reverse-lookup-table-test
+  (let [freqs (-> [0x000 0x747 0x000 0x2e8 0x000 0x174 0x174 0x2e8]
+                  (concat (repeat 248 0x000))
+                  int-array)
+        cfreqs (#'rans/cumulative-frequencies freqs)
+        table ^bytes (#'rans/reverse-lookup-table cfreqs)]
+    (is (= 1 (aget table 0x000)))
+    (is (= 1 (aget table 0x746)))
+    (is (= 3 (aget table 0x747)))
+    (is (= 3 (aget table 0xa2e)))
+    (is (= 5 (aget table 0xa2f)))
+    (is (= 5 (aget table 0xba2)))
+    (is (= 6 (aget table 0xba3)))
+    (is (= 6 (aget table 0xd16)))
+    (is (= 7 (aget table 0xd17)))
+    (is (= 7 (aget table 0xffe)))
+    (is (= 255 (bit-and (aget table 0xfff) 0xff)))))
 
 (defn- read-as-buffer ^ByteBuffer [file]
   (with-open [in (FileInputStream. (io/file file))]

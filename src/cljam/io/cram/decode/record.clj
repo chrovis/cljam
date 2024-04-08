@@ -154,7 +154,7 @@
         (if (= len miss)
           "*"
           (String. (.array bb)))
-        (let [q (qs-decoder)]
+        (let [q (long (qs-decoder))]
           (.put bb (byte (qual-score q)))
           (recur (dec i) (cond-> miss (= q -1) inc)))))))
 

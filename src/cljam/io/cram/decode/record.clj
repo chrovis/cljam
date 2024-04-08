@@ -97,8 +97,8 @@
        (+ (long (:pos record)))))
 
 (defn- record-seq
-  [seq-resolver {:keys [preservation-map]} {:keys [rname pos] :as record} features]
-  (let [region {:chr rname :start pos :end (::end record)}
+  [seq-resolver {:keys [preservation-map]} {:keys [rname pos end] :as record} features]
+  (let [region {:chr rname :start pos :end end}
         ref-bases (.getBytes ^String (resolver/resolve-sequence seq-resolver region))
         len (long (::len record))
         bs (byte-array len (byte (int \N)))
@@ -243,7 +243,7 @@
     (fn [record]
       (let [fs (features-decoder)
             end (record-end record fs)
-            record' (assoc record ::end end)]
+            record' (assoc record :end end)]
         (assoc record'
                :mapq (MQ)
                :seq (record-seq seq-resolver compression-header record' fs)
@@ -262,7 +262,8 @@
           record' (assoc record
                          :seq (String. (.array bb))
                          :mapq 0
-                         :cigar "*")]
+                         :cigar "*"
+                         :end (:pos record))]
       (if (zero? (bit-and flag 0x01))
         record'
         (assoc record' :qual (decode-qual len QS))))))
@@ -310,10 +311,8 @@
          :pnext (:pos mate)))
 
 (defn- update-mate-records
-  [{^long s1 :pos :as r1} {^long s2 :pos :as r2}]
-  (let [e1 (long (::end r1))
-        e2 (long (::end r2))
-        r1' (update-next-mate r1 r2)
+  [{^long s1 :pos ^long e1 :end :as r1} {^long s2 :pos ^long e2 :end :as r2}]
+  (let [r1' (update-next-mate r1 r2)
         r2' (update-next-mate r2 r1)]
     (if (or (sam.flag/unmapped? (:flag r1))
             (sam.flag/unmapped? (:flag r2))
@@ -353,4 +352,4 @@
     (dotimes [i n]
       (aset records i (record-decoder)))
     (resolve-mate-records records)
-    (map #(dissoc % ::flag ::len ::end ::next-fragment) records)))
+    (map #(dissoc % ::flag ::len ::next-fragment) records)))

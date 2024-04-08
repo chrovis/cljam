@@ -1,5 +1,6 @@
 (ns cljam.io.cram.core
-  (:require [cljam.io.cram.seq-resolver :as resolver]
+  (:require [cljam.io.crai :as crai]
+            [cljam.io.cram.seq-resolver :as resolver]
             [cljam.io.cram.reader :as reader.core]
             [cljam.io.sam.util.refs :as util.refs]
             [cljam.io.util.byte-buffer :as bb]
@@ -23,7 +24,8 @@
         seq-resolver (some-> reference resolver/seq-resolver)
         header (volatile! nil)
         refs (delay (util.refs/make-refs @header))
-        rdr (reader.core/->CRAMReader url ch bb header refs seq-resolver)]
+        idx (delay (crai/read-index (str f ".crai") @refs))
+        rdr (reader.core/->CRAMReader url ch bb header refs idx seq-resolver)]
     (reader.core/read-file-definition rdr)
     (vreset! header (reader.core/read-header rdr))
     rdr))
@@ -40,6 +42,7 @@
         rdr' (reader.core/->CRAMReader url ch bb
                                        (delay @(.-header rdr))
                                        (delay @(.-refs rdr))
+                                       (delay @(.-index rdr))
                                        seq-resolver)]
     (reader.core/read-file-definition rdr')
     (reader.core/skip-container rdr')

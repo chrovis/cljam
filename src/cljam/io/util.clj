@@ -159,6 +159,7 @@
     #"(?i)\.sam$" :sam
     #"(?i)\.bai$" :bai
     #"(?i)\.bam$" :bam
+    #"(?i)\.crai$" :crai
     #"(?i)\.cram$" :cram
     #"(?i)\.f(ast)?q" :fastq
     #"(?i)\.fai$" :fai

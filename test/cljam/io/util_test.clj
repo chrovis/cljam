@@ -77,6 +77,8 @@
     "foo.SAM" :sam
     "foo.cram" :cram
     "foo.CRAM" :cram
+    "foo.cram.crai" :crai
+    "foo.crai" :crai
     "foo.fa"  :fasta
     "foo.fasta" :fasta
     "foo.fa.gz" :fasta

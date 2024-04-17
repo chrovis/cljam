@@ -98,8 +98,7 @@
 
 (defn- record-seq
   [seq-resolver {:keys [preservation-map]} {:keys [rname pos end] :as record} features]
-  (let [region {:chr rname :start pos :end end}
-        ref-bases (.getBytes ^String (resolver/resolve-sequence seq-resolver region))
+  (let [^bytes ref-bases (resolver/resolve-sequence seq-resolver rname pos end)
         len (long (::len record))
         bs (byte-array len (byte (int \N)))
         subst (:SM preservation-map)]

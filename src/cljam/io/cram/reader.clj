@@ -3,11 +3,14 @@
             [cljam.io.cram.decode.data-series :as ds]
             [cljam.io.cram.decode.record :as record]
             [cljam.io.cram.decode.structure :as struct]
+            [cljam.io.cram.seq-resolver.protocol :as resolver]
             [cljam.io.protocols :as protocols]
+            [cljam.io.util.byte-buffer :as bb]
             [cljam.util.intervals :as intervals])
   (:import [java.io Closeable]
            [java.nio Buffer ByteBuffer ByteOrder]
-           [java.nio.channels FileChannel FileChannel$MapMode]))
+           [java.nio.channels FileChannel FileChannel$MapMode]
+           [java.util Arrays]))
 
 (declare read-alignments read-alignments-in-region)
 
@@ -59,6 +62,25 @@
   (read-to-buffer rdr 26)
   (struct/decode-file-definition (.-buffer rdr)))
 
+(defn- seq-resolver-for-slice [^CRAMReader rdr slice-header blocks]
+  (let [embedded-ref-content-id (long (:embedded-reference slice-header))]
+    (if (>= embedded-ref-content-id 0)
+      (let [ref-bases-block (->> blocks
+                                 (filter #(= (:content-id %) embedded-ref-content-id))
+                                 first)
+            offset (long (:start slice-header))
+            ^bytes bs (bb/read-bytes (:data ref-bases-block)
+                                     (:raw-size ref-bases-block))]
+        (reify resolver/ISeqResolver
+          ;; According to the CRAM specification v3.1 §8.5, a slice with an embedded
+          ;; reference must not be a multiple reference slice, so the temporary
+          ;; sequence resolver here can safely ignore the passed chr
+          (resolve-sequence [_ _chr start end]
+            (Arrays/copyOfRange bs
+                                (- (long start) offset)
+                                (inc (- (long end) offset))))))
+      (.-seq-resolver rdr))))
+
 (defn- read-slice-records [^CRAMReader rdr bb compression-header slice-header]
   (let [blocks (into [] (map (fn [_] (struct/decode-block bb)))
                      (range (:blocks slice-header)))
@@ -67,7 +89,7 @@
                      (bs/make-bit-stream-decoder (:data core-block)))
         ds-decoders (ds/build-data-series-decoders compression-header bs-decoder blocks)
         tag-decoders (ds/build-tag-decoders compression-header bs-decoder blocks)]
-    (record/decode-slice-records (.-seq-resolver rdr)
+    (record/decode-slice-records (seq-resolver-for-slice rdr slice-header blocks)
                                  @(.-header rdr)
                                  compression-header
                                  slice-header

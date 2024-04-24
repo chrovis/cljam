@@ -5,11 +5,25 @@
             [cljam.io.sam.util.refs :as util.refs]
             [cljam.io.util.byte-buffer :as bb]
             [cljam.util :as util]
-            [clojure.java.io :as cio])
+            [clojure.java.io :as cio]
+            [clojure.string :as str])
   (:import [cljam.io.cram.reader CRAMReader]
            [java.io FileNotFoundException]
+           [java.net URL]
            [java.nio.channels FileChannel]
            [java.nio.file OpenOption StandardOpenOption]))
+
+(defn- qname-generator [^URL url]
+  (let [prefix (-> (.getPath url)
+                   (str/replace #"^.*/" "")
+                   (str/replace #"[^!-?A-~]+" "_"))
+        len (inc (count prefix))]
+    (fn [i]
+      (let [digits (str (inc (long i)))
+            len' (+ len (count digits))]
+        (cond-> (str prefix \: digits)
+          (> len' 254)
+          (subs (- len' 254) len'))))))
 
 (defn reader
   "Creates a new CRAM reader that reads a CRAM file f.
@@ -23,6 +37,7 @@
                              (into-array OpenOption [StandardOpenOption/READ]))
         bb (bb/allocate-lsb-byte-buffer 256)
         seq-resolver (some-> reference resolver/seq-resolver)
+        qname-gen (qname-generator url)
         header (volatile! nil)
         refs (delay (vec (util.refs/make-refs @header)))
         offset (volatile! nil)
@@ -31,7 +46,7 @@
                 (crai/read-index (str f ".crai") @refs)
                 (catch FileNotFoundException _
                   nil)))
-        rdr (reader/->CRAMReader url ch bb header refs offset idx seq-resolver)]
+        rdr (reader/->CRAMReader url ch bb header refs offset idx seq-resolver qname-gen)]
     (reader/read-file-definition rdr)
     (vreset! header (reader/read-header rdr))
     (vreset! offset (.position ch))
@@ -51,7 +66,8 @@
                                   (delay @(.-refs rdr))
                                   (delay @(.-offset rdr))
                                   (delay @(.-index rdr))
-                                  seq-resolver)]
+                                  seq-resolver
+                                  (.-qname-generator rdr))]
     (reader/read-file-definition rdr')
     (reader/skip-container rdr')
     rdr'))

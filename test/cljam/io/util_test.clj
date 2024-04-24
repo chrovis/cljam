@@ -22,6 +22,7 @@
               dedupe-before-bam-file
               dedupe-after-bam-file
               test-bai-file
+              test-cram-file
               test-fa-file
               test-fa-bz2-file
               test-fa-dict-file
@@ -56,6 +57,7 @@
               test-bigwig-bedgraph-file
               test-bigwig-non-leaf-blocks-file]]
             [cljam.io.bed :as bed]
+            [cljam.io.cram :as cram]
             [cljam.io.fastq :as fastq]
             [cljam.io.sam :as sam]
             [cljam.io.sequence :as cseq]
@@ -77,6 +79,8 @@
     "foo.SAM" :sam
     "foo.cram" :cram
     "foo.CRAM" :cram
+    "foo.cram.crai" :crai
+    "foo.crai" :crai
     "foo.fa"  :fasta
     "foo.fasta" :fasta
     "foo.fa.gz" :fasta
@@ -152,6 +156,7 @@
     normalize-after-bam-file :bam
     opts-bam-file :bam
     test-bai-file :bai
+    test-cram-file :cram
     test-fa-file :fasta
     test-fa-bz2-file :fasta
     test-fa-dict-file :sam
@@ -226,6 +231,23 @@
       (is (true? (io-util/bam-reader? cloned))))
     (with-open [r (sam/reader test-sam-file)]
       (is (thrown? Exception (sam/reader r)))))
+  (testing "cram reader"
+    (with-open [r (cram/reader test-cram-file)]
+      (are [?pred ?expected] (= (?pred r) ?expected)
+        io-util/alignment-reader? true
+        io-util/sam-reader? false
+        io-util/bam-reader? false
+        io-util/cram-reader? true
+        io-util/variant-reader? false
+        io-util/vcf-reader? false
+        io-util/bcf-reader? false
+        io-util/sequence-reader? false
+        io-util/fasta-reader? false
+        io-util/twobit-reader? false
+        io-util/fastq-reader? false
+        io-util/bed-reader? false
+        io-util/wig-reader? false
+        io-util/bigwig-reader? false)))
   (testing "vcf reader"
     (with-open [r (vcf/reader test-vcf-v4_3-file)]
       (are [?pred ?expected] (= (?pred r) ?expected)

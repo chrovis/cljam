@@ -113,51 +113,51 @@
                               \N {0 \A, 1 \C, 2 \G, 3 \T}}}}]
     (are [?record ?features ?expected]
          (= ?expected (#'record/record-seq test-seq-resolver compression-header ?record ?features))
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 6}
+      {:rname "ref", :pos 2, :end 6, ::record/len 5}
       []
       "GCATG"
 
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 6}
+      {:rname "ref", :pos 2, :end 6, ::record/len 5}
       [{:code :subst, :pos 3, :subst 2}]
       "GCTTG"
 
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 6}
+      {:rname "ref", :pos 2, :end 6, ::record/len 5}
       [{:code :subst, :pos 2, :subst 3}
        {:code :subst, :pos 3, :subst 2}]
       "GATTG"
 
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 5}
+      {:rname "ref", :pos 2, :end 5, ::record/len 5}
       [{:code :insert-base, :pos 3, :base (int \A)}]
       "GCAAT"
 
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 5}
+      {:rname "ref", :pos 2, :end 5, ::record/len 5}
       [{:code :insert-base, :pos 3, :base (int \A)}
        {:code :subst, :pos 4, :subst 1}]
       "GCAGT"
 
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 4}
+      {:rname "ref", :pos 2, :end 4, ::record/len 5}
       [{:code :insertion, :pos 3, :bases (.getBytes "CA")}]
       "GCCAA"
 
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 4}
+      {:rname "ref", :pos 2, :end 4, ::record/len 5}
       [{:code :subst, :pos 2, :subst 3}
        {:code :insertion, :pos 3, :bases (.getBytes "CA")}]
       "GACAA"
 
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 8}
+      {:rname "ref", :pos 2, :end 8, ::record/len 5}
       [{:code :deletion, :pos 3, :len 2}]
       "GCGTT"
 
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 8}
+      {:rname "ref", :pos 2, :end 8, ::record/len 5}
       [{:code :deletion, :pos 3, :len 2}
        {:code :subst, :pos 3, :subst 0}]
       "GCTTT"
 
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 4}
+      {:rname "ref", :pos 2, :end 4, ::record/len 5}
       [{:code :softclip, :pos 4, :bases (.getBytes "TT")}]
       "GCATT"
 
-      {:rname "ref", :pos 2, ::record/len 5, ::record/end 4}
+      {:rname "ref", :pos 2, :end 4, ::record/len 5}
       [{:code :softclip, :pos 1, :bases (.getBytes "TT")}]
       "TTGCA")))
 
@@ -402,28 +402,28 @@
           tag-decoders (build-stub-tag-decoders
                         {:MD {\Z ["2C2" "3" "5" "3^T2" nil]}
                          :NM {\c [1 0 0 2 nil]}})]
-      (is (= [{:qname "q001", :flag 99, :rname "ref", :pos 1, :mapq 0, :cigar "5M"
-               :rnext "=", :pnext 151, :tlen 150, :seq "AGAAT", :qual "HFHHH"
+      (is (= [{:qname "q001", :flag 99, :rname "ref", :pos 1, :end 5, :mapq 0,
+               :cigar "5M", :rnext "=", :pnext 151, :tlen 150, :seq "AGAAT", :qual "HFHHH"
                :options [{:RG {:type "Z", :value "rg001"}}
                          {:MD {:type "Z", :value "2C2"}}
                          {:NM {:type "c", :value 1}}]}
-              {:qname "q002", :flag 99, :rname "ref", :pos 5, :mapq 15, :cigar "2S3M"
-               :rnext "=", :pnext 15, :tlen 15, :seq "CCTGT", :qual "##AAC"
+              {:qname "q002", :flag 99, :rname "ref", :pos 5, :end 7, :mapq 15,
+               :cigar "2S3M", :rnext "=", :pnext 15, :tlen 15, :seq "CCTGT", :qual "##AAC"
                :options [{:RG {:type "Z", :value "rg001"}}
                          {:MD {:type "Z", :value "3"}}
                          {:NM {:type "c", :value 0}}]}
-              {:qname "q003", :flag 177, :rname "ref", :pos 10, :mapq 60, :cigar "5M"
-               :rnext "ref2", :pnext 100, :tlen 0, :seq "GATAA", :qual "CCCFF"
+              {:qname "q003", :flag 177, :rname "ref", :pos 10, :end 14, :mapq 60,
+               :cigar "5M", :rnext "ref2", :pnext 100, :tlen 0, :seq "GATAA", :qual "CCCFF"
                :options [{:RG {:type "Z", :value "rg002"}}
                          {:MD {:type "Z", :value "5"}}
                          {:NM {:type "c", :value 0}}]}
-              {:qname "q004", :flag 147, :rname "ref", :pos 15, :mapq 15, :cigar "1M1I1M1D2M"
-               :rnext "=", :pnext 5, :tlen -15, :seq "GAAAG", :qual "EBBFF"
+              {:qname "q004", :flag 147, :rname "ref", :pos 15, :end 19, :mapq 15,
+               :cigar "1M1I1M1D2M", :rnext "=", :pnext 5, :tlen -15, :seq "GAAAG", :qual "EBBFF"
                :options [{:RG {:type "Z", :value "rg002"}}
                          {:MD {:type "Z", :value "3^T2"}}
                          {:NM {:type "c",  :value 2}}]}
-              {:qname "q005", :flag 73, :rname "ref", :pos 20, :mapq 0, :cigar "5M"
-               :rnext "*", :pnext 0, :tlen 0, :seq "CTGTG", :qual "AEEEE"
+              {:qname "q005", :flag 73, :rname "ref", :pos 20, :end 24, :mapq 0,
+               :cigar "5M", :rnext "*", :pnext 0, :tlen 0, :seq "CTGTG", :qual "AEEEE"
                :options []}]
              (record/decode-slice-records test-seq-resolver
                                           cram-header
@@ -467,20 +467,20 @@
                                  (mapcat #(.getBytes ^String %))
                                  (map #(- (long %) 33)))})
           tag-decoders (build-stub-tag-decoders {})]
-      (is (= [{:qname "q001", :flag 77, :rname "*", :pos 0, :mapq 0, :cigar "*"
-               :rnext "*", :pnext 0, :tlen 0, :seq "AATCC", :qual "CCFFF"
+      (is (= [{:qname "q001", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
+               :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "AATCC", :qual "CCFFF"
                :options []}
-              {:qname "q001", :flag 141, :rname "*", :pos 0, :mapq 0, :cigar "*"
-               :rnext "*", :pnext 0, :tlen 0, :seq "ATTGT", :qual "BDFAD"
+              {:qname "q001", :flag 141, :rname "*", :pos 0, :end 0, :mapq 0,
+               :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "ATTGT", :qual "BDFAD"
                :options []}
-              {:qname "q002", :flag 77, :rname "*", :pos 0, :mapq 0, :cigar "*"
-               :rnext "*", :pnext 0, :tlen 0, :seq "TGGTA", :qual "ADDHF"
+              {:qname "q002", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
+               :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "TGGTA", :qual "ADDHF"
                :options []}
-              {:qname "q002", :flag 141, :rname "*", :pos 0, :mapq 0, :cigar "*"
-               :rnext "*", :pnext 0, :tlen 0, :seq "TCTTG", :qual "DDDFD"
+              {:qname "q002", :flag 141, :rname "*", :pos 0, :end 0, :mapq 0,
+               :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "TCTTG", :qual "DDDFD"
                :options []}
-              {:qname "q003", :flag 77, :rname "*", :pos 0, :mapq 0, :cigar "*"
-               :rnext "*", :pnext 0, :tlen 0, :seq "GCACA", :qual "BCCFD"
+              {:qname "q003", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
+               :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "GCACA", :qual "BCCFD"
                :options []}]
              (record/decode-slice-records test-seq-resolver
                                           cram-header

@@ -1,5 +1,6 @@
 (ns cljam.io.cram
   "Alpha - subject to change. Provides functions for reading from a CRAM file."
+  (:refer-clojure :exclude [indexed?])
   (:require [cljam.io.cram.core :as cram]
             [cljam.io.protocols :as protocols]
             [cljam.io.util :as io-util])
@@ -36,5 +37,13 @@
 (defn read-alignments
   "Reads all the alignments from the CRAM file and returns them as a lazy sequence
   of record maps."
+  ([rdr]
+   (protocols/read-alignments rdr))
+  ([rdr region]
+   (protocols/read-alignments rdr region)))
+
+(defn indexed?
+  "Returns true if the reader can be randomly accessed, false if not. Note this
+  function immediately realizes a delayed index."
   [rdr]
-  (protocols/read-alignments rdr))
+  (protocols/indexed? rdr))

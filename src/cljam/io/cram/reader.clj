@@ -2,14 +2,15 @@
   (:require [cljam.io.cram.decode.data-series :as ds]
             [cljam.io.cram.decode.record :as record]
             [cljam.io.cram.decode.structure :as struct]
-            [cljam.io.protocols :as protocols])
-  (:import [java.io Closeable]
+            [cljam.io.protocols :as protocols]
+            [cljam.util.intervals :as intervals])
+  (:import [java.io Closeable FileNotFoundException]
            [java.nio Buffer ByteBuffer ByteOrder]
            [java.nio.channels FileChannel FileChannel$MapMode]))
 
-(declare read-alignments)
+(declare read-alignments read-alignments-in-region)
 
-(deftype CRAMReader [url channel buffer header refs seq-resolver]
+(deftype CRAMReader [url channel buffer header refs index seq-resolver]
   Closeable
   (close [_]
     (when seq-resolver
@@ -19,20 +20,29 @@
   (reader-url [_] url)
   (read [this]
     (protocols/read-alignments this))
-  #_(read [_ option])
-  (indexed? [_] false)
+  (read [this region]
+    (protocols/read-alignments this region))
+  (indexed? [_]
+    (try
+      @index
+      true
+      (catch FileNotFoundException _
+        false)))
   protocols/IAlignmentReader
   (read-header [_] @header)
   (read-refs [_] @refs)
   (read-alignments [this]
     (read-alignments this))
-  #_(read-alignments [_ region])
+  (read-alignments [this region]
+    (read-alignments-in-region this region))
   #_(read-blocks [_])
   #_(read-blocks [_ region])
   #_(read-blocks [_ region option])
-  #_protocols/IRegionReader
-  #_(read-in-region [_ region])
-  #_(read-in-region [_ region option]))
+  protocols/IRegionReader
+  (read-in-region [this region]
+    (protocols/read-in-region this region {}))
+  (read-in-region [this region _]
+    (protocols/read-alignments this region)))
 
 (defn- read-to-buffer
   ([rdr] (read-to-buffer rdr nil))
@@ -65,14 +75,19 @@
                                  ds-decoders
                                  tag-decoders)))
 
-(defn- read-container-records [^CRAMReader rdr ^ByteBuffer bb container-header]
-  (let [container-header-end (.position bb)
-        compression-header (struct/decode-compression-header-block bb)]
-    (->> (:landmarks container-header)
-         (mapcat
-          (fn [^long landmark]
-            (.position ^Buffer bb (+ container-header-end landmark))
-            (read-slice-records rdr bb compression-header))))))
+(defn- read-container-records
+  ([rdr bb container-header]
+   (read-container-records rdr bb container-header nil))
+  ([^CRAMReader rdr ^ByteBuffer bb container-header idx-entries]
+   (let [container-header-end (.position bb)
+         compression-header (struct/decode-compression-header-block bb)]
+     (->> (if (seq idx-entries)
+            (map :slice-offset idx-entries)
+            (:landmarks container-header))
+          (mapcat
+           (fn [^long landmark]
+             (.position ^Buffer bb (+ container-header-end landmark))
+             (read-slice-records rdr bb compression-header)))))))
 
 (defn- with-next-container-header [^CRAMReader rdr f]
   (let [^FileChannel ch (.-channel rdr)
@@ -119,3 +134,23 @@
                 (when-let [alns (read-container-with rdr read1)]
                   (concat alns (lazy-seq (step))))))]
       (step))))
+
+(defn- read-alignments-in-region
+  [^CRAMReader rdr {:keys [chr start end] :or {start 0 end Long/MAX_VALUE}}]
+  (let [^FileChannel ch (.-channel rdr)
+        idx @(.-index rdr)
+        offset->entries (->> (intervals/find-overlap-intervals idx chr start end)
+                             (group-by :container-offset)
+                             (into (sorted-map)))]
+    (letfn [(read-fn [entries]
+              (fn [container-header bb]
+                (read-container-records rdr bb container-header entries)))
+            (step [[[^long offset entries] & more]]
+              (when offset
+                (.position ch offset)
+                (concat (read-container-with rdr (read-fn entries))
+                        (lazy-seq (step more)))))]
+      (filter #(and (= (:rname %) chr)
+                    (<= (long (:pos %)) (long end))
+                    (<= (long start) (long (:end %))))
+              (step offset->entries)))))

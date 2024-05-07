@@ -1,5 +1,6 @@
 (ns cljam.io.cram.reader
-  (:require [cljam.io.cram.decode.data-series :as ds]
+  (:require [cljam.io.cram.bit-stream :as bs]
+            [cljam.io.cram.decode.data-series :as ds]
             [cljam.io.cram.decode.record :as record]
             [cljam.io.cram.decode.structure :as struct]
             [cljam.io.protocols :as protocols]
@@ -66,8 +67,11 @@
   (let [slice-header (struct/decode-slice-header-block bb)
         blocks (into [] (map (fn [_] (struct/decode-block bb)))
                      (range (:blocks slice-header)))
-        ds-decoders (ds/build-data-series-decoders compression-header blocks)
-        tag-decoders (ds/build-tag-decoders compression-header blocks)]
+        core-block (first (filter #(zero? (long (:content-id %))) blocks))
+        bs-decoder (when core-block
+                     (bs/make-bit-stream-decoder (:data core-block)))
+        ds-decoders (ds/build-data-series-decoders compression-header bs-decoder blocks)
+        tag-decoders (ds/build-tag-decoders compression-header bs-decoder blocks)]
     (record/decode-slice-records (.-seq-resolver rdr)
                                  @(.-header rdr)
                                  compression-header

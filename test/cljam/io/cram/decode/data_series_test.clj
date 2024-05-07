@@ -1,6 +1,7 @@
 (ns cljam.io.cram.decode.data-series-test
   (:require [cljam.io.bam.decoder :as decoder]
             [cljam.io.cram.decode.data-series :as ds]
+            [cljam.io.cram.bit-stream :as bs]
             [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.util.byte-buffer :as bb]
             [clojure.test :refer [deftest is testing]]))
@@ -8,12 +9,15 @@
 (deftest build-data-series-decoders-test
   (let [encodings {:BA {:codec :external, :content-id 1}
                    :BF {:codec :external, :content-id 2}
-                   :RL {:codec :huffman, :alphabet [151], :bit-len [0]}
+                   :MQ {:codec :huffman, :alphabet [60], :bit-len [0]}
+                   :RL {:codec :beta, :offset 149, :length 2}
                    :BB {:codec :byte-array-len
                         :len-encoding {:codec :external, :content-id 3}
                         :val-encoding {:codec :external, :content-id 4}}
                    :RN {:codec :byte-array-stop, :stop-byte 0, :external-id 5}}
-        blocks [{:content-id 1
+        blocks [{:content-id 0
+                 :data (bb/make-lsb-byte-buffer (byte-array [2r01001110]))}
+                {:content-id 1
                  :data (bb/make-lsb-byte-buffer (byte-array (.getBytes "ATGC")))}
                 {:content-id 2
                  :data (->> (byte-array [0x80 0xa1 0x80 0x63 0x80 0xa3 0x80 0x63])
@@ -26,30 +30,45 @@
                  :data (->> "qname001\000qname002\000qname003\000qname004\000"
                             .getBytes
                             bb/make-lsb-byte-buffer)}]
-        {:keys [BA BF RL BB RN]}
-        (ds/build-data-series-decoders {:data-series encodings} blocks)]
+        bs-decoder (bs/make-bit-stream-decoder
+                    (:data (first (filter #(zero? (:content-id %)) blocks))))
+        {:keys [BA BF MQ RL BB RN]}
+        (ds/build-data-series-decoders {:data-series encodings} bs-decoder blocks)]
     (is (= (map int "ATGC") [(BA) (BA) (BA) (BA)]))
     (is (= [0xa1 0x63 0xa3 0x63] [(BF) (BF) (BF) (BF)]))
-    (is (= [151 151 151 151] [(RL) (RL) (RL) (RL)]))
+    (is (= [60 60 60 60] [(MQ) (MQ) (MQ) (MQ)]))
+    (is (= [150 149 152 151] [(RL) (RL) (RL) (RL)]))
     (is (= ["CAT" "CGAAC" "AACT" "ACT"]
            (map #(String. ^bytes %) [(BB) (BB) (BB) (BB)])))
     (is (= ["qname001" "qname002" "qname003" "qname004"]
            (map #(String. ^bytes %) [(RN) (RN) (RN) (RN)]))))
   (testing "block content interleaves when associated with multiple data series"
-    (let [encodings {:BB {:codec :byte-array-len
+    (let [encodings {:RI {:codec :beta, :offset 0, :length 1}
+                     :RL {:codec :beta, :offset 150, :length 1}
+                     :BB {:codec :byte-array-len
                           :len-encoding {:codec :external, :content-id 1}
                           :val-encoding {:codec :external, :content-id 1}}
                      :DL {:codec :external, :content-id 2}
                      :HC {:codec :external, :content-id 2}}
-          blocks [{:content-id 1
+          blocks [{:content-id 0
+                   :data (bb/make-lsb-byte-buffer (byte-array [2r11100100]))}
+                  {:content-id 1
                    :data (->> (byte-array [3 (int \A) (int \B) (int \C)
                                            2 (int \D) (int \E)
                                            1 (int \F)])
                               bb/make-lsb-byte-buffer)}
                   {:content-id 2
                    :data (bb/make-lsb-byte-buffer (byte-array [1 2 3 4 5 6]))}]
-          {:keys [BB DL HC]}
-          (ds/build-data-series-decoders {:data-series encodings} blocks)]
+          bs-decoder (bs/make-bit-stream-decoder
+                      (:data (first (filter #(zero? (:content-id %)) blocks))))
+          {:keys [RI RL BB DL HC]}
+          (ds/build-data-series-decoders {:data-series encodings} bs-decoder blocks)]
+      (is (= [[1 151]
+              [1 150]
+              [0 151]]
+             [[(RI) (RL)]
+              [(RI) (RL)]
+              [(RI) (RL)]]))
       (is (= ["ABC" "DE" "F"]
              (map #(String. ^bytes %) [(BB) (BB) (BB)])))
       (is (= [[1 2] [3 4] [5 6]]
@@ -76,7 +95,7 @@
                      :data (bb/make-lsb-byte-buffer (byte-array [0xde 0xed 0xbe 0xef]))}
                     {:content-id 7692867
                      :data (bb/make-lsb-byte-buffer (byte-array [0xca 0xfe 0xba 0xbe]))}]
-            decoders (ds/build-tag-decoders {:tags encodings} blocks)
+            decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             sb (get-in decoders [:sb \c])
             ub (get-in decoders [:ub \C])]
         (is (= [{:type "i" :value (unchecked-byte 0xde)}
@@ -116,7 +135,7 @@
                              (.putShort 0x89ab)
                              (.putShort 0xcdef)
                              .flip)}]
-            decoders (ds/build-tag-decoders {:tags encodings} blocks)
+            decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             ss (get-in decoders [:ss \s])
             us (get-in decoders [:us \S])]
         (is (= [{:type "i" :value 0x0123}
@@ -156,7 +175,7 @@
                              (.putInt 0x89abcdef)
                              (.putInt 0xffffffff)
                              .flip)}]
-            decoders (ds/build-tag-decoders {:tags encodings} blocks)
+            decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             si (get-in decoders [:si \i])
             ui (get-in decoders [:ui \I])]
         (is (= [{:type "i" :value 0}
@@ -183,7 +202,7 @@
                              (.putFloat -0.5)
                              (.putFloat 0.0)
                              .flip)}]
-            decoders (ds/build-tag-decoders {:tags encodings} blocks)
+            decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             fl (get-in decoders [:fl \f])]
         (is (= [{:type "f" :value 1.0}
                 {:type "f" :value 0.75}
@@ -214,7 +233,7 @@
                                      "deadbeef\000")
                                 .getBytes
                                 bb/make-lsb-byte-buffer)}]
-            decoders (ds/build-tag-decoders {:tags encodings} blocks)
+            decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             MC (get-in decoders [:MC \Z])
             hx (get-in decoders [:hx \H])]
         (is (= [{:type "Z" :value "151M"}
@@ -263,7 +282,7 @@
                                (.putInt bb 4)
                                (doseq [v vs] (.put bb (byte v))))
                              (.flip bb))}]
-            decoders (ds/build-tag-decoders {:tags encodings} blocks)
+            decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             sb (get-in decoders [:sb \B])
             ub (get-in decoders [:ub \B])]
         (is (= [{:type "B" :value "c,0,1,2,3"}
@@ -309,7 +328,7 @@
                                (.putInt bb 2)
                                (doseq [v vs] (.putShort bb v)))
                              (.flip bb))}]
-            decoders (ds/build-tag-decoders {:tags encodings} blocks)
+            decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             ss (get-in decoders [:ss \B])
             us (get-in decoders [:us \B])]
         (is (= [{:type "B" :value (str "s," 0x0123 "," 0x4567)}
@@ -357,7 +376,7 @@
                                (.putInt bb 2)
                                (doseq [v vs] (.putInt bb v)))
                              (.flip bb))}]
-            decoders (ds/build-tag-decoders {:tags encodings} blocks)
+            decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             si (get-in decoders [:si \B])
             ui (get-in decoders [:ui \B])]
         (is (= [{:type "B" :value (str "i," 0x01234567 "," 0x76543210)}
@@ -394,7 +413,7 @@
                                (.put bb (byte -1)))
                              (.flip bb)
                              bb)}]
-            decoders (ds/build-tag-decoders {:tags encodings} blocks)
+            decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             CG (get-in decoders [:CG \B])]
         (is (= (map #(array-map :type "B" :value %) vs)
                (map #(update % :value #'decoder/B-I-type-cigar-str->cigar-str)
@@ -416,7 +435,7 @@
                                (.putInt bb 2)
                                (doseq [v vs] (.putFloat bb v)))
                              (.flip bb))}]
-            decoders (ds/build-tag-decoders {:tags encodings} blocks)
+            decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             fl (get-in decoders [:fl \B])]
         (is (= [{:type "B" :value "f,0.0,0.25"}
                 {:type "B" :value "f,0.5,1.0"}

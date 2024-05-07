@@ -1,5 +1,6 @@
 (ns cljam.io.cram.decode.data-series
   (:require [cljam.io.cram.itf8 :as itf8]
+            [cljam.io.cram.bit-stream :as bs]
             [cljam.io.util.byte-buffer :as bb]
             [clojure.string :as str])
   (:import [java.nio Buffer ByteBuffer]))
@@ -16,7 +17,7 @@
     :bytes))
 
 (defn- build-codec-decoder
-  [{:keys [codec] :as params} data-type content-id->block-data]
+  [{:keys [codec] :as params} data-type bs-decoder content-id->block-data]
   (case codec
     :external
     (let [^ByteBuffer block (get content-id->block-data (:content-id params))]
@@ -33,8 +34,8 @@
 
     :byte-array-len
     (let [{:keys [len-encoding val-encoding]} params
-          len-decoder (build-codec-decoder len-encoding :int content-id->block-data)
-          val-decoder (build-codec-decoder val-encoding :byte content-id->block-data)]
+          len-decoder (build-codec-decoder len-encoding :int bs-decoder content-id->block-data)
+          val-decoder (build-codec-decoder val-encoding :byte bs-decoder content-id->block-data)]
       (fn []
         (let [len (len-decoder)
               bb (bb/allocate-lsb-byte-buffer len)]
@@ -57,7 +58,13 @@
               _ (.reset ^Buffer block)
               ret (bb/read-bytes block len)]
           (.get block)
-          ret)))))
+          ret)))
+
+    :beta
+    (let [{:keys [offset length]} params]
+      (fn []
+        (+ (long (bs/read-bits bs-decoder (long length)))
+           (long offset))))))
 
 (defn build-data-series-decoders
   "Builds decoders for data series based on the encodings specified in the given
@@ -69,11 +76,11 @@
     - <encoding>: a map representing the encoding of the data series
     - <decoder>: a function with no arguments that returns a value decoded from
                  the data series upon each call"
-  [{ds-encodings :data-series} blocks]
+  [{ds-encodings :data-series} bs-decoder blocks]
   (let [content-id->block-data (into {} (map (juxt :content-id :data)) blocks)]
     (reduce-kv (fn [decoders ds params]
                  (let [dt (data-series-type ds)
-                       decoder (build-codec-decoder params dt content-id->block-data)]
+                       decoder (build-codec-decoder params dt bs-decoder content-id->block-data)]
                    (assoc decoders ds decoder)))
                {} ds-encodings)))
 
@@ -104,8 +111,8 @@
                vs (repeatedly len (partial coercer bb))]
            (str/join \, (cons tag-type' vs))))))
 
-(defn- build-tag-decoder [tag-encoding tag-type content-id->block-data]
-  (let [decoder (build-codec-decoder tag-encoding :bytes content-id->block-data)
+(defn- build-tag-decoder [tag-encoding tag-type bs-decoder content-id->block-data]
+  (let [decoder (build-codec-decoder tag-encoding :bytes bs-decoder content-id->block-data)
         coercer (tag-value-coercer tag-type)]
     (fn []
       (let [bb (bb/make-lsb-byte-buffer (decoder))]
@@ -122,13 +129,13 @@
     - <encoding>: a map representing the encoding of the tag and type
     - <decoder>: a function with no arguments that returns a value decoded from
                  the data series for the tag upon each call"
-  [{:keys [tags]} blocks]
+  [{:keys [tags]} bs-decoder blocks]
   (let [content-id->block-data (into {} (map (juxt :content-id :data)) blocks)]
     (reduce-kv
      (fn [decoders tag m]
        (reduce-kv
         (fn [decoders tag-type encoding]
-          (let [decoder (build-tag-decoder encoding tag-type content-id->block-data)
+          (let [decoder (build-tag-decoder encoding tag-type bs-decoder content-id->block-data)
                 tag-type' (str (if (#{\c \C \s \S \i \I} tag-type) \i tag-type))]
             (assoc-in decoders [tag tag-type]
                       (fn [] {:type tag-type' :value (decoder)}))))

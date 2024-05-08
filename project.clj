@@ -20,7 +20,7 @@
                                   [se.haleby/stub-http "0.2.14"]]
                    :plugins [[lein-binplus "0.6.8" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.8"]
-                             [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]
+                             [lein-marginalia "0.9.2" :exclusions [org.clojure/clojure]]
                              [lein-cloverage "1.1.2"]
                              [net.totakke/lein-libra "0.1.2"]
                              [lein-cljfmt "0.9.2"]]

@@ -21,7 +21,7 @@
                    :plugins [[lein-binplus "0.6.8" :exclusions [org.clojure/clojure]]
                              [lein-codox "0.10.8"]
                              [lein-marginalia "0.9.2" :exclusions [org.clojure/clojure]]
-                             [lein-cloverage "1.1.2"]
+                             [lein-cloverage "1.2.4"]
                              [net.totakke/lein-libra "0.1.2"]
                              [lein-cljfmt "0.9.2"]]
                    :test-selectors {:default #(not-any? % [:slow :remote])

@@ -89,7 +89,7 @@
                    (let [type' (->> fields rest fields->map :type)]
                      (if (= type' "wiggle_0")
                        (deserialize (rest lines) pre-start {:line line})
-                       (throw "The track type with version must be `wiggle_0`")))
+                       (throw (ex-info "The track type with version must be `wiggle_0`" {}))))
 
                    ; declaration line of variableStep
                    "variableStep"

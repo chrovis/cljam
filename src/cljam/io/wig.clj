@@ -94,7 +94,7 @@
                    ; declaration line of variableStep
                    "variableStep"
                    (let [{:keys [chrom span]
-                          :or {span 1}} (->> fields rest fields->map)
+                          :or {span "1"}} (->> fields rest fields->map)
                          span (as-long span)
                          track (assoc track :format :variable-step
                                       :chr chrom
@@ -105,7 +105,7 @@
                    ; declaration line of fixedStep
                    "fixedStep"
                    (let [{:keys [chrom start span step]
-                          :or {span 1, step 1}} (->> fields rest fields->map)
+                          :or {span "1", step "1"}} (->> fields rest fields->map)
                          step (long (as-long step))
                          pre-start (- (long (as-long start)) step)
                          span (as-long span)

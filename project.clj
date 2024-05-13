@@ -3,25 +3,25 @@
   :url "https://github.com/chrovis/cljam"
   :license {:name "Apache License, Version 2.0"
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
-  :dependencies [[org.clojure/core.memoize "1.0.257"]
-                 [org.clojure/tools.logging "1.2.4"]
-                 [org.clojure/tools.cli "1.0.214"]
-                 [org.apache.commons/commons-compress "1.23.0"]
+  :dependencies [[org.clojure/core.memoize "1.1.266"]
+                 [org.clojure/tools.logging "1.3.0"]
+                 [org.clojure/tools.cli "1.1.230"]
+                 [org.apache.commons/commons-compress "1.26.1"]
                  [clj-sub-command "0.6.0"]
                  [digest "1.4.10"]
                  [bgzf4j "0.1.2"]
                  [com.climate/claypoole "1.1.4"]
                  [camel-snake-kebab "0.4.3"]
-                 [proton "0.2.2"]]
-  :profiles {:dev {:dependencies [[org.clojure/clojure "1.11.1"]
+                 [proton "0.2.3"]]
+  :profiles {:dev {:dependencies [[org.clojure/clojure "1.11.3"]
                                   [cavia "0.5.1"]
                                   [criterium "0.4.6"]
                                   [net.totakke/libra "0.1.1"]
                                   [se.haleby/stub-http "0.2.14"]]
-                   :plugins [[lein-binplus "0.6.6" :exclusions [org.clojure/clojure]]
-                             [lein-codox "0.10.7"]
-                             [lein-marginalia "0.9.1" :exclusions [org.clojure/clojure]]
-                             [lein-cloverage "1.1.2"]
+                   :plugins [[lein-binplus "0.6.8" :exclusions [org.clojure/clojure]]
+                             [lein-codox "0.10.8"]
+                             [lein-marginalia "0.9.2" :exclusions [org.clojure/clojure]]
+                             [lein-cloverage "1.2.4"]
                              [net.totakke/lein-libra "0.1.2"]
                              [lein-cljfmt "0.9.2"]]
                    :test-selectors {:default #(not-any? % [:slow :remote])
@@ -35,9 +35,9 @@
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
              :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]]}
-             :uberjar {:dependencies [[org.clojure/clojure "1.11.1"]
-                                      [org.apache.logging.log4j/log4j-api "2.20.0"]
-                                      [org.apache.logging.log4j/log4j-core "2.20.0"]]
+             :uberjar {:dependencies [[org.clojure/clojure "1.11.3"]
+                                      [org.apache.logging.log4j/log4j-api "2.23.1"]
+                                      [org.apache.logging.log4j/log4j-core "2.23.1"]]
                        :resource-paths ["bin-resources"]
                        :main cljam.tools.main
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]

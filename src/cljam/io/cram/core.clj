@@ -1,12 +1,13 @@
 (ns cljam.io.cram.core
   (:require [cljam.io.crai :as crai]
-            [cljam.io.cram.seq-resolver :as resolver]
             [cljam.io.cram.reader :as reader.core]
+            [cljam.io.cram.seq-resolver :as resolver]
             [cljam.io.sam.util.refs :as util.refs]
             [cljam.io.util.byte-buffer :as bb]
             [cljam.util :as util]
             [clojure.java.io :as cio])
   (:import [cljam.io.cram.reader CRAMReader]
+           [java.io FileNotFoundException]
            [java.nio.channels FileChannel]
            [java.nio.file OpenOption StandardOpenOption]))
 
@@ -23,8 +24,12 @@
         bb (bb/allocate-lsb-byte-buffer 256)
         seq-resolver (some-> reference resolver/seq-resolver)
         header (volatile! nil)
-        refs (delay (util.refs/make-refs @header))
-        idx (delay (crai/read-index (str f ".crai") @refs))
+        refs (delay (vec (util.refs/make-refs @header)))
+        idx (delay
+              (try
+                (crai/read-index (str f ".crai") @refs)
+                (catch FileNotFoundException _
+                  nil)))
         rdr (reader.core/->CRAMReader url ch bb header refs idx seq-resolver)]
     (reader.core/read-file-definition rdr)
     (vreset! header (reader.core/read-header rdr))

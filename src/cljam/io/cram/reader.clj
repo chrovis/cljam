@@ -5,7 +5,7 @@
             [cljam.io.cram.decode.structure :as struct]
             [cljam.io.protocols :as protocols]
             [cljam.util.intervals :as intervals])
-  (:import [java.io Closeable FileNotFoundException]
+  (:import [java.io Closeable]
            [java.nio Buffer ByteBuffer ByteOrder]
            [java.nio.channels FileChannel FileChannel$MapMode]))
 
@@ -24,11 +24,7 @@
   (read [this region]
     (protocols/read-alignments this region))
   (indexed? [_]
-    (try
-      @index
-      true
-      (catch FileNotFoundException _
-        false)))
+    (boolean @index))
   protocols/IAlignmentReader
   (read-header [_] @header)
   (read-refs [_] @refs)
@@ -63,9 +59,8 @@
   (read-to-buffer rdr 26)
   (struct/decode-file-definition (.-buffer rdr)))
 
-(defn- read-slice-records [^CRAMReader rdr bb compression-header]
-  (let [slice-header (struct/decode-slice-header-block bb)
-        blocks (into [] (map (fn [_] (struct/decode-block bb)))
+(defn- read-slice-records [^CRAMReader rdr bb compression-header slice-header]
+  (let [blocks (into [] (map (fn [_] (struct/decode-block bb)))
                      (range (:blocks slice-header)))
         core-block (first (filter #(zero? (long (:content-id %))) blocks))
         bs-decoder (when core-block
@@ -79,19 +74,24 @@
                                  ds-decoders
                                  tag-decoders)))
 
+(defn- with-each-slice-header [^ByteBuffer bb f slice-offsets]
+  (let [container-header-end (.position bb)
+        compression-header (struct/decode-compression-header-block bb)]
+    (mapcat (fn [^long offset]
+              (.position ^Buffer bb (+ container-header-end offset))
+              (f compression-header (struct/decode-slice-header-block bb)))
+            slice-offsets)))
+
 (defn- read-container-records
   ([rdr bb container-header]
    (read-container-records rdr bb container-header nil))
-  ([^CRAMReader rdr ^ByteBuffer bb container-header idx-entries]
-   (let [container-header-end (.position bb)
-         compression-header (struct/decode-compression-header-block bb)]
-     (->> (if (seq idx-entries)
-            (map :slice-offset idx-entries)
-            (:landmarks container-header))
-          (mapcat
-           (fn [^long landmark]
-             (.position ^Buffer bb (+ container-header-end landmark))
-             (read-slice-records rdr bb compression-header)))))))
+  ([^CRAMReader rdr bb container-header idx-entries]
+   (->> (if (seq idx-entries)
+          (map :slice-offset idx-entries)
+          (:landmarks container-header))
+        (with-each-slice-header bb
+          (fn [compression-header slice-header]
+            (read-slice-records rdr bb compression-header slice-header))))))
 
 (defn- with-next-container-header [^CRAMReader rdr f]
   (let [^FileChannel ch (.-channel rdr)
@@ -139,8 +139,13 @@
                   (concat alns (lazy-seq (step))))))]
       (step))))
 
-(defn- read-alignments-in-region
-  [^CRAMReader rdr {:keys [chr start end] :or {start 0 end Long/MAX_VALUE}}]
+(defn- filter-overlapping-records [chr ^long start ^long end alns]
+  (filter #(and (= (:rname %) chr)
+                (<= (long (:pos %)) end)
+                (<= start (long (:end %))))
+          alns))
+
+(defn- read-alignments-in-region-with-index [^CRAMReader rdr chr ^long start ^long end]
   (let [^FileChannel ch (.-channel rdr)
         idx @(.-index rdr)
         offset->entries (->> (intervals/find-overlap-intervals idx chr start end)
@@ -154,7 +159,45 @@
                 (.position ch offset)
                 (concat (read-container-with rdr (read-fn entries))
                         (lazy-seq (step more)))))]
-      (filter #(and (= (:rname %) chr)
-                    (<= (long (:pos %)) (long end))
-                    (<= (long start) (long (:end %))))
-              (step offset->entries)))))
+      (filter-overlapping-records chr start end (step offset->entries)))))
+
+(defn- overlaps? [container-or-slice-header refs chr start end]
+  (let [seq-id (long (:ref-seq-id container-or-slice-header))]
+    (case seq-id
+      -1 (= chr "*")
+      ;; ref-seq-id = -2 means that the container or slice contains multiple
+      ;; references, and the decoder can't tell in advance what reference
+      ;; it actually has in it
+      -2 true
+      (let [chr' (get (nth refs seq-id) :name)
+            start' (long (:start container-or-slice-header))
+            end' (+ start' (long (:span container-or-slice-header)))]
+        (and (= chr' chr)
+             (<= start' (long end))
+             (<= (long start) end'))))))
+
+(defn- read-alignments-in-region-without-index [^CRAMReader rdr chr ^long start ^long end]
+  (let [^FileChannel ch (.-channel rdr)
+        refs @(.-refs rdr)]
+    (letfn [(read1 [container-header bb]
+              (when-not (struct/eof-container? container-header)
+                (if (overlaps? container-header refs chr start end)
+                  (with-each-slice-header bb
+                    (fn [compression-header slice-header]
+                      (when (overlaps? slice-header refs chr start end)
+                        (read-slice-records rdr bb compression-header slice-header)))
+                    (:landmarks container-header))
+                  ::skipped)))
+            (step []
+              (when (< (.position ch) (.size ch))
+                (when-let [alns (read-container-with rdr read1)]
+                  (if (identical? alns ::skipped)
+                    (recur)
+                    (concat alns (lazy-seq (step)))))))]
+      (filter-overlapping-records chr start end (step)))))
+
+(defn- read-alignments-in-region
+  [^CRAMReader rdr {:keys [chr ^long start ^long end] :or {start 0 end Long/MAX_VALUE}}]
+  (if @(.-index rdr)
+    (read-alignments-in-region-with-index rdr chr start end)
+    (read-alignments-in-region-without-index rdr chr start end)))

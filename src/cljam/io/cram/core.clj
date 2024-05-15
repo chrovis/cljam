@@ -1,6 +1,6 @@
 (ns cljam.io.cram.core
   (:require [cljam.io.crai :as crai]
-            [cljam.io.cram.reader :as reader.core]
+            [cljam.io.cram.reader :as reader]
             [cljam.io.cram.seq-resolver :as resolver]
             [cljam.io.sam.util.refs :as util.refs]
             [cljam.io.util.byte-buffer :as bb]
@@ -25,14 +25,16 @@
         seq-resolver (some-> reference resolver/seq-resolver)
         header (volatile! nil)
         refs (delay (vec (util.refs/make-refs @header)))
+        offset (volatile! nil)
         idx (delay
               (try
                 (crai/read-index (str f ".crai") @refs)
                 (catch FileNotFoundException _
                   nil)))
-        rdr (reader.core/->CRAMReader url ch bb header refs idx seq-resolver)]
-    (reader.core/read-file-definition rdr)
-    (vreset! header (reader.core/read-header rdr))
+        rdr (reader/->CRAMReader url ch bb header refs offset idx seq-resolver)]
+    (reader/read-file-definition rdr)
+    (vreset! header (reader/read-header rdr))
+    (vreset! offset (.position ch))
     rdr))
 
 (defn clone-reader
@@ -44,11 +46,12 @@
                              (into-array OpenOption [StandardOpenOption/READ]))
         bb (bb/allocate-lsb-byte-buffer 256)
         seq-resolver (some-> (.-seq-resolver rdr) resolver/clone-seq-resolver)
-        rdr' (reader.core/->CRAMReader url ch bb
-                                       (delay @(.-header rdr))
-                                       (delay @(.-refs rdr))
-                                       (delay @(.-index rdr))
-                                       seq-resolver)]
-    (reader.core/read-file-definition rdr')
-    (reader.core/skip-container rdr')
+        rdr' (reader/->CRAMReader url ch bb
+                                  (delay @(.-header rdr))
+                                  (delay @(.-refs rdr))
+                                  (delay @(.-offset rdr))
+                                  (delay @(.-index rdr))
+                                  seq-resolver)]
+    (reader/read-file-definition rdr')
+    (reader/skip-container rdr')
     rdr'))

@@ -11,7 +11,7 @@
 
 (declare read-alignments read-alignments-in-region)
 
-(deftype CRAMReader [url channel buffer header refs index seq-resolver]
+(deftype CRAMReader [url channel buffer header refs offset index seq-resolver]
   Closeable
   (close [_]
     (when seq-resolver
@@ -194,6 +194,7 @@
                   (if (identical? alns ::skipped)
                     (recur)
                     (concat alns (lazy-seq (step)))))))]
+      (.position ch (long @(.-offset rdr)))
       (filter-overlapping-records chr start end (step)))))
 
 (defn- read-alignments-in-region

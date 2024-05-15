@@ -25,7 +25,12 @@
            (cram/read-refs cram-rdr')))
     (is (= (map fixup-bam-aln (sam/read-alignments bam-rdr))
            (cram/read-alignments cram-rdr)
-           (cram/read-alignments cram-rdr')))))
+           (cram/read-alignments cram-rdr')))
+    (are [?region ?count] (= ?count
+                             (count (cram/read-alignments cram-rdr ?region))
+                             (count (cram/read-alignments cram-rdr' ?region)))
+      {:chr "ref"} 6
+      {:chr "ref2", :start 35, :end 35} 2)))
 
 (deftest-remote reader-with-multiple-containers-test
   (with-before-after {:before (prepare-cavia!)}

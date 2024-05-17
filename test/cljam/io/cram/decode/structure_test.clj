@@ -27,7 +27,7 @@
               :id "file:///tmp/cljam/me"}
              (struct/decode-file-definition bb)))
       (is (= {:length 278
-              :ref -1
+              :ref-seq-id -1
               :start 0
               :span 0
               :records 0
@@ -42,7 +42,7 @@
                       (sam/read-header r)))
              (struct/decode-cram-header-block bb)))
       (is (= {:length 362828
-              :ref -2
+              :ref-seq-id -2
               :start 0
               :span 0
               :records 10000
@@ -150,7 +150,7 @@
                    (range 29))))
       (let [container-header (decode-container-header bb)]
         (is (= {:length 98171
-                :ref -1
+                :ref-seq-id -1
                 :start 0
                 :span 0
                 :records 2271

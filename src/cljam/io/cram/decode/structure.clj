@@ -68,7 +68,7 @@
         landmarks (decode-itf8-array bb)
         crc (bb/read-bytes bb 4)]
     {:length len
-     :ref ref-seq-id
+     :ref-seq-id ref-seq-id
      :start start-pos
      :span span
      :records n-records
@@ -82,7 +82,7 @@
   "Returns true iff the given container header represents an EOF container."
   [container-header]
   (and (= (:length container-header) 15)
-       (= (:ref container-header) -1)
+       (= (:ref-seq-id container-header) -1)
        (= (:start container-header) 4542278)
        (= (:span container-header) 0)
        (= (:records container-header) 0)

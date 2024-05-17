@@ -25,7 +25,12 @@
            (cram/read-refs cram-rdr')))
     (is (= (map fixup-bam-aln (sam/read-alignments bam-rdr))
            (cram/read-alignments cram-rdr)
-           (cram/read-alignments cram-rdr')))))
+           (cram/read-alignments cram-rdr')))
+    (are [?region ?count] (= ?count
+                             (count (cram/read-alignments cram-rdr ?region))
+                             (count (cram/read-alignments cram-rdr' ?region)))
+      {:chr "ref"} 6
+      {:chr "ref2", :start 35, :end 35} 2)))
 
 (deftest-remote reader-with-multiple-containers-test
   (with-before-after {:before (prepare-cavia!)}
@@ -39,11 +44,16 @@
                (cram/read-refs cram-rdr)))
         (is (= (map fixup-bam-aln (sam/read-alignments bam-rdr))
                (cram/read-alignments cram-rdr)))))
-    (testing "read alignments in specified regions"
+    (testing "read alignments in specified regions (with and without index file)"
       (with-open [cram-rdr (cram/reader common/medium-cram-file
-                                        {:reference common/hg19-twobit-file})]
+                                        {:reference common/hg19-twobit-file})
+                  cram-rdr' (cram/reader common/medium-without-index-cram-file
+                                         {:reference common/hg19-twobit-file})]
         (is (cram/indexed? cram-rdr))
-        (are [?region ?count] (= ?count (count (cram/read-alignments cram-rdr ?region)))
+        (is (not (cram/indexed? cram-rdr')))
+        (are [?region ?count] (= ?count
+                                 (count (cram/read-alignments cram-rdr ?region))
+                                 (count (cram/read-alignments cram-rdr' ?region)))
           {:chr "chr1"} 615
           {:chr "*"} 4348
           {:chr "chr1", :start 546610, :end 546610} 1

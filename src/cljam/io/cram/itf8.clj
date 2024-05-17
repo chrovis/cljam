@@ -1,5 +1,6 @@
 (ns cljam.io.cram.itf8
-  (:require [cljam.io.util.byte-buffer :as bb]))
+  (:require [cljam.io.util.byte-buffer :as bb]
+            [cljam.io.util.lsb.io-stream :as lsb]))
 
 (defn decode-itf8
   "Decodes ITF-8 integer from ByteBuffer."
@@ -95,3 +96,99 @@
                   (bit-shift-left (long (bb/read-ubyte bb)) 16)
                   (bit-shift-left (long (bb/read-ubyte bb)) 8)
                   (long (bb/read-ubyte bb))))))
+
+(defn encode-itf8
+  "Encodes ITF-8 integer to OutputStream."
+  [out ^long v]
+  (cond (zero? (unsigned-bit-shift-right v 7))
+        (lsb/write-ubyte out v)
+
+        (zero? (unsigned-bit-shift-right v 14))
+        (do (lsb/write-ubyte out (bit-or (unsigned-bit-shift-right v 8) 0x80))
+            (lsb/write-ubyte out (bit-and v 0xff)))
+
+        (zero? (unsigned-bit-shift-right v 21))
+        (do (lsb/write-ubyte out (bit-or (unsigned-bit-shift-right v 16) 0xc0))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 8) 0xff))
+            (lsb/write-ubyte out (bit-and v 0xff)))
+
+        (zero? (unsigned-bit-shift-right v 28))
+        (do (lsb/write-ubyte out (bit-or (unsigned-bit-shift-right v 24) 0xe0))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 16) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 8) 0xff))
+            (lsb/write-ubyte out (bit-and v 0xff)))
+
+        :else
+        (do (lsb/write-ubyte out (bit-or (unsigned-bit-shift-right v 28) 0xf0))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 20) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 12) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 4) 0xff))
+            (lsb/write-ubyte out (bit-and v 0x0f))))
+  nil)
+
+(defn encode-ltf8
+  "Encodes LTF-8 integer to OutputStream."
+  [out ^long v]
+  (cond (zero? (unsigned-bit-shift-right v 7))
+        (lsb/write-ubyte out v)
+
+        (zero? (unsigned-bit-shift-right v 14))
+        (do (lsb/write-ubyte out (bit-or (unsigned-bit-shift-right v 8) 0x80))
+            (lsb/write-ubyte out (bit-and v 0xff)))
+
+        (zero? (unsigned-bit-shift-right v 21))
+        (do (lsb/write-ubyte out (bit-or (unsigned-bit-shift-right v 16) 0xc0))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 8) 0xff))
+            (lsb/write-ubyte out (bit-and v 0xff)))
+
+        (zero? (unsigned-bit-shift-right v 28))
+        (do (lsb/write-ubyte out (bit-or (unsigned-bit-shift-right v 24) 0xe0))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 16) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 8) 0xff))
+            (lsb/write-ubyte out (bit-and v 0xff)))
+
+        (zero? (unsigned-bit-shift-right v 35))
+        (do (lsb/write-ubyte out (bit-or (unsigned-bit-shift-right v 32) 0xf0))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 24) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 16) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 8) 0xff))
+            (lsb/write-ubyte out (bit-and v 0xff)))
+
+        (zero? (unsigned-bit-shift-right v 42))
+        (do (lsb/write-ubyte out (bit-or (unsigned-bit-shift-right v 40) 0xf8))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 32) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 24) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 16) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 8) 0xff))
+            (lsb/write-ubyte out (bit-and v 0xff)))
+
+        (zero? (unsigned-bit-shift-right v 49))
+        (do (lsb/write-ubyte out (bit-or (unsigned-bit-shift-right v 48) 0xfc))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 40) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 32) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 24) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 16) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 8) 0xff))
+            (lsb/write-ubyte out (bit-and v 0xff)))
+
+        (zero? (unsigned-bit-shift-right v 56))
+        (do (lsb/write-ubyte out 0xfe)
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 48) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 40) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 32) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 24) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 16) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 8) 0xff))
+            (lsb/write-ubyte out (bit-and v 0xff)))
+
+        :else
+        (do (lsb/write-ubyte out 0xff)
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 56) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 48) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 40) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 32) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 24) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 16) 0xff))
+            (lsb/write-ubyte out (bit-and (unsigned-bit-shift-right v 8) 0xff))
+            (lsb/write-ubyte out (bit-and v 0xff))))
+  nil)

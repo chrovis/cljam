@@ -1,6 +1,6 @@
 (ns cljam.io.cram.reader
   (:require [cljam.io.cram.bit-stream :as bs]
-            [cljam.io.cram.decode.data-series :as ds]
+            [cljam.io.cram.data-series :as ds]
             [cljam.io.cram.decode.record :as record]
             [cljam.io.cram.decode.structure :as struct]
             [cljam.io.cram.seq-resolver.protocol :as resolver]

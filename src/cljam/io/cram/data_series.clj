@@ -1,9 +1,11 @@
-(ns cljam.io.cram.decode.data-series
-  (:require [cljam.io.cram.itf8 :as itf8]
-            [cljam.io.cram.bit-stream :as bs]
+(ns cljam.io.cram.data-series
+  (:require [cljam.io.cram.bit-stream :as bs]
+            [cljam.io.cram.itf8 :as itf8]
             [cljam.io.util.byte-buffer :as bb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [clojure.string :as str])
-  (:import [java.nio Buffer ByteBuffer]))
+  (:import [java.io ByteArrayOutputStream OutputStream]
+           [java.nio Buffer ByteBuffer]))
 
 (defn- data-series-type [ds]
   (case ds
@@ -141,3 +143,115 @@
                       (fn [] {:type tag-type' :value (decoder)}))))
         decoders m))
      {} tags)))
+
+(defn- build-codec-encoder [{:keys [codec content-id] :as params} data-type]
+  (case codec
+    :external
+    (let [out (ByteArrayOutputStream.)]
+      (case data-type
+        :byte (fn
+                ([] [{:content-id content-id, :data (.toByteArray out)}])
+                ([v] (.write out (int v))))
+        :int (fn
+               ([] [{:content-id content-id, :data (.toByteArray out)}])
+               ([v] (itf8/encode-itf8 out v)))))
+
+    :huffman
+    (let [{:keys [alphabet bit-len]} params]
+      (assert (and (= (count alphabet) 1)
+                   (zero? (long (first bit-len))))
+              "Huffman coding for more than one word is not supported yet.")
+      (fn
+        ([] [])
+        ([_])))
+
+    :byte-array-len
+    (let [{:keys [len-encoding val-encoding]} params
+          len-encoder (build-codec-encoder len-encoding :int)
+          val-encoder (build-codec-encoder val-encoding :byte)]
+      (fn
+        ([] (into (len-encoder) (val-encoder)))
+        ([^"[B" bs]
+         (let [len (alength bs)]
+           (len-encoder len)
+           (dotimes [i len]
+             (val-encoder (aget bs i)))))))
+
+    :byte-array-stop
+    (let [{:keys [stop-byte]} params
+          out (ByteArrayOutputStream.)]
+      (fn
+        ([] [{:content-id content-id, :data (.toByteArray out)}])
+        ([^"[B" bs]
+         (.write out bs)
+         (.write out (int stop-byte)))))))
+
+(defn build-data-series-encoders
+  "TODO"
+  [ds-encoding]
+  (reduce-kv (fn [encoders ds params]
+               (let [dt (data-series-type ds)
+                     encoder (build-codec-encoder params dt)]
+                 (assoc encoders ds encoder)))
+             {} ds-encoding))
+
+(def ^:private digit->char
+  (let [bs (.getBytes "0123456789abcdef")]
+    (fn [^long i]
+      (aget bs i))))
+
+(defn- tag-value-converter [tag-type]
+  (case tag-type
+    \A (fn [^OutputStream out c] (.write out (byte (int c))))
+    \c (fn [^OutputStream out b] (.write out (byte b)))
+    \C lsb/write-ubyte
+    \s lsb/write-short
+    \S lsb/write-ushort
+    \i lsb/write-int
+    \I lsb/write-uint
+    \f lsb/write-float
+    \Z (fn [^OutputStream out ^String s]
+         (.write out (.getBytes s))
+         (.write out (byte 0)))
+    \H (fn [^OutputStream out ^"[B" bs]
+         (let [n (alength bs)]
+           (dotimes [i n]
+             (let [b (aget bs i)]
+               (.write out (byte (digit->char (bit-and (bit-shift-right b 4) 0x0f))))
+               (.write out (byte (digit->char (bit-and b 0x0f))))))
+           (.write out (byte 0))))
+    \B (fn [^OutputStream out s]
+         (let [[t & vs] (str/split s #",")
+               t' (first t)
+               n (count vs)
+               conv (tag-value-converter t')
+               vs' (mapv (if (= t' \f)
+                           #(Float/parseFloat %)
+                           #(Long/parseLong %))
+                         vs)]
+           (.write out (byte (int t')))
+           (lsb/write-int out n)
+           (dotimes [i n]
+             (conv out (nth vs' i)))))))
+
+(defn- build-tag-encoder [tag-encoding tag-type]
+  (let [encoder (build-codec-encoder tag-encoding :bytes)
+        converter (tag-value-converter tag-type)]
+    (fn
+      ([] (encoder))
+      ([v]
+       (let [out (ByteArrayOutputStream.)]
+         (converter out v)
+         (encoder (.toByteArray out)))))))
+
+(defn build-tag-encoders
+  "TODO"
+  [tag-encodings]
+  (reduce-kv
+   (fn [encoders tag m]
+     (reduce-kv
+      (fn [encoders tag-type encoding]
+        (assoc-in encoders [tag tag-type]
+                  (build-tag-encoder encoding tag-type)))
+      encoders m))
+   {} tag-encodings))

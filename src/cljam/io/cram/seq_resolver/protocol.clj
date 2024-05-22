@@ -1,11 +1,11 @@
 (ns cljam.io.cram.seq-resolver.protocol)
 
 (defprotocol ISeqResolver
-  (resolve-sequence [this region]))
+  (resolve-sequence [this chr start end]))
 
 (extend-protocol ISeqResolver
   nil
-  (resolve-sequence [_ region]
+  (resolve-sequence [_ chr start end]
     (throw
      (ex-info "reference was not specified, but tried to resolve sequence"
-              region))))
+              {:chr chr :start start :end end}))))

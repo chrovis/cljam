@@ -48,9 +48,9 @@
   (let [seqs (with-open [r (cseq/reader common/test-fa-file)]
                (into {} (map (juxt :name :sequence)) (cseq/read-all-sequences r)))]
     (reify resolver/ISeqResolver
-      (resolve-sequence [_ {:keys [chr start end]}]
+      (resolve-sequence [_ chr start end]
         (let [s (get seqs chr)]
-          (subs s (dec (long start)) end))))))
+          (.getBytes (subs s (dec (long start)) end)))))))
 
 (deftest record-end-test
   (are [?record ?features ?expected]

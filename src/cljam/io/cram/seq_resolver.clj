@@ -8,11 +8,12 @@
   (close [_]
     (.close ^Closeable seq-reader))
   proto/ISeqResolver
-  (resolve-sequence [_ region]
-    (cseq/read-sequence seq-reader region)))
+  (resolve-sequence [_ chr start end]
+    (when-let [s (cseq/read-sequence seq-reader {:chr chr :start start :end end})]
+      (.getBytes ^String s))))
 
 (defn seq-resolver
-  "Creates e new sequence resolver from the given sequence file."
+  "Creates a new sequence resolver from the given sequence file."
   [seq-file]
   (->SeqResolver (cseq/reader seq-file)))
 

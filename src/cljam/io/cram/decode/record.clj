@@ -39,10 +39,10 @@
 (defn- build-read-name-decoder [{:keys [preservation-map]} {:keys [RN]}]
   (if (:RN preservation-map)
     #(assoc % :qname (String. ^bytes (RN)))
-    (throw (ex-info "Omitted read names are not supported yet." {}))))
+    identity))
 
-(defn- build-mate-read-decoder [cram-header {:keys [MF NS NP TS NF]}]
-  (fn [{:keys [rname] :as record}]
+(defn- build-mate-read-decoder [cram-header {:keys [MF NS RN NP TS NF]}]
+  (fn [{:keys [rname qname] :as record}]
     (let [flag (long (::flag record))]
       (if (pos? (bit-and flag 0x02))
         (let [mate-flag (long (MF))
@@ -54,6 +54,7 @@
                          (bit-or (sam.flag/encoded #{:next-unmapped})))
               rnext (ref-name cram-header (NS))]
           (assoc record
+                 :qname (or qname (String. ^bytes (RN)))
                  :flag bam-flag
                  :rnext (if (and (= rname rnext) (not= rname "*")) "=" rnext)
                  :pnext (NP)
@@ -337,9 +338,23 @@
           (aset records i record')
           (aset records j mate'))))))
 
+(defn- assign-record-names [qname-generator slice-header ^objects records]
+  (let [counter-start (long (:counter slice-header))]
+    (dotimes [i (alength records)]
+      (let [record (aget records i)]
+        (when (nil? (:qname record))
+          ;; detached records always have qname, so if the control comes in here,
+          ;; it means this record is not detached and must have ::next-fragment
+          (let [j (inc (+ i (long (::next-fragment record))))
+                mate (aget records j)
+                qname (qname-generator (+ counter-start i))]
+            (aset records i (assoc record :qname qname))
+            (aset records j (assoc mate :qname qname))))))))
+
 (defn decode-slice-records
   "Decodes CRAM records in a slice all at once and returns them as a sequence of maps."
-  [seq-resolver cram-header compression-header slice-header ds-decoders tag-decoders]
+  [seq-resolver qname-generator cram-header compression-header slice-header
+   ds-decoders tag-decoders]
   (let [record-decoder (build-cram-record-decoder seq-resolver
                                                   cram-header
                                                   compression-header
@@ -351,4 +366,6 @@
     (dotimes [i n]
       (aset records i (record-decoder)))
     (resolve-mate-records records)
+    (when-not (get-in compression-header [:preservation-map :RN])
+      (assign-record-names qname-generator slice-header records))
     (map #(dissoc % ::flag ::len ::next-fragment) records)))

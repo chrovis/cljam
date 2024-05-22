@@ -14,7 +14,7 @@
 
 (declare read-alignments read-alignments-in-region)
 
-(deftype CRAMReader [url channel buffer header refs offset index seq-resolver]
+(deftype CRAMReader [url channel buffer header refs offset index seq-resolver qname-generator]
   Closeable
   (close [_]
     (when seq-resolver
@@ -90,6 +90,7 @@
         ds-decoders (ds/build-data-series-decoders compression-header bs-decoder blocks)
         tag-decoders (ds/build-tag-decoders compression-header bs-decoder blocks)]
     (record/decode-slice-records (seq-resolver-for-slice rdr slice-header blocks)
+                                 (.-qname-generator rdr)
                                  @(.-header rdr)
                                  compression-header
                                  slice-header

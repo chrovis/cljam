@@ -426,6 +426,7 @@
                :cigar "5M", :rnext "*", :pnext 0, :tlen 0, :seq "CTGTG", :qual "AEEEE"
                :options []}]
              (record/decode-slice-records test-seq-resolver
+                                          nil
                                           cram-header
                                           compression-header
                                           slice-header
@@ -483,6 +484,73 @@
                :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "GCACA", :qual "BCCFD"
                :options []}]
              (record/decode-slice-records test-seq-resolver
+                                          nil
+                                          cram-header
+                                          compression-header
+                                          slice-header
+                                          ds-decoders
+                                          tag-decoders)))))
+  (testing "unnamed reads"
+    (let [cram-header {:SQ
+                       [{:SN "ref"}
+                        {:SN "ref2"}]}
+          compression-header {:preservation-map
+                              {:RN false
+                               :AP true
+                               :RR true
+                               :SM {\A {0 \C, 1 \G, 2 \T, 3 \N}
+                                    \C {0 \A, 1 \G, 2 \T, 3 \N}
+                                    \G {0 \A, 1 \C, 2 \T, 3 \N}
+                                    \T {0 \A, 1 \C, 2 \G, 3 \N}
+                                    \N {0 \A, 1 \C, 2 \G, 3 \T}}
+                               :TD [[]]}}
+          slice-header {:ref-seq-id 0
+                        :start 10
+                        :records 7
+                        :counter 100}
+          ds-decoders (build-stub-decoders
+                       {:BF [67 67 147 147 147 67 0]
+                        :CF [5 5 1 1 3 3 3]
+                        :RL [5 5 5 5 5 5 5]
+                        :AP [0 0 20 0 0 0 0]
+                        :RG [-1 -1 -1 -1 -1 -1 -1]
+                        :RN (->> [nil nil nil nil "q003" "q004" "q005"]
+                                 (keep #(some-> ^String % .getBytes)))
+                        :MF [nil nil nil nil 0 1 2]
+                        :NF [1 1 nil nil nil nil nil]
+                        :NS [nil nil nil nil 0 1 -1]
+                        :NP [nil nil nil nil 50 100 0]
+                        :TS [nil nil nil nil 25 0 0]
+                        :TL [0 0 0 0 0 0 0]
+                        :FN [0 0 0 0 0 0 0]
+                        :QS (->> (repeat 7 "#####")
+                                 (mapcat #(.getBytes ^String %))
+                                 (map #(- (long %) 33)))
+                        :MQ [40 40 40 40 40 40 40]})
+          tag-decoders (build-stub-tag-decoders {})]
+      (is (= [{:qname "gen:101", :flag 99, :rname "ref", :pos 10, :end 14, :mapq 40,
+               :cigar "5M", :rnext "=", :pnext 30, :tlen 25, :seq "GATAA", :qual "#####"
+               :options []}
+              {:qname "gen:102", :flag 99, :rname "ref", :pos 10, :end 14, :mapq 40,
+               :cigar "5M", :rnext "=", :pnext 30, :tlen 25, :seq "GATAA", :qual "#####"
+               :options []}
+              {:qname "gen:101", :flag 147, :rname "ref", :pos 30, :end 34, :mapq 40,
+               :cigar "5M", :rnext "=", :pnext 10, :tlen -25, :seq "AGGCA", :qual "#####"
+               :options []}
+              {:qname "gen:102", :flag 147, :rname "ref", :pos 30, :end 34, :mapq 40,
+               :cigar "5M", :rnext "=", :pnext 10, :tlen -25, :seq "AGGCA", :qual "#####"
+               :options []}
+              {:qname "q003", :flag 147, :rname "ref", :pos 30, :end 34, :mapq 40,
+               :cigar "5M", :rnext "=", :pnext 50, :tlen 25, :seq "AGGCA", :qual "#####"
+               :options []}
+              {:qname "q004", :flag 99, :rname "ref", :pos 30, :end 34, :mapq 40,
+               :cigar "5M", :rnext "ref2", :pnext 100, :tlen 0, :seq "AGGCA", :qual "#####"
+               :options []}
+              {:qname "q005", :flag 8, :rname "ref", :pos 30, :end 34, :mapq 40,
+               :cigar "5M", :rnext "*", :pnext 0, :tlen 0, :seq "AGGCA", :qual "#####"
+               :options []}]
+             (record/decode-slice-records test-seq-resolver
+                                          #(str "gen:" (inc %))
                                           cram-header
                                           compression-header
                                           slice-header

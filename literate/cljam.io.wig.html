@@ -2866,8 +2866,8 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.wig" name="cljam.io.wig"><h1 class="project-name">cljam.io.wig</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to read and write the WIG (Wiggle) format. See
-  https://genome.ucsc.edu/goldenpath/help/wiggle.html for the detail WIG
-  specifications.</p>
+https://genome.ucsc.edu/goldenpath/help/wiggle.html for the detail WIG
+specifications.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.wig
   (:require [clojure.java.io :as cio]
             [clojure.string :as cstr]
@@ -2885,7 +2885,7 @@ net.brehaut.ClojureTools = (function (SH) {
   protocols/IReader
   (reader-url [this] (.url this))
   (read [this] (read-fields this))
-  (read [this option] (read-fields this))
+  (read [this _] (read-fields this))
   (indexed? [_] false))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord WIGWriter [^BufferedWriter writer ^URL url]
   Closeable
@@ -2893,37 +2893,39 @@ net.brehaut.ClojureTools = (function (SH) {
     (.close ^Closeable (.writer this)))
   protocols/IWriter
   (writer-url [this] (.url this)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.wig.WIGReader of f. Should be used inside with-open
-  to ensure the reader is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^WIGReader reader
+to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn reader
+  ^WIGReader
   [f]
   (WIGReader. (cio/reader (util/compressor-input-stream f)) (util/as-url f)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.wig.WIGWriter of f. Should be used inside with-open
-  to ensure the writer is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^WIGWriter writer
+to ensure the writer is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn writer
+  ^WIGWriter
   [f]
   (WIGWriter. (cio/writer (util/compressor-output-stream f)) (util/as-url f)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:const wig-fields [:track :chr :start :end :value])</pre></td></tr><tr><td class="docs"><p>Returns true if given string is a blank, header, or comment line.</p>
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const wig-fields [:track :chr :start :end :value])</pre></td></tr><tr><td class="docs"><p>Returns true if given string is a blank, header, or comment line.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- header-or-comment?
   [^String s]
   (or (empty? s)
       (.startsWith s &quot;browser&quot;)
-      (.startsWith s &quot;#&quot;)))</pre></td></tr><tr><td class="docs"><p>Normalize WIG lines.</p>
+      (.startsWith s &quot;#&quot;)))</pre></td></tr><tr><td class="docs"><p>Normalizes WIG lines.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- normalize
   [m]
-  (update m :chr chr/normalize-chromosome-key))</pre></td></tr><tr><td class="docs"><p>Convert vector ["key1=value1" "key2=value2" ...] to map
-  {:key1 "value1" :key2 "value2" ...}.</p>
+  (update m :chr chr/normalize-chromosome-key))</pre></td></tr><tr><td class="docs"><p>Converts vector ["key1=value1" "key2=value2" ...] to map
+{:key1 "value1" :key2 "value2" ...}.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- fields-&gt;map
   [fields]
   (into {}
         (map (fn [field]
                (let [[k v] (cstr/split field #&quot;=&quot;)]
                  [(keyword k) v])))
-        fields))</pre></td></tr><tr><td class="docs"><p>Convert string to Wiggle track data values which can be integer or real,
-  positive or negative values.</p>
+        fields))</pre></td></tr><tr><td class="docs"><p>Converts string to Wiggle track data values which can be integer or real,
+positive or negative values.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- str-&gt;wiggle-track-data
   [^String s]
   (if-let [l (as-long s)]
     l
-    (as-double s)))</pre></td></tr><tr><td class="docs"><p>Parse WIG lines and return a lazy sequence of flat map.</p>
+    (as-double s)))</pre></td></tr><tr><td class="docs"><p>Parses WIG lines and return a lazy sequence of flat map.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- deserialize-wigs
   [lines]
   (letfn [(deserialize [lines pre-start track]
@@ -2933,14 +2935,14 @@ net.brehaut.ClojureTools = (function (SH) {
                  (case (first fields)
                    ; track definition line
                    &quot;track&quot;
-                   (let [type (-&gt;&gt; fields rest fields-&gt;map :type)]
-                     (if (= type &quot;wiggle_0&quot;)
+                   (let [type' (-&gt;&gt; fields rest fields-&gt;map :type)]
+                     (if (= type' &quot;wiggle_0&quot;)
                        (deserialize (rest lines) pre-start {:line line})
-                       (throw &quot;The track type with version must be `wiggle_0`&quot;)))
+                       (throw (ex-info &quot;The track type with version must be `wiggle_0`&quot; {}))))
                    ; declaration line of variableStep
                    &quot;variableStep&quot;
                    (let [{:keys [chrom span]
-                          :or {span 1}} (-&gt;&gt; fields rest fields-&gt;map)
+                          :or {span &quot;1&quot;}} (-&gt;&gt; fields rest fields-&gt;map)
                          span (as-long span)
                          track (assoc track :format :variable-step
                                       :chr chrom
@@ -2950,9 +2952,9 @@ net.brehaut.ClojureTools = (function (SH) {
                    ; declaration line of fixedStep
                    &quot;fixedStep&quot;
                    (let [{:keys [chrom start span step]
-                          :or {span 1, step 1}} (-&gt;&gt; fields rest fields-&gt;map)
-                         step (as-long step)
-                         pre-start (- (as-long start) step)
+                          :or {span &quot;1&quot;, step &quot;1&quot;}} (-&gt;&gt; fields rest fields-&gt;map)
+                         step (long (as-long step))
+                         pre-start (- (long (as-long start)) step)
                          span (as-long span)
                          track (assoc track :format :fixed-step
                                       :chr chrom
@@ -2964,8 +2966,8 @@ net.brehaut.ClojureTools = (function (SH) {
                              :variable-step
                              (let [{:keys [chr span]} track
                                    [start value] fields
-                                   start (as-long start)
-                                   end (dec (+ start span))
+                                   start (long (as-long start))
+                                   end (dec (+ start (long span)))
                                    value (str-&gt;wiggle-track-data value)]
                                {:track track
                                 :chr chr
@@ -2974,8 +2976,8 @@ net.brehaut.ClojureTools = (function (SH) {
                                 :value value})
                              :fixed-step
                              (let [{:keys [chr span step]} track
-                                   start (+ pre-start step)
-                                   end (dec (+ start span))
+                                   start (+ (long pre-start) (long step))
+                                   end (dec (+ start (long span)))
                                    value (-&gt; fields first str-&gt;wiggle-track-data)]
                                {:track track
                                 :chr chr
@@ -2992,27 +2994,27 @@ net.brehaut.ClojureTools = (function (SH) {
                             :format nil
                             :chr nil
                             :step nil
-                            :span nil})))</pre></td></tr><tr><td class="docs"><p>Serialize a sequence of WIG fields into a lazy sequence of string.</p>
+                            :span nil})))</pre></td></tr><tr><td class="docs"><p>Serializes a sequence of WIG fields into a lazy sequence of string.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- serialize-wigs
   [wigs]
   {:pre [;; These fields are required.
          (map (fn [wig] (every? some? ((apply juxt wig-fields) wig))) wigs)
          ;; There are two options for formatting wiggle data.
          (map (fn [wig]
-                (let [format (-&gt; wig :track :format)]
-                  (or (= format :fixed-step)
-                      (= format :variable-step))))
+                (let [format' (-&gt; wig :track :format)]
+                  (or (= format' :fixed-step)
+                      (= format' :variable-step))))
               wigs)]}
   (letfn [(serialize [wigs]
             (-&gt;&gt; wigs
                  (sequence
                   (comp
                    (partition-by (juxt (comp :format :track)
-                                       #(- (:end %) (:start %))))
+                                       #(- (long (:end %)) (long (:start %)))))
                    (map
-                    (fn [[{{:keys [line format span step]} :track
+                    (fn [[{{:keys [line span step] format' :format} :track
                            chr :chr start :start} :as xs]]
-                      (case format
+                      (case format'
                         :variable-step
                         (let [declaration-line (-&gt;&gt; (cond-&gt; [&quot;variableStep&quot;
                                                              (str &quot;chrom=&quot; chr)]
@@ -3042,7 +3044,7 @@ net.brehaut.ClojureTools = (function (SH) {
                           (cstr/join \newline
                                      (cond-&gt;&gt; [declaration-line data-lines]
                                        line (cons line)))))))))))]
-    (serialize wigs)))</pre></td></tr><tr><td class="docs"><p>Read sequence of WIG fields from reader</p>
+    (serialize wigs)))</pre></td></tr><tr><td class="docs"><p>Reads sequence of WIG fields from reader</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-fields
   [^WIGReader rdr]
   (-&gt;&gt; rdr
@@ -3050,14 +3052,14 @@ net.brehaut.ClojureTools = (function (SH) {
        line-seq
        (remove header-or-comment?)
        deserialize-wigs
-       (map normalize)))</pre></td></tr><tr><td class="docs"><p>Write sequence of WIG fields to writer.</p>
+       (map normalize)))</pre></td></tr><tr><td class="docs"><p>Writes sequence of WIG fields to writer.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-fields
   [^WIGWriter wtr xs]
   (let [w ^BufferedWriter (.writer wtr)]
     (-&gt;&gt; xs
          serialize-wigs
          (interpose \newline)
-         (run! #(.write w (str %))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+         (run! #(.write w (str %))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

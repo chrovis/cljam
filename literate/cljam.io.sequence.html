@@ -2866,7 +2866,7 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sequence" name="cljam.io.sequence"><h1 class="project-name">cljam.io.sequence</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to read and write formats representing sequences such as FASTA and
-  TwoBit.</p>
+TwoBit.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sequence
   (:refer-clojure :exclude [indexed?])
   (:require [cljam.io.fasta.core :as fa-core]
@@ -2881,18 +2881,21 @@ net.brehaut.ClojureTools = (function (SH) {
            cljam.io.twobit.reader.TwoBitReader
            cljam.io.twobit.writer.TwoBitWriter))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.fasta.reader.FASTAReader of f. Should be used inside
-  with-open to ensure the reader is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^FASTAReader fasta-reader
+with-open to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn fasta-reader
+  ^FASTAReader
   [f]
   (fa-core/reader f))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.twobit.reader.TwoBitReader of f. Should be used
-  inside with-open to ensure the reader is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^TwoBitReader twobit-reader
+inside with-open to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn twobit-reader
+  ^TwoBitReader
   [f]
   (tb-reader/reader f))</pre></td></tr><tr><td class="docs"><p>Selects suitable reader from f's extension, returning the open reader. Opens
-  a new reader if the arg represents a file such as String path, java.io.File,
-  or java.net.URL. If a reader is given, clones the reader. This function
-  supports FASTA and TwoBit formats.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^Closeable reader
+a new reader if the arg represents a file such as String path, java.io.File,
+or java.net.URL. If a reader is given, clones the reader. This function
+supports FASTA and TwoBit formats.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn reader
+  ^Closeable
   [f]
   (cond
     (io-util/fasta-reader? f) (fa-core/clone-reader f)
@@ -2910,37 +2913,38 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn read-all-sequences
   ([rdr] (protocols/read-all-sequences rdr))
   ([rdr option] (protocols/read-all-sequences rdr option)))</pre></td></tr><tr><td class="docs"><p>Returns summaries of sequences in FASTA/TwoBit file. Returns a vector of maps
-  containing <code>:name</code> and <code>:len</code>.</p>
+containing <code>:name</code> and <code>:len</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-seq-summaries
   [rdr]
   (protocols/read-seq-summaries rdr))</pre></td></tr><tr><td class="docs"><p>Reads metadata of indexed sequences. Returns a vector of maps containing
-  <code>:name</code>, <code>:len</code> and other format-specific keys. Forces loading all indices.</p>
+<code>:name</code>, <code>:len</code> and other format-specific keys. Forces loading all indices.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-indices
   [rdr]
   (protocols/read-indices rdr))</pre></td></tr><tr><td class="docs"><p>Returns true if the reader can be randomly accessed, false if not. Note this
-  function immediately realizes a delayed index.</p>
+function immediately realizes a delayed index.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn indexed?
   [rdr]
   (protocols/indexed? rdr))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.fasta.writer.FASTAWriter of f with options:
-    :cols - Maximum number of characters written in one row.
-    :create-index? - If true, .fai will be created simultaneously.
-  Should be used inside with-open to ensure the writer is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^FASTAWriter fasta-writer
-  ([f]
+  :cols - Maximum number of characters written in one row.
+  :create-index? - If true, .fai will be created simultaneously.
+Should be used inside with-open to ensure the writer is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn fasta-writer
+  (^FASTAWriter [f]
    (fasta-writer f {}))
-  ([f options]
+  (^FASTAWriter [f options]
    (fa-writer/writer f options)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.twobit.writer.TwoBitWriter of f with options:
-    :index - metadata of indexed sequences. The amount of memory usage can be
-      reduced if index is supplied.
-  Should be used inside with-open to ensure the writer is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^TwoBitWriter twobit-writer
-  ([f]
+  :index - metadata of indexed sequences. The amount of memory usage can be
+    reduced if index is supplied.
+Should be used inside with-open to ensure the writer is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn twobit-writer
+  (^TwoBitWriter [f]
    (twobit-writer f {}))
-  ([f options]
+  (^TwoBitWriter [f options]
    (tb-writer/writer f options)))</pre></td></tr><tr><td class="docs"><p>Selects suitable writer from f's extension, returning the open writer. This
-  function supports FASTA and TwoBit format.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^Closeable writer
+function supports FASTA and TwoBit format.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn writer
+  ^Closeable
   [f &amp; options]
   (case (io-util/file-type f)
     :fasta (apply fasta-writer f options)
@@ -2948,7 +2952,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Writes all sequences to FASTA/TwoBit file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-sequences
   [wtr seqs]
-  (protocols/write-sequences wtr seqs))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (protocols/write-sequences wtr seqs))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

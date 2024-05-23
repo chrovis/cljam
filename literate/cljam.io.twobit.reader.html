@@ -2873,13 +2873,14 @@ net.brehaut.ClojureTools = (function (SH) {
            [java.util TreeMap HashMap]
            [java.nio Buffer CharBuffer ByteBuffer ByteOrder]
            [java.nio.channels FileChannel FileChannel$MapMode]
-           [java.nio.file Paths OpenOption StandardOpenOption]))</pre></td></tr><tr><td class="docs">
+           [java.nio.file Paths OpenOption StandardOpenOption])
+  (:refer-clojure :exclude [name]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype TwoBitReader [buf url index]
   Closeable
-  (close [this]))</pre></td></tr><tr><td class="docs">
+  (close [_]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord ChromHeader [ambs masks ^long header-offset])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord Chrom [name ^int len ^int offset ^int index header])</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^TreeMap read-header-block! [^ByteBuffer buf]
+</td><td class="codes"><pre class="brush: clojure">(defn- read-header-block! ^TreeMap [^ByteBuffer buf]
   (let [n-blocks (.getInt buf)
         starts (doto (.slice buf) (.order (.order buf)))
         _ (.position ^Buffer buf (+ (.position buf) (* Integer/BYTES n-blocks)))
@@ -2909,26 +2910,26 @@ net.brehaut.ClojureTools = (function (SH) {
             len (.getInt buf)
             _ (.reset ^Buffer buf)
             header (delay
-                    (let [buf' (.duplicate buf)]
-                      (.order buf' (.order buf))
-                      (.position ^Buffer buf' (+ offset Integer/BYTES))
-                      (read-sequence-header! buf')))]
+                     (let [buf' (.duplicate buf)]
+                       (.order buf' (.order buf))
+                       (.position ^Buffer buf' (+ offset Integer/BYTES))
+                       (read-sequence-header! buf')))]
         (.put m chr (Chrom. chr len offset i header))))
     m))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private ^&quot;[[C&quot; twobit-to-str
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^{:tag (Class/forName &quot;[[C&quot;)} twobit-to-str
   (let [table &quot;TCAG&quot;]
     (-&gt;&gt; 256
          range
          (map
-          (fn [j] (let [i (byte (- j 128))
-                        n4 (bit-and i 2r11)
-                        n3 (bit-and (unsigned-bit-shift-right i 2) 2r11)
-                        n2 (bit-and (unsigned-bit-shift-right i 4) 2r11)
-                        n1 (bit-and (unsigned-bit-shift-right i 6) 2r11)]
-                    (char-array [(.charAt table n1)
-                                 (.charAt table n2)
-                                 (.charAt table n3)
-                                 (.charAt table n4)]))))
+          (fn [^long j] (let [i (byte (- j 128))
+                              n4 (bit-and i 2r11)
+                              n3 (bit-and (unsigned-bit-shift-right i 2) 2r11)
+                              n2 (bit-and (unsigned-bit-shift-right i 4) 2r11)
+                              n1 (bit-and (unsigned-bit-shift-right i 6) 2r11)]
+                          (char-array [(.charAt table n1)
+                                       (.charAt table n2)
+                                       (.charAt table n3)
+                                       (.charAt table n4)]))))
          (into-array (Class/forName &quot;[C&quot;)))))</pre></td></tr><tr><td class="docs"><p>Replace regions of charbuffer with Ns.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn replace-ambs!
   [^CharBuffer cb ^TreeMap ambs ^long start ^long end]
@@ -2955,14 +2956,16 @@ net.brehaut.ClojureTools = (function (SH) {
             (.put cb (unchecked-char
                       (unchecked-add-int
                        (unchecked-int (aget ca i)) 32)))))))))</pre></td></tr><tr><td class="docs"><p>Reads sequence at the given region from reader.
-   Pass {:mask? true} to enable masking of sequence.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^String read-sequence
-  ([rdr region]
+ Pass {:mask? true} to enable masking of sequence.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-sequence
+  (^String [rdr region]
    (read-sequence rdr region {}))
-  ([^TwoBitReader rdr {:keys [chr start end]} {:keys [mask?] :or {mask? false}}]
+  (^String [^TwoBitReader rdr
+            {:keys [chr ^long start ^long end]}
+            {:keys [mask?] :or {mask? false}}]
    (when-let [^Chrom c (get (.index rdr) chr)]
      (let [start' (long (max 1 (or start 1)))
-           end' (long (min (.len c) (or end (.len c))))]
+           end' (min (.len c) (long (or end (.len c))))]
        (when (&lt;= start' end')
          ;; Potential seek &amp; read.
          (let [^ChromHeader h @(.header c)
@@ -3036,9 +3039,10 @@ net.brehaut.ClojureTools = (function (SH) {
   (read-in-region
     (^String [this region]
      (protocols/read-in-region this region {}))
-    (^String [this {:keys [chr start end] :as region} option]
-     (read-sequence this region option))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn ^TwoBitReader reader
+    (^String [this region option]
+     (read-sequence this region option))))</pre></td></tr><tr><td class="docs"><p>Returns twobit reader of <code>f</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn reader
+  ^TwoBitReader
   [f]
   (let [url (util/as-url f)]
     (with-open [ch (-&gt; url
@@ -3060,11 +3064,12 @@ net.brehaut.ClojureTools = (function (SH) {
           (throw (ex-info &quot;sequenceCount must be followed by zero.&quot;
                           {:input f, :url url, :zero zero})))
         (TwoBitReader. buf url (read-file-index! buf n-seqs))))))</pre></td></tr><tr><td class="docs"><p>Clones .2bit reader sharing persistent objects.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^TwoBitReader clone-reader
+</td><td class="codes"><pre class="brush: clojure">(defn clone-reader
+  ^TwoBitReader
   [^TwoBitReader rdr]
   (let [buf (doto (.duplicate ^ByteBuffer (.buf rdr))
               (.order (.order ^ByteBuffer (.buf rdr))))]
-    (TwoBitReader. buf (.url rdr) (.index rdr))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+    (TwoBitReader. buf (.url rdr) (.index rdr))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

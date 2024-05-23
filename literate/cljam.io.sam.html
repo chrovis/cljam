@@ -2866,8 +2866,8 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.sam" name="cljam.io.sam"><h1 class="project-name">cljam.io.sam</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to read and write the SAM (Sequence Alignment/Map) format and BAM
-  (its binary equivalent). See https://samtools.github.io/hts-specs/ for the
-  detail SAM/BAM specifications.</p>
+(its binary equivalent). See https://samtools.github.io/hts-specs/ for the
+detail SAM/BAM specifications.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.sam
   (:refer-clojure :exclude [indexed?])
   (:require [cljam.io.sam.reader :as sam-reader]
@@ -2881,21 +2881,25 @@ net.brehaut.ClojureTools = (function (SH) {
            cljam.io.bam.reader.BAMReader
            cljam.io.bam.writer.BAMWriter))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.sam.reader.SAMReader of f. Should be used inside
-  with-open to ensure the reader is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^SAMReader sam-reader
+with-open to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn sam-reader
+  ^SAMReader
   [f]
   (sam-reader/reader f))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bam.reader.BAMReader of f. Should be used inside
-  with-open to ensure the reader is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BAMReader bam-reader
+with-open to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn bam-reader
+  ^BAMReader
   [f]
   (bam-core/reader f))</pre></td></tr><tr><td class="docs"><p>Clones bam reader sharing persistent objects.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BAMReader clone-bam-reader
+</td><td class="codes"><pre class="brush: clojure">(defn clone-bam-reader
+  ^BAMReader
   [r]
   (bam-core/clone-reader r))</pre></td></tr><tr><td class="docs"><p>Selects suitable reader from f's extension, returning the reader. Opens a new
-  reader if the arg represents a file such as String path, java.io.File, or
-  java.net.URL. If a reader is given, clones the reader. This function supports
-  SAM and BAM formats.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^Closeable reader
+reader if the arg represents a file such as String path, java.io.File, or
+java.net.URL. If a reader is given, clones the reader. This function supports
+SAM and BAM formats.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn reader
+  ^Closeable
   [f]
   (if (io-util/bam-reader? f)
     (clone-bam-reader f)
@@ -2919,26 +2923,27 @@ net.brehaut.ClojureTools = (function (SH) {
   ([rdr] (protocols/read-blocks rdr))
   ([rdr region] (protocols/read-blocks rdr region))
   ([rdr region option] (protocols/read-blocks rdr region option)))</pre></td></tr><tr><td class="docs"><p>Returns true if the reader can be randomly accessed, false if not. Note this
-  function immediately realizes a delayed index.</p>
+function immediately realizes a delayed index.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn indexed?
   [rdr]
   (protocols/indexed? rdr))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.sam.writer.SAMWriter of f. Should be used inside
-  with-open to ensure the writer is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^SAMWriter sam-writer
+with-open to ensure the writer is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn sam-writer
+  ^SAMWriter
   [f]
   (sam-writer/writer f))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bam.writer.BAMWriter of f. Should be used inside
-  with-open to ensure the writer is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BAMWriter bam-writer
-  ([f]
+with-open to ensure the writer is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn bam-writer
+  (^BAMWriter [f]
    (bam-writer f false))
-  ([f create-index?]
+  (^BAMWriter [f create-index?]
    (bam-core/writer f create-index?)))</pre></td></tr><tr><td class="docs"><p>Selects suitable writer from f's extension, returning the writer. This
-  function supports SAM and BAM format.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^Closeable writer
-  ([f]
+function supports SAM and BAM format.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn writer
+  (^Closeable [f]
    (writer f false))
-  ([f create-index?]
+  (^Closeable [f create-index?]
    (case (io-util/file-type f)
      :sam (if create-index?
             (throw (ex-info &quot;SAM file indexing is not implemented.&quot; {}))
@@ -2956,7 +2961,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (protocols/write-alignments wtr alignments header))</pre></td></tr><tr><td class="docs"><p>Writes alignment blocks of the SAM/BAM file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-blocks
   [wtr blocks]
-  (protocols/write-blocks wtr blocks))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (protocols/write-blocks wtr blocks))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

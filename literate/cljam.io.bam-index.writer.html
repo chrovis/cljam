@@ -2870,7 +2870,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (:require [com.climate.claypoole :as cp]
             [cljam.common :refer [get-exec-n-threads]]
             [cljam.io.util.bgzf :as bgzf]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.util.bin :as util-bin]
             [cljam.io.bam-index.common :refer [linear-index-shift
                                                linear-index-depth
@@ -2884,7 +2884,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype BAIWriter [^DataOutputStream writer refs url]
   Closeable
-  (close [this]
+  (close [_]
     (.close writer)))</pre></td></tr><tr><td class="docs"><h3>Intermediate data definitions</h3>
 
 <p>Use record for performance.
@@ -2893,7 +2893,7 @@ Record is faster than map for retrieving elements.</p>
 </td><td class="codes"><pre class="brush: clojure">(defrecord MetaData [^long first-offset ^long last-offset ^long aligned-alns ^long unaligned-alns])</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord IndexStatus [^MetaData meta-data bin-index linear-index])</pre></td></tr><tr><td class="docs"><h3>Initializing</h3>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns initialized index status. This data structure is intermediate. Must
-  be passed <code>finalize-index</code> in the final stage.</p>
+be passed <code>finalize-index</code> in the final stage.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- init-index-status
   []
   (IndexStatus. (MetaData. -1 0 0 0)
@@ -2949,8 +2949,8 @@ Record is faster than map for retrieving elements.</p>
         win-end (if (zero? aln-end)
                   win-beg
                   (util-bin/pos-&gt;lidx-offset aln-end linear-index-shift))
-        min* (fn [x]
-               (if x (min x beg) beg))]
+        min* (fn ^long [x]
+               (if x (min (long x) beg) beg))]
     (loop [i win-beg, ret linear-index]
       (if (&lt;= i win-end)
         (recur (inc i) (assoc ret i (min* (get ret i))))
@@ -2997,10 +2997,10 @@ Record is faster than map for retrieving elements.</p>
        (seq)
        (sort-by first)
        (map (partial zipmap [:bin :chunks]))))</pre></td></tr><tr><td class="docs"><p>Complements a linear index.
-  e.g. ([1 10] [3 30]) -> ([0 0] [1 10] [2 10] [3 30])</p>
+e.g. ([1 10] [3 30]) -> ([0 0] [1 10] [2 10] [3 30])</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- complement-linear-index
   [linear-index]
-  (loop [[f &amp; r] (if (zero? (ffirst linear-index))
+  (loop [[f &amp; r] (if (zero? (long (ffirst linear-index)))
                    linear-index
                    (conj linear-index [0 0]))
          ret []]
@@ -3020,9 +3020,9 @@ Record is faster than map for retrieving elements.</p>
   (lsb/write-int w bin)
   ;; chunks
   (lsb/write-int w (count chunks))
-  (doseq [^Chunk chunk chunks]
-    (lsb/write-long w (.beg chunk))
-    (lsb/write-long w (.end chunk))))</pre></td></tr><tr><td class="docs">
+  (doseq [^Chunk chunk' chunks]
+    (lsb/write-long w (.beg chunk'))
+    (lsb/write-long w (.end chunk'))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-meta-data
   [w meta-data]
   (lsb/write-int w max-bins)
@@ -3032,13 +3032,14 @@ Record is faster than map for retrieving elements.</p>
   (lsb/write-long w (:aligned-alns meta-data))
   (lsb/write-long w (:unaligned-alns meta-data)))</pre></td></tr><tr><td class="docs"><h2>Public</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>The number of alignments that is loaded each indexing process. This has an
-  effect on performance of concurrent indexing. The default value is 10,000.</p>
+effect on performance of concurrent indexing. The default value is 10,000.</p>
 </td><td class="codes"><pre class="brush: clojure">(def ^:dynamic *alignments-partition-size*
   10000)</pre></td></tr><tr><td class="docs"><h2>Merging indices</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Merges two intermediate indices, returning the merged intermediate index.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn merge-index
   [idx1 idx2]
-  (let [no-coordinate-alns (+ (:no-coordinate-alns idx1) (:no-coordinate-alns idx2))
+  (let [no-coordinate-alns (+ (long (:no-coordinate-alns idx1))
+                              (long (:no-coordinate-alns idx2)))
         idx1 (dissoc idx1 :no-coordinate-alns)
         idx2 (dissoc idx2 :no-coordinate-alns)]
     (-&gt; (merge-with
@@ -3049,7 +3050,7 @@ Record is faster than map for retrieving elements.</p>
          idx1 idx2)
         (assoc :no-coordinate-alns no-coordinate-alns))))</pre></td></tr><tr><td class="docs"><h2>Making index</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Converts intermediate BAM index data structure into final one. Must be called
-  in the final stage.</p>
+in the final stage.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn finalize-index
   [^long nrefs index]
   (loop [i 0
@@ -3061,11 +3062,11 @@ Record is faster than map for retrieving elements.</p>
                            (update-in [i :linear-index] finalize-linear-index)))
         (recur (inc i) index))
       index)))</pre></td></tr><tr><td class="docs"><p>Calculates index from the references and alignments, returning it as a map.
-  Returned index is still intermediate. It must be passed to finalize function
-  in the final stage.</p>
+Returned index is still intermediate. It must be passed to finalize function
+in the final stage.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn make-index*
   [alns]
-  (loop [[^BAMPointerBlock aln &amp; rest] alns
+  (loop [[^BAMPointerBlock aln &amp; rest'] alns
          rid (.ref-id aln)
          idx-status (init-index-status)
          no-coordinate-alns 0
@@ -3081,10 +3082,10 @@ Record is faster than map for retrieving elements.</p>
             indices' (if new-ref?
                        (assoc indices rid idx-status)
                        indices)]
-        (recur rest rid' idx-status' no-coordinate-alns' indices'))
+        (recur rest' rid' idx-status' no-coordinate-alns' indices'))
       (assoc indices rid idx-status
              :no-coordinate-alns no-coordinate-alns))))</pre></td></tr><tr><td class="docs"><p>Calculates a BAM index from provided references and alignment blocks.
-  Optionally, you can do this process concurrently.</p>
+Optionally, you can do this process concurrently.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn make-index-from-blocks
   [^long nrefs blocks]
   (let [n-threads (get-exec-n-threads)
@@ -3107,7 +3108,7 @@ Record is faster than map for retrieving elements.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn update-last-pointer
   [index eof-ptr]
   (if (or (= (keys index) [:no-coordinate-alns])
-          (pos? (get index :no-coordinate-alns 0)))
+          (pos? (long (get index :no-coordinate-alns 0))))
     index
     (let [last-ref (apply max (keys (dissoc index :no-coordinate-alns)))
           last-key (-&gt;&gt; (for [[bin chunks] (get-in index [last-ref :bin-index])
@@ -3118,7 +3119,7 @@ Record is faster than map for retrieving elements.</p>
       (-&gt; index
           (assoc-in [last-ref :meta-data :last-offset] eof-ptr)
           (assoc-in last-key eof-ptr)))))</pre></td></tr><tr><td class="docs"><h2>Writing index</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Write the index to a file.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Writes the index to a file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-index*!
   [wtr ^long nrefs indices]
   ;; magic
@@ -3149,7 +3150,7 @@ Record is faster than map for retrieving elements.</p>
   [^BAIWriter wtr alns]
   (let [nrefs (count (.refs wtr))
         indices (make-index-from-blocks nrefs alns)]
-    (write-index*! (.writer wtr) nrefs indices)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+    (write-index*! (.writer wtr) nrefs indices)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

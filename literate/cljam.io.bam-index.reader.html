@@ -2868,7 +2868,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bam-index.reader" name="cljam.io.bam-index.reader"><h1 class="project-name">cljam.io.bam-index.reader</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bam-index.reader
   (:require [clojure.java.io :as cio]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.bam-index.common :refer [bai-magic]]
             [cljam.io.util.chunk :as chunk]
             [cljam.util :as util])
@@ -2881,14 +2881,14 @@ net.brehaut.ClojureTools = (function (SH) {
     (.close ^Closeable (.reader this))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- skip-chunks!
   [rdr]
-  (let [n-chunks (lsb/read-int rdr)]
+  (let [n-chunks (int (lsb/read-int rdr))]
     (loop [i 0]
       (when (&lt; i n-chunks)
         (lsb/skip rdr 16)
         (recur (inc i))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- skip-bin-index!
   [rdr]
-  (let [n-bidx (lsb/read-int rdr)]
+  (let [n-bidx (int (lsb/read-int rdr))]
     (loop [i 0]
       (when (&lt; i n-bidx)
         (lsb/skip rdr 4)
@@ -2896,13 +2896,13 @@ net.brehaut.ClojureTools = (function (SH) {
         (recur (inc i))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- skip-linear-index!
   [rdr]
-  (let [n-lidx (lsb/read-int rdr)]
+  (let [n-lidx (int (lsb/read-int rdr))]
     (loop [i 0]
       (when (&lt; i n-lidx)
         (lsb/skip rdr 8)
         (recur (inc i))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- skip-index!
-  [rdr n]
+  [rdr ^long n]
   (loop [i 0]
     (when (&lt; i n)
       (skip-bin-index! rdr)
@@ -2910,14 +2910,14 @@ net.brehaut.ClojureTools = (function (SH) {
       (recur (inc i)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-chunks!
   [rdr]
-  (let [n (lsb/read-int rdr)]
+  (let [n (int (lsb/read-int rdr))]
     (loop [i 0, chunks []]
       (if (&lt; i n)
         (recur (inc i) (conj chunks (Chunk. (lsb/read-long rdr) (lsb/read-long rdr))))
         chunks))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-bin-index**!
   [rdr]
-  (let [n (lsb/read-int rdr)]
+  (let [n (int (lsb/read-int rdr))]
     (loop [i 0, bidx []]
       (if (&lt; i n)
         (let [bin (lsb/read-int rdr)
@@ -2925,33 +2925,36 @@ net.brehaut.ClojureTools = (function (SH) {
           (recur (inc i) (conj bidx {:bin bin, :chunks chunks})))
         bidx))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-bin-index*!
-  [rdr ref-idx]
-  (let [n-ref (lsb/read-int rdr)]
+  [rdr ^long ref-idx]
+  (let [n-ref (int (lsb/read-int rdr))]
     (when (&gt;= ref-idx n-ref)
       (throw (IndexOutOfBoundsException. &quot;The reference index number is invalid&quot;)))
     (skip-index! rdr ref-idx)
     (read-bin-index**! rdr)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-linear-index**!
   [rdr]
-  (let [n (lsb/read-int rdr)]
+  (let [n (int (lsb/read-int rdr))]
     (loop [i 0, lidx []]
       (if (&lt; i n)
         (recur (inc i) (conj lidx (lsb/read-long rdr)))
         lidx))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-linear-index*!
-  [rdr ref-idx]
-  (let [n-ref (lsb/read-int rdr)]
+  [rdr ^long ref-idx]
+  (let [n-ref (int (lsb/read-int rdr))]
     (when (&gt;= ref-idx n-ref)
       (throw (IndexOutOfBoundsException. &quot;The reference index number is invalid&quot;)))
     (skip-index! rdr ref-idx)
     (skip-bin-index! rdr)
-    (read-linear-index**! rdr)))</pre></td></tr><tr><td class="docs">
+    (read-linear-index**! rdr)))</pre></td></tr><tr><td class="docs"><p>Reads a binning index eagerly for the given reference index.
+Returns a vector of maps containing :bin and :chunks.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-bin-index!
   [^BAIReader rdr ref-idx]
-  (read-bin-index*! (.reader rdr) ref-idx))</pre></td></tr><tr><td class="docs">
+  (read-bin-index*! (.reader rdr) ref-idx))</pre></td></tr><tr><td class="docs"><p>Reads a linear index eagerly for the given reference index.
+Returns a vector of linear index numbers</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-linear-index!
   [^BAIReader rdr ref-idx]
-  (read-linear-index*! (.reader rdr) ref-idx))</pre></td></tr><tr><td class="docs">
+  (read-linear-index*! (.reader rdr) ref-idx))</pre></td></tr><tr><td class="docs"><p>Reads all linear indices and bin indices.
+Returns a vector of maps containing :bidx and :lidx.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-all-index!
   [^BAIReader r]
   (let [rdr (.reader r)
@@ -2966,15 +2969,17 @@ net.brehaut.ClojureTools = (function (SH) {
                    bidx-seq))
         lidx (zipmap refs (map second all-idx))]
     {:bidx bidx
-     :lidx lidx}))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn reader [f]
+     :lidx lidx}))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bam_index.reader.BAIReader of f.
+Should be used inside with-open to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn reader
+  [f]
   (let [url (util/as-url f)
         r (if (= (.getProtocol url) &quot;file&quot;)
             (FileInputStream. (cio/file url))
             (.openStream url))]
     (when-not (Arrays/equals ^bytes (lsb/read-bytes r 4) (.getBytes ^String bai-magic))
       (throw (IOException. &quot;Invalid BAI file&quot;)))
-    (-&gt;BAIReader url r)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+    (-&gt;BAIReader url r)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

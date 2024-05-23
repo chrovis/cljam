@@ -2874,16 +2874,16 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.sam.util.quality :as qual]
             [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.sam.util.sequence :as seq]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.bam.common :as common]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private fixed-tag-size 3)
-(def ^:private fixed-binary-array-tag-size 5)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const fixed-tag-size 3)
+(def ^:private ^:const fixed-binary-array-tag-size 5)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- get-next-ref-id [sa refs]
   (condp = (:rnext sa)
     &quot;*&quot; -1
     &quot;=&quot; (if-let [id (refs/ref-id refs (:rname sa))] id -1)
     (if-let [id (refs/ref-id refs (:rnext sa))] id -1)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- get-options-size [sam-alignment]
+</td><td class="codes"><pre class="brush: clojure">(defn- get-options-size ^long [sam-alignment]
   (-&gt;&gt; (map
         (fn [op]
           (let [[_ value] (first (seq op))]
@@ -2925,7 +2925,7 @@ net.brehaut.ClojureTools = (function (SH) {
            (lsb/write-char writer (char 0)))
     ;; \H nil
     \B (let [[array-type &amp; array] (cstr/split value #&quot;,&quot;)]
-         (lsb/write-bytes writer (byte-array 1 (byte (first array-type))))
+         (lsb/write-bytes writer (byte-array 1 (byte (int (first array-type)))))
          (lsb/write-int writer (count array))
          (case (first array-type)
            \c (doseq [v array]
@@ -2942,24 +2942,29 @@ net.brehaut.ClojureTools = (function (SH) {
                 (lsb/write-uint writer (Long/parseLong v)))
            \f (doseq [v array]
                 (lsb/write-float writer (Float/parseFloat v))))
-         writer)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn get-block-size [aln]
+         writer)))</pre></td></tr><tr><td class="docs"><p>Returns the number of bytes required to encode the given alignment.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn get-block-size
+  [aln]
   (let [read-length (.length ^String (:seq aln))
-        cigar-length ^long (cigar/count-op (:cigar aln))]
-    (+ ^long common/fixed-block-size
+        cigar-length (cigar/count-op (:cigar aln))]
+    (+ common/fixed-block-size
        (.length ^String (:qname aln))
        1 ;; null
        (* cigar-length 4)
        (quot (inc read-length) 2)
        read-length
-       ^long (get-options-size aln))))</pre></td></tr><tr><td class="docs">
+       (get-options-size aln))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- add-cigar-to-options
   [options cigar]
   (cons
    {:CG {:type &quot;B&quot;,:value (str &quot;I,&quot; (cstr/join &quot;,&quot; (cigar/encode-cigar cigar)))}}
-   options))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn encode-alignment [wrtr aln refs]
-  (let [aln (update aln :seq #(if (= % &quot;*&quot;)  %))
+   options))</pre></td></tr><tr><td class="docs"><p>Converts the alignment <code>aln</code> into a byte stream in the BAM file format
+and writes it to the given writer <code>wrtr</code>.
+<code>refs</code> is a sequence of names of reference sequences that can be acquired
+using <code>cljam.io.protocols/read-refs</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn encode-alignment
+  [wrtr aln refs]
+  (let [aln (update aln :seq #(if (= % &quot;*&quot;) &quot;&quot; %))
         cigar-ops-count (cigar/count-op (:cigar aln))
         [encoded-cigar cigar-ops-count opts*]
         (if (&gt; cigar-ops-count 65535)
@@ -2969,7 +2974,7 @@ net.brehaut.ClojureTools = (function (SH) {
     ;; refID
     (lsb/write-int wrtr (or (refs/ref-id refs (:rname aln)) -1))
     ;; pos
-    (lsb/write-int wrtr (dec (:pos aln)))
+    (lsb/write-int wrtr (dec (long (:pos aln))))
     ;; bin_mq_nl
     (lsb/write-ubyte wrtr (short (inc (.length ^String (:qname aln)))))
     (lsb/write-ubyte wrtr (short (:mapq aln)))
@@ -2982,7 +2987,7 @@ net.brehaut.ClojureTools = (function (SH) {
     ;; next_refID
     (lsb/write-int wrtr (get-next-ref-id aln refs))
     ;; next_pos
-    (lsb/write-int wrtr (dec (:pnext aln)))
+    (lsb/write-int wrtr (dec (long (:pnext aln))))
     ;; tlen
     (lsb/write-int wrtr (:tlen aln))
     ;; read_name
@@ -2999,10 +3004,10 @@ net.brehaut.ClojureTools = (function (SH) {
       (let [[tag value] (first (seq opt))]
         (lsb/write-short
          wrtr
-         (short (bit-or (bit-shift-left (byte (second (name tag))) 8)
-                        (byte (first (name tag))))))
+         (short (bit-or (bit-shift-left (byte (int (second (name tag)))) 8)
+                        (byte (int (first (name tag)))))))
         (lsb/write-bytes wrtr (.getBytes ^String (:type value)))
-        (encode-tag-value wrtr (first (:type value)) (:value value))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+        (encode-tag-value wrtr (first (:type value)) (:value value))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

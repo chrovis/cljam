@@ -2866,7 +2866,7 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.vcf.reader" name="cljam.io.vcf.reader"><h1 class="project-name">cljam.io.vcf.reader</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>A type of VCF reader and internal functions to read VCF contents. See
-  https://samtools.github.io/hts-specs/ for the detail VCF specifications.</p>
+https://samtools.github.io/hts-specs/ for the detail VCF specifications.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.vcf.reader
   (:require [clojure.string :as cstr]
             [clojure.tools.logging :as logging]
@@ -2900,9 +2900,10 @@ net.brehaut.ClojureTools = (function (SH) {
   (read-in-region [this {:keys [chr start end]} option]
     (logging/warn &quot;May cause degradation of performance.&quot;)
     (filter
-     (fn [v] (and (if chr (= (:chr v) chr) true)
-                  (if start (&lt;= start (:pos v)) true)
-                  (if end (&lt;= (+ (:pos v) (count (:ref v))) end) true)))
+     (fn [v]
+       (and (if chr (= (:chr v) chr) true)
+            (if start (&lt;= (long start) (long (:pos v))) true)
+            (if end (&lt;= (+ (long (:pos v)) (count (:ref v))) (long end)) true)))
      (read-variants this option))))</pre></td></tr><tr><td class="docs"><p>need dynamic extension for namespace issue.</p>
 </td><td class="codes"><pre class="brush: clojure">(extend-type VCFReader
   protocols/IVariantReader
@@ -2924,8 +2925,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- meta-line?
   [line]
   (= (subs line 0 2) &quot;##&quot;))</pre></td></tr><tr><td class="docs"><p>e.g. (parse-structured-line "ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\"")
-        => {:id "NS" :number "1" :type "Integer"
-            :description "Number of Samples With Data"}</p>
+      => {:id "NS" :number "1" :type "Integer"
+          :description "Number of Samples With Data"}</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-structured-line
   &quot;e.g. (parse-structured-line \&quot;ID=NS,Number=1,Type=Integer,Description=\\\&quot;Number of Samples With Data\\\&quot;\&quot;)
         =&gt; {:id \&quot;NS\&quot; :number \&quot;1\&quot; :type \&quot;Integer\&quot;
@@ -2959,7 +2960,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (update m :number (fn [s]
                       (if (#{&quot;A&quot; &quot;R&quot; &quot;G&quot;} s)
                         s
-                        (as-long s)))))</pre></td></tr><tr><td class="docs">
+                        (as-long s)))))</pre></td></tr><tr><td class="docs"><p>Parses a single line string as meta-info.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn parse-meta-info-line
   [line]
   (let [[_ k* v] (re-find #&quot;^##([\w:/\.\?\-]*)=(.*)$&quot; line)
@@ -2968,7 +2969,7 @@ net.brehaut.ClojureTools = (function (SH) {
          (cond-&gt; (parse-structured-line s)
            (#{:info :format} k) parse-meta-info-info
            (= k :contig) parse-meta-info-contig)
-         v)]))</pre></td></tr><tr><td class="docs">
+         v)]))</pre></td></tr><tr><td class="docs"><p>Reads from <code>rdr</code> and parses them as meta-info.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn load-meta-info
   [^BufferedReader rdr]
   (loop [line (.readLine rdr), meta-info {}]
@@ -2984,10 +2985,10 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- header-line?
   [line]
-  (not (nil? (re-find #&quot;^#[^#]*$&quot; line))))</pre></td></tr><tr><td class="docs">
+  (not (nil? (re-find #&quot;^#[^#]*$&quot; line))))</pre></td></tr><tr><td class="docs"><p>Parses a single line string as header</p>
 </td><td class="codes"><pre class="brush: clojure">(defn parse-header-line
   [line]
-  (cstr/split (subs line 1) #&quot;\t&quot;))</pre></td></tr><tr><td class="docs">
+  (cstr/split (subs line 1) #&quot;\t&quot;))</pre></td></tr><tr><td class="docs"><p>Reads from <code>rdr</code> and parses them as header.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn load-header
   [^BufferedReader rdr]
   (loop [line (.readLine rdr)]
@@ -3023,7 +3024,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (if-not (or (meta-line? line) (header-line? line))
       (cons (parse-data-line line kws)
             (lazy-seq (read-data-lines rdr header kws)))
-      (recur rdr header kws))))</pre></td></tr><tr><td class="docs">
+      (recur rdr header kws))))</pre></td></tr><tr><td class="docs"><p>Reads variants of the VCF/BCF file, returning them as a lazy sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-variants
   ([rdr]
    (read-variants rdr {}))
@@ -3038,10 +3039,10 @@ net.brehaut.ClojureTools = (function (SH) {
     (lazy-cat
      (f fs)
      (make-lazy-variants f (rest s)))))</pre></td></tr><tr><td class="docs"><p>Reads variants of the bgzip compressed VCF file randomly using tabix/csi file
-   Returning them as a lazy sequence.</p>
+ Returning them as a lazy sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-variants-randomly
   [^VCFReader rdr
-   {:keys [chr start end] :or {start 1 end 4294967296}}
+   {:keys [chr ^long start ^long end] :or {start 1 end 4294967296}}
    {:keys [depth] :or {depth :deep}}]
   (let [kws (mapv keyword (drop 8 (.header rdr)))
         index-data @(.index-delay rdr)
@@ -3066,13 +3067,16 @@ net.brehaut.ClojureTools = (function (SH) {
             repeatedly
             (take-while identity)
             (filter
-             (fn [{chr' :chr :keys [pos ref info]}]
+             (fn [{chr' :chr
+                   ref' :ref
+                   :keys [^long pos info]}]
                (and (= chr' chr)
                     (&lt;= pos end)
-                    (&lt;= start (get info :END (dec (+ pos (count ref))))))))))
+                    (&lt;= start
+                        (long (get info :END (dec (+ pos (count ref')))))))))))
      spans)))</pre></td></tr><tr><td class="docs"><p>Reads file offsets and a genomic position of variants from bgzip compressed
-  VCF and returns them as a lazy sequence. Each element is a map containing
-  :chr, :chr-index, :beg, :end, :file-beg, :file-end.</p>
+VCF and returns them as a lazy sequence. Each element is a map containing
+:chr, :chr-index, :beg, :end, :file-beg, :file-end.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-file-offsets
   [^VCFReader rdr]
   (let [^BGZFInputStream input-stream (.reader rdr)
@@ -3088,15 +3092,16 @@ net.brehaut.ClojureTools = (function (SH) {
                 (let [end-pointer (.getFilePointer input-stream)]
                   (if (or (meta-line? line) (header-line? line))
                     (lazy-seq (step contigs end-pointer))
-                    (let [{:keys [chr pos ref info]} (parse line)
+                    (let [{:keys [chr pos info] ref' :ref} (parse line)
                           contigs' (if (contains? contigs chr)
                                      contigs
                                      (assoc contigs chr (count contigs)))]
                       (cons {:file-beg beg-pointer, :file-end end-pointer
                              :chr-index (contigs' chr), :beg pos, :chr chr,
-                             :end (or (:END info) (dec (+ pos (count ref))))}
+                             :end (or (:END info)
+                                      (dec (+ (long pos) (count ref'))))}
                             (lazy-seq (step contigs' end-pointer))))))))]
-      (step meta-info-contigs 0))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+      (step meta-info-contigs 0))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

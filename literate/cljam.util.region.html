@@ -2871,14 +2871,19 @@ net.brehaut.ClojureTools = (function (SH) {
             [proton.core :as proton]))</pre></td></tr><tr><td class="docs"><h2>region predicates</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns true if two regions are overlapped with each other.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn overlapped-regions?
-  [x y]
-  (and (= (:chr x) (:chr y))
-       (&lt;= (:start y) (:end x))
-       (&lt;= (:start x) (:end y))))</pre></td></tr><tr><td class="docs"><h2>region conversion</h2>
+  [{^long x-start :start
+    ^long x-end :end
+    x-chr :chr}
+   {^long y-start :start
+    ^long y-end :end
+    y-chr :chr}]
+  (and (= x-chr y-chr)
+       (&lt;= y-start x-end)
+       (&lt;= x-start y-end)))</pre></td></tr><tr><td class="docs"><h2>region conversion</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns a lazy sequence of merged regions. Input regions must be sorted.
-  Neighboring regions apart less than or equal to 'max-gap' will be merged
-  with 'merge-fn'. Returns a stateful transducer when no input 'regions' is
-  provided.</p>
+Neighboring regions apart less than or equal to 'max-gap' will be merged
+with 'merge-fn'. Returns a stateful transducer when no input 'regions' is
+provided.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn merge-regions-with
   ([merge-fn]
    (merge-regions-with merge-fn 0))
@@ -2888,17 +2893,19 @@ net.brehaut.ClojureTools = (function (SH) {
        (fn merge-regions-rf
          ([] (rf))
          ([r] (rf (if-let [l @last-reg] (rf r l) r)))
-         ([r x] (if-let [l @last-reg]
-                  (if (and (= (:chr l) (:chr x))
-                           (&lt;= (- (dec (:start x)) (:end l)) max-gap))
-                    (do (vswap! last-reg merge-fn x) r)
-                    (do (vreset! last-reg x) (rf r l)))
-                  (do (vreset! last-reg x) r)))))))
+         ([r {^long x-start :start :as x}]
+          (if-let [{^long l-end :end :as l} @last-reg]
+            (if (and (= (:chr l) (:chr x))
+                     (&lt;= (- (dec x-start) l-end) max-gap))
+              (do (vswap! last-reg merge-fn x) r)
+              (do (vreset! last-reg x) (rf r l)))
+            (do (vreset! last-reg x) r)))))))
   ([merge-fn ^long max-gap regs]
-   (if-let [f (first regs)]
-     (if-let [s (second regs)]
+   (if-let [{^long f-end :end :as f} (first regs)]
+     (if-let [{^long s-start :start :as s}
+              (second regs)]
        (if (and (= (:chr f) (:chr s))
-                (&lt;= (- (dec (:start s)) (:end f)) max-gap))
+                (&lt;= (- (dec s-start) f-end) max-gap))
          (let [next-regs (cons (merge-fn f s) (nnext regs))]
            (lazy-seq (merge-regions-with merge-fn max-gap next-regs)))
          (cons f (lazy-seq (merge-regions-with merge-fn max-gap (next regs)))))
@@ -2907,23 +2914,26 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- merge-two-regions
   [x y]
   (update x :end max (:end y)))</pre></td></tr><tr><td class="docs"><p>Same as 'merge-regions-with' except for 'merge-two-regions' is
-  partially applied as merge-fn.</p>
+partially applied as merge-fn.</p>
 </td><td class="codes"><pre class="brush: clojure">(def
   ^{:doc 
     :arglists '([] [max-gap] [max-gap regions])}
   merge-regions
   (partial merge-regions-with merge-two-regions))</pre></td></tr><tr><td class="docs"><p>Subtract a region from another one.
-  Returns a vector of regions.</p>
+Returns a vector of regions.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn subtract-region
-  [lhs-reg rhs-reg]
-  (if (= (:chr lhs-reg) (:chr rhs-reg))
+  [lhs-reg
+   {^long rhs-reg-start :start
+    ^long rhs-reg-end :end
+    rhs-reg-chr :chr}]
+  (if (= (:chr lhs-reg) rhs-reg-chr)
     (filterv
-     #(&lt;= (:start %) (:end %))
-     [(update lhs-reg :end min (dec (:start rhs-reg)))
-      (update lhs-reg :start max (inc (:end rhs-reg)))])
+     (fn [{:keys [^long start ^long end]}] (&lt;= start end))
+     [(update lhs-reg :end min (dec rhs-reg-start))
+      (update lhs-reg :start max (inc rhs-reg-end))])
     [lhs-reg]))</pre></td></tr><tr><td class="docs"><p>Returns a sequence of regions complement to in-regions.
-  in-regions must be sorted.
-  Returns a stateful transducer when no regions provided.</p>
+in-regions must be sorted.
+Returns a stateful transducer when no regions provided.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn complement-regions
   ([base-region]
    (fn [rf]
@@ -2945,19 +2955,19 @@ net.brehaut.ClojureTools = (function (SH) {
          (lazy-seq (complement-regions a (next in-regions))))
        [])
      [base-region])))</pre></td></tr><tr><td class="docs"><p>Divides a region [start end] into several chunks with maximum length 'step'.
-  Returns a lazy sequence of vector.</p>
+Returns a lazy sequence of vector.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn divide-region
-  [start end step]
+  [^long start ^long end ^long step]
   (-&gt;&gt; [(inc end)]
        (concat (range start (inc end) step))
        (partition 2 1)
-       (map (fn [[s e]] [s (dec e)]))))</pre></td></tr><tr><td class="docs"><p>Divides refs into several chunks with maximum length 'step'.
-  Returns a lazy sequence of map containing {:chr :start :end}.</p>
+       (map (fn [[^long s ^long e]] [s (dec e)]))))</pre></td></tr><tr><td class="docs"><p>Divides refs into several chunks with maximum length 'step'.
+Returns a lazy sequence of map containing {:chr :start :end}.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn divide-refs
   [refs step]
   (mapcat
-   (fn [{:keys [name len]}]
-     (map (fn [[s e]] {:chr name :start s :end e})
+   (fn [{:keys [len] name' :name}]
+     (map (fn [[s e]] {:chr name' :start s :end e})
           (divide-region 1 len step)))
    refs))</pre></td></tr><tr><td class="docs"><h2>validation</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Checks if the given rname conforms to the spec of sam.</p>
@@ -2965,7 +2975,7 @@ net.brehaut.ClojureTools = (function (SH) {
   [rname]
   (and rname (string? rname) (re-matches #&quot;[!-)+-&lt;&gt;-~][!-~]*&quot; rname)))</pre></td></tr><tr><td class="docs"><p>Checks if the given region map is a valid 1-based closed range.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn valid-region?
-  [{:keys [chr start end]}]
+  [{:keys [chr ^long start ^long end]}]
   (and start end
        (valid-rname? chr)
        (number? start) (pos? start)
@@ -2996,7 +3006,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (when-not (cstr/blank? result) result)))</pre></td></tr><tr><td class="docs"><p>Format a region map into a string strictly.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn format-region-strict
   [region-map]
-  (when (valid-region? region-map) (format-region region-map)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (when (valid-region? region-map) (format-region region-map)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

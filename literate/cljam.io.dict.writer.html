@@ -2874,60 +2874,60 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype DICTWriter [^java.io.BufferedWriter writer url]
   java.io.Closeable
-  (close [this]
+  (close [_]
     (.close writer)))</pre></td></tr><tr><td class="docs"><h2>Making dict</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Equals to <code>(- (byte \A) (byte \a))</code>.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Equals to <code>(- (byte (int \A)) (byte (int \a)))</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private upper-case-offset
-  &quot;Equals to `(- (byte \\A) (byte \\a))`.&quot;
+  &quot;Equals to `(- (byte (int \\A)) (byte (int \\a)))`.&quot;
   -32)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- upper-case [b]
-  (if (or (&lt; b (byte \a)) (&gt; b (byte \z)))
+</td><td class="codes"><pre class="brush: clojure">(defn- upper-case [^long b]
+  (if (or (&lt; b (byte (int \a))) (&gt; b (byte (int \z))))
     b
     (byte (+ b upper-case-offset))))</pre></td></tr><tr><td class="docs"><p>Normalizes the sequence string, calculates its MD5 hash, and returns it.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- make-hash
-  [sequence]
-  (let [bases ^bytes (string-&gt;bytes sequence)]
+  [sequence']
+  (let [bases' ^bytes (string-&gt;bytes sequence')]
     (loop [i 0]
-      (when (&lt; i (count bases))
-        (aset bases i ^byte (upper-case (nth bases i)))
+      (when (&lt; i (count bases'))
+        (aset bases' i ^byte (upper-case (nth bases' i)))
         (recur (inc i))))
-    (digest/md5 bases)))</pre></td></tr><tr><td class="docs">
+    (digest/md5 bases')))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- init-dict-status
   []
   {:sequence , :len 0})</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- update-dict-status
-  [dict-status sequence]
-  {:sequence (str (:sequence dict-status) sequence)
-   :len (+ (:len dict-status) (count (filter graph? sequence)))})</pre></td></tr><tr><td class="docs"><p>Calculates sequence dictionary from the headers and sequences, returning it
-  as a map.</p>
+  [dict-status sequence']
+  {:sequence (str (:sequence dict-status) sequence')
+   :len (+ (long (:len dict-status)) (count (filter graph? sequence')))})</pre></td></tr><tr><td class="docs"><p>Calculates sequence dictionary from the headers and sequences, returning it
+as a map.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn make-dict
   [_headers sequences ur]
-  (loop [[seq* &amp; rest] sequences
-         name (:name seq*)
+  (loop [[seq* &amp; rest'] sequences
+         name' (:name seq*)
          dict-status (init-dict-status)
          dicts {}]
     (if seq*
-      (let [name' (:name seq*)
-            new? (not= name' name)
+      (let [name'' (:name seq*)
+            new? (not= name'' name')
             dict-status' (update-dict-status
                           (if new? (init-dict-status) dict-status) (:sequence seq*))
             dicts' (if new?
-                     (assoc dicts name {:blen (:len dict-status)
-                                        :ur ur
-                                        :m5 (make-hash (:sequence dict-status))})
+                     (assoc dicts name' {:blen (:len dict-status)
+                                         :ur ur
+                                         :m5 (make-hash (:sequence dict-status))})
                      dicts)]
-        (recur rest name' dict-status' dicts'))
-      (assoc dicts name {:blen (:len dict-status)
-                         :ur ur
-                         :m5 (make-hash (:sequence dict-status))}))))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
+        (recur rest' name'' dict-status' dicts'))
+      (assoc dicts name' {:blen (:len dict-status)
+                          :ur ur
+                          :m5 (make-hash (:sequence dict-status))}))))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-header!
   [^BufferedWriter wtr]
   (.write wtr (str &quot;@HD\tVN:&quot; sam-version &quot;\tSO:unsorted&quot;))
   (.newLine wtr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-sequence!
-  [^BufferedWriter wtr name blen ur m5]
-  (.write wtr (str &quot;@SQ\tSN:&quot; name &quot;\tLN:&quot; blen &quot;\tM5:&quot; m5 &quot;\tUR:&quot; ur))
+  [^BufferedWriter wtr name' blen ur m5]
+  (.write wtr (str &quot;@SQ\tSN:&quot; name' &quot;\tLN:&quot; blen &quot;\tM5:&quot; m5 &quot;\tUR:&quot; ur))
   (.newLine wtr))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-dict*!
   [wtr headers sequences ur]
@@ -2939,10 +2939,10 @@ net.brehaut.ClojureTools = (function (SH) {
                          (:name header)
                          (:blen dict)
                          (:ur dict)
-                         (:m5 dict))))))</pre></td></tr><tr><td class="docs">
+                         (:m5 dict))))))</pre></td></tr><tr><td class="docs"><p>Writes dict for fasta to wtr.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-dict!
   [^DICTWriter wtr headers sequences ur]
-  (write-dict*! (.writer wtr) headers sequences ur))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (write-dict*! (.writer wtr) headers sequences ur))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

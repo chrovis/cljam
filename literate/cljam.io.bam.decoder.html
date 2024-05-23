@@ -2870,15 +2870,16 @@ net.brehaut.ClojureTools = (function (SH) {
   (:require [clojure.string :as cstr]
             [proton.core :as proton]
             [cljam.util :as util]
+            cljam.io.protocols
             [cljam.io.sam.util.quality :as qual]
             [cljam.io.sam.util.sequence :as sam-seq]
             [cljam.io.sam.util.refs :as refs]
             [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.bam.common :as common]
-            [cljam.io.util.lsb :as lsb])
+            [cljam.io.util.byte-buffer :as bb])
   (:import [java.util Arrays]
            [java.nio Buffer ByteBuffer ByteOrder CharBuffer]
-           [cljam.io.protocols SAMAlignment SAMRegionBlock SAMCoordinateBlock SAMQuerynameBlock]))</pre></td></tr><tr><td class="docs">
+           [cljam.io.protocols SAMAlignment SAMRegionBlock SAMCoordinateBlock SAMQuerynameBlock]))</pre></td></tr><tr><td class="docs"><p>Changes (u)int8 or (u)int16 tag type to int32 tag type.</p>
 </td><td class="codes"><pre class="brush: clojure">(definline validate-tag-type
   [t]
   `(case (long ~t)
@@ -2887,10 +2888,11 @@ net.brehaut.ClojureTools = (function (SH) {
      ~(long \S) \i
      ~(long \c) \i
      ~(long \C) \i
-     (char ~t)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(definline parse-tag-single [tag-type ^ByteBuffer bb]
+     (char ~t)))</pre></td></tr><tr><td class="docs"><p>Parses a tag according to <code>tag-type</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(definline parse-tag-single
+  [tag-type ^ByteBuffer bb]
   `(case (long ~tag-type)
-     ~(long \Z) (lsb/read-null-terminated-string ~bb)
+     ~(long \Z) (bb/read-null-terminated-string ~bb)
      ~(long \A) (char (.get ~bb))
      ~(long \I) (bit-and (.getInt ~bb) 0xffffffff)
      ~(long \i) (.getInt ~bb)
@@ -2899,7 +2901,7 @@ net.brehaut.ClojureTools = (function (SH) {
      ~(long \c) (int (.get ~bb))
      ~(long \C) (bit-and (int (.get ~bb)) 0xff)
      ~(long \f) (.getFloat ~bb)
-     ~(long \H) (proton/hex-&gt;bytes (lsb/read-null-terminated-string ~bb))
+     ~(long \H) (proton/hex-&gt;bytes (bb/read-null-terminated-string ~bb))
      (throw (Exception. &quot;Unrecognized tag type&quot;))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-tag-array [^ByteBuffer bb]
   (let [typ (char (.get bb))
@@ -2930,11 +2932,12 @@ net.brehaut.ClojureTools = (function (SH) {
           :value (if (= typ 66) ;; (byte \B)
                    (parse-tag-array bb)
                    (parse-tag-single typ bb))}})
-      (parse-option bb)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn decode-options [rest]
-  (let [bb (ByteBuffer/wrap rest)]
+      (parse-option bb)))))</pre></td></tr><tr><td class="docs"><p>Decodes bytes of bam options.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn decode-options
+  [rest']
+  (let [bb (ByteBuffer/wrap rest')]
     (.order bb ByteOrder/LITTLE_ENDIAN)
-    (parse-option bb)))</pre></td></tr><tr><td class="docs">
+    (parse-option bb)))</pre></td></tr><tr><td class="docs"><p>Returns the number of bytes of the trailing optional fields.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn options-size
   [^long block-size ^long l-read-name ^long n-cigar-op ^long l-seq]
   (- block-size
@@ -2942,16 +2945,21 @@ net.brehaut.ClojureTools = (function (SH) {
      l-read-name
      (* n-cigar-op 4)
      (quot (inc l-seq) 2)
-     l-seq))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn decode-qual [^bytes b]
+     l-seq))</pre></td></tr><tr><td class="docs"><p>Decodes qual from bytes.
+ Returns "*" if input is filled with 0xff, otherwise returns qual.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn decode-qual
+  [^bytes b]
   (if (Arrays/equals b (byte-array (alength b) (util/ubyte 0xff)))
     &quot;*&quot;
-    (qual/phred-bytes-&gt;fastq b)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn decode-seq [seq-bytes length]
+    (qual/phred-bytes-&gt;fastq b)))</pre></td></tr><tr><td class="docs"><p>Decodes seq from bytes.
+ Returns "*" if seq is empty, otherwise returns sequence.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn decode-seq
+  [seq-bytes ^long length]
   (if (zero? length)
     &quot;*&quot;
-    (sam-seq/compressed-bases-&gt;str length seq-bytes 0)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn decode-next-ref-id [refs ^long ref-id ^long next-ref-id]
+    (sam-seq/compressed-bases-&gt;str length seq-bytes 0)))</pre></td></tr><tr><td class="docs"><p>Returns "=" if ref and next is same reference, otherwise returns next-ref-name.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn decode-next-ref-id
+  [refs ^long ref-id ^long next-ref-id]
   (if (= next-ref-id -1)
     &quot;*&quot;
     (if (= ref-id next-ref-id)
@@ -2965,184 +2973,186 @@ net.brehaut.ClojureTools = (function (SH) {
              (.order ByteOrder/LITTLE_ENDIAN))]
     (doseq [x xs] (.putInt bb (Long/parseLong x)))
     (first (cigar/decode-cigar-and-ref-length (.array bb)))))</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and creates SAMAlignment instance which is compatible with SAM.
-  When called with start and end, this function may return nil if any base of the block
-  is not included in the range.</p>
+When called with start and end, this function may return nil if any base of the block
+is not included in the range.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn decode-alignment
   ([refs block]
-   (let [buffer      (ByteBuffer/wrap (:data block))
-         ref-id      ^int (lsb/read-int buffer)
+   (let [buffer      (bb/make-lsb-byte-buffer (:data block))
+         ref-id      (.getInt buffer)
          rname       (or (refs/ref-name refs ref-id) &quot;*&quot;)
-         pos         (inc ^int (lsb/read-int buffer))
-         l-read-name (int ^long (lsb/read-ubyte buffer))
-         mapq        ^long (lsb/read-ubyte buffer)
-         _           (lsb/skip buffer 2) ; bin
-         n-cigar-op  ^long (lsb/read-ushort buffer)
-         flag        ^long (lsb/read-ushort buffer)
-         l-seq       ^int (lsb/read-int buffer)
-         next-ref-id ^int (lsb/read-int buffer)
+         pos         (inc (.getInt buffer))
+         l-read-name (short (bb/read-ubyte buffer))
+         mapq        (short (bb/read-ubyte buffer))
+         _           (bb/skip buffer 2) ; bin
+         n-cigar-op  (int (bb/read-ushort buffer))
+         flag        (int (bb/read-ushort buffer))
+         l-seq       (.getInt buffer)
+         next-ref-id (.getInt buffer)
          rnext       (decode-next-ref-id refs ref-id next-ref-id)
-         pnext       (inc ^int (lsb/read-int buffer))
-         tlen        ^int (lsb/read-int buffer)
-         qname       (lsb/read-string buffer (dec l-read-name))
-         _           (lsb/skip buffer 1)
-         cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-         [cigar ^long len] (cigar/decode-cigar-and-ref-length cigar-bytes)
-         ref-end     (int ^long (if (zero? len) pos (dec (+ pos len))))
-         seq         (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
-         qual        (decode-qual (lsb/read-bytes buffer l-seq))
-         rest        (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
-         options     (decode-options rest)
+         pnext       (inc (.getInt buffer))
+         tlen        (.getInt buffer)
+         qname       (bb/read-string buffer (dec l-read-name))
+         _           (bb/skip buffer 1)
+         cigar-bytes (bb/read-bytes buffer (* n-cigar-op 4))
+         [cigar len] (cigar/decode-cigar-and-ref-length cigar-bytes)
+         ref-end     (if (zero? (long len)) pos (dec (+ pos (long len))))
+         seq'        (decode-seq (bb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
+         qual        (decode-qual (bb/read-bytes buffer l-seq))
+         rest'        (bb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
+         options     (decode-options rest')
          [cigar* options*]
          (if-let [cg (and (cigar/placeholder? cigar-bytes)
                           (:value (some :CG options)))]
            [(B-I-type-cigar-str-&gt;cigar-str cg) (remove :CG options)]
            [cigar options])]
      (SAMAlignment. qname (int flag) rname (int pos) ref-end (int mapq)
-                    cigar* rnext (int pnext) (int tlen) seq qual options*)))
+                    cigar* rnext (int pnext) (int tlen) seq' qual options*)))
   ([refs block ^long start ^long end]
-   (let [buffer          (ByteBuffer/wrap (:data block))
-         ref-id          ^int (lsb/read-int buffer)
-         pos             (inc ^int (lsb/read-int buffer))]
+   (let [buffer          (bb/make-lsb-byte-buffer (:data block))
+         ref-id          (.getInt buffer)
+         pos             (inc (.getInt buffer))]
      (when (&lt;= pos end)
-       (let [l-read-name (int ^long (lsb/read-ubyte buffer))
-             mapq        ^long (lsb/read-ubyte buffer)
-             _           (lsb/skip buffer 2) ; bin
-             n-cigar-op  ^long (lsb/read-ushort buffer)
-             flag        ^long (lsb/read-ushort buffer)
-             l-seq       ^int (lsb/read-int buffer)
-             next-ref-id ^int (lsb/read-int buffer)
+       (let [l-read-name (short (bb/read-ubyte buffer))
+             mapq        (short (bb/read-ubyte buffer))
+             _           (bb/skip buffer 2) ; bin
+             n-cigar-op  (int (bb/read-ushort buffer))
+             flag        (int (bb/read-ushort buffer))
+             l-seq       (.getInt buffer)
+             next-ref-id (.getInt buffer)
              rnext       (decode-next-ref-id refs ref-id next-ref-id)
-             pnext       (inc ^int (lsb/read-int buffer))
-             tlen        ^int (lsb/read-int buffer)
-             qname       (lsb/read-string buffer (dec l-read-name))
-             _           (lsb/skip buffer 1)
-             cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-             [cigar ^long len] (cigar/decode-cigar-and-ref-length cigar-bytes)
-             ref-end     (int ^long (if (zero? len) pos (dec (+ pos len))))]
+             pnext       (inc (.getInt buffer))
+             tlen        (.getInt buffer)
+             qname       (bb/read-string buffer (dec l-read-name))
+             _           (bb/skip buffer 1)
+             cigar-bytes (bb/read-bytes buffer (* n-cigar-op 4))
+             [cigar len] (cigar/decode-cigar-and-ref-length cigar-bytes)
+             ref-end     (int (if (zero? (long len))
+                                pos
+                                (dec (+ pos (long len)))))]
          (when (&lt;= start ref-end)
-           (let [seq     (decode-seq (lsb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
-                 qual    (decode-qual (lsb/read-bytes buffer l-seq))
-                 rest    (lsb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
+           (let [seq'    (decode-seq (bb/read-bytes buffer (quot (inc l-seq) 2)) l-seq)
+                 qual    (decode-qual (bb/read-bytes buffer l-seq))
+                 rest'    (bb/read-bytes buffer (options-size (alength ^bytes (:data block)) l-read-name n-cigar-op l-seq))
                  rname   (or (refs/ref-name refs ref-id) &quot;*&quot;)
-                 options (decode-options rest)
+                 options (decode-options rest')
                  [cigar* options*]
                  (if-let [cg (and (cigar/placeholder? cigar-bytes)
                                   (:value (some :CG options)))]
                    [(B-I-type-cigar-str-&gt;cigar-str cg) (remove :CG options)]
                    [cigar options])]
              (SAMAlignment. qname (int flag) rname (int pos) ref-end (int mapq)
-                            cigar* rnext (int pnext) (int tlen) seq qual options*))))))))</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and returns a SAMRegionBlock instance containing covering range of the alignment.</p>
+                            cigar* rnext (int pnext) (int tlen) seq' qual options*))))))))</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and returns a SAMRegionBlock instance containing covering range of the alignment.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn decode-region-block
   ([^BAMRawBlock block]
-   (let [buffer          (ByteBuffer/wrap (.data block))
-         ref-id          ^int (lsb/read-int buffer)
-         pos             (inc ^int (lsb/read-int buffer))
-         l-read-name     (int ^long (lsb/read-ubyte buffer))
-         _               (lsb/skip buffer 3) ;; MAPQ, bin
-         n-cigar-op      ^long (lsb/read-ushort buffer)
-         _               (lsb/skip buffer (+ 18 l-read-name)) ;; flag, l_seq, rnext, pnext, tlen, qname
-         cigar-bytes     (lsb/read-bytes buffer (* n-cigar-op 4))
-         ref-length      ^long (cigar/count-ref-bytes cigar-bytes)
-         ref-end         (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+   (let [buffer          (bb/make-lsb-byte-buffer (.data block))
+         ref-id          (.getInt buffer)
+         pos             (inc (.getInt buffer))
+         l-read-name     (short (bb/read-ubyte buffer))
+         _               (bb/skip buffer 3) ;; MAPQ, bin
+         n-cigar-op      (int (bb/read-ushort buffer))
+         _               (bb/skip buffer (+ 18 l-read-name)) ;; flag, l_seq, rnext, pnext, tlen, qname
+         cigar-bytes     (bb/read-bytes buffer (* n-cigar-op 4))
+         ref-length      (cigar/count-ref-bytes cigar-bytes)
+         ref-end         (int (if (zero? ref-length) pos (dec (+ pos ref-length))))]
      (SAMRegionBlock. (.data block) ref-id pos ref-end)))
   ([^BAMRawBlock block ^long start ^long end]
-   (let [buffer          (ByteBuffer/wrap (.data block))
-         ref-id          ^int (lsb/read-int buffer)
-         pos             (inc ^int (lsb/read-int buffer))]
+   (let [buffer          (bb/make-lsb-byte-buffer (.data block))
+         ref-id          (.getInt buffer)
+         pos             (inc (.getInt buffer))]
      (when (&lt;= pos end)
-       (let [l-read-name (int ^long (lsb/read-ubyte buffer))
-             _           (lsb/skip buffer 3) ;; MAPQ, bin
-             n-cigar-op  ^long (lsb/read-ushort buffer)
-             _           (lsb/skip buffer (+ 18 l-read-name)) ;; flag, l_seq, rnext, pnext, tlen, qname
-             cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-             ref-length  ^long (cigar/count-ref-bytes cigar-bytes)
-             ref-end     (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+       (let [l-read-name (short (bb/read-ubyte buffer))
+             _           (bb/skip buffer 3) ;; MAPQ, bin
+             n-cigar-op  (int (bb/read-ushort buffer))
+             _           (bb/skip buffer (+ 18 l-read-name)) ;; flag, l_seq, rnext, pnext, tlen, qname
+             cigar-bytes (bb/read-bytes buffer (* n-cigar-op 4))
+             ref-length  (cigar/count-ref-bytes cigar-bytes)
+             ref-end     (if (zero? ref-length) pos (dec (+ pos ref-length)))]
          (when (&lt;= start ref-end)
            (SAMRegionBlock. (.data block) ref-id pos ref-end)))))))</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and returns a SAMCoordinateBlock instance containing ref-id, pos and flag.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn decode-coordinate-block
   ([^BAMRawBlock block]
-   (let [buffer     (ByteBuffer/wrap (.data block))
-         ref-id     ^int (lsb/read-int buffer)
-         pos        (inc ^int (lsb/read-int buffer))
-         _          (lsb/skip buffer 6) ;; l_read_name, MAPQ, bin, n_cigar_op
-         flag ^long (lsb/read-ushort buffer)] ;; l_seq, rnext, pnext, tlen, qname
+   (let [buffer     (bb/make-lsb-byte-buffer (.data block))
+         ref-id     (.getInt buffer)
+         pos        (inc (.getInt buffer))
+         _          (bb/skip buffer 6) ;; l_read_name, MAPQ, bin, n_cigar_op
+         flag       (int (bb/read-ushort buffer))] ;; l_seq, rnext, pnext, tlen, qname
      (SAMCoordinateBlock. (.data block) (int ref-id) (int pos) (int flag))))
   ([^BAMRawBlock block ^long start ^long end]
-   (let [buffer          (ByteBuffer/wrap (.data block))
-         ref-id          ^int (lsb/read-int buffer)
-         pos             (inc ^int (lsb/read-int buffer))]
+   (let [buffer          (bb/make-lsb-byte-buffer (.data block))
+         ref-id          (.getInt buffer)
+         pos             (inc (.getInt buffer))]
      (when (&lt;= pos end)
-       (let [l-read-name (int ^long (lsb/read-ubyte buffer))
-             _           (lsb/skip buffer 3) ;; MAPQ, bin
-             n-cigar-op  ^long (lsb/read-ushort buffer)
-             flag        ^long (lsb/read-ushort buffer)
-             _           (lsb/skip buffer (+ 16 l-read-name)) ;; l_seq, rnext, pnext, tlen, qname
-             cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-             ref-length  ^long (cigar/count-ref-bytes cigar-bytes)
-             ref-end     (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+       (let [l-read-name (short (bb/read-ubyte buffer))
+             _           (bb/skip buffer 3) ;; MAPQ, bin
+             n-cigar-op  (int (bb/read-ushort buffer))
+             flag        (int (bb/read-ushort buffer))
+             _           (bb/skip buffer (+ 16 l-read-name)) ;; l_seq, rnext, pnext, tlen, qname
+             cigar-bytes (bb/read-bytes buffer (* n-cigar-op 4))
+             ref-length  (cigar/count-ref-bytes cigar-bytes)
+             ref-end     (if (zero? ref-length) pos (dec (+ pos ref-length)))]
          (when (&lt;= start ref-end)
            (SAMCoordinateBlock. (.data block) (int ref-id) (int pos) (int flag))))))))</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and returns a SAMQuerynameBlock instance containing qname and flag.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn decode-queryname-block
   ([^BAMRawBlock block]
-   (let [buffer      (ByteBuffer/wrap (.data block))
-         _           (lsb/skip buffer 8) ;; ref-id, pos
-         l-read-name ^long (lsb/read-ubyte buffer)
-         _           (lsb/skip buffer 5) ;; MAPQ, bin, n_cigar_op
-         flag ^long  (lsb/read-ushort buffer)
-         _           (lsb/skip buffer 16) ;; l_seq, rnext, pnext, tlen
-         qname       (lsb/read-string buffer l-read-name)]
+   (let [buffer      (bb/make-lsb-byte-buffer (.data block))
+         _           (bb/skip buffer 8) ;; ref-id, pos
+         l-read-name (short (bb/read-ubyte buffer))
+         _           (bb/skip buffer 5) ;; MAPQ, bin, n_cigar_op
+         flag        (int (bb/read-ushort buffer))
+         _           (bb/skip buffer 16) ;; l_seq, rnext, pnext, tlen
+         qname       (bb/read-string buffer l-read-name)]
      (SAMQuerynameBlock. (.data block) qname (int flag))))
   ([^BAMRawBlock block ^long start ^long end]
-   (let [buffer          (ByteBuffer/wrap (.data block))
-         _               (lsb/skip buffer 4) ;; ref-id
-         pos             (inc ^int (lsb/read-int buffer))]
+   (let [buffer          (bb/make-lsb-byte-buffer (.data block))
+         _               (bb/skip buffer 4) ;; ref-id
+         pos             (inc (.getInt buffer))]
      (when (&lt;= pos end)
-       (let [l-read-name ^long (lsb/read-ubyte buffer)
-             _           (lsb/skip buffer 3) ;; MAPQ, bin
-             n-cigar-op  ^long (lsb/read-ushort buffer)
-             flag        ^long (lsb/read-ushort buffer)
-             _           (lsb/skip buffer 16) ;; l_seq, rnext, pnext, tlen
-             qname       (lsb/read-string buffer l-read-name)
-             cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-             ref-length  ^long (cigar/count-ref-bytes cigar-bytes)
-             ref-end     (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+       (let [l-read-name (short (bb/read-ubyte buffer))
+             _           (bb/skip buffer 3) ;; MAPQ, bin
+             n-cigar-op  (int (bb/read-ushort buffer))
+             flag        (int (bb/read-ushort buffer))
+             _           (bb/skip buffer 16) ;; l_seq, rnext, pnext, tlen
+             qname       (bb/read-string buffer l-read-name)
+             cigar-bytes (bb/read-bytes buffer (* n-cigar-op 4))
+             ref-length  (cigar/count-ref-bytes cigar-bytes)
+             ref-end     (if (zero? ref-length) pos (dec (+ pos ref-length)))]
          (when (&lt;= start ref-end)
            (SAMQuerynameBlock. (.data block) qname (int flag))))))))</pre></td></tr><tr><td class="docs"><p>Decodes BAM block and returns a BAMPointerBlock instance containing region, flag and block pointers.</p>
 </td><td class="codes"><pre class="brush: clojure">(defrecord BAMPointerBlock [data ^int ref-id ^int pos ^int end ^int flag ^long pointer-beg ^long pointer-end])
 (defn decode-pointer-block
   ([^BAMRawBlock block]
-   (let [buffer      (ByteBuffer/wrap (.data block))
-         ref-id      ^int (lsb/read-int buffer)
-         pos         (inc ^int (lsb/read-int buffer))
-         l-read-name (int ^long (lsb/read-ubyte buffer))
-         _           (lsb/skip buffer 3) ;; MAPQ, bin
-         n-cigar-op  ^long (lsb/read-ushort buffer)
-         flag        ^long (lsb/read-ushort buffer)
-         _           (lsb/skip buffer (+ 16 l-read-name)) ;; l_seq, rnext, pnext, tlen, qname
-         cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-         ref-length  ^long (cigar/count-ref-bytes cigar-bytes)
-         ref-end     (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+   (let [buffer      (bb/make-lsb-byte-buffer (.data block))
+         ref-id      (.getInt buffer)
+         pos         (inc (.getInt buffer))
+         l-read-name (short (bb/read-ubyte buffer))
+         _           (bb/skip buffer 3) ;; MAPQ, bin
+         n-cigar-op  (int (bb/read-ushort buffer))
+         flag        (int (bb/read-ushort buffer))
+         _           (bb/skip buffer (+ 16 l-read-name)) ;; l_seq, rnext, pnext, tlen, qname
+         cigar-bytes (bb/read-bytes buffer (* n-cigar-op 4))
+         ref-length  (cigar/count-ref-bytes cigar-bytes)
+         ref-end     (if (zero? ref-length) pos (dec (+ pos ref-length)))]
      (BAMPointerBlock. (.data block) ref-id pos ref-end (int flag) (.pointer-beg block) (.pointer-end block))))
   ([^BAMRawBlock block ^long start ^long end]
-   (let [buffer          (ByteBuffer/wrap (.data block))
-         ref-id          ^int (lsb/read-int buffer)
-         pos             (inc ^int (lsb/read-int buffer))]
+   (let [buffer          (bb/make-lsb-byte-buffer (.data block))
+         ref-id          (.getInt buffer)
+         pos             (inc (.getInt buffer))]
      (when (&lt;= pos end)
-       (let [l-read-name (int ^long (lsb/read-ubyte buffer))
-             _           (lsb/skip buffer 3) ;; MAPQ, bin
-             n-cigar-op  ^long (lsb/read-ushort buffer)
-             flag        ^long (lsb/read-ushort buffer)
-             _           (lsb/skip buffer (+ 16 l-read-name)) ;; l_seq, rnext, pnext, tlen, qname
-             cigar-bytes (lsb/read-bytes buffer (* n-cigar-op 4))
-             ref-length  ^long (cigar/count-ref-bytes cigar-bytes)
-             ref-end     (int ^long (if (zero? ref-length) pos (dec (+ pos ref-length))))]
+       (let [l-read-name (short (bb/read-ubyte buffer))
+             _           (bb/skip buffer 3) ;; MAPQ, bin
+             n-cigar-op  (int (bb/read-ushort buffer))
+             flag        (int (bb/read-ushort buffer))
+             _           (bb/skip buffer (+ 16 l-read-name)) ;; l_seq, rnext, pnext, tlen, qname
+             cigar-bytes (bb/read-bytes buffer (* n-cigar-op 4))
+             ref-length  (cigar/count-ref-bytes cigar-bytes)
+             ref-end     (if (zero? ref-length) pos (dec (+ pos ref-length)))]
          (when (&lt;= start ref-end)
            (BAMPointerBlock. (.data block) ref-id pos ref-end (int flag) (.pointer-beg block) (.pointer-end block))))))))</pre></td></tr><tr><td class="docs"><p>Checks the range of BAM block and returns the given block if any base is included.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn raw-block
   ([b] b)
   ([b ^long s ^long e]
    (when (decode-region-block b s e)
-     b)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+     b)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

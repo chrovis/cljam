@@ -2896,7 +2896,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (read-buffer [this start end]
     (.. this
         getChannel
-        (map FileChannel$MapMode/READ_ONLY start (- end start))))
+        (map FileChannel$MapMode/READ_ONLY start (- (long end) (long start)))))
   (get-file-pointer [this]
     (.getFilePointer this)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype IndexedBGZFInputStream [^BGZFInputStream is idx]
@@ -2910,7 +2910,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (.readLine is))
   (read-buffer [_ start end]
     (.seek is (gzi/uncomp-&gt;comp @idx start))
-    (let [buf (byte-array (- end start))]
+    (let [buf (byte-array (- (long end) (long start)))]
       (if (neg? (.read is buf))
         (throw (EOFException.))
         (ByteBuffer/wrap buf))))
@@ -2925,12 +2925,12 @@ net.brehaut.ClojureTools = (function (SH) {
         (if (seq ret)
           (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
                 (lazy-seq (read* line rdr)))
-          (let [ref (subs line 1)
+          (let [ref' (subs line 1)
                 offset (get-file-pointer rdr)]
-            (recur (read-line rdr) (assoc ret :rname ref :offset offset))))
+            (recur (read-line rdr) (assoc ret :rname ref' :offset offset))))
         (if (:rname ret)
           (let [ret' (if (:line-len ret)
-                       (update-in ret [:seq] str line)
+                       (update ret :seq str line)
                        (assoc ret
                               :seq line
                               :line-len (inc (count line))
@@ -2938,7 +2938,7 @@ net.brehaut.ClojureTools = (function (SH) {
             (recur (read-line rdr) ret'))
           (throw (ex-info &quot;Missing sequence name&quot; {:line line}))))
       (cons (assoc ret :len (count (filter (partial not= \space) (:seq ret))))
-            nil))))</pre></td></tr><tr><td class="docs">
+            nil))))</pre></td></tr><tr><td class="docs"><p>Reads fasta headers.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn load-headers
   [rdr]
   (seek rdr 0)
@@ -2951,32 +2951,35 @@ net.brehaut.ClojureTools = (function (SH) {
         (recur (read-line rdr) headers))
       headers)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-sequence*
-  [^FASTAReader rdr name]
+  [^FASTAReader rdr name']
   (when-let [line (read-line (.reader rdr))]
     (if-not (header-line? line)
-      (if name
-        {:name name, :sequence line}
+      (if name'
+        {:name name', :sequence line}
         (throw (ex-info &quot;Missing sequence name&quot; {})))
       (:name (parse-header-line line)))))</pre></td></tr><tr><td class="docs"><p>Reads sequences by line, returning the line-separated sequences
-  as lazy sequence.</p>
+as lazy sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-sequences
   [^FASTAReader rdr]
   (seek (.reader rdr) 0)
-  (letfn [(read-fn [rdr name]
-            (let [s (read-sequence* rdr name)]
+  (letfn [(read-fn [rdr name']
+            (let [s (read-sequence* rdr name')]
               (cond
                 (string? s) (read-fn rdr s)
-                (map? s) (cons s (lazy-seq (read-fn rdr name))))))]
-    (read-fn rdr nil)))</pre></td></tr><tr><td class="docs">
+                (map? s) (cons s (lazy-seq (read-fn rdr name'))))))]
+    (read-fn rdr nil)))</pre></td></tr><tr><td class="docs"><p>Reads the specified sequence range.
+<code>start</code> and <code>end</code> can each be set to <code>nil</code>, in which case, the first
+and the last element of the sequence are specified, respectively.
+<code>rdr</code> must be indexed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-sequence
-  [^FASTAReader rdr name start end {:keys [mask?]}]
+  [^FASTAReader rdr name' start end {:keys [mask?]}]
   (let [fai @(.index-delay rdr)]
-    (when-let [len (:len (fasta-index/get-header fai name))]
-      (let [start' (max 1 (or start 1))
-            end' (min len (or end len))]
+    (when-let [len (:len (fasta-index/get-header fai name'))]
+      (let [start' (max 1 (long (or start 1)))
+            end' (min (long len) (long (or end len)))]
         (when (&lt;= start' end')
           (let [buf (CharBuffer/allocate (inc (- end' start')))]
-            (when-let [[s e] (fasta-index/get-span fai name (dec start') end')]
+            (when-let [[s e] (fasta-index/get-span fai name' (dec start') end')]
               (let [bb ^ByteBuffer (read-buffer (.reader rdr) s e)]
                 (if mask?
                   (while (.hasRemaining bb)
@@ -2993,19 +2996,20 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn read
   [^FASTAReader rdr]
   (let [r (.reader rdr)]
-    (read* (read-line r) r)))</pre></td></tr><tr><td class="docs">
+    (read* (read-line r) r)))</pre></td></tr><tr><td class="docs"><p>Moves the file pointer of the given FASTA reader <code>rdr</code> to the beginning.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn reset
   [^FASTAReader rdr]
-  (seek (.reader rdr) 0))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(definline create-ba [^ByteBuffer buffer]
+  (seek (.reader rdr) 0))</pre></td></tr><tr><td class="docs"><p>Copies bytes in [0, position) of the given <code>buffer</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(definline create-ba
+  [^ByteBuffer buffer]
   `(when (pos? (.position ~buffer))
      (let [ba# (byte-array (.position ~buffer))]
        (.clear ~(with-meta buffer {:tag `Buffer}))
        (.get ~buffer ba#)
        (.clear ~(with-meta buffer {:tag `Buffer}))
        ba#)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const gt-byte (byte \&gt;))
-(def ^:private ^:const newline-byte (byte \newline))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const gt-byte (byte (int \&gt;)))
+(def ^:private ^:const newline-byte (byte (int \newline)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-buffer!
   [^bytes buf ^long size buffers ^bytes byte-map]
   (let [{:keys [^ByteBuffer name-buf ^ByteBuffer seq-buf ^ByteBuffer rest-buf]} buffers]
@@ -3056,22 +3060,23 @@ net.brehaut.ClojureTools = (function (SH) {
     (sequential-read! stream buf
                       {:name-buf name-buf :seq-buf seq-buf :rest-buf rest-buf}
                       byte-map (byte-array 0) false)))</pre></td></tr><tr><td class="docs"><p>Returns list of maps containing sequence as byte-array. Bases ACGTN are
-  encoded as 1-5.</p>
+encoded as 1-5.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn sequential-read-byte-array
   [stream page-size seq-buf-size]
   (let [byte-map (byte-array (range 128))]
     (doseq [[i v] [[\a 1] [\A 1] [\c 2] [\C 2] [\g 3] [\G 3] [\t 4] [\T 4] [\n 5] [\N 5]]]
-      (aset-byte byte-map (byte i) (byte v)))
+      (aset byte-map (int i) (byte v)))
     (sequential-read stream page-size seq-buf-size byte-map)))</pre></td></tr><tr><td class="docs"><p>Returns list of maps containing sequence as upper-case string.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn sequential-read-string
   [stream page-size seq-buf-size {:keys [mask?]}]
   (let [byte-map (byte-array (range 128))]
     (when-not mask?
       (doseq [[i v] [[\a \A] [\c \C] [\g \G] [\t \T] [\n \N]]]
-        (aset-byte byte-map (byte i) (byte v))))
-    (map (fn [{:keys [^bytes name ^bytes sequence]}]
-           {:name (String. name) :sequence (String. sequence)})
-         (sequential-read stream page-size seq-buf-size byte-map))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+        (aset byte-map (int i) (byte (int v)))))
+    (map (fn [{^bytes name' :name
+               ^bytes sequence' :sequence}]
+           {:name (String. name') :sequence (String. sequence')})
+         (sequential-read stream page-size seq-buf-size byte-map))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

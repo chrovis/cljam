@@ -2875,17 +2875,17 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.sam.util :as sam-util]
             [cljam.io.sam.util.refs :as refs])
   (:import [cljam.io.protocols SAMRegionBlock]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(def ^:const default-step 1000000)</pre></td></tr><tr><td class="docs"><h2>lazy</h2>
+</td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const default-step 1000000)</pre></td></tr><tr><td class="docs"><h2>lazy</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Piles the alignments up and counts them in the positions, returning it as a seq.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- count-for-positions
-  [alns beg end]
+  [alns ^long beg ^long end]
   (let [pile (long-array (inc (- end beg)))]
     (doseq [aln alns]
-      (let [left (max (:pos aln) beg)
-            right (min (:end aln) end)
+      (let [left (max (long (:pos aln)) beg)
+            right (min (long (:end aln)) end)
             left-index (- left beg)]
         (dotimes [i (inc (- right left))]
-          (aset-long pile (+ i left-index) (inc (aget pile (+ i left-index)))))))
+          (aset pile (+ i left-index) (inc (aget pile (+ i left-index)))))))
     (seq pile)))</pre></td></tr><tr><td class="docs"><p>Internal lazy-depth function returning lazy sequence of depth.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- lazy-depth*
   [rdr rname start end step]
@@ -2903,55 +2903,61 @@ net.brehaut.ClojureTools = (function (SH) {
     (-&gt;&gt; (region/divide-region start end step)
          count-fn
          (apply concat))))</pre></td></tr><tr><td class="docs"><p>Calculate depth of coverage lazily. Returns a lazy seq of depth for range [start, end].
-  Requires a <code>cljam.io.bam.reader.BAMReader</code> instance and region.
-  If start and end are not supplied, piles whole range up.
-  Note that CIGAR code in alignments are ignored and only start/end positions are used.</p>
+Requires a <code>cljam.io.bam.reader.BAMReader</code> instance and region.
+If start and end are not supplied, piles whole range up.
+Note that CIGAR code in alignments are ignored and only start/end positions are used.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn lazy-depth
-  [bam-reader {:keys [chr start end] :or {start 1 end Long/MAX_VALUE}}
+  [bam-reader {:keys [chr ^long start ^long end] :or {start 1 end Long/MAX_VALUE}}
    &amp; [{:keys [step n-threads] :or {step default-step n-threads 1}}]]
-  {:pre [chr start end (pos? start) (pos? end) (&lt;= start end)]}
+  {:pre [chr ^long start ^long end (pos? start) (pos? end) (&lt;= start end)]}
   (when-let [{:keys [len]} (refs/ref-by-name (sam/read-refs bam-reader) chr)]
     (binding [common/*n-threads* n-threads]
-      (lazy-depth* bam-reader chr (min len start) (min len end) step))))</pre></td></tr><tr><td class="docs"><h2>eager</h2>
+      (lazy-depth* bam-reader
+                   chr
+                   (min (long len) start)
+                   (min (long len) end)
+                   step))))</pre></td></tr><tr><td class="docs"><h2>eager</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Piles alignments up and sets depth values to a part of the given int-array.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- unchecked-aset-depth-in-region!
   [alns beg end offset ^ints pile]
   (let [beg (int beg)
         end (int end)
         offset (int offset)]
-    (doseq [^SAMRegionBlock aln alns]
-      (let [left (Math/max ^int (.pos aln) beg)
-            right (unchecked-inc-int (.end aln))
-            left-index (unchecked-add-int (unchecked-subtract-int left beg) offset)
-            right-index (unchecked-add-int (unchecked-subtract-int right beg) offset)]
-        (aset-int pile left-index (unchecked-inc-int (aget pile left-index)))
-        (when (&lt;= right end)
-          (aset-int pile right-index (unchecked-dec-int (aget pile right-index))))))
+    (run! (fn [^SAMRegionBlock aln]
+            (let [left (Math/max ^int (.pos aln) beg)
+                  right (unchecked-inc-int (.end aln))
+                  left-index (unchecked-add-int (unchecked-subtract-int left beg) offset)
+                  right-index (unchecked-add-int (unchecked-subtract-int right beg) offset)]
+              (aset pile left-index (unchecked-inc-int (aget pile left-index)))
+              (when (&lt;= right end)
+                (aset pile right-index (unchecked-dec-int (aget pile right-index))))))
+          alns)
     (dotimes [i (- end beg)]
-      (aset-int
+      (aset
        pile
        (unchecked-add-int (unchecked-inc-int i) offset)
        (unchecked-add-int
         (aget pile (unchecked-add-int i offset))
         (aget pile (unchecked-add-int (unchecked-inc-int i) offset)))))))</pre></td></tr><tr><td class="docs"><p>Piles alignments up and sets depth values to a part of the given int-array.
-  It's roughly 15-25% slower than unchecked version.</p>
+It's roughly 15-25% slower than unchecked version.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- aset-depth-in-region!
   [alns beg end offset ^ints pile]
   (let [beg (int beg)
         end (int end)
         offset (int offset)]
-    (doseq [aln alns]
-      (let [left (Math/max ^int (:pos aln) beg)
-            right (int ^long (inc (or (:end aln) (sam-util/get-end aln))))
-            left-index (+ (- left beg) offset)
-            right-index (+ (- right beg) offset)]
-        (aset-int pile left-index (inc (aget pile left-index)))
-        (when (&lt;= right end)
-          (aset-int pile right-index (dec (aget pile right-index))))))
+    (run! (fn [aln]
+            (let [left (Math/max (int (:pos aln)) beg)
+                  right (inc (or (long (:end aln)) (sam-util/get-end aln)))
+                  left-index (+ (- left beg) offset)
+                  right-index (+ (- right beg) offset)]
+              (aset pile left-index (inc (aget pile left-index)))
+              (when (&lt;= right end)
+                (aset pile right-index (dec (aget pile right-index))))))
+          alns)
     (dotimes [i (- end beg)]
-      (aset-int pile (+ (inc i) offset) (+ (aget pile (+ i offset)) (aget pile (+ (inc i) offset)))))))</pre></td></tr><tr><td class="docs"><p>Internal depth function which returns an int-array.</p>
+      (aset pile (+ (inc i) offset) (+ (aget pile (+ i offset)) (aget pile (+ (inc i) offset)))))))</pre></td></tr><tr><td class="docs"><p>Internal depth function which returns an int-array.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ^&quot;[I&quot; depth*
-  [rdr {:keys [chr start end] :as region}
+  [rdr {:keys [chr ^long start ^long end] :as region}
    &amp; [{:keys [step unchecked? n-threads] :or {step default-step unchecked? false n-threads 1}}]]
   (let [pile (int-array (inc (- end start)))
         f (if unchecked? unchecked-aset-depth-in-region! aset-depth-in-region!)]
@@ -2962,21 +2968,23 @@ net.brehaut.ClojureTools = (function (SH) {
        [[s e] (region/divide-region start end step)]
        (with-open [r (sam/clone-bam-reader rdr)]
          (-&gt; (sam/read-blocks r {:chr chr, :start s, :end e} {:mode :region})
-             (f s e (- s start) pile)))))
+             (f s e (- (long s) start) pile)))))
     pile))</pre></td></tr><tr><td class="docs"><p>Calculate depth of coverage eagerly. Returns a seq of depth for range [start, end].
-  Requires a <code>cljam.io.bam.reader.BAMReader</code> instance and region.
-  If start and end are not supplied, piles whole range up.
-  Note that CIGAR code in alignments are ignored and only start/end positions are used.</p>
+Requires a <code>cljam.io.bam.reader.BAMReader</code> instance and region.
+If start and end are not supplied, piles whole range up.
+Note that CIGAR code in alignments are ignored and only start/end positions are used.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn depth
-  [bam-reader {:keys [chr start end] :or {start 1 end Long/MAX_VALUE}}
+  [bam-reader {:keys [chr ^long start ^long end]
+               :or {start 1 end Long/MAX_VALUE}}
    &amp; [{:keys [step unchecked? n-threads] :or {step default-step unchecked? false n-threads 1}}]]
-  {:pre [chr start end (pos? start) (pos? end) (&lt;= start end)]}
+  {:pre [chr start end
+         (pos? (long start)) (pos? (long end)) (&lt;= (long start) (long end))]}
   (when-let [{:keys [len]} (refs/ref-by-name (sam/read-refs bam-reader) chr)]
     (seq
      (depth*
       bam-reader
-      {:chr chr, :start (min len start), :end (min len end)}
-      {:step step, :unchecked? unchecked?, :n-threads n-threads}))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+      {:chr chr, :start (min (long len) start), :end (min (long len) end)}
+      {:step step, :unchecked? unchecked?, :n-threads n-threads}))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

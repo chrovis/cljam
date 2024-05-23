@@ -2882,7 +2882,7 @@ net.brehaut.ClojureTools = (function (SH) {
        (make-array FileAttribute)
        (Files/createTempDirectory prefix)
        .toFile))</pre></td></tr><tr><td class="docs"><p>Takes the temporary directory created by <code>create-temp-dir</code> and deletes the
-  <code>dir</code> and the files in <code>dir</code>.</p>
+<code>dir</code> and the files in <code>dir</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn delete-temp-dir!
   [^java.io.File dir]
   (Files/walkFileTree
@@ -2904,8 +2904,8 @@ net.brehaut.ClojureTools = (function (SH) {
           &quot;The directory could not be deleted because it did not exist: %s&quot;
           (str dir)))
        FileVisitResult/CONTINUE))))</pre></td></tr><tr><td class="docs"><p>bindings => [dir prefix ...]
-  Creates a temporary directory with the given <code>prefix</code> and binds the given
-  <code>dir</code> to it. Finally, deletes <code>dir</code> and the files in <code>dir</code>.</p>
+Creates a temporary directory with the given <code>prefix</code> and binds the given
+<code>dir</code> to it. Finally, deletes <code>dir</code> and the files in <code>dir</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defmacro with-temp-dir
   [bindings &amp; body]
   (assert (vector? bindings) &quot;bindings must be a vector&quot;)
@@ -2921,28 +2921,31 @@ net.brehaut.ClojureTools = (function (SH) {
     :else (throw (IllegalArgumentException. &quot;binding must be a symbol&quot;))))</pre></td></tr><tr><td class="docs"><h2>byte array</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Casts to byte avoiding an error about out of range for byte.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn ubyte
-  [n]
+  [^long n]
   {:pre [(&lt;= 0 n 255)]}
   (byte (if (&lt; n 0x80) n (- n 0x100))))</pre></td></tr><tr><td class="docs"><h2>string utils</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn ^&quot;[B&quot; string-&gt;bytes [^String s]
-  (.getBytes s))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn ^String bytes-&gt;string [^bytes b]
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Converts a string to bytes.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn string-&gt;bytes
+  ^&quot;[B&quot; [^String s]
+  (.getBytes s))</pre></td></tr><tr><td class="docs"><p>Converts bytes to a string.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn bytes-&gt;string
+  ^String [^bytes b]
   (String. b 0 (alength b)))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a visible character, false if not.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn graph?
   [c]
-  (&lt;= 0x20 (byte c) 0x7E))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a character that creates "white space" in displayed
-  text.</p>
+  (&lt;= 0x20 (byte (int c)) 0x7E))</pre></td></tr><tr><td class="docs"><p>Returns true if c is a character that creates "white space" in displayed
+text.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn space?
   [c]
   (not (nil? (#{\space \tab \newline \formfeed \return (char 0x0b)} c))))</pre></td></tr><tr><td class="docs"><h2>file utils</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn ^URL as-url
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Converts an object to a URL.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn as-url
+  ^URL
   [x]
   (try
     (cio/as-url x)
     (catch MalformedURLException _
-      (cio/as-url (cio/file x)))))</pre></td></tr><tr><td class="docs">
+      (cio/as-url (cio/file x)))))</pre></td></tr><tr><td class="docs"><p>Returns a file name without the last extension.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn basename
   [x]
   (when-let [url (as-url x)]
@@ -2950,34 +2953,35 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(def ^:private compressor-map
   {:gzip CompressorStreamFactory/GZIP
    :bzip2 CompressorStreamFactory/BZIP2})</pre></td></tr><tr><td class="docs"><p>Returns a compressor input stream from f, autodetecting the compressor type
-  from the first few bytes of f. Returns java.io.BufferedInputStream if the
-  compressor type is not known. Should be used inside with-open to ensure the
-  InputStream is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^java.io.InputStream compressor-input-stream
+from the first few bytes of f. Returns java.io.BufferedInputStream if the
+compressor type is not known. Should be used inside with-open to ensure the
+InputStream is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn compressor-input-stream
+  ^java.io.InputStream
   [f]
   (let [is (cio/input-stream f)]
     (try
       (.createCompressorInputStream (CompressorStreamFactory. true) is)
       (catch CompressorException _
         is))))</pre></td></tr><tr><td class="docs"><p>Returns a compressor output stream from <code>f</code> and a compressor type <code>k</code>. <code>k</code>
-  must be selected from <code>:bgzip</code>, <code>:gzip</code> or <code>:bzip2</code>. Autodetects the
-  compressor type from the extension of <code>f</code> if <code>k</code> is not passed. Returns
-  <code>java.io.BufferedOutputStream</code> if the compressor type is not known. Should be
-  used inside with-open to ensure the OutputStream is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^java.io.OutputStream compressor-output-stream
-  ([f]
+must be selected from <code>:bgzip</code>, <code>:gzip</code> or <code>:bzip2</code>. Autodetects the
+compressor type from the extension of <code>f</code> if <code>k</code> is not passed. Returns
+<code>java.io.BufferedOutputStream</code> if the compressor type is not known. Should be
+used inside with-open to ensure the OutputStream is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn compressor-output-stream
+  (^java.io.OutputStream [f]
    (compressor-output-stream f (condp re-find (.getPath (as-url f))
                                  #&quot;(?i)\.(bgz|bgzip|gz)$&quot; :bgzip
                                  #&quot;(?i)\.gzip$&quot; :gzip
                                  #&quot;(?i)\.(bz2|bzip2)$&quot; :bzip2
                                  nil)))
-  ([f k]
+  (^java.io.OutputStream [f k]
    (if (= :bgzip k)
      (bgzf/make-bgzf-output-stream f)
      (let [os (cio/output-stream f)]
        (if-let [s (get compressor-map k)]
          (.createCompressorOutputStream (CompressorStreamFactory.) s os)
-         os)))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+         os)))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

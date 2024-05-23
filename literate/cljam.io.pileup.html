@@ -2872,7 +2872,8 @@ net.brehaut.ClojureTools = (function (SH) {
             [cljam.io.sam.util.quality :as qual]
             [cljam.io.sequence :as cseq]
             [proton.core :as p])
-  (:import [java.io Closeable BufferedWriter]))</pre></td></tr><tr><td class="docs"><h2>Records</h2>
+  (:import [java.io Closeable BufferedWriter])
+  (:refer-clojure :exclude [ref]))</pre></td></tr><tr><td class="docs"><h2>Records</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defrecord PileupBase [^boolean start?
                        mapq ;; byte?
@@ -2893,18 +2894,23 @@ net.brehaut.ClojureTools = (function (SH) {
   Closeable
   (close [this]
     (.close ^Closeable (.reader this))))</pre></td></tr><tr><td class="docs"><p>Returns an open instance of cljam.io.pileup.PileupReader of f. Should be used
-  inside with-open to ensure the reader is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^PileupReader reader
+inside with-open to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn reader
+  ^PileupReader
   [f]
   (PileupReader. (cio/reader f)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private
   upper-table
   (let [ba (byte-array 128)]
     (doseq [c &quot;ATGCN&quot;]
-      (aset-byte ba (byte c) (byte c))
-      (aset-byte ba (+ (byte c) (- (byte \a) (byte \A))) (byte c)))
+      (aset ba (byte (int c)) (byte (int c)))
+      (aset ba
+            (+ (byte (int c))
+               (- (byte (int \a))
+                  (byte (int \A))))
+            (byte (int c))))
     (doseq [[from to] [[\, -1] [\. -1] [\&lt; \&gt;] [\&gt; \&gt;] [\* \*]]]
-      (aset-byte ba (byte from) (byte to)))
+      (aset ba (int from) (byte (int to))))
     ba))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-bases-col
   [ref-base ^String column]
@@ -2939,38 +2945,38 @@ net.brehaut.ClojureTools = (function (SH) {
                                                       (recur (inc j) (inc k) (+ (* 10 results) (- (int c) 48)))
                                                       [k results]))))
                   indel-seq (when indel-num
-                              (let [s (+ i (if mapq 4 2) indel-num-chars)]
-                                (cstr/upper-case (.substring column s (+ s indel-num)))))
+                              (let [s (+ i (if mapq 4 2) (long indel-num-chars))]
+                                (cstr/upper-case (.substring column s (+ s (long indel-num))))))
                   end? (boolean (or (= \$ x)
                                     (and indel-num
-                                         (not= len (+ i (if mapq 4 2) indel-num-chars indel-num))
-                                         (= \$ (.charAt column (+ i (if mapq 4 2) indel-num-chars indel-num))))))
+                                         (not= len (+ i (if mapq 4 2) (long indel-num-chars) (long indel-num)))
+                                         (= \$ (.charAt column (+ i (if mapq 4 2) (long indel-num-chars) (long indel-num)))))))
                   next-pos (long (+ i 1 (if mapq 2 0)
-                                    (if indel-num (+ 1 indel-num-chars indel-num) 0)
+                                    (if indel-num (+ 1 (long indel-num-chars) (long indel-num)) 0)
                                     (if end? 1 0)))]
               (recur next-pos
                      (conj! results (PileupBase. start? mapq upper-base -1 reverse? end? (when ins? indel-seq) (when del? indel-num) nil nil))))))
         (persistent! results)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-pileup-line
   [line]
-  (let [[rname pos [ref-base] cnt bases quals &amp; _] (cstr/split line #&quot;\t&quot;)
+  (let [[rname pos [ref-base] cnt bases' quals &amp; _] (cstr/split line #&quot;\t&quot;)
         ;; TODO: handle extra columns like mapq, qname...
         upper-ref-base (Character/toUpperCase ^char ref-base)
         pile (mapv (fn [b q] (assoc b :qual q))
-                   (some-&gt;&gt; bases (parse-bases-col upper-ref-base))
+                   (some-&gt;&gt; bases' (parse-bases-col upper-ref-base))
                    (some-&gt; quals qual/fastq-&gt;phred))]
     (-&gt; (LocusPile. rname (p/as-long pos) pile)
         (assoc :count (p/as-int cnt) :ref ref-base))))</pre></td></tr><tr><td class="docs"><p>Reads piled-up bases of the pileup file, returning them as a lazy sequence of
-  cljam.io.pileup.LocusPile.</p>
+cljam.io.pileup.LocusPile.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-piles
-  [^PileupReader reader]
-  (-&gt;&gt; reader
+  [^PileupReader pileup-reader]
+  (-&gt;&gt; pileup-reader
        .reader
        line-seq
        (map parse-pileup-line)))</pre></td></tr><tr><td class="docs"><h2>Writer</h2>
 </td><td class="codes"></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-mpileup-alignment!
-  [^BufferedWriter w ref-reader rname ref-pos ref
+  [^BufferedWriter w ref-reader rname ref-pos ref'
    {:keys [base reverse? mapq start? end? insertion deletion]}]
   (let [case-base-fn (if-not reverse?
                        identity
@@ -2982,17 +2988,17 @@ net.brehaut.ClojureTools = (function (SH) {
     (when start?
       (.append w \^)
       (.append w (qual/phred-byte-&gt;fastq-char mapq)))
-    (if (= base ref) ;; match / deleted / skipped
+    (if (= base ref') ;; match / deleted / skipped
       (.append w (if reverse? \, \.))
       (.append w (unchecked-char (case-base-fn base))))
     (when deletion
       (.append w \-)
-      (.append w (String/valueOf ^int deletion))
+      (.append w (String/valueOf (int deletion)))
       (.append w ^String (case-fn
                           (if ref-reader
                             (-&gt;&gt; {:chr rname
-                                  :start (inc ref-pos)
-                                  :end (+ ref-pos deletion)}
+                                  :start (inc (long ref-pos))
+                                  :end (+ (long ref-pos) (int deletion))}
                                  (cseq/read-sequence ref-reader))
                             (apply str (repeat deletion \N))))))
     (when insertion
@@ -3026,22 +3032,22 @@ net.brehaut.ClojureTools = (function (SH) {
   (close [this]
     (.close ^Closeable (.writer this))
     (some-&gt; ^Closeable (.ref-reader this) .close)))</pre></td></tr><tr><td class="docs"><p>Returns an open instance of cljam.io.pileup.PileupWriter of f. Should be used
-  inside with-open to ensure the writer is properly closed. A reference sequence
-  is used when the second arg <code>reference-path</code> is supplied.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^PileupWriter writer
-  ([f]
+inside with-open to ensure the writer is properly closed. A reference sequence
+is used when the second arg <code>reference-path</code> is supplied.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn writer
+  (^PileupWriter [f]
    (writer f nil))
-  ([f reference-path]
+  (^PileupWriter [f reference-path]
    (PileupWriter. (cio/writer f) (some-&gt; reference-path cseq/reader))))</pre></td></tr><tr><td class="docs"><p>Writes piled-up bases to a file. <code>pileup-writer</code> must be an instance of
-  cljam.io.pileup.PileupWriter.</p>
+cljam.io.pileup.PileupWriter.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-piles
   [^PileupWriter pileup-writer piles]
-  (let [^BufferedWriter writer (.writer pileup-writer)
+  (let [^BufferedWriter wtr (.writer pileup-writer)
         ref-reader (.ref-reader pileup-writer)]
     (doseq [pile piles]
-      (write-mpileup-line! writer ref-reader pile)
-      (.newLine writer))
-    (.flush writer)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+      (write-mpileup-line! wtr ref-reader pile)
+      (.newLine wtr))
+    (.flush wtr)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

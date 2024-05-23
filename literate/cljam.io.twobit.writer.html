@@ -2867,167 +2867,199 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.twobit.writer" name="cljam.io.twobit.writer"><h1 class="project-name">cljam.io.twobit.writer</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.twobit.writer
-  (:require [clojure.java.io :as cio]
-            [cljam.io.protocols :as protocols]
-            [cljam.io.util.lsb :as lsb]
-            [cljam.util :as util])
-  (:import [java.io Closeable OutputStream DataOutputStream BufferedOutputStream FileOutputStream]
-           [java.nio ByteBuffer]))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(declare write-sequences)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(deftype TwoBitWriter [url writer file-output-stream index]
+  (:require [cljam.io.protocols :as protocols]
+            [cljam.io.util.byte-buffer :as bb]
+            [cljam.util :as util]
+            [clojure.java.io :as cio])
+  (:import [java.io Closeable]
+           [java.nio Buffer ByteBuffer]
+           [java.nio.channels FileChannel]
+           [java.nio.file OpenOption StandardOpenOption]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(declare flush-buffer! write-sequences)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(deftype TwoBitWriter [url channel buffer index]
   Closeable
   (close [this]
-    (.close ^Closeable (.writer this)))
+    (flush-buffer! this)
+    (.close ^Closeable (.-channel this)))
   protocols/IWriter
   (writer-url [this]
-    (.url this))
+    (.-url this))
   protocols/ISequenceWriter
   (write-sequences [this seqs]
     (write-sequences this seqs)))</pre></td></tr><tr><td class="docs"><p>Returns a 2bit writer of f.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn writer
   [f {:keys [index]}]
-  (let [abs-f (.getAbsolutePath (cio/file f))
-        fos (FileOutputStream. abs-f)
-        bos (BufferedOutputStream. fos)
-        dos (DataOutputStream. bos)]
-    (TwoBitWriter. (util/as-url abs-f) dos fos index)))</pre></td></tr><tr><td class="docs"><p>Writes a 2bit file header. Supports little-endian only.</p>
+  (let [file (cio/file f)
+        ch (FileChannel/open (.toPath file)
+                             (into-array OpenOption [StandardOpenOption/WRITE
+                                                     StandardOpenOption/CREATE
+                                                     StandardOpenOption/TRUNCATE_EXISTING]))
+        bb (bb/allocate-lsb-byte-buffer 8192)]
+    (TwoBitWriter. (util/as-url (.getAbsolutePath file)) ch bb (some-&gt; index vec))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- flush-buffer! [^TwoBitWriter w]
+  (let [^FileChannel ch (.-channel w)
+        ^Buffer bb (.-buffer w)]
+    (.flip bb)
+    (while (.hasRemaining bb)
+      (.write ch ^ByteBuffer bb))
+    (.clear bb)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- ensure-buffer-room! [^TwoBitWriter w ^long n]
+  (when (&lt; (.remaining ^ByteBuffer (.-buffer w)) n)
+    (flush-buffer! w)))</pre></td></tr><tr><td class="docs"><p>Writes a 2bit file header. Supports little-endian only.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- write-file-header!
-  [w nseq]
-  (lsb/write-int w 0x1A412743)
-  (lsb/write-int w 0)
-  (lsb/write-int w nseq)
-  (lsb/write-int w 0))</pre></td></tr><tr><td class="docs"><p>Returns a sequence of [start length] of masked regions.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- mask-regions
-  [^String s]
-  (let [len (.length s)]
-    (loop [r (transient [])
-           p nil
-           l nil
-           i 0]
-      (if (= i len)
-        (if p
-          (persistent! (conj! r [p l]))
-          (persistent! r))
-        (if (&lt;= (int \a) (int (.charAt s (int i))))
-          (if p
-            (recur r p (inc l) (inc i))
-            (recur r i 1 (inc i)))
-          (if p
-            (recur (conj! r [p l]) nil nil (inc i))
-            (recur r nil nil (inc i))))))))</pre></td></tr><tr><td class="docs"><p>Returns a sequence of [start length] of N regions.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- amb-regions
-  [^String s]
-  (let [len (.length s)]
-    (loop [r (transient [])
-           p nil
-           l nil
-           i 0]
-      (if (= i len)
-        (if p
-          (persistent! (conj! r [p l]))
-          (persistent! r))
-        (if (= \N (.charAt s (int i)))
-          (if p
-            (recur r p (inc l) (inc i))
-            (recur r i 1 (inc i)))
-          (if p
-            (recur (conj! r [p l]) nil nil (inc i))
-            (recur r nil nil (inc i))))))))</pre></td></tr><tr><td class="docs">
+  [^TwoBitWriter w nseq]
+  (ensure-buffer-room! w 16)
+  (doto ^ByteBuffer (.-buffer w)
+    (.putInt 0x1A412743)
+    (.putInt 0)
+    (.putInt nseq)
+    (.putInt 0)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro ^:private long-pair [x y]
+  `(doto (long-array 2)
+     (aset 0 ~x)
+     (aset 1 ~y)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- masked-regions [^bytes bs]
+  (let [len (alength bs)]
+    (loop [i 0
+           masks (transient [])
+           mask-start -1
+           ambs (transient [])
+           amb-start -1]
+      (let [mask? (&gt;= mask-start 0)
+            amb? (&gt;= amb-start 0)]
+        (if (= i len)
+          [(persistent!
+            (cond-&gt; masks mask? (conj! (long-pair mask-start (- i mask-start)))))
+           (persistent!
+            (cond-&gt; ambs amb? (conj! (long-pair amb-start (- i amb-start)))))]
+          (let [b (int (aget bs i))]
+            (if (&lt; b (int \a))
+              (let [masks' (cond-&gt; masks mask? (conj! (long-pair mask-start (- i mask-start))))]
+                (if (= b (int \N))
+                  (let [amb-start' (if amb? amb-start i)]
+                    (recur (inc i) masks' -1 ambs amb-start'))
+                  (let [ambs' (cond-&gt; ambs amb? (conj! (long-pair amb-start (- i amb-start))))]
+                    (recur (inc i) masks' -1 ambs' -1))))
+              (let [mask-start' (if mask? mask-start i)]
+                (if (= b (int \n))
+                  (let [amb-start' (if amb? amb-start i)]
+                    (recur (inc i) masks mask-start' ambs amb-start'))
+                  (let [ambs' (cond-&gt; ambs amb? (conj! (long-pair amb-start (- i amb-start))))]
+                    (recur (inc i) masks mask-start' ambs' -1)))))))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-index!
-  [w idx]
-  (loop [offset (+ (* 4 4) (reduce + (map #(+ 1 (count (:name %)) 4) idx)))
-         idx idx]
-    (when-let [{:keys [name len]} (first idx)]
-      (lsb/write-ubyte w (count name))
-      (lsb/write-string w name)
-      (lsb/write-int w offset)
-      (recur (+ offset
-                (if-let [{:keys [ambs masks]} (first idx)]
-                  (+ 4 4 (* 2 4 (count ambs)) 4 (* 2 4 (count masks)) 4)
-                  0) ; dummy
-                (quot (dec (+ len 4)) 4))
-             (next idx)))))</pre></td></tr><tr><td class="docs">
+  [^TwoBitWriter w idx]
+  (let [^ByteBuffer bb (.-buffer w)]
+    (loop [offset (+ (* 4 4)
+                     (long (reduce + (map #(+ 1 (count (:name %)) 4) idx))))
+           idx idx]
+      (when-let [{:keys [len ambs masks] name' :name} (first idx)]
+        (let [name-size (count name')]
+          (ensure-buffer-room! w (+ name-size 5))
+          (doto bb
+            (bb/write-ubyte (count name'))
+            (bb/write-string name')
+            (.putInt offset))
+          (recur (+ offset
+                    (if (and ambs masks)
+                      (+ 4 4 (* 2 4 (count ambs)) 4 (* 2 4 (count masks)) 4)
+                      0) ; dummy
+                    (quot (dec (+ (long len) 4)) 4))
+                 (next idx)))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private
   char-&gt;twobit
   (doto (byte-array 128)
-    (aset-byte (int \C) 1)
-    (aset-byte (int \c) 1)
-    (aset-byte (int \A) 2)
-    (aset-byte (int \a) 2)
-    (aset-byte (int \G) 3)
-    (aset-byte (int \g) 3)))</pre></td></tr><tr><td class="docs"><p>Encodes a sequence into twobit format.</p>
+    (aset (int \C) (byte 1))
+    (aset (int \c) (byte 1))
+    (aset (int \A) (byte 2))
+    (aset (int \a) (byte 2))
+    (aset (int \G) (byte 3))
+    (aset (int \g) (byte 3))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- write-twobit-bytes! [^TwoBitWriter w ^bytes bs]
+  (let [len (count bs)
+        in (ByteBuffer/wrap bs)
+        out ^ByteBuffer (.-buffer w)
+        table ^bytes char-&gt;twobit
+        encode-four-bases #(-&gt;&gt; (bit-or
+                                 (bit-shift-left (long (aget table (.get in))) 6)
+                                 (bit-shift-left (long (aget table (.get in))) 4)
+                                 (bit-shift-left (long (aget table (.get in))) 2)
+                                 (long (aget table (.get in))))
+                                unchecked-byte
+                                (.put out))]
+    ;; write out per chunk of size smaller than buffer capacity
+    (dotimes [_ (quot len 1024)]
+      (ensure-buffer-room! w 256)
+      (dotimes [_ 256]
+        (encode-four-bases)))
+    (let [remaining (rem len 1024)]
+      (when (pos? remaining)
+        (ensure-buffer-room! w (quot (+ remaining 3) 4))
+        (dotimes [_ (quot remaining 4)]
+          (encode-four-bases))
+        (when (pos? (rem remaining 4))
+          (loop [b 0 i (rem remaining 4) j 1]
+            (if (pos? i)
+              (recur
+               (bit-or b (bit-shift-left (long (aget table (.get in))) (* 2 (- 4 j))))
+               (dec i)
+               (inc j))
+              (.put out (unchecked-byte b)))))))))</pre></td></tr><tr><td class="docs"><p>Encodes a sequence into twobit format.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-twobit!
-  [^OutputStream o ^String s]
-  (let [len (.length s)
-        bb (ByteBuffer/wrap (.getBytes s))
-        table ^bytes char-&gt;twobit]
-    (dotimes [_ (quot len 4)]
-      (-&gt;&gt; (bit-or
-            (bit-shift-left (aget table (.get bb)) 6)
-            (bit-shift-left (aget table (.get bb)) 4)
-            (bit-shift-left (aget table (.get bb)) 2)
-            (aget table (.get bb)))
-           unchecked-int
-           (.write o)))
-    (when (pos? (mod len 4))
-      (loop [b 0 i (mod len 4) j 1]
-        (if (pos? i)
-          (recur (bit-or b (bit-shift-left (aget table (.get bb)) (* 2 (- 4 j)))) (dec i) (inc j))
-          (.write o (unchecked-int b)))))))</pre></td></tr><tr><td class="docs"><p>Writes a single sequence entry to writer.</p>
+  [w ^String s]
+  (write-twobit-bytes! w (.getBytes s)))</pre></td></tr><tr><td class="docs"><p>Writes a single sequence entry to writer.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- write-sequence!
-  [w sequence idx]
-  (let [name (or (:name sequence) (:rname sequence))
-        seq-data (or (:seq sequence) (:sequence sequence))
-        {:keys [len ambs masks]} (first (filter #(= (:name %) name) idx))]
-    (lsb/write-int w len)
-    (lsb/write-int w (count ambs))
-    (doseq [[s _] ambs]
-      (lsb/write-int w s))
-    (doseq [[_ l] ambs]
-      (lsb/write-int w l))
-    (lsb/write-int w (count masks))
-    (doseq [[s _] masks]
-      (lsb/write-int w s))
-    (doseq [[_ l] masks]
-      (lsb/write-int w l))
-    (lsb/write-int w 0)
-    (write-twobit! w seq-data)))</pre></td></tr><tr><td class="docs">
+  [^TwoBitWriter w {:keys [len ambs masks]} bs]
+  (let [^ByteBuffer bb (.-buffer w)
+        write-int (fn [n]
+                    (ensure-buffer-room! w 4)
+                    (.putInt bb n))]
+    (write-int len)
+    (write-int (count ambs))
+    (run! #(write-int (aget ^longs % 0)) ambs)
+    (run! #(write-int (aget ^longs % 1)) ambs)
+    (write-int (count masks))
+    (run! #(write-int (aget ^longs % 0)) masks)
+    (run! #(write-int (aget ^longs % 1)) masks)
+    (write-int 0)
+    (write-twobit-bytes! w bs)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-sequences-without-index
-  [^TwoBitWriter wtr xs]
-  (let [idx (map (fn [{:keys [name rname seq sequence]}]
-                   (let [seq-data (or seq sequence)]
-                     {:name (or name rname)
-                      :len (count seq-data)
-                      :masks (mask-regions seq-data)
-                      :ambs (amb-regions seq-data)}))
+  [wtr xs]
+  (let [idx (map (fn [x]
+                   (let [^String cs (or (:seq x) (:sequence x))
+                         bs (some-&gt; cs (.getBytes))
+                         [masks ambs] (masked-regions bs)]
+                     {:name (or (:name x) (:rname x))
+                      :seq bs
+                      :len (count bs)
+                      :masks masks
+                      :ambs ambs}))
                  xs)]
-    (write-file-header! (.writer wtr) (count xs))
-    (write-index! (.writer wtr) idx)
-    (doseq [sequence xs]
-      (write-sequence! (.writer wtr) sequence idx))))</pre></td></tr><tr><td class="docs">
+    (write-file-header! wtr (count xs))
+    (write-index! wtr idx)
+    (doseq [entry idx]
+      (write-sequence! wtr entry (:seq entry)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-sequences-with-index
   [^TwoBitWriter wtr idx xs]
-  (let [idx-atom (atom idx)]
-    (write-file-header! (.writer wtr) (count @idx-atom))
-    (write-index! (.writer wtr) @idx-atom)
-    (doseq [sequence xs]
-      (let [name (or (:name sequence) (:rname sequence))
-            seq-data (or (:seq sequence) (:sequence sequence))
-            masks (mask-regions seq-data)
-            ambs (amb-regions seq-data)
-            i (first (keep-indexed #(when (= (:name %2) name) %1) @idx-atom))]
-        (swap! idx-atom update i assoc :masks masks :ambs ambs))
-      (write-sequence! (.writer wtr) sequence @idx-atom))
+  (let [idx-atom (volatile! idx)]
+    (write-file-header! wtr (count @idx-atom))
+    (write-index! wtr @idx-atom)
+    (doseq [x xs]
+      (let [name' (or (:name x) (:rname x))
+            ^String cs (or (:seq x) (:sequence x))
+            bs (some-&gt; cs (.getBytes))
+            [masks ambs] (masked-regions bs)
+            i (first (keep-indexed #(when (= (:name %2) name') %1) @idx-atom))]
+        (vswap! idx-atom update i assoc :masks masks :ambs ambs)
+        (write-sequence! wtr (nth @idx-atom i) bs)))
     ;; finalize
-    (.flush ^DataOutputStream (.writer wtr))
-    (let [ch (.getChannel ^FileOutputStream (.file-output-stream wtr))]
-      (.position ch 16)
-      (write-index! ch @idx-atom))))</pre></td></tr><tr><td class="docs"><p>Writes all sequences to wtr. Input sequences must be a sequence of maps.</p>
+    (flush-buffer! wtr)
+    (.position ^FileChannel (.-channel wtr) 16)
+    (write-index! wtr @idx-atom)))</pre></td></tr><tr><td class="docs"><p>Writes all sequences to wtr. Input sequences must be a sequence of maps.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-sequences
   [^TwoBitWriter wtr xs]
   (if (nil? (.index wtr))
     (write-sequences-without-index wtr xs)
-    (write-sequences-with-index wtr (.index wtr) xs)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+    (write-sequences-with-index wtr (.index wtr) xs)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

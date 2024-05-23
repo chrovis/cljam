@@ -2867,12 +2867,12 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.bcf.reader" name="cljam.io.bcf.reader"><h1 class="project-name">cljam.io.bcf.reader</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.bcf.reader
-  (:refer-clojure :exclude [read])
   (:require [clojure.string :as cstr]
             [clojure.tools.logging :as logging]
             [cljam.io.protocols :as protocols]
             [cljam.io.util.bgzf :as bgzf]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.byte-buffer :as bb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.vcf.reader :as vcf-reader]
             [cljam.io.vcf.util :as vcf-util]
             [cljam.util :as util]
@@ -2881,7 +2881,8 @@ net.brehaut.ClojureTools = (function (SH) {
   (:import [java.io Closeable IOException FileNotFoundException]
            [java.net URL]
            [java.nio Buffer ByteBuffer]
-           [bgzf4j BGZFInputStream]))</pre></td></tr><tr><td class="docs">
+           [bgzf4j BGZFInputStream])
+  (:refer-clojure :exclude [read]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(declare read-variants meta-info read-variants-randomly read-file-offsets)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(deftype BCFReader
          [^URL url meta-info header ^BGZFInputStream reader
@@ -2902,12 +2903,15 @@ net.brehaut.ClojureTools = (function (SH) {
   protocols/IRegionReader
   (read-in-region [this region]
     (protocols/read-in-region this region {}))
-  (read-in-region [this {:keys [chr start end]} option]
+  (read-in-region [this {:keys [chr ^long start ^long end]} option]
     (logging/warn &quot;May cause degradation of performance.&quot;)
     (filter
-     (fn [v] (and (if chr (= (:chr v) chr) true)
-                  (if start (&lt;= start (:pos v)) true)
-                  (if end (&lt;= (+ (:pos v) (count (:ref v))) end) true)))
+     (fn [{^long v-pos :pos
+           v-chr :chr
+           v-ref :ref}]
+       (and (if chr (= v-chr chr) true)
+            (if start (&lt;= start v-pos) true)
+            (if end (&lt;= (+ v-pos (count v-ref)) end) true)))
      (read-variants this option))))</pre></td></tr><tr><td class="docs"><p>need dynamic extension for namespace issue.</p>
 </td><td class="codes"><pre class="brush: clojure">(extend-type BCFReader
   protocols/IVariantReader
@@ -2920,7 +2924,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (read-variants-randomly this region-option deep-option))
   (read-file-offsets [this]
     (read-file-offsets this)))</pre></td></tr><tr><td class="docs"><p>Parses meta-info and header of BCF files and returns them as a map.
-  lines must be a sequence of strings.</p>
+lines must be a sequence of strings.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-meta-and-header
   [lines]
   (let [{metas &quot;##&quot;
@@ -2928,86 +2932,92 @@ net.brehaut.ClojureTools = (function (SH) {
     {:meta (transduce
             (map vcf-reader/parse-meta-info-line)
             (completing
-             (fn [meta-info [k v]]
+             (fn [meta-info' [k v]]
                (if (#{:contig :info :filter :format :alt :sample :pedigree} k)
-                 (update meta-info k (fnil conj []) v)
-                 (assoc meta-info k v))))
+                 (update meta-info' k (fnil conj []) v)
+                 (assoc meta-info' k v))))
             {}
             metas)
-     :header (first (map vcf-reader/parse-header-line headers))}))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.bcf.reader.BCFReader of f. Should be used inside with-open to
-  ensure the Reader is properly closed.
-   Throws IOException if failed to parse BCF file format.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BCFReader reader
+     :header (first (map vcf-reader/parse-header-line headers))}))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.bcf.reader.BCFReader of f. Should be used inside
+with-open to ensure the Reader is properly closed.
+Throws IOException if failed to parse BCF file format.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn reader
+  ^BCFReader
   [f]
   (let [rdr (bgzf/bgzf-input-stream f)
         magic (lsb/read-bytes rdr 5)]
     (if (= (seq magic) (map byte &quot;BCF\2\2&quot;))
-      (let [hlen (lsb/read-int rdr)
+      (let [hlen (int (lsb/read-int rdr))
             header-buf (lsb/read-bytes rdr hlen)]
         (if (zero? (aget ^bytes header-buf (dec hlen))) ;; NULL-terminated
-          (let [{:keys [header meta]} (-&gt;&gt; (String. ^bytes header-buf
-                                                    0
-                                                    (int (dec hlen)))
-                                           cstr/split-lines
-                                           parse-meta-and-header)]
-            (BCFReader. (util/as-url f) meta header rdr (.getFilePointer rdr)
+          (let [{:keys [header] meta-info :meta} (-&gt;&gt; (String. ^bytes header-buf
+                                                               0
+                                                               (int (dec hlen)))
+                                                      cstr/split-lines
+                                                      parse-meta-and-header)]
+            (BCFReader. (util/as-url f) meta-info header rdr (.getFilePointer rdr)
                         (delay (csi/read-index (str f &quot;.csi&quot;)))))
           (do
             (.close rdr)
-            (throw (IOException. (str &quot;Invalid file format. BCF header must be NULL-terminated.&quot;))))))
+            (throw
+             (IOException.
+              &quot;Invalid file format. BCF header must be NULL-terminated.&quot;)))))
       (do
         (.close rdr)
-        (throw (IOException. (str &quot;Invalid file format. BCF v2.2 magic not found in &quot; f)))))))</pre></td></tr><tr><td class="docs"><p>Reads an atomic value, which is typed as either
-  integer(8,16,32 bit) or float or character.</p>
+        (throw
+         (IOException.
+          (str &quot;Invalid file format. BCF v2.2 magic not found in &quot; f)))))))</pre></td></tr><tr><td class="docs"><p>Reads an atomic value, which is typed as either
+integer(8,16,32 bit) or float or character.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-typed-atomic-value
-  [r ^long type-id]
+  [^ByteBuffer bb ^long type-id]
   (case type-id
-    1 (let [i (lsb/read-byte r)]
+    1 (let [i (.get bb)]
         (case (bit-and 0xFF i) 0x80 nil 0x81 :eov i))
-    2 (let [i (lsb/read-short r)]
+    2 (let [i (.getShort bb)]
         (case (bit-and 0xFFFF i) 0x8000 nil 0x8001 :eov i))
-    3 (let [i (lsb/read-int r)]
+    3 (let [i (.getInt bb)]
         (case (bit-and 0xFFFFFFFF i) 0x80000000 nil 0x80000001 :eov i))
-    5 (let [i (lsb/read-int r)]
-        (case (bit-and 0xFFFFFFFF i) 0x7F800001 nil 0x7F800002 :eov (Float/intBitsToFloat i)))
-    7 (lsb/read-byte r)))</pre></td></tr><tr><td class="docs">
+    5 (let [i (.getInt bb)]
+        (case (bit-and 0xFFFFFFFF i) 0x7F800001 nil 0x7F800002
+              :eov (Float/intBitsToFloat i)))
+    7 (.get bb)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- bytes-&gt;strs
   [ba]
   (map (fn [^String s]
          (let [z (.indexOf s (int 0))
                s' (cond-&gt; s (not (neg? z)) (subs 0 z))]
            (when-not (= s' &quot;.&quot;) (not-empty s'))))
-       (cstr/split (String. (byte-array ba)) #&quot;,&quot;)))</pre></td></tr><tr><td class="docs"><p>Reads typed value from BCF file. n-sample is a number of values repeated
-  after type specifier byte.</p>
+       (cstr/split (String. (byte-array ba)) #&quot;,&quot;)))</pre></td></tr><tr><td class="docs"><p>Reads typed value from byte buffer. n-sample is a number of values repeated
+after type specifier byte.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-typed-value
-  ([rdr]
-   (first (read-typed-value rdr 1)))
-  ([rdr n-sample]
-   (let [type-byte (lsb/read-byte rdr)
+  ([bb]
+   (first (read-typed-value bb 1)))
+  ([^ByteBuffer bb ^long n-sample]
+   (let [type-byte (int (.get bb))
          len (unsigned-bit-shift-right (bit-and 0xF0 type-byte) 4)
-         total-len (if (= len 15) (first (read-typed-value rdr)) len)
+         total-len (if (= len 15) (long (first (read-typed-value bb))) len)
          type-id (bit-and 0x0F type-byte)]
      (case type-id
        0 (repeat n-sample nil)
-       7 (doall (repeatedly n-sample
-                            #(bytes-&gt;strs (lsb/read-bytes rdr total-len))))
-       (-&gt;&gt; #(read-typed-atomic-value rdr type-id)
-            (repeatedly (* n-sample total-len))
-            (partition total-len)
-            (map (fn [xs] (take-while #(not= % :eov) xs)))
-            doall)))))</pre></td></tr><tr><td class="docs"><p>Reads a key-value pair.</p>
+       7  (mapv (fn [_] (bytes-&gt;strs (bb/read-bytes bb total-len)))
+                (range n-sample))
+       (into []
+             (comp (map (fn [_] (read-typed-atomic-value bb type-id)))
+                   (partition-all total-len)
+                   (map (fn [xs] (take-while #(not= % :eov) xs))))
+             (range (* n-sample total-len)))))))</pre></td></tr><tr><td class="docs"><p>Reads a key-value pair.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-typed-kv
-  ([rdr]
-   (let [[k [v]] (read-typed-kv rdr 1)]
+  ([bb]
+   (let [[k [v]] (read-typed-kv bb 1)]
      [k v]))
-  ([rdr n-sample]
-   [(first (read-typed-value rdr)) (read-typed-value rdr n-sample)]))</pre></td></tr><tr><td class="docs"><p>Reads a single record of variant and store to the ByteBuffer objects.</p>
+  ([bb n-sample]
+   [(first (read-typed-value bb)) (read-typed-value bb n-sample)]))</pre></td></tr><tr><td class="docs"><p>Reads a single record of variant and store to the ByteBuffer objects.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- read-data-line-buffer
   [rdr]
   (let [l-shared (lsb/read-uint rdr)
         l-indv (lsb/read-uint rdr)
-        shared-bb (ByteBuffer/allocate l-shared)
-        indv-bb (ByteBuffer/allocate l-indv)]
+        shared-bb (bb/allocate-lsb-byte-buffer l-shared)
+        indv-bb (bb/allocate-lsb-byte-buffer l-indv)]
     (lsb/read-bytes rdr (.array shared-bb) 0 l-shared)
     (lsb/read-bytes rdr (.array indv-bb) 0 l-indv)
     {:l-shared l-shared
@@ -3016,21 +3026,21 @@ net.brehaut.ClojureTools = (function (SH) {
      :individual indv-bb}))</pre></td></tr><tr><td class="docs"><p>Parses only chromosome, position and ref-length. Can be used for position-based querying.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-data-line-shallow
   [contigs {:keys [^ByteBuffer shared] :as m}]
-  (let [chrom-id (lsb/read-int shared)
-        pos (inc (lsb/read-int shared))
-        rlen (lsb/read-int shared)]
+  (let [chrom-id (.getInt shared)
+        pos (inc (.getInt shared))
+        rlen (.getInt shared)]
     (.position ^Buffer shared 0)
     (assoc m :chr (:id (contigs chrom-id)) :pos pos :rlen rlen)))</pre></td></tr><tr><td class="docs"><p>Parses full data of a variant. Returns a map containing indices for meta-info.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-data-line-deep
   [{:keys [^ByteBuffer shared ^ByteBuffer individual]}]
-  (let [chrom-id (lsb/read-int shared)
-        pos (inc (lsb/read-int shared))
-        rlen (lsb/read-int shared)
-        qual (lsb/read-int shared)
-        n-allele-info (lsb/read-int shared)
+  (let [chrom-id (.getInt shared)
+        pos (inc (.getInt shared))
+        rlen (.getInt shared)
+        qual (.getInt shared)
+        n-allele-info (.getInt shared)
         n-allele (unsigned-bit-shift-right n-allele-info 16)
         n-info (bit-and n-allele-info 0xFFFF)
-        n-fmt-sample (lsb/read-uint shared)
+        n-fmt-sample (long (bb/read-uint shared))
         n-fmt (bit-and 0xFF (unsigned-bit-shift-right n-fmt-sample 24))
         n-sample (bit-and n-fmt-sample 0xFFFFFF)
         id (let [i (read-typed-value shared)] (if (sequential? i) (first i) i))
@@ -3082,8 +3092,8 @@ net.brehaut.ClojureTools = (function (SH) {
     (let [data (read-fn rdr)]
       (cons data (lazy-seq (read-data-lines rdr read-fn))))))</pre></td></tr><tr><td class="docs"><p>Creates a map for searching meta-info with indices.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- meta-&gt;map
-  [meta]
-  (into {} (map (fn [m] [(Integer/parseInt (:idx m)) (assoc m :kw (keyword (:id m)))])) meta))</pre></td></tr><tr><td class="docs"><p>Returns meta-information of the BCF from rdr as a map.</p>
+  [meta-info]
+  (into {} (map (fn [m] [(Integer/parseInt (:idx m)) (assoc m :kw (keyword (:id m)))])) meta-info))</pre></td></tr><tr><td class="docs"><p>Returns meta-information of the BCF from rdr as a map.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn meta-info
   [^BCFReader rdr]
   (-&gt; (.meta-info rdr)
@@ -3111,15 +3121,14 @@ net.brehaut.ClojureTools = (function (SH) {
       :bcf parse-data-line-deep
       :shallow (partial parse-data-line-shallow contigs)
       :raw identity)))</pre></td></tr><tr><td class="docs"><p>Returns data lines of the BCF from rdr as a lazy sequence of maps.
-   rdr must implement cljam.bcf.BCFReader.
-   Can take an option :depth to specify parsing level. Default is :deep.</p>
+ rdr must implement cljam.bcf.BCFReader.
+ Can take an option :depth to specify parsing level. Default is :deep.</p>
 
-<pre><code> :deep    Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
- :vcf     VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.
- :bcf     BCF-style map. CHROM, FILTER, INFO and :genotype contains indices to meta-info.
- :shallow Only CHROM, POS and ref-length are parsed.
- :raw     Raw map of ByteBufers.
-</code></pre>
+<p>   :deep    Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
+   :vcf     VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.
+   :bcf     BCF-style map. CHROM, FILTER, INFO and :genotype contains indices to meta-info.
+   :shallow Only CHROM, POS and ref-length are parsed.
+   :raw     Raw map of ByteBuffers.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-variants
   ([rdr]
    (read-variants rdr {}))
@@ -3134,10 +3143,10 @@ net.brehaut.ClojureTools = (function (SH) {
     (lazy-cat
      (f fs)
      (make-lazy-variants f (rest s)))))</pre></td></tr><tr><td class="docs"><p>Reads variants of the BCF file randomly using csi file.
-   Returns them as a lazy sequence.</p>
+ Returns them as a lazy sequence.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-variants-randomly
   [^BCFReader rdr
-   {:keys [chr start end] :or {start 1 end 4294967296}}
+   {:keys [chr ^long start ^long end] :or {start 1 end 4294967296}}
    {:keys [depth] :or {depth :deep}}]
   (let [info (meta-&gt;map (:info (.meta-info rdr)))
         parse-fn  (make-parse-fn rdr info depth)
@@ -3157,13 +3166,14 @@ net.brehaut.ClojureTools = (function (SH) {
             repeatedly
             (take-while identity)
             (filter
-             (fn [{chr' :chr :keys [pos ref info]}]
+             (fn [{chr' :chr :keys [^long pos info] ref' :ref}]
                (and (= chr' chr)
                     (&lt;= pos end)
-                    (&lt;= start (get info :END (dec (+ pos (count ref))))))))))
+                    (&lt;= start
+                        (long (get info :END (dec (+ pos (count ref')))))))))))
      spans)))</pre></td></tr><tr><td class="docs"><p>Reads file offsets and a genomic position of variants from BCF and returns
-  them as a lazy sequence. Each element is a map containing :chr, :chr-index,
-  :beg, :end, :file-beg, :file-end.</p>
+them as a lazy sequence. Each element is a map containing :chr, :chr-index,
+:beg, :end, :file-beg, :file-end.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-file-offsets
   [^BCFReader rdr]
   (let [^BGZFInputStream input-stream (.reader rdr)
@@ -3175,12 +3185,12 @@ net.brehaut.ClojureTools = (function (SH) {
               (when (pos? (.available input-stream))
                 (when-let [line (read-data-line-buffer input-stream)]
                   (let [end-pointer (.getFilePointer input-stream)
-                        {:keys [chr pos rlen]} (parse-fn line)]
+                        {:keys [chr ^long pos ^long rlen]} (parse-fn line)]
                     (cons {:file-beg beg-pointer, :file-end end-pointer
                            :chr-index (contigs chr), :beg pos, :chr chr,
                            :end (dec (+ pos rlen))}
                           (lazy-seq (step end-pointer)))))))]
-      (step (.getFilePointer input-stream)))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+      (step (.getFilePointer input-stream)))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

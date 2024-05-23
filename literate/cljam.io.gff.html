@@ -2895,7 +2895,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (= i 0x3B)
       (= i 0x3D)
       (= i 0x7F)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode [pred ^String s]
+</td><td class="codes"><pre class="brush: clojure">(defn- encode ^String [pred ^String s]
   (let [cb (CharBuffer/wrap s)
         sb (StringBuilder. (.length s))]
     (while (.hasRemaining cb)
@@ -2911,9 +2911,9 @@ net.brehaut.ClojureTools = (function (SH) {
                          (if (&lt;= lower 9) (+ 48 lower) (+ 55 lower)))))
           (.append sb c))))
     (str sb)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode-in-attr [s]
+</td><td class="codes"><pre class="brush: clojure">(defn- encode-in-attr ^String [s]
   (encode escape-in-attr? s))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^String decode [pred ^String s]
+</td><td class="codes"><pre class="brush: clojure">(defn- decode ^String [pred ^String s]
   (when s
     (let [cb (CharBuffer/wrap s)
           sb (StringBuilder. (.length s))]
@@ -2934,16 +2934,16 @@ net.brehaut.ClojureTools = (function (SH) {
                   {:input s, :invalid-string (str c upper lower)}))))
             (.append sb c))))
       (str sb))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^String decode-in-attr [s]
+</td><td class="codes"><pre class="brush: clojure">(defn- decode-in-attr ^String [s]
   (decode escape-in-attr? s))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode-multiple [xs]
+</td><td class="codes"><pre class="brush: clojure">(defn- encode-multiple ^String [xs]
   (cstr/join \, (map encode-in-attr xs)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- decode-multiple [s]
   (map (partial decode escape-in-attr?) (cstr/split s #&quot;,&quot;)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private
   target-regexp
   #&quot;(\S+) ([1-9]\d*) ([1-9]\d*)(?: ([+-]))?&quot;)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode-target [{:keys [chr start end strand]}]
+</td><td class="codes"><pre class="brush: clojure">(defn- encode-target ^String [{:keys [chr start end strand]}]
   (cstr/join \space (cond-&gt; [(encode escape-in-target? chr) start end]
                       strand (conj (case strand :forward \+ :reverse \-)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- decode-target [s]
@@ -2952,7 +2952,7 @@ net.brehaut.ClojureTools = (function (SH) {
              :start (p/as-long start)
              :end (p/as-long end)}
       strand (assoc :strand (case (first strand) \+ :forward \- :reverse)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode-gap [xs]
+</td><td class="codes"><pre class="brush: clojure">(defn- encode-gap ^String [xs]
   (cstr/join \space (map (fn [[op len]] (str op len)) xs)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- decode-gap [s]
   (-&gt;&gt; s
@@ -2960,7 +2960,7 @@ net.brehaut.ClojureTools = (function (SH) {
        (map
         (fn [[_ [op] len]]
           [op (p/as-long len)]))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^String encode-db [xs]
+</td><td class="codes"><pre class="brush: clojure">(defn- encode-db ^String [xs]
   (-&gt;&gt; xs
        (map
         (fn [{:keys [db-tag id]}]
@@ -3016,8 +3016,9 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn version
   [^GFFReader reader]
   (.version reader))</pre></td></tr><tr><td class="docs"><p>Returns an open <code>cljam.io.gff.GFFReader</code> instance of <code>f</code>. Should be used
-  inside <code>with-open</code> to ensure the reader is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^GFFReader reader
+inside <code>with-open</code> to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn reader
+  ^GFFReader
   [f]
   (let [r ^BufferedReader (cio/reader (util/compressor-input-stream f))]
     (try
@@ -3045,10 +3046,10 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-attr [s]
   (let [[raw-tag value] (cstr/split s #&quot;=&quot; 2)
         tag' (decode-in-attr raw-tag)
-        {:keys [key decoder]
-         :or {key tag'
+        {:keys [decoder] key' :key
+         :or {key' tag'
               decoder decode-multiple}} (predefined-tags tag')]
-    [key (decoder value)]))</pre></td></tr><tr><td class="docs">
+    [key' (decoder value)]))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- parse-attrs
   [s]
   (into {} (map parse-attr) (some-&gt; s (cstr/split #&quot;;&quot;))))</pre></td></tr><tr><td class="docs">
@@ -3066,10 +3067,10 @@ net.brehaut.ClojureTools = (function (SH) {
      :strand (some-&gt; strand dot-&gt;nil first (case \+ :forward \- :reverse \? :unknown))
      :phase (some-&gt; phase dot-&gt;nil first (case \0 0 \1 1 \2 2))
      :attributes (-&gt; attrs dot-&gt;nil parse-attrs)}))</pre></td></tr><tr><td class="docs"><p>Reads features of the GFF file, returning them as a lazy sequence. <code>reader</code>
-  must be an instance of <code>cljam.io.gff.GFFReader</code>.</p>
+must be an instance of <code>cljam.io.gff.GFFReader</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-features
-  [^GFFReader reader]
-  (-&gt;&gt; reader
+  [^GFFReader gff-reader]
+  (-&gt;&gt; gff-reader
        .reader
        line-seq
        (sequence
@@ -3087,14 +3088,14 @@ net.brehaut.ClojureTools = (function (SH) {
   Closeable
   (close [this]
     (.close ^Closeable (.writer this))))</pre></td></tr><tr><td class="docs"><p>Returns an open <code>cljam.io.gff.GFFWriter</code> instance of <code>f</code>. Should be used
-  inside <code>with-open</code> to ensure the writer is properly closed. Can take an
-  optional argument <code>options</code>, a map containing <code>:version</code>, <code>:major-revision</code>,
-  <code>:minor-revision</code> and <code>:encoding</code>. Currently supporting only <code>:version</code> 3.
-  To compress outputs, set <code>:encoding</code> to <code>:gzip</code> or <code>:bzip2</code>.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^GFFWriter writer
-  ([f]
+inside <code>with-open</code> to ensure the writer is properly closed. Can take an
+optional argument <code>options</code>, a map containing <code>:version</code>, <code>:major-revision</code>,
+<code>:minor-revision</code> and <code>:encoding</code>. Currently supporting only <code>:version</code> 3.
+To compress outputs, set <code>:encoding</code> to <code>:gzip</code> or <code>:bzip2</code>.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn writer
+  (^GFFWriter [f]
    (writer f {}))
-  ([f options]
+  (^GFFWriter [f options]
    (let [{:keys [encoding version] :as opts} (merge {:version 3} options)
          url (try (util/as-url f) (catch Exception _ nil))]
      (when-not (= 3 version)
@@ -3108,8 +3109,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private
   inv-predefined-tags
   (-&gt;&gt; predefined-tags
-       (map (fn [[key-str {:keys [key] :as x}]]
-              [key (assoc x :key-str key-str)]))
+       (map (fn [[key-str {key' :key :as x}]]
+              [key' (assoc x :key-str key-str)]))
        (into {})))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private
   predefined-keys
@@ -3117,13 +3118,13 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- write-attrs!
   [^BufferedWriter w attrs]
   (let [first? (volatile! true)]
-    (doseq [key (concat predefined-keys
-                        (apply disj (set (keys attrs)) predefined-keys))
-            :let [value (get attrs key)]
+    (doseq [key' (concat predefined-keys
+                         (apply disj (set (keys attrs)) predefined-keys))
+            :let [value (get attrs key')]
             :when value
             :let [{:keys [^String key-str encoder]
-                   :or {key-str key
-                        encoder encode-multiple}} (inv-predefined-tags key)]]
+                   :or {key-str key'
+                        encoder encode-multiple}} (inv-predefined-tags key')]]
       (if @first?
         (vreset! first? false)
         (.append w \;))
@@ -3131,14 +3132,15 @@ net.brehaut.ClojureTools = (function (SH) {
       (.append w \=)
       (.write w ^String (encoder value)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- write-feature!
-  [^BufferedWriter w {:keys [chr ^String source ^String type ^long start
+  [^BufferedWriter w {:keys [chr ^String source ^String ^long start
                              ^long end score ^Character strand phase
-                             attributes]}]
+                             attributes]
+                      type' :type}]
   (.write w (encode escape-in-column? chr))
   (.append w \tab)
   (.write w (or (some-&gt;&gt; source (encode escape-in-column?)) &quot;.&quot;))
   (.append w \tab)
-  (.write w (or (some-&gt;&gt; type (encode escape-in-column?)) &quot;.&quot;))
+  (.write w (or (some-&gt;&gt; type' (encode escape-in-column?)) &quot;.&quot;))
   (.append w \tab)
   (.write w (String/valueOf start))
   (.append w \tab)
@@ -3153,11 +3155,11 @@ net.brehaut.ClojureTools = (function (SH) {
   (if (seq attributes)
     (write-attrs! w attributes)
     (.append w \.)))</pre></td></tr><tr><td class="docs"><p>Writes <code>features</code> to the GFF file. <code>writer</code> must be an instance of
-  <code>cljam.io.gff.GFFWriter</code>. <code>features</code> must be a sequence of feature maps.</p>
+<code>cljam.io.gff.GFFWriter</code>. <code>features</code> must be a sequence of feature maps.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-features
-  [^GFFWriter writer features]
-  (let [w ^BufferedWriter (.writer writer)
-        {:keys [^long version major-revision minor-revision]} (.version writer)]
+  [^GFFWriter gff-writer features]
+  (let [w ^BufferedWriter (.writer gff-writer)
+        {:keys [^long version major-revision minor-revision]} (.version gff-writer)]
     (.write w &quot;##gff-version &quot;)
     (.write w (String/valueOf version))
     (when major-revision
@@ -3168,7 +3170,7 @@ net.brehaut.ClojureTools = (function (SH) {
         (.write w (String/valueOf minor-revision))))
     (doseq [f features]
       (.newLine w)
-      (write-feature! w f))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+      (write-feature! w f))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

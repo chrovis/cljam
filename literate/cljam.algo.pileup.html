@@ -2894,7 +2894,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (let [[x :as xs] (drop-while #(&lt; (.end ^SAMAlignment %) start) alns)]
       (when x
         (step (max start (.pos ^SAMAlignment x)) [] xs)))))</pre></td></tr><tr><td class="docs"><p>Returns a lazy sequence that each element contains [position (alignments
-  piled-up at the locus)].</p>
+piled-up at the locus)].</p>
 </td><td class="codes"><pre class="brush: clojure">(defn pileup-seq
   [^long start ^long end alns]
   (seq-step start end 0 alns))</pre></td></tr><tr><td class="docs">
@@ -2961,12 +2961,12 @@ net.brehaut.ClojureTools = (function (SH) {
      (dissoc aln :seqs-at-ref :quals-at-ref))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- resolve-bases
   [[ref-pos alns]]
-  [ref-pos (mapv (partial resolve-base ref-pos) alns)])</pre></td></tr><tr><td class="docs"><p>Convert a pile into <code>cljam.io.pileup.LocusPile</code>.</p>
+  [ref-pos (mapv (partial resolve-base ref-pos) alns)])</pre></td></tr><tr><td class="docs"><p>Converts a pile into <code>cljam.io.pileup.LocusPile</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn -&gt;locus-pile
   [chr [pos pile]]
   (when (seq pile)
     (LocusPile. chr pos (object-array pile))))</pre></td></tr><tr><td class="docs"><p>Returns a predicate for filtering piled-up reads by base quality at its
-  position.</p>
+position.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn filter-by-base-quality
   [^long min-base-quality]
   (fn [p]
@@ -2989,7 +2989,7 @@ net.brehaut.ClojureTools = (function (SH) {
          (let [[a b] (transform-fn x)]
            (vswap! va conj! a)
            (vswap! vb conj! b)
-           acc))))))</pre></td></tr><tr><td class="docs"><p>Merge corrected quals with the uncorrected part.</p>
+           acc))))))</pre></td></tr><tr><td class="docs"><p>Merges corrected quals with the uncorrected part.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- merge-corrected-quals
   [^SAMAlignment aln ^long correct-start corrected-quals]
   (let [^shorts quals (:quals-at-ref aln)
@@ -3037,7 +3037,7 @@ net.brehaut.ClojureTools = (function (SH) {
                                               quals2)]
         (if (flag/r1? (.flag a1))
           [new-quals1 new-quals2]
-          [new-quals2 new-quals1])))))</pre></td></tr><tr><td class="docs"><p>Make a map which has corrected quals of all overlapping pairs.</p>
+          [new-quals2 new-quals1])))))</pre></td></tr><tr><td class="docs"><p>Makes a map which has corrected quals of all overlapping pairs.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- make-corrected-quals-map
   [alns]
   (-&gt;&gt; alns
@@ -3046,7 +3046,7 @@ net.brehaut.ClojureTools = (function (SH) {
                  (fn [[qname xs]]
                    (when (&lt;= 2 (count xs))
                      [qname (apply correct-pair-quals xs)]))))))</pre></td></tr><tr><td class="docs"><p>Returns an alignment with corrected quals by looking up quals
-  in the corrected quals map.</p>
+in the corrected quals map.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- correct-quals-at-ref
   [corrected-map ^SAMAlignment aln]
   (if-not (= (.rnext aln) &quot;=&quot;)
@@ -3057,13 +3057,13 @@ net.brehaut.ClojureTools = (function (SH) {
                         (second quals-pair))]
         (assoc aln :quals-at-ref new-quals))
       aln)))</pre></td></tr><tr><td class="docs"><p>Piles up alignments in given region and returns a lazy sequence of
-  <code>cljam.io.pileup.LocusPile</code>s.</p>
+<code>cljam.io.pileup.LocusPile</code>s.</p>
 
-<p>  The following options are available:
-  - <code>min-base-quality</code> Minimum quality of called bases [13]
-  - <code>min-map-quality</code> Minimum quality of alignments [0]
-  - <code>ignore-overlaps?</code> Disable detecting overlapped bases of PE reads [false]
-  - <code>chunk-size</code> Size of a chunk to pile up at once [5000]</p>
+<p>The following options are available:
+- <code>min-base-quality</code> Minimum quality of called bases [13]
+- <code>min-map-quality</code> Minimum quality of alignments [0]
+- <code>ignore-overlaps?</code> Disable detecting overlapped bases of PE reads [false]
+- <code>chunk-size</code> Size of a chunk to pile up at once [5000]</p>
 </td><td class="codes"><pre class="brush: clojure">(defn pileup
   ([sam-reader region]
    (pileup sam-reader region {}))
@@ -3110,18 +3110,18 @@ net.brehaut.ClojureTools = (function (SH) {
                                   (if (= pos min-pos) (next ys) ys)) xs)))))))]
       (step xs))))</pre></td></tr><tr><td class="docs"><p>Pile up alignments from multiple sources.</p>
 
-<p>  The following <code>options</code> are available:
-  - <code>min-base-quality</code> Minimum quality of called bases [13]
-  - <code>min-map-quality</code> Minimum quality of alignments [0]
-  - <code>ignore-overlaps?</code> Disable detecting overlapped bases of PE reads [false]</p>
+<p>The following <code>options</code> are available:
+- <code>min-base-quality</code> Minimum quality of called bases [13]
+- <code>min-map-quality</code> Minimum quality of alignments [0]
+- <code>ignore-overlaps?</code> Disable detecting overlapped bases of PE reads [false]</p>
 </td><td class="codes"><pre class="brush: clojure">(defn mpileup
   [region options &amp; sam-readers]
   (apply align-pileup-seqs (map #(pileup % region options) sam-readers)))</pre></td></tr><tr><td class="docs"><p>Creates a mpileup file from the BAM file.</p>
 
-<p>  The following <code>options</code> are available:
-  - <code>min-base-quality</code> Minimum quality of called bases [13]
-  - <code>min-map-quality</code> Minimum quality of alignments [0]
-  - <code>ignore-overlaps?</code> Disable detecting overlapped bases of PE reads [false]</p>
+<p>The following <code>options</code> are available:
+- <code>min-base-quality</code> Minimum quality of called bases [13]
+- <code>min-map-quality</code> Minimum quality of alignments [0]
+- <code>ignore-overlaps?</code> Disable detecting overlapped bases of PE reads [false]</p>
 </td><td class="codes"><pre class="brush: clojure">(defn create-mpileup
   ([in-sam out-mplp]
    (create-mpileup in-sam nil out-mplp))
@@ -3135,11 +3135,11 @@ net.brehaut.ClojureTools = (function (SH) {
      (let [regs (if region
                   [region]
                   (map
-                   (fn [{:keys [name len]}]
-                     {:chr name :start 1 :end len})
+                   (fn [{:keys [len] name' :name}]
+                     {:chr name' :start 1 :end len})
                    (sam/read-refs s)))]
        (doseq [reg regs]
-         (plpio/write-piles w (pileup s reg options)))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+         (plpio/write-piles w (pileup s reg options)))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

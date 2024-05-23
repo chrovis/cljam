@@ -2873,7 +2873,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn parse
   [^String s]
   (for [[_ n op] (re-seq #&quot;([0-9]*)([MIDNSHP=X])&quot; s)]
-    [(Integer/parseInt n) (first op)]))</pre></td></tr><tr><td class="docs"><p>Merge contiguous same operations of parsed CIGAR.</p>
+    [(Integer/parseInt n) (first op)]))</pre></td></tr><tr><td class="docs"><p>Merges contiguous same operations of parsed CIGAR.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn simplify
   [cigs]
   (loop [[[^long l op :as x] &amp; xs] cigs result (transient [])]
@@ -2892,7 +2892,7 @@ net.brehaut.ClojureTools = (function (SH) {
       (let [[op x] (get coll c)]
         (if (= :m op)
           (assoc! coll c (f x))
-          coll)))))</pre></td></tr><tr><td class="docs"><p>Convert CIGAR string to sequence of indices.</p>
+          coll)))))</pre></td></tr><tr><td class="docs"><p>Converts CIGAR string to sequence of indices.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn to-index*
   [^String s]
   (let [cigs (simplify (remove (comp #{\P \H} second) (parse s)))]
@@ -2904,13 +2904,14 @@ net.brehaut.ClojureTools = (function (SH) {
           #{\N} (recur xs (+ r l) s (concat! idx (repeat l [:m \&gt;])))
           #{\S} (recur xs r (+ s l) idx)
           #{\I} (recur xs r (+ s l) (update-last! idx (fn [x] [:i x [s (+ l s)]]))))
-        (persistent! idx)))))</pre></td></tr><tr><td class="docs">
+        (persistent! idx)))))</pre></td></tr><tr><td class="docs"><p>Converts from CIGAR string to sequence of indices.
+ This function is memoized.</p>
 </td><td class="codes"><pre class="brush: clojure">(def to-index
   (memoize/lu to-index* :lu/threshold
               (or (proton/as-int (System/getProperty &quot;cljam.sam.cigar.cache-size&quot;))
                   1024)))</pre></td></tr><tr><td class="docs"><p>Returns length of CIGAR operations.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn count-op
-  [^String s]
+  ^long [^String s]
   (count (parse s)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- count-ref-str*
   [^String s]
@@ -2919,8 +2920,9 @@ net.brehaut.ClojureTools = (function (SH) {
        (map first)
        (reduce +)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private count-ref-str
-  (memoize count-ref-str*))</pre></td></tr><tr><td class="docs"><p>Count covering length in reference from encoded CIGAR byte-array.</p>
+  (memoize count-ref-str*))</pre></td></tr><tr><td class="docs"><p>Counts covering length in reference from encoded CIGAR byte-array.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn count-ref-bytes
+  ^long
   [cigar-bytes]
   (let [buf (ByteBuffer/wrap cigar-bytes)]
     (.order buf ByteOrder/LITTLE_ENDIAN)
@@ -2930,8 +2932,8 @@ net.brehaut.ClojureTools = (function (SH) {
               op (bit-and b 0xF)
               n (unsigned-bit-shift-right b 4)]
           (recur (+ ref-length (case op 0 n 2 n 3 n 7 n 8 n 0))))
-        ref-length))))</pre></td></tr><tr><td class="docs"><p>Decode CIGAR string and length of alignment in reference.
-  Returns a vector of [cigar, ref-length].</p>
+        ref-length))))</pre></td></tr><tr><td class="docs"><p>Decodes CIGAR string and length of alignment in reference.
+Returns a vector of [cigar, ref-length].</p>
 </td><td class="codes"><pre class="brush: clojure">(defn decode-cigar-and-ref-length
   [cigar-bytes]
   (let [buf (ByteBuffer/wrap cigar-bytes)
@@ -2955,8 +2957,9 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Encodes CIGAR string into a sequence of longs.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn encode-cigar
   [cigar]
-  (mapv #(bit-or (bit-shift-left (first %) 4)
-                 (case (second %) \M 0 \I 1 \D 2 \N 3 \S 4 \H 5 \P 6 \= 7 \X 8))
+  (mapv (fn [[^long n c]]
+          (bit-or (bit-shift-left n 4)
+                  (case c \M 0 \I 1 \D 2 \N 3 \S 4 \H 5 \P 6 \= 7 \X 8)))
         (parse cigar)))</pre></td></tr><tr><td class="docs"><p>Returns length of reference bases.</p>
 </td><td class="codes"><pre class="brush: clojure">(defmulti count-ref
   class)</pre></td></tr><tr><td class="docs">
@@ -2966,8 +2969,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defmethod count-ref (Class/forName &quot;[B&quot;)
   [b]
   (count-ref-bytes b))</pre></td></tr><tr><td class="docs"><p>Creates an encoded placeholder from a given CIGAR string.
-  The placeholder is in the format of kSmN where k is the read length and m is
-  the reference length. Returns a vector of ints.</p>
+The placeholder is in the format of kSmN where k is the read length and m is
+the reference length. Returns a vector of ints.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn -&gt;placeholder
   [cigar-str]
   (transduce
@@ -2980,7 +2983,7 @@ net.brehaut.ClojureTools = (function (SH) {
       [(+ r (case op (\M \D \N \= \X) (long n) 0))
        (+ q (case op (\M \I \S \= \X) (long n) 0))]))
    [0 0]
-   (parse cigar-str)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+   (parse cigar-str)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

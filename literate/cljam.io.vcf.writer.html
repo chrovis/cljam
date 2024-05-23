@@ -2866,7 +2866,7 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.vcf.writer" name="cljam.io.vcf.writer"><h1 class="project-name">cljam.io.vcf.writer</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>A type of VCF writer and internal functions to write VCF contents. See
-  https://samtools.github.io/hts-specs/ for the detail VCF specifications.</p>
+https://samtools.github.io/hts-specs/ for the detail VCF specifications.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.vcf.writer
   (:require [clojure.string :as cstr]
             [camel-snake-kebab.core :refer [-&gt;camelCaseString -&gt;PascalCaseString]]
@@ -2896,7 +2896,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (doto bwtr
     (.write s)
     (.newLine)))</pre></td></tr><tr><td class="docs"><h2>Writing meta-information</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Converts meta-info key to string.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn stringify-key
   [k]
   (if (#{:info :filter :format :alt :sample :pedigree} k)
@@ -2976,7 +2976,7 @@ net.brehaut.ClojureTools = (function (SH) {
                             (str (-&gt;PascalCaseString k) &quot;=&quot; v))))
                   [(str &quot;ID=&quot; (:id m))]
                   (dissoc m :id))
-       (cstr/join \,)))</pre></td></tr><tr><td class="docs">
+       (cstr/join \,)))</pre></td></tr><tr><td class="docs"><p>Converts meta info to string by <code>k</code> type.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn stringify-structured-line
   [k m]
   (let [f (case k
@@ -2998,7 +2998,7 @@ net.brehaut.ClojureTools = (function (SH) {
                                        &quot;=&lt;&quot; (stringify-structured-line k x) &quot;&gt;&quot;)))
       (write-line (.writer wtr) (str meta-info-prefix
                                      (stringify-key k)
-                                     &quot;=&quot; v)))))</pre></td></tr><tr><td class="docs">
+                                     &quot;=&quot; v)))))</pre></td></tr><tr><td class="docs"><p>Writes vcf meta-info to the VCF file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-meta-info
   [^VCFWriter wtr meta-info]
   (write-meta-info1 wtr :fileformat (:fileformat meta-info default-fileformat))
@@ -3006,10 +3006,11 @@ net.brehaut.ClojureTools = (function (SH) {
     (write-meta-info1 wtr k (get meta-info k)))
   (doseq [k [:info :filter :format :alt :sample :pedigree]]
     (write-meta-info1 wtr k (get meta-info k))))</pre></td></tr><tr><td class="docs"><h2>Writing header</h2>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn ^String stringify-header
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Converts <code>header</code> to string.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn stringify-header
+  ^String
   [header]
-  (str header-prefix (cstr/join \tab header)))</pre></td></tr><tr><td class="docs">
+  (str header-prefix (cstr/join \tab header)))</pre></td></tr><tr><td class="docs"><p>Writes vcf <code>header</code> to the VCF file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-header
   [^VCFWriter wtr header]
   (write-line (.writer wtr) (stringify-header header)))</pre></td></tr><tr><td class="docs"><h2>Writing data lines</h2>
@@ -3022,11 +3023,11 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- stringify-data-line-qual
   [x]
   (when x
-    (if (and (zero? (mod x 1))
-             (&lt; x precise-integer-limit))
+    (if (and (zero? (float (mod x 1)))
+             (&lt; (float x) precise-integer-limit))
       (str (int x))
       (str x))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn- ^String stringify-data-line
+</td><td class="codes"><pre class="brush: clojure">(defn- stringify-data-line ^String
   [m header]
   (let [m* (-&gt; m
                (update :alt stringify-data-line-alt)
@@ -3035,7 +3036,7 @@ net.brehaut.ClojureTools = (function (SH) {
                  (map keyword (drop 8 header)))
          (map #(get m* %))
          (map nil-&gt;dot)
-         (cstr/join \tab))))</pre></td></tr><tr><td class="docs">
+         (cstr/join \tab))))</pre></td></tr><tr><td class="docs"><p>Writes variants to the VCF file.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-variants
   [^VCFWriter wtr variants]
   (let [stringify-vals (vcf-util/variant-vals-stringifier (.meta-info wtr) (.header wtr))
@@ -3045,7 +3046,7 @@ net.brehaut.ClojureTools = (function (SH) {
                   (stringify-data-line
                    (if (some string? ((apply juxt :filter :info header-kws) v))
                      v
-                     (stringify-vals v)) (.header wtr))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+                     (stringify-vals v)) (.header wtr))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

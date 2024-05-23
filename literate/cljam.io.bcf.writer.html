@@ -2870,7 +2870,7 @@ net.brehaut.ClojureTools = (function (SH) {
   (:require [clojure.string :as cstr]
             [cljam.io.protocols :as protocols]
             [cljam.io.util.bgzf :as bgzf]
-            [cljam.io.util.lsb :as lsb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [cljam.io.vcf.writer :as vw]
             [cljam.io.vcf.util :as vcf-util]
             [cljam.util :as util])
@@ -2918,7 +2918,7 @@ net.brehaut.ClojureTools = (function (SH) {
                    (str (char 0)) ;; NULL-terminated
                    .getBytes)
         hlen (alength hdr-ba)]
-    (lsb/write-bytes wtr (byte-array (map byte &quot;BCF\2\2&quot;)))
+    (lsb/write-bytes wtr (byte-array (map (comp byte int) &quot;BCF\2\2&quot;)))
     (lsb/write-int wtr hlen)
     (lsb/write-bytes wtr hdr-ba)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- index-meta
@@ -2934,15 +2934,15 @@ net.brehaut.ClojureTools = (function (SH) {
     (-&gt; meta-info
         (update :contig #(map-indexed (fn [i c] (assoc c :idx (str i))) %))
         (merge fif))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.bcf.BCFWriter of f.
-   Meta-information lines and a header line will be written in this function.
-   Should be used inside with-open to ensure the Writer is properly closed. e.g.</p>
+ Meta-information lines and a header line will be written in this function.
+ Should be used inside with-open to ensure the Writer is properly closed. e.g.</p>
 
-<pre><code> (with-open [wtr (writer "out.bcf"
-                         {:file-date "20090805", :source "myImpu..." ...}
-                         ["CHROM" "POS" "ID" "REF" "ALT" ...])]
-   (WRITING-BCF))
-</code></pre>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BCFWriter writer
+<p>   (with-open [wtr (writer "out.bcf"
+                           {:file-date "20090805", :source "myImpu..." ...}
+                           ["CHROM" "POS" "ID" "REF" "ALT" ...])]
+     (WRITING-BCF))</p>
+</td><td class="codes"><pre class="brush: clojure">(defn writer
+  ^BCFWriter
   [f meta-info header]
   (let [bos (bgzf/bgzf-output-stream f)
         dos (DataOutputStream. bos)
@@ -3000,7 +3000,7 @@ net.brehaut.ClojureTools = (function (SH) {
          len-bytes (when (&lt;= 15 max-len)
                      (encode-typed-value :int max-len))
          n-bytes (+ (* n-sample max-len (case type-id 1 1 2 2 3 4 5 4 7 1))
-                    1 (if len-bytes (alength ^bytes len-bytes) 0))
+                    1 (if len-bytes (long (alength ^bytes len-bytes)) 0))
          bb (ByteBuffer/allocate n-bytes)]
      (.order bb ByteOrder/LITTLE_ENDIAN)
      (.put bb (unchecked-byte type-byte))
@@ -3014,7 +3014,7 @@ net.brehaut.ClojureTools = (function (SH) {
          3 (.putInt bb (unchecked-int (get int32-special-map b b)))
          5 (.putInt bb (unchecked-int (or (get float32-special-map b)
                                           (Float/floatToRawIntBits b))))
-         7 (.put bb (byte (get {nil 0 :eov 0} b b)))))
+         7 (.put bb (byte (get {nil 0 :eov 0} b (int b))))))
      (.array bb))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- concat-bytes
   ^bytes [xs]
@@ -3097,7 +3097,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (-&gt; (apply dissoc variant kws)
         (assoc :n-sample (count indiv-kws)
                :ref-length (if-let [e (get-in variant [:info :END])]
-                             (inc (- e (:pos variant)))
+                             (inc (- (long e) (long (:pos variant))))
                              (count (:ref variant)))
                :format (map (comp :idx second) fmts)
                :genotype genotype)
@@ -3108,18 +3108,17 @@ net.brehaut.ClojureTools = (function (SH) {
                                 (when-let [{:keys [idx type-kw]} (info k)]
                                   [idx type-kw v])) i))))))</pre></td></tr><tr><td class="docs"><p>Creates a map for searching meta-info with (f id).</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- meta-&gt;map
-  [meta f]
+  [meta-info f]
   (into {} (map
             (fn [{:keys [id] t :type :as m}]
               [(f id) (cond-&gt; (update m :idx #(Integer/parseInt %))
-                        t (assoc :type-kw (type-kws t)))])) meta))</pre></td></tr><tr><td class="docs"><p>Writes data lines on writer. Returns nil. <code>variants</code> must be a sequence of
-  parsed or VCF-style maps.
-  e.g.</p>
+                        t (assoc :type-kw (type-kws t)))])) meta-info))</pre></td></tr><tr><td class="docs"><p>Writes data lines on writer. Returns nil. <code>variants</code> must be a sequence of
+parsed or VCF-style maps.
+e.g.</p>
 
-<pre><code>(write-variants [{:chr "19", :pos 111, :id nil, :ref "A",
-                  :alt ["C"], :qual 9.6, :filter [:PASS], :info {:DP 4},
-                  :FORMAT [:GT :HQ] ...} ...])
-</code></pre>
+<p>  (write-variants [{:chr "19", :pos 111, :id nil, :ref "A",
+                    :alt ["C"], :qual 9.6, :filter [:PASS], :info {:DP 4},
+                    :FORMAT [:GT :HQ] ...} ...])</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-variants
   [^BCFWriter w variants]
   (let [kws (mapv keyword (drop 8 (.header w)))
@@ -3138,7 +3137,7 @@ net.brehaut.ClojureTools = (function (SH) {
              (parse-variant v)
              v)
            (parsed-variant-&gt;bcf-map kws contigs filters formats info)
-           (write-variant (.writer w))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+           (write-variant (.writer w))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

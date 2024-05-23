@@ -2867,14 +2867,15 @@ net.brehaut.ClojureTools = (function (SH) {
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.csi" name="cljam.io.csi"><h1 class="project-name">cljam.io.csi</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Basic I/O of CSI:Coordinate Sorted Index files.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.csi
-  (:require [clojure.string :as cstr]
-            [cljam.io.util.bgzf :as bgzf]
-            [cljam.io.util.lsb :as lsb]
+  (:require [cljam.io.util.bgzf :as bgzf]
+            [cljam.io.util.bin :as util-bin]
             [cljam.io.util.chunk :as chunk]
-            [cljam.io.util.bin :as util-bin])
-  (:import java.util.Arrays
-           [java.io DataInputStream DataOutputStream IOException]
-           [java.nio ByteBuffer ByteOrder]))</pre></td></tr><tr><td class="docs">
+            [cljam.io.util.lsb.data-io :as lsb.data]
+            [cljam.io.util.lsb.io-stream :as lsb.stream]
+            [clojure.string :as cstr])
+  (:import [java.io DataInputStream DataOutputStream IOException]
+           [java.nio ByteBuffer ByteOrder]
+           java.util.Arrays))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:const ^:private csi-magic &quot;CSI\1&quot;)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def ^:private ^:const default-vcf-csi-aux
   {:format 2, :col-seq 1, :col-beg 2, :col-end 0, :meta-char \#, :skip 0})</pre></td></tr><tr><td class="docs">
@@ -2927,30 +2928,30 @@ net.brehaut.ClojureTools = (function (SH) {
     (.array bb)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-chunks!
   [rdr]
-  (let [n-chunk (lsb/read-int rdr)]
-    (-&gt;&gt; #(let [beg (lsb/read-long rdr) end (lsb/read-long rdr)]
+  (let [n-chunk (lsb.data/read-int rdr)]
+    (-&gt;&gt; #(let [beg (lsb.data/read-long rdr) end (lsb.data/read-long rdr)]
             (chunk/-&gt;Chunk beg end))
          (repeatedly n-chunk)
          vec)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-bin-index
   [rdr]
-  (let [n-ref (lsb/read-int rdr)]
-    (-&gt;&gt; #(let [bin (lsb/read-int rdr)
-                loffset (lsb/read-long rdr)
+  (let [n-ref (lsb.data/read-int rdr)]
+    (-&gt;&gt; #(let [bin (lsb.data/read-int rdr)
+                loffset (lsb.data/read-long rdr)
                 chunks (read-chunks! rdr)]
             {:bin (long bin), :loffset loffset, :chunks chunks})
          (repeatedly n-ref)
          vec)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- read-index*
   ^CSI [^DataInputStream rdr]
-  (when-not (Arrays/equals ^bytes (lsb/read-bytes rdr 4) (.getBytes csi-magic))
+  (when-not (Arrays/equals ^bytes (lsb.data/read-bytes rdr 4) (.getBytes csi-magic))
     (throw (IOException. &quot;Invalid CSI file&quot;)))
-  (let [min-shift (lsb/read-int rdr)
-        depth (lsb/read-int rdr)
-        l-aux (lsb/read-int rdr)
-        aux (lsb/read-bytes rdr l-aux)
+  (let [min-shift (lsb.data/read-int rdr)
+        depth (lsb.data/read-int rdr)
+        l-aux (lsb.data/read-int rdr)
+        aux (lsb.data/read-bytes rdr l-aux)
         tabix-aux (try (parse-tabix-aux aux) (catch Throwable _ nil))
-        n-ref (lsb/read-int rdr)
+        n-ref (lsb.data/read-int rdr)
         bins (vec (repeatedly n-ref #(read-bin-index rdr)))
         max-bin (util-bin/max-bin depth)
         bidx (mapv #(into {} (map (juxt :bin :chunks)) %) bins)
@@ -2958,7 +2959,7 @@ net.brehaut.ClojureTools = (function (SH) {
                  #(into
                    (sorted-map)
                    (keep
-                    (fn [{:keys [bin loffset]}]
+                    (fn [{:keys [^long bin loffset]}]
                       (when (&lt;= bin max-bin)
                         [(util-bin/bin-beg bin min-shift depth)
                          loffset]))) %)
@@ -2970,10 +2971,10 @@ net.brehaut.ClojureTools = (function (SH) {
     (read-index* r)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- concatenate-offsets [offsets]
   (reduce
-   (fn [res chunk]
-     (if (= (:file-end (peek res)) (:file-beg chunk))
-       (assoc-in res [(dec (count res)) :file-end] (:file-end chunk))
-       (conj res chunk)))
+   (fn [res chunk']
+     (if (= (:file-end (peek res)) (:file-beg chunk'))
+       (assoc-in res [(dec (count res)) :file-end] (:file-end chunk'))
+       (conj res chunk')))
    []
    (sort-by :file-beg offsets)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- small-chunks? [chunks]
@@ -3003,8 +3004,9 @@ net.brehaut.ClojureTools = (function (SH) {
        (into (sorted-map))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn- calc-loffsets [begs file-offsets]
   (-&gt;&gt; begs
-       (map (fn [beg]
-              [beg (-&gt;&gt; (drop-while #(&lt; (:end %) beg) file-offsets)
+       (map (fn [^long beg]
+              [beg (-&gt;&gt; file-offsets
+                        (drop-while #(&lt; (long (:end %)) beg))
                         (map :file-beg)
                         first)]))
        (into (sorted-map))))</pre></td></tr><tr><td class="docs">
@@ -3013,12 +3015,12 @@ net.brehaut.ClojureTools = (function (SH) {
    (fn [r [k v]]
      (if (contains? r k)
        (assoc r k v)
-       (conj (into r (repeat (- k (count r)) nil)) v)))
+       (conj (into r (repeat (- (long k) (count r)) nil)) v)))
    []
    xs))</pre></td></tr><tr><td class="docs"><p>Calculates loffsets and bidx
-   from offsets {:file-beg :file-end :beg :end :chr :chr-index}.
-   <code>variant-file-type</code> is one of <code>:vcf</code> or <code>:bcf</code>.
-   If <code>variant-file-type</code> is <code>:vcf</code>, tabix-like aux data will be created.</p>
+ from offsets {:file-beg :file-end :beg :end :chr :chr-index}.
+ <code>variant-file-type</code> is one of <code>:vcf</code> or <code>:bcf</code>.
+ If <code>variant-file-type</code> is <code>:vcf</code>, tabix-like aux data will be created.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn offsets-&gt;index
   ^CSI [offsets shift depth
         {:keys [variant-file-type] :or {variant-file-type :bcf}}]
@@ -3031,7 +3033,8 @@ net.brehaut.ClojureTools = (function (SH) {
                          l (calc-loffsets
                             (into #{}
                                   (comp
-                                   (filter #(&lt;= % (util-bin/max-bin depth)))
+                                   (filter (fn [^long x]
+                                             (&lt;= x (util-bin/max-bin depth))))
                                    (map #(util-bin/bin-beg % shift depth)))
                                   (keys b))
                             offsets)
@@ -3053,27 +3056,27 @@ net.brehaut.ClojureTools = (function (SH) {
   [f ^CSI csi]
   (let [max-bin (util-bin/max-bin (.depth csi))]
     (with-open [w (DataOutputStream. (bgzf/bgzf-output-stream f))]
-      (lsb/write-bytes w (.getBytes ^String csi-magic))
-      (lsb/write-int w (.min-shift csi))
-      (lsb/write-int w (.depth csi))
+      (lsb.stream/write-bytes w (.getBytes ^String csi-magic))
+      (lsb.stream/write-int w (.min-shift csi))
+      (lsb.stream/write-int w (.depth csi))
       (let [tabix-aux (some-&gt; (.aux csi) create-tabix-aux)]
-        (lsb/write-int w (count tabix-aux))
+        (lsb.stream/write-int w (count tabix-aux))
         (when tabix-aux
-          (lsb/write-bytes w tabix-aux)))
-      (lsb/write-int w (count (.bidx csi)))
+          (lsb.stream/write-bytes w tabix-aux)))
+      (lsb.stream/write-int w (count (.bidx csi)))
       (doseq [[offsets loffset] (map vector (.bidx csi) (.loffset csi))]
-        (lsb/write-int w (count offsets))
+        (lsb.stream/write-int w (count offsets))
         (doseq [[bin chunks] offsets]
-          (lsb/write-int w bin)
-          (lsb/write-long
+          (lsb.stream/write-int w bin)
+          (lsb.stream/write-long
            w
-           (if (&lt;= bin max-bin)
+           (if (&lt;= (long bin) max-bin)
              (get loffset (util-bin/bin-beg bin (.min-shift csi) (.depth csi)))
              0))
-          (lsb/write-int w (count chunks))
-          (doseq [chunk chunks]
-            (lsb/write-long w (:beg chunk))
-            (lsb/write-long w (:end chunk))))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+          (lsb.stream/write-int w (count chunks))
+          (doseq [chunk' chunks]
+            (lsb.stream/write-long w (:beg chunk'))
+            (lsb.stream/write-long w (:end chunk'))))))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

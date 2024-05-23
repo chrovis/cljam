@@ -2888,11 +2888,12 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn- get-id-&gt;number
   [coll]
   (into {} (map (juxt (comp keyword :id) :number)) coll))</pre></td></tr><tr><td class="docs"><p>Returns a function that splits a multiallelic variant into a sequence of
-  biallelic variants.</p>
+biallelic variants.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn make-splitter
-  [{:keys [info format]} header]
+  [{:keys [info]
+    format' :format} header]
   (let [info-id-&gt;number (get-id-&gt;number info)
-        format-id-&gt;number (get-id-&gt;number format)
+        format-id-&gt;number (get-id-&gt;number format')
         samples (map keyword (drop 9 header))]
     (fn split [{:keys [alt] :as v}]
       (let [n (count alt)]
@@ -2925,13 +2926,14 @@ net.brehaut.ClojureTools = (function (SH) {
   ([x y &amp; z]
    (and (char-equals-ignore-case? x y)
         (apply char-equals-ignore-case? y z))))</pre></td></tr><tr><td class="docs"><p>Trims all duplicated allele sequences from right. If reached the start,
-  reference sequences of length <code>window</code> will be read from <code>seq-reader</code> and
-  be prepended to the alleles.</p>
+reference sequences of length <code>window</code> will be read from <code>seq-reader</code> and
+be prepended to the alleles.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- trim-right
-  [seq-reader {:keys [chr ^long pos ref alt]
+  [seq-reader {:keys [chr ^long pos alt]
+               ref' :ref
                {:keys [END]} :info :as v} ^long window]
-  (let [alleles (cons ref alt)
-        min-end (long (dec (+ pos (apply min (map count alleles)))))
+  (let [alleles (cons ref' alt)
+        min-end (dec (+ pos (long (apply min (map count alleles)))))
         regs (regions-before chr pos window)
         ref-seqs (sequence ;; unchunk
                   (mapcat
@@ -2948,24 +2950,25 @@ net.brehaut.ClojureTools = (function (SH) {
                             long
                             (Math/min (dec min-end)))]
     (if (pos? matched-length)
-      (let [pos' (or (some (fn [{:keys [start end]}]
+      (let [pos' (-&gt; (some (fn [{:keys [start end]}]
                              (when (&lt;= start (- min-end matched-length) end)
                                start)) regs)
-                     pos)
-            [ref' &amp; alt'] (map
-                           #(-&gt;&gt; %2
-                                 (take (inc (- (dec (+ pos (count %1))) pos')))
-                                 (drop matched-length)
-                                 reverse
-                                 cstr/join)
-                           alleles
-                           allele-seqs)]
-        (cond-&gt; (assoc v :pos pos' :ref ref' :alt alt')
-          (integer? END) (assoc-in [:info :END] (dec (+ pos' (count ref'))))))
+                     (or pos)
+                     long)
+            [ref'' &amp; alt'] (map
+                            #(-&gt;&gt; %2
+                                  (take (inc (- (dec (+ pos (count %1))) pos')))
+                                  (drop matched-length)
+                                  reverse
+                                  cstr/join)
+                            alleles
+                            allele-seqs)]
+        (cond-&gt; (assoc v :pos pos' :ref ref'' :alt alt')
+          (integer? END) (assoc-in [:info :END] (dec (+ pos' (count ref''))))))
       v)))</pre></td></tr><tr><td class="docs"><p>Trims all duplicated allele sequences from left.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- trim-left
-  [{:keys [ref alt] :as v}]
-  (let [alleles (cons ref alt)
+  [{:keys [alt] ref' :ref :as v}]
+  (let [alleles (cons ref' alt)
         n-trim-left (-&gt;&gt; alleles
                          (apply map char-equals-ignore-case?)
                          (take-while true?)
@@ -2982,29 +2985,31 @@ net.brehaut.ClojureTools = (function (SH) {
   ([seq-reader variant]
    (realign seq-reader variant {}))
   ([seq-reader
-    {:keys [ref alt] :as variant}
+    {:keys [alt]
+     ref' :ref
+     :as variant}
     {:keys [window] :or {window 100}}]
    (cond
      (some-&gt;&gt; (seq alt)
               (every? (comp #{:snv :mnv :insertion :deletion :complex}
                             :type
-                            (partial vcf-util/inspect-allele ref))))
+                            (partial vcf-util/inspect-allele ref'))))
      (trim-left (trim-right seq-reader variant window))
-     (and ref (nil? (seq alt)))
+     (and ref' (nil? (seq alt)))
      (cond-&gt; (update variant :ref subs 0 1)
        (integer? (:END (:info variant)))
        (assoc-in [:info :END] (:pos variant)))
      :else variant)))</pre></td></tr><tr><td class="docs"><p>Splits multiallelic variants and realigns all alleles. Returns a lazy
-  sequence of normalized variants. Note that the result may be unsorted due to
-  the realignment. Returns a transducer when no variant is provided. The
-  transducer does not guarantee thread safety of <code>ref-reader</code>.</p>
+sequence of normalized variants. Note that the result may be unsorted due to
+the realignment. Returns a transducer when no variant is provided. The
+transducer does not guarantee thread safety of <code>ref-reader</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn normalize
   ([ref-reader meta-info header]
    (comp
     (mapcat (make-splitter meta-info header))
     (map (partial realign ref-reader))))
   ([ref-reader meta-info header variants]
-   (sequence (normalize ref-reader meta-info header) variants)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+   (sequence (normalize ref-reader meta-info header) variants)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

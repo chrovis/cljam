@@ -2866,8 +2866,8 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>cljam -- Marginalia</title></head><body><table><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#cljam.io.vcf" name="cljam.io.vcf"><h1 class="project-name">cljam.io.vcf</h1><a class="toc-link" href="index.html">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Functions to read and write the VCF (Variant Call Format) format and BCF (its
-  binary equivalent). See https://samtools.github.io/hts-specs/ for the detail
-  VCF/BCF specifications.</p>
+binary equivalent). See https://samtools.github.io/hts-specs/ for the detail
+VCF/BCF specifications.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns cljam.io.vcf
   (:refer-clojure :exclude [indexed?])
   (:require [clojure.java.io :as cio]
@@ -2888,8 +2888,9 @@ net.brehaut.ClojureTools = (function (SH) {
            cljam.io.bcf.reader.BCFReader
            cljam.io.bcf.writer.BCFWriter))</pre></td></tr><tr><td class="docs"><h2>Reading</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.vcf.reader.VCFReader of f. Should be used inside
-  with-open to ensure the reader is properly closed.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^VCFReader vcf-reader
+with-open to ensure the reader is properly closed.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn vcf-reader
+  ^VCFReader
   [f]
   (let [meta-info (with-open [r (cio/reader (util/compressor-input-stream f))]
                     (vcf-reader/load-meta-info r))
@@ -2902,12 +2903,14 @@ net.brehaut.ClojureTools = (function (SH) {
                 (delay (try (csi/read-index (str f &quot;.csi&quot;))
                             (catch FileNotFoundException _
                               (tabix/read-index (str f &quot;.tbi&quot;))))))))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bcf.reader.BCFReader of f. Should be used inside
-  with-open to ensure the reader is properly closed. Throws IOException if
-  failed to parse BCF file format.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BCFReader bcf-reader
+with-open to ensure the reader is properly closed. Throws IOException if
+failed to parse BCF file format.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn bcf-reader
+  ^BCFReader
   [f]
   (bcf-reader/reader f))</pre></td></tr><tr><td class="docs"><p>Clones vcf reader sharing persistent objects.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^VCFReader clone-vcf-reader
+</td><td class="codes"><pre class="brush: clojure">(defn clone-vcf-reader
+  ^VCFReader
   [^VCFReader rdr]
   (let [url (.url rdr)
         input-stream (if (bgzf/bgzip? url)
@@ -2916,20 +2919,23 @@ net.brehaut.ClojureTools = (function (SH) {
     (VCFReader. url (.meta-info rdr) (.header rdr)
                 input-stream
                 (.index-delay rdr))))</pre></td></tr><tr><td class="docs"><p>Clones bcf reader sharing persistent objects.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BCFReader clone-bcf-reader
+</td><td class="codes"><pre class="brush: clojure">(defn clone-bcf-reader
+  ^BCFReader
   [^BCFReader rdr]
   (let [url (.url rdr)
         input-stream (bgzf/bgzf-input-stream url)]
     (BCFReader. (.url rdr) (.meta-info rdr) (.header rdr)
                 input-stream (.start-pos rdr) (.index-delay rdr))))</pre></td></tr><tr><td class="docs"><p>Clones vcf/bcf reader sharing persistent objects.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^Closeable clone-reader
+</td><td class="codes"><pre class="brush: clojure">(defn clone-reader
+  ^Closeable
   [rdr]
   (cond
     (io-util/vcf-reader? rdr) (clone-vcf-reader rdr)
     (io-util/bcf-reader? rdr) (clone-bcf-reader rdr)
     :else (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Selects suitable reader from f's extension, returning the open reader. This
-  function supports VCF and BCF formats.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^Closeable reader
+function supports VCF and BCF formats.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn reader
+  ^Closeable
   [f]
   (if (or (io-util/vcf-reader? f)
           (io-util/bcf-reader? f))
@@ -2946,17 +2952,17 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn header
   [rdr]
   (protocols/header rdr))</pre></td></tr><tr><td class="docs"><p>Returns true if the reader can be randomly accessed, false if not. Note this
-  function immediately realizes a delayed index.</p>
+function immediately realizes a delayed index.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn indexed?
   [rdr]
   (protocols/indexed? rdr))</pre></td></tr><tr><td class="docs"><p>Reads variants of the VCF/BCF file, returning them as a lazy sequence. rdr
-  must implement cljam.io.protocols/IVariantReader. Can take an option :depth to
-  specify parsing level, default :deep. &lt;:deep|:vcf|:bcf|:shallow|:raw>
-    :deep - Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
-    :vcf - VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.
-    :bcf - BCF-style map. CHROM, FILTER, INFO and :genotype contains indices to meta-info.
-    :shallow - Only CHROM, POS and ref-length are parsed.
-    :raw - Raw map of ByteBufers.</p>
+must implement cljam.io.protocols/IVariantReader. Can take an option :depth to
+specify parsing level, default :deep. &lt;:deep|:vcf|:bcf|:shallow|:raw>
+  :deep - Fully parsed variant map. FORMAT, FILTER, INFO and samples columns are parsed.
+  :vcf - VCF-style map. FORMAT, FILTER, INFO and samples columns are strings.
+  :bcf - BCF-style map. CHROM, FILTER, INFO and :genotype contains indices to meta-info.
+  :shallow - Only CHROM, POS and ref-length are parsed.
+  :raw - Raw map of ByteBufers.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-variants
   ([rdr] (protocols/read-variants rdr))
   ([rdr option] (protocols/read-variants rdr option)))</pre></td></tr><tr><td class="docs"><p>Reads variants of the VCF/BCF file randomly, returning them as a lazy sequence.</p>
@@ -2969,50 +2975,50 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn read-file-offsets
   [rdr] (protocols/read-file-offsets rdr))</pre></td></tr><tr><td class="docs"><h2>Writing</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Returns an open cljam.io.vcf.writer.VCFWriter of f. Meta-information lines
-  and a header line will be written in this function. Should be used inside
-  with-open to ensure the writer is properly closed. e.g.</p>
+and a header line will be written in this function. Should be used inside
+with-open to ensure the writer is properly closed. e.g.</p>
 
-<pre><code>(with-open [wtr (vcf-writer "out.vcf"
-                            {:file-date "20090805", :source "myImpu..." ...}
-                            ["CHROM" "POS" "ID" "REF" "ALT" ...])]
-  (WRITING-VCF))
-</code></pre>
-</td><td class="codes"><pre class="brush: clojure">(defn ^VCFWriter vcf-writer
-  [f meta-info header]
+<p>  (with-open [wtr (vcf-writer "out.vcf"
+                              {:file-date "20090805", :source "myImpu..." ...}
+                              ["CHROM" "POS" "ID" "REF" "ALT" ...])]
+    (WRITING-VCF))</p>
+</td><td class="codes"><pre class="brush: clojure">(defn vcf-writer
+  ^VCFWriter
+  [f meta-info' header']
   (doto (VCFWriter. (util/as-url f)
                     (cio/writer (util/compressor-output-stream f))
-                    meta-info
-                    header)
-    (vcf-writer/write-meta-info meta-info)
-    (vcf-writer/write-header header)))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bcf.writer.BCFWriter of f. Meta-information lines
-  and a header line will be written in this function. Should be used inside
-  with-open to ensure the writer is properly closed. e.g.</p>
+                    meta-info'
+                    header')
+    (vcf-writer/write-meta-info meta-info')
+    (vcf-writer/write-header header')))</pre></td></tr><tr><td class="docs"><p>Returns an open cljam.io.bcf.writer.BCFWriter of f. Meta-information lines
+and a header line will be written in this function. Should be used inside
+with-open to ensure the writer is properly closed. e.g.</p>
 
-<pre><code> (with-open [wtr (bcf-writer "out.bcf"
-                             {:file-date "20090805", :source "myImpu..." ...}
-                             ["CHROM" "POS" "ID" "REF" "ALT" ...])]
-   (WRITING-BCF))
-</code></pre>
-</td><td class="codes"><pre class="brush: clojure">(defn ^BCFWriter bcf-writer
-  [f meta-info header]
-  (bcf-writer/writer f meta-info header))</pre></td></tr><tr><td class="docs"><p>Selects suitable writer from f's extension, returning the open writer. This
-  function supports VCF and BCF formats.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ^Closeable writer
-  [f meta-info header]
+<p>   (with-open [wtr (bcf-writer "out.bcf"
+                               {:file-date "20090805", :source "myImpu..." ...}
+                               ["CHROM" "POS" "ID" "REF" "ALT" ...])]
+     (WRITING-BCF))</p>
+</td><td class="codes"><pre class="brush: clojure">(defn bcf-writer
+  ^BCFWriter
+  [f meta-info' header']
+  (bcf-writer/writer f meta-info' header'))</pre></td></tr><tr><td class="docs"><p>Selects suitable writer from f's extension, returning the open writer. This
+function supports VCF and BCF formats.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn writer
+  ^Closeable
+  [f meta-info' header']
   (case (io-util/file-type f)
-    :vcf (vcf-writer f meta-info header)
-    :bcf (bcf-writer f meta-info header)
+    :vcf (vcf-writer f meta-info' header')
+    :bcf (bcf-writer f meta-info' header')
     (throw (IllegalArgumentException. &quot;Invalid file type&quot;))))</pre></td></tr><tr><td class="docs"><p>Writes variants to the VCF/BCF file. wtr must implement
-  cljam.io.protocols/IVariantWriter. variants must be a sequence of parsed or
-  VCF-style maps. e.g.</p>
+cljam.io.protocols/IVariantWriter. variants must be a sequence of parsed or
+VCF-style maps. e.g.</p>
 
-<pre><code>(write-variants [{:chr "19", :pos 111, :id nil, :ref "A",
-                  :alt ["C"], :qual 9.6, :filter [:PASS], :info {:DP 4},
-                  :FORMAT [:GT :HQ] ...} ...])
-</code></pre>
+<p>  (write-variants [{:chr "19", :pos 111, :id nil, :ref "A",
+                    :alt ["C"], :qual 9.6, :filter [:PASS], :info {:DP 4},
+                    :FORMAT [:GT :HQ] ...} ...])</p>
 </td><td class="codes"><pre class="brush: clojure">(defn write-variants
   [wtr variants]
-  (protocols/write-variants wtr variants))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (protocols/write-variants wtr variants))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/clj-commons/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

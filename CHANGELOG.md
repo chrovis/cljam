@@ -1,6 +1,6 @@
 # Change Log
 
-## [Unreleased]
+## [0.8.5] - 2024-05-23
 
 ### Changed
 * Use aset instead of aset-* for performance [#286](https://github.com/chrovis/cljam/pull/286)
@@ -537,7 +537,8 @@ represents the first three bases of chromosome 1.
 
 First release
 
-[Unreleased]: https://github.com/chrovis/cljam/compare/0.8.4...HEAD
+[Unreleased]: https://github.com/chrovis/cljam/compare/0.8.5...HEAD
+[0.8.5]: https://github.com/chrovis/cljam/compare/0.8.4...0.8.5
 [0.8.4]: https://github.com/chrovis/cljam/compare/0.8.3...0.8.4
 [0.8.3]: https://github.com/chrovis/cljam/compare/0.8.2...0.8.3
 [0.8.2]: https://github.com/chrovis/cljam/compare/0.8.1...0.8.2

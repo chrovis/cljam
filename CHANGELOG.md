@@ -1,5 +1,39 @@
 # Change Log
 
+## [Unreleased]
+
+### Changed
+* Use aset instead of aset-* for performance [#286](https://github.com/chrovis/cljam/pull/286)
+* Misc performance tuning for cljam.algo.depth [#287](https://github.com/chrovis/cljam/pull/287)
+* Disable :missing-docstring linter for test code [#288](https://github.com/chrovis/cljam/pull/288)
+* Use ByteBuffer wrapper instead of LSB protocol [#290](https://github.com/chrovis/cljam/pull/290)
+* Rewrite TwoBitWriter using FileChannel and ByteBuffer [#291](https://github.com/chrovis/cljam/pull/291)
+* Replace remaining LSB protocol implementations with ordinary functions [#293](https://github.com/chrovis/cljam/pull/293)
+* Remove nth's linear search overhead in BCF reader [#294](https://github.com/chrovis/cljam/pull/294)
+
+### Fixed
+* Fix/apply lint [#269](https://github.com/chrovis/cljam/pull/269)
+* Fix/vcf float case insensitive [#272](https://github.com/chrovis/cljam/pull/272)
+* Fix/additional coding style [#279](https://github.com/chrovis/cljam/pull/279)
+* Fix/shadowing var [#281](https://github.com/chrovis/cljam/pull/281)
+* Fix/add doc string [#282](https://github.com/chrovis/cljam/pull/282)
+* Remove extra parens around static field references [#300](https://github.com/chrovis/cljam/pull/300)
+* Update dependencies [#310](https://github.com/chrovis/cljam/pull/310)
+
+### Added
+* Add function for unphasing genotypes [#275](https://github.com/chrovis/cljam/pull/275)
+* Support explicit first phasing indicator for VCF genotypes [#276](https://github.com/chrovis/cljam/pull/276)
+* Add validator for writing vcf. [#277](https://github.com/chrovis/cljam/pull/277)
+* Add validator for writing sam. [#278](https://github.com/chrovis/cljam/pull/278)
+* Implementing rANS4x8 decoder toward CRAM support [#297](https://github.com/chrovis/cljam/pull/297)
+* Add CRAM reader (alpha) [#302](https://github.com/chrovis/cljam/pull/302)
+* Misc performance improvements for CRAM reader [#304](https://github.com/chrovis/cljam/pull/304)
+* Index-based random access for CRAM reader [#306](https://github.com/chrovis/cljam/pull/306)
+* Support reading CRAM files with embedded references [#307](https://github.com/chrovis/cljam/pull/307)
+* Automatic read name generation for CRAM records [#308](https://github.com/chrovis/cljam/pull/308)
+* Support for CRAM beta coding [#309](https://github.com/chrovis/cljam/pull/309)
+* Support for reading alignments in specific region without CRAI index file [#311](https://github.com/chrovis/cljam/pull/311)
+
 ## [0.8.4] - 2023-04-12
 
 ### Changed

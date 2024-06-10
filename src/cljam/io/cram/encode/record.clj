@@ -19,7 +19,7 @@
        (let [idx (if (neg? ri) nrefs ri)]
          (aset refs idx true)
          (when (pos? pos)
-           (when (< pos (aget stats 0))
+           (when (or (zero? (aget stats 0)) (< pos (aget stats 0)))
              (aset stats 0 pos))
            (when (< (aget stats 1) end)
              (aset stats 1 end)))
@@ -75,7 +75,7 @@
       (qs-encoder -1))
     (let [bs (.getBytes ^String qual)]
       (dotimes [i (alength bs)]
-        (qs-encoder (bit-and (long (aget bs i)) 0xff))))))
+        (qs-encoder (bit-and (long (- (aget bs i) 33)) 0xff))))))
 
 (defn- build-mapped-read-encoder [{:keys [MQ QS] :as encoders}]
   (let [features-encoder (build-read-features-encoder encoders)]

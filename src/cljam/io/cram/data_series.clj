@@ -46,8 +46,8 @@
           (.array bb))))
 
     :byte-array-stop
-    (let [{:keys [stop-byte external-id]} params
-          ^ByteBuffer block (get content-id->block-data external-id)]
+    (let [{:keys [stop-byte content-id]} params
+          ^ByteBuffer block (get content-id->block-data content-id)]
       (fn []
         (.mark ^Buffer block)
         (let [start (.position block)
@@ -152,7 +152,7 @@
    :RL {:content-id  4, :codec :external}
    :AP {:content-id  5, :codec :external}
    :RG {:content-id  6, :codec :external}
-   :RN {:external-id  7, :codec :byte-array-stop, :stop-byte (int \tab)}
+   :RN {:content-id  7, :codec :byte-array-stop, :stop-byte (int \tab)}
    :MF {:content-id  8, :codec :external}
    :NS {:content-id  9, :codec :external}
    :NP {:content-id 10, :codec :external}

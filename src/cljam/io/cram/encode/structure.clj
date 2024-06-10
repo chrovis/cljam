@@ -50,12 +50,12 @@
           (encode-encoding out' val-encoding))))
 
     :byte-array-stop
-    (let [{:keys [stop-byte external-id]} encoding]
+    (let [{:keys [stop-byte content-id]} encoding]
       (itf8/encode-itf8 out 5)
       (with-size-prefixed-out out
         (fn [out']
           (.write out' (byte stop-byte))
-          (itf8/encode-itf8 out' external-id))))
+          (itf8/encode-itf8 out' content-id))))
 
     (throw (ex-info (str "codec " (:codec encoding) " not supported")
                     {:encoding encoding}))))

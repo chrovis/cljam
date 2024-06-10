@@ -35,13 +35,13 @@
   (struct/encode-cram-header-container (.-stream wtr) header))
 
 (defn- reference-md5 [^CRAMWriter wtr {:keys [^long ref-seq-id ^long start ^long span]}]
-  (if (pos? ref-seq-id)
-    (let [chr (nth (:SQ (.-header wtr)) ref-seq-id)
-          end (+ start span)
+  (if (neg? ref-seq-id)
+    (byte-array 16)
+    (let [chr (:SN (nth (:SQ (.-header wtr)) ref-seq-id))
+          end (dec (+ start span))
           ref-bases (resolver/resolve-sequence (.-seq-resolver wtr) chr start end)
           md5 (MessageDigest/getInstance "md5")]
-      (.digest md5 (.getBytes ^String ref-bases)))
-    (byte-array 16)))
+      (.digest md5 ref-bases))))
 
 (defn write-alignments
   "TODO"
@@ -56,7 +56,9 @@
                             (when (pos? (alength data))
                               (update block :data
                                       #(struct/generate-block :raw 4 content-id %)))))
-                    (sort-by :content-id))
+                    (sort-by :content-id)
+                    (cons {:content-id 0
+                           :data (struct/generate-block :raw 5 0 (byte-array 0))}))
         ref-md5 (reference-md5 wtr stats)
         slice-header (struct/generate-slice-header-block
                       (assoc stats
@@ -71,10 +73,15 @@
                              \G {\A 0, \T 1, \C 2, \N 3}
                              \C {\A 0, \T 1, \G 2, \N 3}
                              \N {\A 0, \T 1, \G 2, \C 3}}
-                            [] ds-encodings {})]
+                            [[]] ds-encodings {})
+        container-len (->> blocks
+                           (map #(alength ^bytes (:data %)))
+                           (apply +
+                                  (alength compression-header)
+                                  (alength slice-header)))]
     (struct/encode-container-header out
                                     (assoc stats
-                                           :length (alength slice-header)
+                                           :length container-len
                                            :counter 0
                                            :blocks (+ 2 (count blocks))
                                            :landmarks [(alength compression-header)]))

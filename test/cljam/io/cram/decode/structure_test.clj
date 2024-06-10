@@ -71,7 +71,7 @@
                :RL {:codec :external, :content-id 4}
                :AP {:codec :external, :content-id 5}
                :RG {:codec :external, :content-id 6}
-               :RN {:codec :byte-array-stop, :stop-byte 9, :external-id 7}
+               :RN {:codec :byte-array-stop, :stop-byte 9, :content-id 7}
                :NF {:codec :external, :content-id 8}
                :MF {:codec :external, :content-id 9}
                :NS {:codec :external, :content-id 10}
@@ -85,15 +85,15 @@
                :BA {:codec :external, :content-id 22}
                :QS {:codec :external, :content-id 23}
                :BS {:codec :external, :content-id 24}
-               :IN {:codec :byte-array-stop, :stop-byte 9, :external-id 25}
+               :IN {:codec :byte-array-stop, :stop-byte 9, :content-id 25}
                :DL {:codec :external, :content-id 26}
                :RS {:codec :external, :content-id 27}
-               :SC {:codec :byte-array-stop, :stop-byte 9, :external-id 28}
+               :SC {:codec :byte-array-stop, :stop-byte 9, :content-id 28}
                :PD {:codec :external, :content-id 29}
                :HC {:codec :external, :content-id 30}}
               :tags
               {:MD
-               {\Z {:codec :byte-array-stop, :stop-byte 9, :external-id 5063770}}
+               {\Z {:codec :byte-array-stop, :stop-byte 9, :content-id 5063770}}
                :NM
                {\c
                 {:codec :byte-array-len

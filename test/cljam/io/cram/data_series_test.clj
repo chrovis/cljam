@@ -15,7 +15,7 @@
                    :BB {:codec :byte-array-len
                         :len-encoding {:codec :external, :content-id 3}
                         :val-encoding {:codec :external, :content-id 4}}
-                   :RN {:codec :byte-array-stop, :stop-byte 0, :external-id 5}}
+                   :RN {:codec :byte-array-stop, :stop-byte 0, :content-id 5}}
         blocks [{:content-id 0
                  :data (bb/make-lsb-byte-buffer (byte-array [2r01001110]))}
                 {:content-id 1
@@ -213,7 +213,7 @@
     (testing "strings"
       (let [encodings {:MC {\Z {:codec :byte-array-stop
                                 :stop-byte 9
-                                :external-id 5063514}}
+                                :content-id 5063514}}
                        :hx {\H {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [9]
@@ -397,7 +397,7 @@
                 "18S76M1D57M"]
             encodings {:CG {\B {:codec :byte-array-stop
                                 :stop-byte -1
-                                :external-id 4409154}}}
+                                :content-id 4409154}}}
             blocks [{:content-id 4409154
                      :data (let [encoded (map cigar/encode-cigar vs)
                                  bb (bb/allocate-lsb-byte-buffer (+ (->> (apply concat encoded)

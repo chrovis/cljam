@@ -1,30 +1,7 @@
 (ns cljam.io.cram.encode.record
-  (:require [cljam.io.sam.util.flag :as sam.flag]
+  (:require [cljam.io.cram.encode.stats :as stats]
+            [cljam.io.sam.util.flag :as sam.flag]
             [cljam.io.sam.util.option :as sam.option]))
-
-(defn- make-alignment-stats [^long nrefs]
-  (let [refs (boolean-array (inc nrefs))
-        stats (long-array 4)]
-    (fn
-      ([]
-       (let [referred (into #{} (keep-indexed (fn [i r] (when r i))) refs)]
-         {:ref-seq-id (cond (> (count referred) 1) -2
-                            (contains? referred nrefs) -1
-                            :else (or (first referred) -1))
-          :start (aget stats 0)
-          :span (- (aget stats 1) (aget stats 0))
-          :bases (aget stats 2)
-          :records (aget stats 3)}))
-      ([{^long ri ::ref-index ^long end ::end :keys [^long pos] :as record}]
-       (let [idx (if (neg? ri) nrefs ri)]
-         (aset refs idx true)
-         (when (pos? pos)
-           (when (or (zero? (aget stats 0)) (< pos (aget stats 0)))
-             (aset stats 0 pos))
-           (when (< (aget stats 1) end)
-             (aset stats 1 end)))
-         (aset stats 2 (+ (aget stats 2) (long (count (:seq record)))))
-         (aset stats 3 (inc (aget stats 3))))))))
 
 (defn- ref-index [rname->idx rname]
   (if  (= rname "*")
@@ -92,7 +69,7 @@
       (encode-qual record QS))))
 
 (defn- build-cram-record-encoder
-  [cram-header {:keys [BF CF] :as ds-encoders} tag-encoders stats]
+  [cram-header {:keys [BF CF] :as ds-encoders} tag-encoders stats-recorder]
   (let [rname->idx (into {}
                          (map-indexed (fn [i {:keys [SN]}] [SN i]))
                          (:SQ cram-header))
@@ -110,14 +87,16 @@
                  true (bit-or 0x02)
                  false (bit-or 0x04)
                  (= (:seq record) "*") (bit-or 0x08))
+            ri (ref-index rname->idx (:rname record))
+            end (if (pos? pos)
+                  ;; TODO: need to be calculated from read features
+                  (+ pos (count (:seq record)))
+                  0)
             record' (assoc record
                            ::flag cf
-                           ::ref-index (ref-index rname->idx (:rname record))
-                           ::end (if (pos? pos)
-                                   ;; TODO: need to be calculated from read features
-                                   (+ pos (count (:seq record)))
-                                   0))]
-        (stats record')
+                           ::ref-index ri
+                           ::end end)]
+        (stats/update! stats-recorder ri (:pos record') end (count (:seq record')) 1)
         (BF bf)
         (CF cf)
         (pos-encoder record')
@@ -131,7 +110,7 @@
 (defn encode-slice-records
   "TODO"
   [cram-header ds-encoders tag-encoders records]
-  (let [stats (make-alignment-stats (count (:SQ cram-header)))
-        record-encoder (build-cram-record-encoder cram-header ds-encoders tag-encoders stats)]
+  (let [stats-recorder (stats/make-stats-recorder (count (:SQ cram-header)))
+        record-encoder (build-cram-record-encoder cram-header ds-encoders tag-encoders stats-recorder)]
     (run! record-encoder records)
-    (stats)))
+    (stats/stats stats-recorder)))

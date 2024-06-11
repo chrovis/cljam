@@ -1,6 +1,7 @@
 (ns cljam.io.cram.writer
   (:require [cljam.io.cram.data-series :as ds]
             [cljam.io.cram.encode.record :as record]
+            [cljam.io.cram.encode.stats :as stats]
             [cljam.io.cram.encode.structure :as struct]
             [cljam.io.cram.seq-resolver.protocol :as resolver]
             [cljam.io.protocols :as protocols])
@@ -34,11 +35,10 @@
   [^CRAMWriter wtr header]
   (struct/encode-cram-header-container (.-stream wtr) header))
 
-(defn- reference-md5 [^CRAMWriter wtr {:keys [^long ref-seq-id ^long start ^long span]}]
-  (if (neg? ref-seq-id)
+(defn- reference-md5 [^CRAMWriter wtr {:keys [^long ri ^long start ^long end]}]
+  (if (neg? ri)
     (byte-array 16)
-    (let [chr (:SN (nth (:SQ (.-header wtr)) ref-seq-id))
-          end (dec (+ start span))
+    (let [chr (:SN (nth (:SQ (.-header wtr)) ri))
           ref-bases (resolver/resolve-sequence (.-seq-resolver wtr) chr start end)
           md5 (MessageDigest/getInstance "md5")]
       (.digest md5 ref-bases))))
@@ -47,6 +47,13 @@
   (->> alns
        (partition-all records-per-slice)
        (partition-all slices-per-container)))
+
+(defn- stats->header-base [{:keys [ri ^long start ^long end nbases nrecords]}]
+  {:ref-seq-id ri
+   :start start
+   :span (if (zero? start) 0 (inc (- end start)))
+   :bases nbases
+   :records nrecords})
 
 (defn- generate-slice [^CRAMWriter wtr counter alns]
   (let [ds-encoders (ds/build-data-series-encoders ds/default-data-series-encodings)
@@ -62,7 +69,7 @@
                            :data (struct/generate-block :raw 5 0 (byte-array 0))}))
         ref-md5 (reference-md5 wtr stats)
         header-block (struct/generate-slice-header-block
-                      (assoc stats
+                      (assoc (stats->header-base stats)
                              :counter counter
                              :embedded-reference -1
                              :reference-md5 ref-md5)
@@ -71,7 +78,7 @@
     {:header-block header-block
      :data-blocks block-data
      :stats stats
-     :counter (+ (long counter) (long (:records stats)))
+     :counter (+ (long counter) (long (:nrecords stats)))
      :size (->> block-data
                 (map #(alength ^bytes %))
                 (apply + (alength header-block)))}))
@@ -87,37 +94,17 @@
   (let [^OutputStream out (.-stream wtr)
         ds-encodings ds/default-data-series-encodings
         slices' (generate-slices wtr counter slices)
-
-        compression-header-block
-        (struct/generate-compression-header-block
-         {:RN true, :AP false, :RR true}
-         {\A {\T 0, \G 1, \C 2, \N 3}
-          \T {\A 0, \G 1, \C 2, \N 3}
-          \G {\A 0, \T 1, \C 2, \N 3}
-          \C {\A 0, \T 1, \G 2, \N 3}
-          \N {\A 0, \T 1, \G 2, \C 3}}
-         [[]] ds-encodings {})
-
+        compression-header-block (struct/generate-compression-header-block
+                                  {:RN true, :AP false, :RR true}
+                                  {\A {\T 0, \G 1, \C 2, \N 3}
+                                   \T {\A 0, \G 1, \C 2, \N 3}
+                                   \G {\A 0, \T 1, \C 2, \N 3}
+                                   \C {\A 0, \T 1, \G 2, \N 3}
+                                   \N {\A 0, \T 1, \G 2, \C 3}}
+                                  [[]] ds-encodings {})
         stats (->> slices'
                    (map :stats)
-                   (reduce (fn [acc stats]
-                             (let [start (min (long (:start acc))
-                                              (long (:start stats)))
-                                   end (max (+ (long (:start acc))
-                                               (long (:span acc)))
-                                            (+ (long (:start stats))
-                                               (long (:span stats))))]
-                               {:ref-seq-id (if (or (= (:ref-seq-id acc) -2)
-                                                    (not= (:ref-seq-id acc)
-                                                          (:ref-seq-id stats)))
-                                              -2
-                                              (:ref-seq-id stats))
-                                :start start
-                                :span (- end start)
-                                :bases (+ (long (:bases acc))
-                                          (long (:bases stats)))
-                                :records (+ (long (:records acc))
-                                            (long (:records stats)))}))))
+                   (stats/merge-stats (count (:SQ (.-header wtr)))))
         container-len (->> slices'
                            (map (fn [{:keys [^bytes header-block data-blocks]}]
                                   (apply + (alength header-block)
@@ -127,7 +114,7 @@
                        (reductions #(+ (long %1) (long (:size %2)))
                                    (alength compression-header-block))
                        butlast)
-        container-header (assoc stats
+        container-header (assoc (stats->header-base stats)
                                 :counter counter
                                 :length container-len
                                 :blocks (->> slices'

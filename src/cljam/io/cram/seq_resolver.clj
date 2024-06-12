@@ -8,6 +8,8 @@
   (close [_]
     (.close ^Closeable seq-reader))
   proto/ISeqResolver
+  (resolve-sequence [this chr]
+    (proto/resolve-sequence this chr nil nil))
   (resolve-sequence [_ chr start end]
     (when-let [s (cseq/read-sequence seq-reader {:chr chr :start start :end end})]
       (.getBytes ^String s))))

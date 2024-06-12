@@ -55,9 +55,11 @@
    :bases nbases
    :records nrecords})
 
-(defn- generate-slice [^CRAMWriter wtr counter alns]
+(defn- generate-slice [^CRAMWriter wtr counter subst-mat alns]
   (let [ds-encoders (ds/build-data-series-encoders ds/default-data-series-encodings)
-        stats (record/encode-slice-records (.-header wtr) ds-encoders {} alns)
+        stats (record/encode-slice-records (.-seq-resolver wtr)
+                                           (.-header wtr)
+                                           subst-mat ds-encoders {} alns)
         blocks (->> (vals ds-encoders)
                     (mapcat #(%))
                     (keep (fn [{:keys [content-id ^bytes data] :as block}]
@@ -83,24 +85,25 @@
                 (map #(alength ^bytes %))
                 (apply + (alength header-block)))}))
 
-(defn- generate-slices [wtr counter slices]
+(defn- generate-slices [wtr counter subst-mat slices]
   (loop [[slice & more] slices, counter counter, acc []]
     (if slice
-      (let [slice' (generate-slice wtr counter slice)]
+      (let [slice' (generate-slice wtr counter subst-mat slice)]
         (recur more (:counter slice') (conj acc slice')))
       acc)))
 
 (defn- write-container [^CRAMWriter wtr counter slices]
   (let [^OutputStream out (.-stream wtr)
         ds-encodings ds/default-data-series-encodings
-        slices' (generate-slices wtr counter slices)
+        subst-mat {\A {\T 0, \G 1, \C 2, \N 3}
+                   \T {\A 0, \G 1, \C 2, \N 3}
+                   \G {\A 0, \T 1, \C 2, \N 3}
+                   \C {\A 0, \T 1, \G 2, \N 3}
+                   \N {\A 0, \T 1, \G 2, \C 3}}
+        slices' (generate-slices wtr counter subst-mat slices)
         compression-header-block (struct/generate-compression-header-block
                                   {:RN true, :AP false, :RR true}
-                                  {\A {\T 0, \G 1, \C 2, \N 3}
-                                   \T {\A 0, \G 1, \C 2, \N 3}
-                                   \G {\A 0, \T 1, \C 2, \N 3}
-                                   \C {\A 0, \T 1, \G 2, \N 3}
-                                   \N {\A 0, \T 1, \G 2, \C 3}}
+                                  subst-mat
                                   [[]] ds-encodings {})
         stats (->> slices'
                    (map :stats)

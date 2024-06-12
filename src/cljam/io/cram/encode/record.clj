@@ -1,7 +1,10 @@
 (ns cljam.io.cram.encode.record
   (:require [cljam.io.cram.encode.stats :as stats]
+            [cljam.io.sam.util.cigar :as sam.cigar]
             [cljam.io.sam.util.flag :as sam.flag]
-            [cljam.io.sam.util.option :as sam.option]))
+            [cljam.io.sam.util.option :as sam.option]
+            [cljam.io.cram.seq-resolver.protocol :as resolver])
+  (:import [java.util Arrays]))
 
 (defn- ref-index [rname->idx rname]
   (if  (= rname "*")
@@ -42,9 +45,32 @@
   (fn [_record]
     (TL 0)))
 
-(defn- build-read-features-encoder [{:keys [FN]}]
-  (fn [_record]
-    (FN 0)))
+(defn- build-read-features-encoder [{:keys [FN FP FC BA QS BS IN DL SC HC RS PD]}]
+  (fn [record]
+    (let [fs (::features record)]
+      (FN (count fs))
+      (reduce (fn [^long prev-pos {:keys [^long pos] :as f}]
+                (FP (- pos prev-pos))
+                (case (:code f)
+                  :read-base (do (FC (int \B))
+                                 (BA (:base f))
+                                 (QS (:qual f)))
+                  :subst (do (FC (int \X))
+                             (BS (:subst f)))
+                  :insertion (do (FC (int \I))
+                                 (IN (:bases f)))
+                  :deletion (do (FC (int \D))
+                                (DL (:len f)))
+                  :softclip (do (FC (int \S))
+                                (SC (:bases f)))
+                  :hardclip (do (FC (int \H))
+                                (HC (:len f)))
+                  :ref-skip (do (FC (int \N))
+                                (RS (:len f)))
+                  :padding (do (FC (int \P))
+                               (PD (:len f))))
+                pos)
+              0 fs))))
 
 (defn- encode-qual [{:keys [qual] :as record} qs-encoder]
   (if (= qual "*")
@@ -68,8 +94,60 @@
         (BA (aget bs i)))
       (encode-qual record QS))))
 
+(defn- add-mismatches
+  [n subst-mat ^bytes ref-bases rpos ^bytes read-bases ^bytes qs spos fs]
+  (loop [i (long n), rpos (long rpos), spos (long spos), fs fs]
+    (if (zero? i)
+      fs
+      (let [ref-base (aget ref-bases (dec rpos))
+            read-base (aget read-bases spos)]
+        (if (= ref-base read-base)
+          (recur (dec i) (inc rpos) (inc spos) fs)
+          (let [pos (inc spos)
+                f (if (or (neg? (.indexOf "ATGCN" ref-base))
+                          (neg? (.indexOf "ATGCN" read-base)))
+                    {:code :read-base :pos pos
+                     :base read-base
+                     :qual (if qs (- (aget qs spos) 33) -1)}
+                    {:code :subst :pos pos
+                     :subst (-> subst-mat
+                                (get (char ref-base))
+                                (get (char read-base)))})]
+            (recur (dec i) (inc rpos) (inc spos) (conj! fs f))))))))
+
+(defn- calculate-read-features&end
+  [seq-resolver subst-mat {:keys [rname ^long pos qual cigar] :as record}]
+  (if (or (zero? pos) (= (:seq record) "*"))
+    [[] pos]
+    (let [ref-bases ^bytes (resolver/resolve-sequence seq-resolver rname)
+          read-bases (.getBytes ^String (:seq record))
+          qs (when-not (= qual "*")
+               (.getBytes ^String qual))]
+      (loop [[[^long n op] & more] (sam.cigar/parse cigar)
+             rpos pos
+             spos 0
+             fs (transient [])]
+        (if op
+          (let [pos (inc spos)]
+            (case op
+              (\M \X \=) (recur more (+ rpos n) (+ spos n)
+                                (add-mismatches n subst-mat ref-bases rpos
+                                                read-bases qs spos fs))
+              \I (let [spos' (+ spos n)
+                       bs (Arrays/copyOfRange read-bases spos spos')]
+                   (recur more rpos spos' (conj! fs {:code :insertion :pos pos :bases bs})))
+              \D (recur more (+ rpos n) spos (conj! fs {:code :deletion :pos pos :len n}))
+              \N (recur more (+ rpos n) spos (conj! fs {:code :ref-skip :pos pos :len n}))
+              \S (let [spos' (+ spos n)
+                       bs (Arrays/copyOfRange read-bases spos spos')]
+                   (recur more rpos spos' (conj! fs {:code :softclip :pos pos :bases bs})))
+              \H (recur more rpos spos (conj! fs {:code :hardclip :pos pos :len n}))
+              \P (recur more rpos spos (conj! fs {:code :padding :pos pos :len n}))))
+          [(persistent! fs) (dec rpos)])))))
+
 (defn- build-cram-record-encoder
-  [cram-header {:keys [BF CF] :as ds-encoders} tag-encoders stats-recorder]
+  [seq-resolver cram-header subst-mat {:keys [BF CF] :as ds-encoders}
+   tag-encoders stats-recorder]
   (let [rname->idx (into {}
                          (map-indexed (fn [i {:keys [SN]}] [SN i]))
                          (:SQ cram-header))
@@ -79,7 +157,7 @@
         tags-encoder (build-auxiliary-tags-encoder ds-encoders tag-encoders)
         mapped-encoder (build-mapped-read-encoder ds-encoders)
         unmapped-encoder (build-unmapped-read-encoder ds-encoders)]
-    (fn [{:keys [^long pos] :as record}]
+    (fn [record]
       (let [bf (bit-and (long (:flag record))
                         (bit-not (sam.flag/encoded #{:next-reversed :next-unmapped})))
             cf (cond-> 0
@@ -88,14 +166,8 @@
                  false (bit-or 0x04)
                  (= (:seq record) "*") (bit-or 0x08))
             ri (ref-index rname->idx (:rname record))
-            end (if (pos? pos)
-                  ;; TODO: need to be calculated from read features
-                  (+ pos (count (:seq record)))
-                  0)
-            record' (assoc record
-                           ::flag cf
-                           ::ref-index ri
-                           ::end end)]
+            [fs end] (calculate-read-features&end seq-resolver subst-mat record)
+            record' (assoc record ::flag cf ::ref-index ri ::features fs)]
         (stats/update! stats-recorder ri (:pos record') end (count (:seq record')) 1)
         (BF bf)
         (CF cf)
@@ -109,8 +181,13 @@
 
 (defn encode-slice-records
   "TODO"
-  [cram-header ds-encoders tag-encoders records]
+  [seq-resolver cram-header subst-mat ds-encoders tag-encoders records]
   (let [stats-recorder (stats/make-stats-recorder (count (:SQ cram-header)))
-        record-encoder (build-cram-record-encoder cram-header ds-encoders tag-encoders stats-recorder)]
+        record-encoder (build-cram-record-encoder seq-resolver
+                                                  cram-header
+                                                  subst-mat
+                                                  ds-encoders
+                                                  tag-encoders
+                                                  stats-recorder)]
     (run! record-encoder records)
     (stats/stats stats-recorder)))

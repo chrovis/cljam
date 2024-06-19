@@ -235,7 +235,7 @@
              {} ds-encoding))
 
 (def ^:private digit->char
-  (let [bs (.getBytes "0123456789abcdef")]
+  (let [bs (.getBytes "0123456789ABCDEF")]
     (fn [^long i]
       (aget bs i))))
 

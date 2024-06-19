@@ -41,9 +41,27 @@
       (NP (:pnext record))
       (TS (:tlen record)))))
 
-(defn- build-auxiliary-tags-encoder [{:keys [TL]} _tag-encoders]
-  (fn [_record]
-    (TL 0)))
+(defn- build-auxiliary-tags-encoder [tag-dict {:keys [TL]} tag-encoders]
+  (let [tag-encoder (fn [{:keys [tag] :as item}]
+                      (let [tag&type [tag (:type item)]
+                            encoder (get-in tag-encoders tag&type)]
+                        (fn [opts]
+                          (encoder (get opts tag&type)))))
+        encoders (mapv (fn [entry]
+                         (let [encoders (mapv tag-encoder entry)]
+                           (fn [opts]
+                             (run! #(% opts) encoders))))
+                       tag-dict)]
+    (fn [record]
+      (let [tl (::tags-index record)
+            encoder (nth encoders tl)
+            opts (into {}
+                       (map (fn [opt]
+                              (let [[tag m] (first opt)]
+                                [[tag (first (:type m))] (:value m)])))
+                       (:options record))]
+        (TL tl)
+        (encoder opts)))))
 
 (defn- build-read-features-encoder [{:keys [FN FP FC BA QS BS IN DL SC HC RS PD]}]
   (fn [record]
@@ -146,7 +164,7 @@
           [(persistent! fs) (dec rpos)])))))
 
 (defn- build-cram-record-encoder
-  [seq-resolver cram-header subst-mat {:keys [BF CF] :as ds-encoders}
+  [seq-resolver cram-header tag-dict subst-mat {:keys [BF CF] :as ds-encoders}
    tag-encoders stats-recorder]
   (let [rname->idx (into {}
                          (map-indexed (fn [i {:keys [SN]}] [SN i]))
@@ -154,7 +172,7 @@
         pos-encoder (build-positional-data-encoder cram-header ds-encoders)
         name-encoder (build-read-name-encoder ds-encoders)
         mate-encoder (build-mate-read-encoder rname->idx ds-encoders)
-        tags-encoder (build-auxiliary-tags-encoder ds-encoders tag-encoders)
+        tags-encoder (build-auxiliary-tags-encoder tag-dict ds-encoders tag-encoders)
         mapped-encoder (build-mapped-read-encoder ds-encoders)
         unmapped-encoder (build-unmapped-read-encoder ds-encoders)]
     (fn [record]
@@ -181,10 +199,11 @@
 
 (defn encode-slice-records
   "TODO"
-  [seq-resolver cram-header subst-mat ds-encoders tag-encoders records]
+  [seq-resolver cram-header tag-dict subst-mat ds-encoders tag-encoders records]
   (let [stats-recorder (stats/make-stats-recorder (count (:SQ cram-header)))
         record-encoder (build-cram-record-encoder seq-resolver
                                                   cram-header
+                                                  tag-dict
                                                   subst-mat
                                                   ds-encoders
                                                   tag-encoders

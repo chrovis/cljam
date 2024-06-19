@@ -174,16 +174,17 @@
     (lsb/write-bytes out ret)))
 
 (defn- encode-tag-dictionary [out dict]
-  (itf8/encode-itf8 out (count dict))
-  (run! (fn [entry]
-          (run! (fn [{:keys [tag] :as item}]
-                  (let [tag' (name tag)]
-                    (lsb/write-ubyte out (int (nth tag' 0)))
-                    (lsb/write-ubyte out (int (nth tag' 1)))
-                    (lsb/write-ubyte out (int (:type item)))))
-                entry)
-          (lsb/write-ubyte out 0))
-        dict))
+  (with-size-prefixed-out out
+    (fn [out']
+      (run! (fn [entry]
+              (run! (fn [{:keys [tag] :as item}]
+                      (let [tag' (name tag)]
+                        (lsb/write-ubyte out' (int (nth tag' 0)))
+                        (lsb/write-ubyte out' (int (nth tag' 1)))
+                        (lsb/write-ubyte out' (int (:type item)))))
+                    entry)
+              (lsb/write-ubyte out' 0))
+            dict))))
 
 (defn- encode-preservation-map [out preservation-map subst-mat tag-dict]
   (with-size-prefixed-out out

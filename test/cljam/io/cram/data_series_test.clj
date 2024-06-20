@@ -4,8 +4,10 @@
             [cljam.io.cram.data-series :as ds]
             [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.util.byte-buffer :as bb]
+            [cljam.io.util.lsb.io-stream :as lsb]
             [clojure.string :as str]
-            [clojure.test :refer [deftest is testing]]))
+            [clojure.test :refer [deftest is testing]])
+  (:import [java.io ByteArrayOutputStream]))
 
 (deftest build-data-series-decoders-test
   (let [encodings {:BA {:codec :external, :content-id 1}
@@ -749,25 +751,27 @@
                  (seq data))))))
     (testing "float arrays"
       (let [encodings {:fl {\B {:codec :byte-array-len
-                                :len-encoding {:codec :huffman
-                                               :alphabet [13]
-                                               :bit-len [0]}
+                                :len-encoding {:codec :external
+                                               :content-id 6712386}
                                 :val-encoding {:codec :external
                                                :content-id 6712386}}}}
             encoders (ds/build-tag-encoders encodings)
             fl (get-in encoders [:fl \B])]
-        (doseq [v ["f,0.0,0.25" "f,0.5,1.0" "f,0.0,-0.5" "f,-0.75,-1.0"]]
+        (doseq [v ["f,0.0,0.25" "f,0.5" "f,0.0,-0.25" "f,-0.5,-0.75,-1.0"]]
           (fl v))
-        (let [[{:keys [content-id data]}] (fl)]
-          (is (= 6712386 content-id))
-          (is (= (count (mapcat (fn [vs]
-                                  (let [bb (bb/allocate-lsb-byte-buffer 13)]
-                                    (.put bb (byte (int \f)))
-                                    (.putInt bb 2)
-                                    (run! #(.putFloat bb %) vs)
-                                    (.array bb)))
-                                [[0.0 0.25]
-                                 [0.5 1.0]
-                                 [0.0 -0.5]
-                                 [-0.75 -1.0]]))
-                 (count (seq data)))))))))
+        (let [[{content-id1 :content-id data1 :data}
+               {content-id2 :content-id data2 :data}] (fl)]
+          (is (= 6712386 content-id1 content-id2))
+          (is (identical? data1 data2))
+          (is (= (mapcat (fn [vs]
+                           (let [out (ByteArrayOutputStream.)]
+                             (.write out (+ 5 (* 4 (count vs))))
+                             (.write out (int \f))
+                             (lsb/write-int out (count vs))
+                             (run! #(lsb/write-float out %) vs)
+                             (.toByteArray out)))
+                         [[0.0 0.25]
+                          [0.5]
+                          [0.0 -0.25]
+                          [-0.5 -0.75 -1.0]])
+                 (seq data1))))))))

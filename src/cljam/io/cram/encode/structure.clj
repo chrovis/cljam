@@ -53,7 +53,7 @@
     (let [{:keys [stop-byte content-id]} encoding]
       (itf8/encode-itf8 out 5)
       (with-size-prefixed-out out
-        (fn [out']
+        (fn [^OutputStream out']
           (.write out' (byte stop-byte))
           (itf8/encode-itf8 out' content-id))))
 

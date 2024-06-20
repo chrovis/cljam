@@ -183,56 +183,70 @@
    :BA {:content-id 31, :codec :external}
    :QS {:content-id 32, :codec :external}})
 
-(defn- build-codec-encoder [{:keys [codec content-id] :as params} data-type]
-  (case codec
-    :external
-    (let [out (ByteArrayOutputStream.)]
-      (case data-type
-        :byte (fn
-                ([] [{:content-id content-id, :data (.toByteArray out)}])
-                ([v] (.write out (int v))))
-        :int (fn
-               ([] [{:content-id content-id, :data (.toByteArray out)}])
-               ([v] (itf8/encode-itf8 out v)))))
+(defn- build-codec-encoder
+  [{:keys [codec content-id] :as params} data-type content-id->state]
+  (letfn [(out-for-encoder []
+            (or (get-in @content-id->state [content-id :out])
+                (let [out (ByteArrayOutputStream.)]
+                  (vswap! content-id->state assoc-in [content-id :out] out)
+                  out)))
+          (data-for-encoder []
+            (let [state (get @content-id->state content-id)]
+              (or (get state :data)
+                  (let [^ByteArrayOutputStream out (:out state)
+                        data (.toByteArray out)]
+                    (vswap! content-id->state assoc-in [content-id :data] data)
+                    data))))]
+    (case codec
+      :external
+      (let [^OutputStream out (out-for-encoder)]
+        (case data-type
+          :byte (fn
+                  ([] [{:content-id content-id, :data (data-for-encoder)}])
+                  ([v] (.write out (int v))))
+          :int (fn
+                 ([] [{:content-id content-id, :data (data-for-encoder)}])
+                 ([v] (itf8/encode-itf8 out v)))))
 
-    :huffman
-    (let [{:keys [alphabet bit-len]} params]
-      (assert (and (= (count alphabet) 1)
-                   (zero? (long (first bit-len))))
-              "Huffman coding for more than one word is not supported yet.")
-      (fn
-        ([] [])
-        ([_])))
+      :huffman
+      (let [{:keys [alphabet bit-len]} params]
+        (assert (and (= (count alphabet) 1)
+                     (zero? (long (first bit-len))))
+                "Huffman coding for more than one word is not supported yet.")
+        (fn
+          ([] [])
+          ([_])))
 
-    :byte-array-len
-    (let [{:keys [len-encoding val-encoding]} params
-          len-encoder (build-codec-encoder len-encoding :int)
-          val-encoder (build-codec-encoder val-encoding :byte)]
-      (fn
-        ([] (into (len-encoder) (val-encoder)))
-        ([^"[B" bs]
-         (let [len (alength bs)]
-           (len-encoder len)
-           (dotimes [i len]
-             (val-encoder (aget bs i)))))))
+      :byte-array-len
+      (let [{:keys [len-encoding val-encoding]} params
+            len-encoder (build-codec-encoder len-encoding :int content-id->state)
+            val-encoder (build-codec-encoder val-encoding :byte content-id->state)]
+        (fn
+          ([] (into (len-encoder) (val-encoder)))
+          ([^"[B" bs]
+           (let [len (alength bs)]
+             (len-encoder len)
+             (dotimes [i len]
+               (val-encoder (aget bs i)))))))
 
-    :byte-array-stop
-    (let [{:keys [stop-byte]} params
-          out (ByteArrayOutputStream.)]
-      (fn
-        ([] [{:content-id content-id, :data (.toByteArray out)}])
-        ([^"[B" bs]
-         (.write out bs)
-         (.write out (int stop-byte)))))))
+      :byte-array-stop
+      (let [{:keys [stop-byte]} params
+            ^OutputStream out (out-for-encoder)]
+        (fn
+          ([] [{:content-id content-id, :data (data-for-encoder)}])
+          ([^"[B" bs]
+           (.write out bs)
+           (.write out (int stop-byte))))))))
 
 (defn build-data-series-encoders
   "TODO"
   [ds-encoding]
-  (reduce-kv (fn [encoders ds params]
-               (let [dt (data-series-type ds)
-                     encoder (build-codec-encoder params dt)]
-                 (assoc encoders ds encoder)))
-             {} ds-encoding))
+  (let [content-id->state (volatile! {})]
+    (reduce-kv (fn [encoders ds params]
+                 (let [dt (data-series-type ds)
+                       encoder (build-codec-encoder params dt content-id->state)]
+                   (assoc encoders ds encoder)))
+               {} ds-encoding)))
 
 (def ^:private digit->char
   (let [bs (.getBytes "0123456789ABCDEF")]
@@ -273,8 +287,8 @@
            (dotimes [i n]
              (conv out (nth vs' i)))))))
 
-(defn- build-tag-encoder [tag-encoding tag-type]
-  (let [encoder (build-codec-encoder tag-encoding :bytes)
+(defn- build-tag-encoder [tag-encoding tag-type content-id->state]
+  (let [encoder (build-codec-encoder tag-encoding :bytes content-id->state)
         converter (tag-value-converter tag-type)]
     (fn
       ([] (encoder))
@@ -286,11 +300,12 @@
 (defn build-tag-encoders
   "TODO"
   [tag-encodings]
-  (reduce-kv
-   (fn [encoders tag m]
-     (reduce-kv
-      (fn [encoders tag-type encoding]
-        (assoc-in encoders [tag tag-type]
-                  (build-tag-encoder encoding tag-type)))
-      encoders m))
-   {} tag-encodings))
+  (let [content-id->state (volatile! {})]
+    (reduce-kv
+     (fn [encoders tag m]
+       (reduce-kv
+        (fn [encoders tag-type encoding]
+          (assoc-in encoders [tag tag-type]
+                    (build-tag-encoder encoding tag-type content-id->state)))
+        encoders m))
+     {} tag-encodings)))

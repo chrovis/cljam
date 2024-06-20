@@ -119,7 +119,9 @@
                             (when (pos? (alength data))
                               (update block :data
                                       #(struct/generate-block :raw 4 content-id %)))))
-                    (sort-by :content-id)
+                    ;; sort + dedupe by :content-id
+                    (into (sorted-map) (map (juxt :content-id identity)))
+                    vals
                     (cons {:content-id 0
                            :data (struct/generate-block :raw 5 0 (byte-array 0))}))
         ref-md5 (reference-md5 wtr stats)

@@ -148,6 +148,26 @@
         (recur more (:counter slice) (conj acc slice)))
       acc)))
 
+(defn- generate-container-header [^CRAMWriter wtr ^bytes compression-header-block slices]
+  (let [stats (->> slices
+                   (map :stats)
+                   (stats/merge-stats (count (:SQ (.-header wtr)))))
+        container-len (->> slices
+                           (map (fn [{:keys [^bytes header-block data-blocks]}]
+                                  (apply + (alength header-block)
+                                         (map #(alength ^bytes %) data-blocks))))
+                           (apply + (alength compression-header-block)))
+        landmarks (->> slices
+                       (reductions #(+ (long %1) (long (:size %2)))
+                                   (alength compression-header-block))
+                       butlast)]
+    (assoc (stats->header-base stats)
+           :length container-len
+           :blocks (->> slices
+                        (map (comp inc count :data-blocks))
+                        (apply + 1))
+           :landmarks landmarks)))
+
 (defn- write-container [^CRAMWriter wtr counter container-records]
   (let [^OutputStream out (.-stream wtr)
         ds-encodings ds/default-data-series-encodings
@@ -162,27 +182,9 @@
         compression-header-block (struct/generate-compression-header-block
                                   {:RN true, :AP false, :RR true}
                                   subst-mat tag-dict ds-encodings tag-encodings)
-        stats (->> slices
-                   (map :stats)
-                   (stats/merge-stats (count (:SQ (.-header wtr)))))
-        container-len (->> slices
-                           (map (fn [{:keys [^bytes header-block data-blocks]}]
-                                  (apply + (alength header-block)
-                                         (map #(alength ^bytes %) data-blocks))))
-                           (apply + (alength compression-header-block)))
-        landmarks (->> slices
-                       (reductions #(+ (long %1) (long (:size %2)))
-                                   (alength compression-header-block))
-                       butlast)
-        container-header (assoc (stats->header-base stats)
-                                :counter counter
-                                :length container-len
-                                :blocks (->> slices
-                                             (map (comp inc count :data-blocks))
-                                             (apply + 1))
-                                :landmarks landmarks)
+        container-header (generate-container-header wtr compression-header-block slices)
         counter' (:counter (peek slices))]
-    (struct/encode-container-header out container-header)
+    (struct/encode-container-header out (assoc container-header :counter counter))
     (.write out compression-header-block)
     (run! (fn [{:keys [^bytes header-block data-blocks]}]
             (.write out header-block)

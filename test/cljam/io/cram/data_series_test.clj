@@ -610,7 +610,7 @@
                  (String. data))))
         (let [[{:keys [content-id data]}] (hx)]
           (is (= 6846536 content-id))
-          (is (= "01234567\00089abcdef\000cafebabe\000deadbeef\000"
+          (is (= "01234567\00089ABCDEF\000CAFEBABE\000DEADBEEF\000"
                  (String. data)))))))
   (testing "array values"
     (testing "byte arrays"

@@ -394,6 +394,7 @@
           io-util/alignment-writer? true
           io-util/sam-writer? true
           io-util/bam-writer? false
+          io-util/cram-writer? false
           io-util/sequence-writer? false
           io-util/fasta-writer? false
           io-util/twobit-writer? false
@@ -411,6 +412,25 @@
           io-util/alignment-writer? true
           io-util/sam-writer? false
           io-util/bam-writer? true
+          io-util/cram-writer? false
+          io-util/sequence-writer? false
+          io-util/fasta-writer? false
+          io-util/twobit-writer? false
+          io-util/variant-writer? false
+          io-util/vcf-writer? false
+          io-util/bcf-writer? false
+          io-util/fastq-writer? false
+          io-util/bed-writer? false
+          io-util/wig-writer? false))))
+  (testing "cram writer"
+    (with-before-after {:before (prepare-cache!)
+                        :after (clean-cache!)}
+      (with-open [r (cram/writer (.getAbsolutePath (cio/file temp-dir "temp.cram")))]
+        (are [?pred ?expected] (= (?pred r) ?expected)
+          io-util/alignment-writer? true
+          io-util/sam-writer? false
+          io-util/bam-writer? false
+          io-util/cram-writer? true
           io-util/sequence-writer? false
           io-util/fasta-writer? false
           io-util/twobit-writer? false
@@ -428,6 +448,7 @@
           io-util/alignment-writer? false
           io-util/sam-writer? false
           io-util/bam-writer? false
+          io-util/cram-writer? false
           io-util/sequence-writer? true
           io-util/fasta-writer? true
           io-util/twobit-writer? false
@@ -445,6 +466,7 @@
           io-util/alignment-writer? false
           io-util/sam-writer? false
           io-util/bam-writer? false
+          io-util/cram-writer? false
           io-util/sequence-writer? true
           io-util/fasta-writer? false
           io-util/twobit-writer? true
@@ -462,6 +484,7 @@
           io-util/alignment-writer? false
           io-util/sam-writer? false
           io-util/bam-writer? false
+          io-util/cram-writer? false
           io-util/sequence-writer? false
           io-util/fasta-writer? false
           io-util/twobit-writer? false
@@ -479,6 +502,7 @@
           io-util/alignment-writer? false
           io-util/sam-writer? false
           io-util/bam-writer? false
+          io-util/cram-writer? false
           io-util/sequence-writer? false
           io-util/fasta-writer? false
           io-util/twobit-writer? false
@@ -496,6 +520,7 @@
           io-util/alignment-writer? false
           io-util/sam-writer? false
           io-util/bam-writer? false
+          io-util/cram-writer? false
           io-util/sequence-writer? false
           io-util/fasta-writer? false
           io-util/twobit-writer? false
@@ -513,6 +538,7 @@
           io-util/alignment-writer? false
           io-util/sam-writer? false
           io-util/bam-writer? false
+          io-util/cram-writer? false
           io-util/sequence-writer? false
           io-util/fasta-writer? false
           io-util/twobit-writer? false
@@ -530,6 +556,7 @@
           io-util/alignment-writer? false
           io-util/sam-writer? false
           io-util/bam-writer? false
+          io-util/cram-writer? false
           io-util/sequence-writer? false
           io-util/fasta-writer? false
           io-util/twobit-writer? false

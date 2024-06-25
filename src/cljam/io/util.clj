@@ -6,6 +6,7 @@
             cljam.io.bam.reader
             cljam.io.bam.writer
             cljam.io.cram.reader
+            cljam.io.cram.writer
             cljam.io.vcf.reader
             cljam.io.vcf.writer
             cljam.io.bcf.reader
@@ -55,6 +56,11 @@
   "Checks if given object is an instance of CRAMReader."
   [rdr]
   (instance? cljam.io.cram.reader.CRAMReader rdr))
+
+(defn cram-writer?
+  "Checks if given object is an instance of CRAMWriter."
+  [wtr]
+  (instance? cljam.io.cram.writer.CRAMWriter wtr))
 
 (defn variant-reader?
   "Checks if given object implements protocol IVariantReader."

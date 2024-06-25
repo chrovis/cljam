@@ -10,7 +10,7 @@
 
 (declare write-header write-alignments)
 
-(deftype CRAMWriter [url stream header seq-resolver]
+(deftype CRAMWriter [url stream seq-resolver]
   Closeable
   (close [_]
     (struct/encode-eof-container stream)
@@ -35,11 +35,11 @@
   [^CRAMWriter wtr header]
   (struct/encode-cram-header-container (.-stream wtr) header))
 
-(defn- reference-md5 [^CRAMWriter wtr {:keys [^long ri ^long start ^long end]}]
+(defn- reference-md5 [seq-resolver header {:keys [^long ri ^long start ^long end]}]
   (if (neg? ri)
     (byte-array 16)
-    (let [chr (:SN (nth (:SQ (.-header wtr)) ri))
-          ref-bases (resolver/resolve-sequence (.-seq-resolver wtr) chr start end)
+    (let [chr (:SN (nth (:SQ header) ri))
+          ref-bases (resolver/resolve-sequence seq-resolver chr start end)
           md5 (MessageDigest/getInstance "md5")]
       (.digest md5 ref-bases))))
 
@@ -103,11 +103,10 @@
    :records nrecords})
 
 (defn- generate-slice
-  [^CRAMWriter wtr counter tag-dict subst-mat tag-encodings slice-records]
+  [seq-resolver header counter tag-dict subst-mat tag-encodings slice-records]
   (let [ds-encoders (ds/build-data-series-encoders ds/default-data-series-encodings)
         tag-encoders (ds/build-tag-encoders tag-encodings)
-        stats (record/encode-slice-records (.-seq-resolver wtr) (.-header wtr)
-                                           tag-dict subst-mat
+        stats (record/encode-slice-records seq-resolver header tag-dict subst-mat
                                            ds-encoders tag-encoders slice-records)
         ds-results (mapcat #(%) (vals ds-encoders))
         tag-results (for [[_tag v] tag-encoders
@@ -124,7 +123,7 @@
                     vals
                     (cons {:content-id 0
                            :data (struct/generate-block :raw 5 0 (byte-array 0))}))
-        ref-md5 (reference-md5 wtr stats)
+        ref-md5 (reference-md5 seq-resolver header stats)
         header-block (struct/generate-slice-header-block
                       (assoc (stats->header-base stats)
                              :counter counter
@@ -141,17 +140,18 @@
                 (apply + (alength header-block)))}))
 
 (defn- generate-slices
-  [wtr counter tag-dict subst-mat tag-encodings container-records]
+  [seq-resolver header counter tag-dict subst-mat tag-encodings container-records]
   (loop [[slice-records & more] container-records, counter counter, acc []]
     (if slice-records
-      (let [slice (generate-slice wtr counter tag-dict subst-mat tag-encodings slice-records)]
+      (let [slice (generate-slice seq-resolver header counter tag-dict subst-mat
+                                  tag-encodings slice-records)]
         (recur more (:counter slice) (conj acc slice)))
       acc)))
 
-(defn- generate-container-header [^CRAMWriter wtr ^bytes compression-header-block slices]
+(defn- generate-container-header [header ^bytes compression-header-block slices]
   (let [stats (->> slices
                    (map :stats)
-                   (stats/merge-stats (count (:SQ (.-header wtr)))))
+                   (stats/merge-stats (count (:SQ header))))
         container-len (->> slices
                            (map (fn [{:keys [^bytes header-block data-blocks]}]
                                   (apply + (alength header-block)
@@ -168,7 +168,7 @@
                         (apply + 1))
            :landmarks landmarks)))
 
-(defn- write-container [^CRAMWriter wtr counter container-records]
+(defn- write-container [^CRAMWriter wtr header counter container-records]
   (let [^OutputStream out (.-stream wtr)
         ds-encodings ds/default-data-series-encodings
         subst-mat {\A {\T 0, \G 1, \C 2, \N 3}
@@ -178,11 +178,12 @@
                    \N {\A 0, \T 1, \G 2, \C 3}}
         tag-dict (build-tag-dictionary container-records)
         tag-encodings (build-tag-encodings tag-dict)
-        slices (generate-slices wtr counter tag-dict subst-mat tag-encodings container-records)
+        slices (generate-slices (.-seq-resolver wtr) header counter tag-dict
+                                subst-mat tag-encodings container-records)
         compression-header-block (struct/generate-compression-header-block
                                   {:RN true, :AP false, :RR true}
                                   subst-mat tag-dict ds-encodings tag-encodings)
-        container-header (generate-container-header wtr compression-header-block slices)
+        container-header (generate-container-header header compression-header-block slices)
         counter' (:counter (peek slices))]
     (struct/encode-container-header out (assoc container-header :counter counter))
     (.write out compression-header-block)
@@ -201,5 +202,5 @@
 
 (defn write-alignments
   "TODO"
-  [wtr alns _]
-  (reduce (partial write-container wtr) 0 (partition-alignments 1 10000 alns)))
+  [wtr alns header]
+  (reduce (partial write-container wtr header) 0 (partition-alignments 1 10000 alns)))

@@ -4,7 +4,8 @@
   (:require [cljam.io.cram.core :as cram]
             [cljam.io.protocols :as protocols]
             [cljam.io.util :as io-util])
-  (:import [cljam.io.cram.reader CRAMReader]))
+  (:import [cljam.io.cram.reader CRAMReader]
+           [cljam.io.cram.writer CRAMWriter]))
 
 (defn reader
   "Creates a CRAM reader depending on the argument f: If f is a file or a string
@@ -47,3 +48,37 @@
   function immediately realizes a delayed index."
   [rdr]
   (protocols/indexed? rdr))
+
+(defn writer
+  "Creates a CRAM writer depending on the argument f: If f is a file or a string
+  that representing the path to a CRAM file, returns a new writer that writes
+  to that CRAM file. If f is a CRAM writer, creates and returns a cloned CRAM
+  writer from it.
+
+  The function also takes an optional argument `option`, which is a map that
+  consists of:
+    - reference: A string representing the path to the reference file, or
+                 a sequence reader that reads sequences from the reference file.
+                 This may be omitted only when the CRAM file to be read does not
+                 require a reference file."
+  (^CRAMWriter [f] (writer f {}))
+  (^CRAMWriter [f option]
+   (if (io-util/cram-writer? f)
+     (cram/clone-reader f)
+     (cram/writer f option))))
+
+(defn write-header
+  "Writes header to the CRAM file."
+  [wtr header]
+  (protocols/write-header wtr header))
+
+(defn write-refs
+  "Does nothing. This exists only for the sake of compatibility with other
+  alignment writers."
+  [wtr refs]
+  (protocols/write-refs wtr refs))
+
+(defn write-alignments
+  "Writes alignments to the CRAM file."
+  [wtr alns header]
+  (protocols/write-alignments wtr alns header))

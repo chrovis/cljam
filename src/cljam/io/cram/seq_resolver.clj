@@ -21,6 +21,25 @@
   [seq-file]
   (->SeqResolver (cseq/reader seq-file)))
 
+(defn cached-resolver
+  "Creates a new cached sequence resolver based on the given sequence resolver.
+
+  It will cache the resulting sequence for a whole contig sequence query.
+  For region queries, it will return a copy of the specified region of the cached
+  sequence if available."
+  [resolver]
+  (let [cache (cache/lu-cache-factory {} :threshold 3)]
+    (reify
+      Closeable
+      (close [_]
+        (.close ^Closeable resolver))
+      proto/ISeqResolver
+      (resolve-sequence [_ chr]
+        (cache/lookup-or-miss cache chr (partial proto/resolve-sequence resolver)))
+      (resolve-sequence [this chr start end]
+        (some-> ^bytes (proto/resolve-sequence this chr)
+                (Arrays/copyOfRange (dec (long start)) (long end)))))))
+
 (defn clone-seq-resolver
   "Creates a cloned sequence resolver based on the given resolver."
   [^SeqResolver resolver]

@@ -26,3 +26,19 @@
   (testing "resolver can be omitted, but in that case, trying to resolve seq will end up with error"
     (is (thrown? Exception (proto/resolve-sequence nil "ref")))
     (is (thrown? Exception (proto/resolve-sequence nil "ref" 1 5)))))
+
+(deftest cached-seq-resolver-test
+  (with-open [resolver (resolver/seq-resolver common/test-fa-file)
+              resolver' (resolver/cached-resolver resolver)]
+    (testing "cached seq resolver returns equivalent sequences as the original seq resolver does"
+      (is (= (String. (proto/resolve-sequence resolver "ref"))
+             (String. (proto/resolve-sequence resolver' "ref"))))
+      (is (= (String. (proto/resolve-sequence resolver "ref" 5 10))
+             (String. (proto/resolve-sequence resolver' "ref" 5 10))))
+      (is (= (proto/resolve-sequence resolver "unknown")
+             (proto/resolve-sequence resolver' "unknown")))
+      (is (= (proto/resolve-sequence resolver "unknown" 5 10)
+             (proto/resolve-sequence resolver' "unknown" 5 10))))
+    (testing "cached seq resolver returns the identical sequence for the cached chr"
+      (is (identical? (proto/resolve-sequence resolver' "ref")
+                      (proto/resolve-sequence resolver' "ref"))))))

@@ -2,7 +2,8 @@
   (:require [cljam.io.cram.codecs.rans4x8 :as rans]
             [cljam.io.cram.itf8 :as itf8]
             [cljam.io.sam.util.header :as sam.header]
-            [cljam.io.util.byte-buffer :as bb])
+            [cljam.io.util.byte-buffer :as bb]
+            [clojure.string :as str])
   (:import [java.io ByteArrayInputStream IOException]
            [java.nio Buffer ByteBuffer ByteOrder]
            [java.util Arrays]
@@ -51,7 +52,8 @@
     (throw (IOException. "Invalid CRAM file")))
   (let [major (bb/read-ubyte bb)
         minor (bb/read-ubyte bb)
-        file-id (String. ^bytes (bb/read-bytes bb 20))]
+        file-id (-> (String. ^bytes (bb/read-bytes bb 20))
+                    (str/replace #"\000+$" ""))]
     {:version {:major major :minor minor}, :id file-id}))
 
 (defn decode-container-header

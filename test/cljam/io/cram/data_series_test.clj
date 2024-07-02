@@ -1,10 +1,13 @@
-(ns cljam.io.cram.decode.data-series-test
+(ns cljam.io.cram.data-series-test
   (:require [cljam.io.bam.decoder :as decoder]
-            [cljam.io.cram.decode.data-series :as ds]
             [cljam.io.cram.bit-stream :as bs]
+            [cljam.io.cram.data-series :as ds]
             [cljam.io.sam.util.cigar :as cigar]
             [cljam.io.util.byte-buffer :as bb]
-            [clojure.test :refer [deftest is testing]]))
+            [cljam.io.util.lsb.io-stream :as lsb]
+            [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]])
+  (:import [java.io ByteArrayOutputStream]))
 
 (deftest build-data-series-decoders-test
   (let [encodings {:BA {:codec :external, :content-id 1}
@@ -14,7 +17,7 @@
                    :BB {:codec :byte-array-len
                         :len-encoding {:codec :external, :content-id 3}
                         :val-encoding {:codec :external, :content-id 4}}
-                   :RN {:codec :byte-array-stop, :stop-byte 0, :external-id 5}}
+                   :RN {:codec :byte-array-stop, :stop-byte 0, :content-id 5}}
         blocks [{:content-id 0
                  :data (bb/make-lsb-byte-buffer (byte-array [2r01001110]))}
                 {:content-id 1
@@ -212,7 +215,7 @@
     (testing "strings"
       (let [encodings {:MC {\Z {:codec :byte-array-stop
                                 :stop-byte 9
-                                :external-id 5063514}}
+                                :content-id 5063514}}
                        :hx {\H {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [9]
@@ -247,7 +250,6 @@
                 {:type "H" :value [0xde 0xad 0xbe 0xef]}]
                (map (fn [m] (update m :value (partial map #(bit-and (long %) 0xff))))
                     [(hx) (hx) (hx) (hx)]))))))
-
   (testing "array values"
     (testing "byte arrays"
       (let [encodings {:sb {\B {:codec :byte-array-len
@@ -397,7 +399,7 @@
                 "18S76M1D57M"]
             encodings {:CG {\B {:codec :byte-array-stop
                                 :stop-byte -1
-                                :external-id 4409154}}}
+                                :content-id 4409154}}}
             blocks [{:content-id 4409154
                      :data (let [encoded (map cigar/encode-cigar vs)
                                  bb (bb/allocate-lsb-byte-buffer (+ (->> (apply concat encoded)

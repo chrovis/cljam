@@ -196,6 +196,7 @@
             (recur fs p (conj! acc [gap \M]))
             (if-let [[op ^long len] (case (:code f)
                                       (:read-base :subst) [\M 1]
+                                      :bases [\M (count (:bases f))]
                                       :insertion [\I (count (:bases f))]
                                       :softclip [\S (count (:bases f))]
                                       :hardclip [\H (:len f)]

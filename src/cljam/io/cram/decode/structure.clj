@@ -32,8 +32,8 @@
               val-encoding (decode-encoding bb)]
           {:codec :byte-array-len, :len-encoding len-encoding, :val-encoding val-encoding})
       5 (let [stop-byte (.get bb)
-              external-id (itf8/decode-itf8 bb)]
-          {:codec :byte-array-stop, :stop-byte stop-byte, :external-id external-id})
+              content-id (itf8/decode-itf8 bb)]
+          {:codec :byte-array-stop, :stop-byte stop-byte, :content-id content-id})
       6 (let [offset (itf8/decode-itf8 bb)
               length (itf8/decode-itf8 bb)]
           {:codec :beta, :offset offset, :length length})

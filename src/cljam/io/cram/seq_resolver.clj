@@ -1,13 +1,17 @@
 (ns cljam.io.cram.seq-resolver
   (:require [cljam.io.cram.seq-resolver.protocol :as proto]
-            [cljam.io.sequence :as cseq])
-  (:import [java.io Closeable]))
+            [cljam.io.sequence :as cseq]
+            [clojure.core.cache.wrapped :as cache])
+  (:import [java.io Closeable]
+           [java.util Arrays]))
 
 (deftype SeqResolver [seq-reader]
   java.io.Closeable
   (close [_]
     (.close ^Closeable seq-reader))
   proto/ISeqResolver
+  (resolve-sequence [this chr]
+    (proto/resolve-sequence this chr nil nil))
   (resolve-sequence [_ chr start end]
     (when-let [s (cseq/read-sequence seq-reader {:chr chr :start start :end end})]
       (.getBytes ^String s))))

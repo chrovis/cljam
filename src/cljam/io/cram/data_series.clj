@@ -144,6 +144,45 @@
         decoders m))
      {} tags)))
 
+(def ^{:doc "Default encodings for all the data series"}
+  default-data-series-encodings
+  {:BF {:content-id  1, :codec :external}
+   :CF {:content-id  2, :codec :external}
+   :RI {:content-id  3, :codec :external}
+   :RL {:content-id  4, :codec :external}
+   :AP {:content-id  5, :codec :external}
+   :RG {:content-id  6, :codec :external}
+   :RN {:content-id  7, :codec :byte-array-stop, :stop-byte (int \tab)}
+   :MF {:content-id  8, :codec :external}
+   :NS {:content-id  9, :codec :external}
+   :NP {:content-id 10, :codec :external}
+   :TS {:content-id 11, :codec :external}
+   :NF {:content-id 12, :codec :external}
+   :TL {:content-id 13, :codec :external}
+   :FN {:content-id 14, :codec :external}
+   :FC {:content-id 15, :codec :external}
+   :FP {:content-id 16, :codec :external}
+   :DL {:content-id 17, :codec :external}
+   :BB {:codec :byte-array-len
+        :len-encoding {:codec :external, :content-id 18}
+        :val-encoding {:codec :external, :content-id 19}}
+   :QQ {:codec :byte-array-len
+        :len-encoding {:codec :external, :content-id 20}
+        :val-encoding {:codec :external, :content-id 21}}
+   :BS {:content-id 22, :codec :external}
+   :IN {:codec :byte-array-len
+        :len-encoding {:codec :external, :content-id 23}
+        :val-encoding {:codec :external, :content-id 24}}
+   :RS {:content-id 25, :codec :external}
+   :PD {:content-id 26, :codec :external}
+   :HC {:content-id 27, :codec :external}
+   :SC {:codec :byte-array-len
+        :len-encoding {:codec :external, :content-id 28}
+        :val-encoding {:codec :external, :content-id 29}}
+   :MQ {:content-id 30, :codec :external}
+   :BA {:content-id 31, :codec :external}
+   :QS {:content-id 32, :codec :external}})
+
 (defn- build-codec-encoder
   [{:keys [codec content-id] :as params} data-type content-id->state]
   (letfn [(out-for-encoder []

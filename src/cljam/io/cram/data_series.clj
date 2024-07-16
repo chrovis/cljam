@@ -245,7 +245,9 @@
   a map {<data series name> <encoder>}, where:
     - <data series name>: a keyword representing the data series name
     - <encoding>: a map representing the encoding of the data series
-    - <encoder>: a function that takes one argument to encode"
+    - <encoder>: a function that has two arities
+                 - arity 1: take a value to encode for the data series
+                 - arity 0: finalize and return the encoding result"
   [ds-encoding]
   (let [content-id->state (volatile! {})]
     (reduce-kv (fn [encoders ds params]
@@ -311,7 +313,9 @@
     - <tag name>: a keyword representing the tag name
     - <type character>: a character representing a type of the tag
     - <encoding>: a map representing the encoding of the tag and type
-    - <encoder>: a function that takes one argument to encode"
+    - <encoder>: a function that has two arities
+                 - arity 1: take a value to encode for the tag
+                 - arity 0: finalize and return the encoding result"
   [tag-encodings]
   (let [content-id->state (volatile! {})]
     (reduce-kv

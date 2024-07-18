@@ -55,9 +55,16 @@
   The function also takes an optional argument `option`, which is a map that
   consists of:
     - reference: A string representing the path to the reference file, or
-                 a sequence reader that reads sequences from the reference file.
-                 This may be omitted only when the CRAM file to be read does not
-                 require a reference file."
+        a sequence reader that reads sequences from the reference file.
+        This may be omitted only when the CRAM file to be read does not require
+        a reference file.
+    - create-index?: If true, creates a .crai index file in the course of CRAM
+        file writing.
+    - skip-sort-order-check?: When creating a CRAM index for the CRAM file,
+        the CRAM writer, by default, checks if the header is declared as
+        `SO:coordinate` and raises an error if not.
+        If this option is set to true, the CRAM writer will skip the header check
+        and create an index file regardless of the header declaration."
   (^CRAMWriter [f] (writer f {}))
   (^CRAMWriter [f option] (cram/writer f option)))
 

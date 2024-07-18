@@ -3,6 +3,7 @@
             [cljam.io.cram.data-series :as ds]
             [cljam.io.cram.decode.record :as record]
             [cljam.io.cram.decode.structure :as struct]
+            [cljam.io.cram.encode.alignment-stats :as stats]
             [cljam.io.cram.seq-resolver.protocol :as resolver]
             [cljam.io.protocols :as protocols]
             [cljam.io.util.byte-buffer :as bb]
@@ -81,21 +82,25 @@
                                 (inc (- (long end) offset))))))
       (.-seq-resolver rdr))))
 
-(defn- read-slice-records [^CRAMReader rdr bb compression-header slice-header]
-  (let [blocks (into [] (map (fn [_] (struct/decode-block bb)))
-                     (range (:blocks slice-header)))
-        core-block (first (filter #(zero? (long (:content-id %))) blocks))
-        bs-decoder (when core-block
-                     (bs/make-bit-stream-decoder (:data core-block)))
-        ds-decoders (ds/build-data-series-decoders compression-header bs-decoder blocks)
-        tag-decoders (ds/build-tag-decoders compression-header bs-decoder blocks)]
-    (record/decode-slice-records (seq-resolver-for-slice rdr slice-header blocks)
-                                 (.-qname-generator rdr)
-                                 @(.-header rdr)
-                                 compression-header
-                                 slice-header
-                                 ds-decoders
-                                 tag-decoders)))
+(defn- read-slice-records
+  ([rdr bb compression-header slice-header]
+   (read-slice-records rdr nil bb compression-header slice-header))
+  ([^CRAMReader rdr seq-resolver bb compression-header slice-header]
+   (let [blocks (into [] (map (fn [_] (struct/decode-block bb)))
+                      (range (:blocks slice-header)))
+         core-block (first (filter #(zero? (long (:content-id %))) blocks))
+         bs-decoder (when core-block
+                      (bs/make-bit-stream-decoder (:data core-block)))
+         ds-decoders (ds/build-data-series-decoders compression-header bs-decoder blocks)
+         tag-decoders (ds/build-tag-decoders compression-header bs-decoder blocks)]
+     (record/decode-slice-records (or seq-resolver
+                                      (seq-resolver-for-slice rdr slice-header blocks))
+                                  (.-qname-generator rdr)
+                                  @(.-header rdr)
+                                  compression-header
+                                  slice-header
+                                  ds-decoders
+                                  tag-decoders))))
 
 (defn- with-each-slice-header [^ByteBuffer bb f slice-offsets]
   (let [container-header-end (.position bb)
@@ -225,3 +230,73 @@
   (if @(.-index rdr)
     (read-alignments-in-region-with-index rdr chr start end)
     (read-alignments-in-region-without-index rdr chr start end)))
+
+(defn- slice-index-entries
+  [^CRAMReader rdr seq-resolver rname->idx bb compression-header slice-header]
+  (if (= (:ref-seq-id slice-header) -2)
+    (let [slice-records (read-slice-records rdr seq-resolver bb compression-header slice-header)
+          spans-builder (stats/make-alignment-spans-builder)]
+      (run! (fn [{:keys [rname] :as record}]
+              (let [ri (if (= rname "*") -1 (get rname->idx rname))]
+                (stats/update-span! spans-builder ri (:pos record) (:end record))))
+            slice-records)
+      (mapv (fn [[ri {:keys [start span]}]]
+              {:ref-seq-id ri, :start start, :span span})
+            (stats/build-spans spans-builder)))
+    [(select-keys slice-header [:ref-seq-id :start :span])]))
+
+(defn- with-each-slice-header&offset [container-header ^ByteBuffer bb f]
+  (let [container-header-end (.position bb)
+        compression-header (struct/decode-compression-header-block bb)
+        slice-offsets (vec (:landmarks container-header))]
+    (mapcat (fn [^long slice-offset ^long slice-end]
+              (let [slice-start (+ container-header-end slice-offset)
+                    _ (.position ^Buffer bb slice-start)
+                    slice-header (struct/decode-slice-header-block bb)
+                    slice-size (- slice-end slice-offset)]
+                (f compression-header slice-header slice-offset slice-size)))
+            slice-offsets
+            (-> slice-offsets
+                (conj (:length container-header))
+                rest))))
+
+;; The current implementation of the CRAM index entry generator decodes each
+;; entire CRAM record for records in multiple reference slices, which requires
+;; the reference file to restore the read sequence of those records although
+;; it's unnecessary in theory.
+;; The following stub implementation of the seq resolver allows the CRAM index
+;; entry generator to decode the slice records without the limitation of requiring
+;; the real reference file.
+(defn- stub-seq-resolver []
+  (reify resolver/ISeqResolver
+    (resolve-sequence [_ _])
+    (resolve-sequence [_ _ start end]
+      (byte-array (inc (- (long end) (long start))) (byte (int \N))))))
+
+(defn generate-index-entries
+  "Generates CRAM index entries for the given CRAM file, returning them as a sequence
+  of maps which is intended to be consumed with `cljam.io.crai/write-index-entries`."
+  [^CRAMReader rdr]
+  (let [^FileChannel ch (.-channel rdr)
+        seq-resolver (stub-seq-resolver)
+        rname->idx (into {}
+                         (map-indexed (fn [i {:keys [SN]}] [SN i]))
+                         (:SQ @(.-header rdr)))]
+    (letfn [(read-fn [container-offset]
+              (fn [container-header bb]
+                (when-not (struct/eof-container? container-header)
+                  (with-each-slice-header&offset container-header bb
+                    (fn [compression-header slice-header slice-offset slice-size]
+                      (->> (slice-index-entries rdr seq-resolver rname->idx bb
+                                                compression-header slice-header)
+                           (map #(assoc %
+                                        :container-offset container-offset
+                                        :slice-offset slice-offset
+                                        :size slice-size))))))))
+            (step []
+              (let [container-offset (.position ch)]
+                (when (< container-offset (.size ch))
+                  (when-let [entries (read-container-with rdr (read-fn container-offset))]
+                    (concat entries (lazy-seq (step)))))))]
+      (.position ch (long @(.-offset rdr)))
+      (step))))

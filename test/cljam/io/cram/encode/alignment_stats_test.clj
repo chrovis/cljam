@@ -49,3 +49,22 @@
            (into {}
                  (stats/merge-stats [{:ri -1, :start 0, :end 0, :nbases 10000, :nrecords 20}
                                      {:ri -1, :start 0, :end 0, :nbases 15000, :nrecords 30}]))))))
+
+(deftest make-alignment-spans-builder-test
+  (let [builder (stats/make-alignment-spans-builder)
+        records [{:ri 0, :start 1, :end 100}
+                 {:ri 0, :start 51, :end 150}
+                 {:ri 1, :start 51, :end 150}
+                 {:ri 1, :start 151, :end 300}
+                 {:ri 2, :start 51, :end 150}
+                 {:ri 2, :start 200, :end 300}
+                 {:ri -1, :start 0, :end 0}
+                 {:ri -1, :start 0, :end 0}]]
+    (run! (fn [{:keys [ri start end]}]
+            (stats/update-span! builder ri start end))
+          records)
+    (is (= {0 {:start 1, :span 150}
+            1 {:start 51, :span 250}
+            2 {:start 51, :span 250}
+            -1 {:start 0, :span 1}}
+           (stats/build-spans builder)))))

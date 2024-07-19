@@ -5,22 +5,33 @@
             [clojure.string :as str])
   (:import [java.io Closeable OutputStreamWriter PrintWriter]))
 
+(defn- read-index-entries [rdr]
+  (->> (line-seq rdr)
+       (map (fn [line]
+              (let [[^long seq-id start span container-offset slice-offset size]
+                    (map #(Long/parseLong %) (str/split line #"\t"))
+                    unmapped? (neg? seq-id)]
+                {:ref-seq-id seq-id
+                 :start (if unmapped? 0 start)
+                 :span (if unmapped? 0 span)
+                 :container-offset container-offset
+                 :slice-offset slice-offset
+                 :size size})))))
+
 (defn read-index
   "Reads a CRAI file `f` and creates an index."
   [f refs]
   (let [refs (vec refs)]
     (with-open [rdr (io/reader (util/compressor-input-stream f))]
-      (->> (line-seq rdr)
-           (map (fn [line]
-                  (let [[^long seq-id ^long start ^long span container-offset slice-offset size]
-                        (map #(Long/parseLong %) (str/split line #"\t"))
-                        unmapped? (neg? seq-id)]
-                    {:chr (if unmapped? "*" (:name (nth refs seq-id)))
-                     :start (if unmapped? 0 start)
-                     :end (if unmapped? 0 (+ start span))
-                     :container-offset container-offset
-                     :slice-offset slice-offset
-                     :size size})))
+      (->> (read-index-entries rdr)
+           (map (fn [{:keys [^long ref-seq-id ^long start ^long span] :as entry}]
+                  (-> entry
+                      (assoc :chr
+                             (if (neg? ref-seq-id)
+                               "*"
+                               (:name (nth refs ref-seq-id)))
+                             :end (+ start span))
+                      (dissoc :ref-seq-id :span))))
            intervals/index-intervals))))
 
 (defn find-overlapping-entries

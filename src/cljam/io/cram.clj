@@ -1,10 +1,11 @@
 (ns cljam.io.cram
-  "Alpha - subject to change. Provides functions for reading from a CRAM file."
+  "Alpha - subject to change. Provides functions for reading and writing a CRAM file."
   (:refer-clojure :exclude [indexed?])
   (:require [cljam.io.cram.core :as cram]
             [cljam.io.protocols :as protocols]
             [cljam.io.util :as io-util])
-  (:import [cljam.io.cram.reader CRAMReader]))
+  (:import [cljam.io.cram.reader CRAMReader]
+           [cljam.io.cram.writer CRAMWriter]))
 
 (defn reader
   "Creates a CRAM reader depending on the argument f: If f is a file or a string
@@ -47,3 +48,31 @@
   function immediately realizes a delayed index."
   [rdr]
   (protocols/indexed? rdr))
+
+(defn writer
+  "Creates a new CRAM writer that writes to a CRAM file f.
+
+  The function also takes an optional argument `option`, which is a map that
+  consists of:
+    - reference: A string representing the path to the reference file, or
+                 a sequence reader that reads sequences from the reference file.
+                 This may be omitted only when the CRAM file to be read does not
+                 require a reference file."
+  (^CRAMWriter [f] (writer f {}))
+  (^CRAMWriter [f option] (cram/writer f option)))
+
+(defn write-header
+  "Writes header to the CRAM file."
+  [wtr header]
+  (protocols/write-header wtr header))
+
+(defn write-refs
+  "Does nothing. This exists only for the sake of compatibility with other
+  alignment writers."
+  [wtr refs]
+  (protocols/write-refs wtr refs))
+
+(defn write-alignments
+  "Writes alignments to the CRAM file."
+  [wtr alns header]
+  (protocols/write-alignments wtr alns header))

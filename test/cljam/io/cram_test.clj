@@ -1,10 +1,14 @@
 (ns cljam.io.cram-test
   (:require [cljam.io.cram :as cram]
             [cljam.io.sam :as sam]
-            [cljam.test-common :as common :refer [deftest-remote
+            [cljam.test-common :as common :refer [clean-cache! deftest-remote
+                                                  prepare-cache!
                                                   prepare-cavia!
                                                   with-before-after]]
+            [clojure.java.io :as io]
             [clojure.test :refer [are deftest is testing]]))
+
+(def ^:private temp-cram-file (io/file common/temp-dir "test.cram"))
 
 (defn- fixup-bam-aln [aln]
   (-> (into {} aln)
@@ -64,3 +68,40 @@
           {:chr "chr14", :start 105661859} 10
           ;; region crosses over container boundary
           {:chr "chr19", :start 54000000, :end 55000000} 12)))))
+
+(deftest writer-test
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (with-open [r (cram/reader common/test-cram-file
+                               {:reference common/test-fa-file})
+                w (cram/writer temp-cram-file
+                               {:reference common/test-fa-file})]
+      (cram/write-header w (cram/read-header r))
+      (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
+    (with-open [r (cram/reader common/test-cram-file
+                               {:reference common/test-fa-file})
+                r' (cram/reader temp-cram-file
+                                {:reference common/test-fa-file})]
+      (is (= (cram/read-header r)
+             (cram/read-header r')))
+      (is (= (cram/read-alignments r)
+             (cram/read-alignments r'))))))
+
+(deftest-remote writer-with-multiple-containers-test
+  (with-before-after {:before (do (prepare-cavia!)
+                                  (prepare-cache!))
+                      :after (clean-cache!)}
+    (with-open [r (cram/reader common/medium-cram-file
+                               {:reference common/hg19-twobit-file})
+                w (cram/writer temp-cram-file
+                               {:reference common/hg19-twobit-file})]
+      (cram/write-header w (cram/read-header r))
+      (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
+    (with-open [r (cram/reader common/medium-cram-file
+                               {:reference common/hg19-twobit-file})
+                r' (cram/reader temp-cram-file
+                                {:reference common/hg19-twobit-file})]
+      (is (= (cram/read-header r)
+             (cram/read-header r')))
+      (is (= (cram/read-alignments r)
+             (cram/read-alignments r'))))))

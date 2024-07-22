@@ -2,7 +2,8 @@
   (:require [cljam.io.cram.codecs.rans4x8 :as rans]
             [cljam.io.cram.itf8 :as itf8]
             [cljam.io.sam.util.header :as sam.header]
-            [cljam.io.util.byte-buffer :as bb])
+            [cljam.io.util.byte-buffer :as bb]
+            [clojure.string :as str])
   (:import [java.io ByteArrayInputStream IOException]
            [java.nio Buffer ByteBuffer ByteOrder]
            [java.util Arrays]
@@ -32,8 +33,8 @@
               val-encoding (decode-encoding bb)]
           {:codec :byte-array-len, :len-encoding len-encoding, :val-encoding val-encoding})
       5 (let [stop-byte (.get bb)
-              external-id (itf8/decode-itf8 bb)]
-          {:codec :byte-array-stop, :stop-byte stop-byte, :external-id external-id})
+              content-id (itf8/decode-itf8 bb)]
+          {:codec :byte-array-stop, :stop-byte stop-byte, :content-id content-id})
       6 (let [offset (itf8/decode-itf8 bb)
               length (itf8/decode-itf8 bb)]
           {:codec :beta, :offset offset, :length length})
@@ -51,7 +52,8 @@
     (throw (IOException. "Invalid CRAM file")))
   (let [major (bb/read-ubyte bb)
         minor (bb/read-ubyte bb)
-        file-id (String. ^bytes (bb/read-bytes bb 20))]
+        file-id (-> (String. ^bytes (bb/read-bytes bb 20))
+                    (str/replace #"\000+$" ""))]
     {:version {:major major :minor minor}, :id file-id}))
 
 (defn decode-container-header

@@ -2,12 +2,14 @@
   (:require [cljam.io.crai :as crai]
             [cljam.io.cram.reader :as reader]
             [cljam.io.cram.seq-resolver :as resolver]
+            [cljam.io.cram.writer :as writer]
             [cljam.io.sam.util.refs :as util.refs]
             [cljam.io.util.byte-buffer :as bb]
             [cljam.util :as util]
             [clojure.java.io :as cio]
             [clojure.string :as str])
   (:import [cljam.io.cram.reader CRAMReader]
+           [cljam.io.cram.writer CRAMWriter]
            [java.io FileNotFoundException]
            [java.net URL]
            [java.nio.channels FileChannel]
@@ -71,3 +73,19 @@
     (reader/read-file-definition rdr')
     (reader/skip-container rdr')
     rdr'))
+
+(defn writer
+  "Creates a new CRAM writer that writes to a CRAM file f.
+
+  Takes an option map as the second argument. An option map consists of:
+    - reference: a string representing the path to a reference file"
+  ^CRAMWriter [f {:keys [reference]}]
+  (let [file (cio/file f)
+        url (cio/as-url file)
+        url' (str url)
+        file-id (subs url' 0 (min 20 (count url')))
+        out (cio/output-stream file)
+        seq-resolver (some-> reference resolver/seq-resolver resolver/cached-resolver)
+        wtr (writer/->CRAMWriter url out seq-resolver)]
+    (writer/write-file-definition wtr file-id)
+    wtr))

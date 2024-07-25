@@ -1,6 +1,7 @@
 (ns cljam.io.cram.encode.record-test
   (:require [cljam.io.cram.data-series :as ds]
             [cljam.io.cram.encode.record :as record]
+            [cljam.io.cram.encode.tag-dict :as tag-dict]
             [cljam.io.cram.seq-resolver.protocol :as resolver]
             [cljam.io.sequence :as cseq]
             [cljam.test-common :as common]
@@ -70,32 +71,60 @@
 
 (deftest preprocess-slice-records-test
   (let [rname->idx {"ref" 0}
+        tag-dict-builder (tag-dict/make-tag-dict-builder)
         records (object-array
-                 [{:rname "ref", :pos 1, :cigar "5M", :seq "AGAAT", :qual "HFHHH"}
-                  {:rname "ref", :pos 5, :cigar "2S3M",:seq "CCTGT", :qual "##AAC"}
-                  {:rname "ref", :pos 10, :cigar "5M", :seq "GATAA", :qual "CCCFF"}
-                  {:rname "ref", :pos 15, :cigar "1M1I1M1D2M", :seq "GAAAG", :qual "EBBFF"}
-                  {:rname "*", :pos 0, :cigar "*", :seq "CTGTG", :qual "AEEEE"}
-                  {:rname "*", :pos 10, :cigar "*", :seq "*", :qual "*"}])]
-    (record/preprocess-slice-records test-seq-resolver rname->idx subst-mat records)
+                 [{:rname "ref", :pos 1, :cigar "5M", :seq "AGAAT", :qual "HFHHH"
+                   :options [{:RG {:type "Z", :value "rg001"}}
+                             {:MD {:type "Z", :value "2C2"}}
+                             {:NM {:type "c", :value 1}}]}
+                  {:rname "ref", :pos 5, :cigar "2S3M", :seq "CCTGT", :qual "##AAC"
+                   :options [{:RG {:type "Z", :value "rg001"}}
+                             {:MD {:type "Z", :value "3"}}
+                             {:NM {:type "c", :value 0}}]}
+                  {:rname "ref", :pos 10, :cigar "5M", :seq "GATAA", :qual "CCCFF"
+                   :options [{:RG {:type "Z", :value "rg002"}}
+                             {:MD {:type "Z", :value "5"}}
+                             {:NM {:type "c", :value 0}}]}
+                  {:rname "ref", :pos 15, :cigar "1M1I1M1D2M", :seq "GAAAG", :qual "EBBFF"
+                   :options [{:RG {:type "Z", :value "rg002"}}
+                             {:MD {:type "Z", :value "3^T2"}}
+                             {:NM {:type "c",  :value 2}}]}
+                  {:rname "*", :pos 0, :cigar "*", :seq "CTGTG", :qual "AEEEE"
+                   :options []}
+                  {:rname "*", :pos 10, :cigar "*", :seq "*", :qual "*"
+                   :options []}])]
+    (record/preprocess-slice-records test-seq-resolver rname->idx
+                                     tag-dict-builder subst-mat records)
     (is (= [{:rname "ref", :pos 1, :cigar "5M", :seq "AGAAT", :qual "HFHHH"
-             ::record/flag 0x03, ::record/ref-index 0, ::record/end 5
+             :options [{:RG {:type "Z", :value "rg001"}}
+                       {:MD {:type "Z", :value "2C2"}}
+                       {:NM {:type "c", :value 1}}]
+             ::record/flag 0x03, ::record/ref-index 0, ::record/end 5, ::record/tags-index 0
              ::record/features [{:code :subst, :pos 3 :subst 0}]}
             {:rname "ref", :pos 5, :cigar "2S3M", :seq "CCTGT", :qual "##AAC"
-             ::record/flag 0x03, ::record/ref-index 0, ::record/end 7
+             :options [{:RG {:type "Z", :value "rg001"}}
+                       {:MD {:type "Z", :value "3"}}
+                       {:NM {:type "c", :value 0}}]
+             ::record/flag 0x03, ::record/ref-index 0, ::record/end 7, ::record/tags-index 0
              ::record/features [{:code :softclip, :pos 1, :bases [(int \C) (int \C)]}]}
             {:rname "ref", :pos 10, :cigar "5M", :seq "GATAA", :qual "CCCFF"
-             ::record/flag 0x03, ::record/ref-index 0, ::record/end 14
+             :options [{:RG {:type "Z", :value "rg002"}}
+                       {:MD {:type "Z", :value "5"}}
+                       {:NM {:type "c", :value 0}}]
+             ::record/flag 0x03, ::record/ref-index 0, ::record/end 14, ::record/tags-index 0
              ::record/features []}
             {:rname "ref", :pos 15, :cigar "1M1I1M1D2M", :seq "GAAAG", :qual "EBBFF"
-             ::record/flag 0x03, ::record/ref-index 0, ::record/end 19
+             :options [{:RG {:type "Z", :value "rg002"}}
+                       {:MD {:type "Z", :value "3^T2"}}
+                       {:NM {:type "c",  :value 2}}]
+             ::record/flag 0x03, ::record/ref-index 0, ::record/end 19, ::record/tags-index 0
              ::record/features [{:code :insertion, :pos 2, :bases [(int \A)]}
                                 {:code :deletion, :pos 4, :len 1}]}
-            {:rname "*", :pos 0, :cigar "*", :seq "CTGTG", :qual "AEEEE"
-             ::record/flag 0x03, ::record/ref-index -1, ::record/end 0
+            {:rname "*", :pos 0, :cigar "*", :seq "CTGTG", :qual "AEEEE", :options []
+             ::record/flag 0x03, ::record/ref-index -1, ::record/end 0, ::record/tags-index 1
              ::record/features []}
-            {:rname "*", :pos 10, :cigar "*", :seq "*", :qual "*"
-             ::record/flag 0x0b, ::record/ref-index -1, ::record/end 10
+            {:rname "*", :pos 10, :cigar "*", :seq "*", :qual "*", :options []
+             ::record/flag 0x0b, ::record/ref-index -1, ::record/end 10, ::record/tags-index 1
              ::record/features []}]
            (walk/prewalk #(if (.isArray (class %)) (vec %) %)
                          records)))))
@@ -111,46 +140,37 @@
           rname->idx (into {}
                            (map-indexed (fn [i {:keys [SN]}] [SN i]))
                            (:SQ cram-header))
-          tag-dict [[]
-                    [{:tag :MD, :type \Z}
-                     {:tag :NM, :type \c}]]
+          tag-dict-builder (tag-dict/make-tag-dict-builder)
           ds-encoders (ds/build-data-series-encoders ds/default-data-series-encodings)
-          tag-encoders (ds/build-tag-encoders
-                        {:MD {\Z {:codec :byte-array-len
-                                  :len-encoding {:codec :external, :content-id 5063770}
-                                  :val-encoding {:codec :external, :content-id 5063770}}}
-                         :NM {\c {:codec :byte-array-len
-                                  :len-encoding {:codec :huffman, :alphabet [1], :bit-len [0]}
-                                  :val-encoding {:codec :external, :content-id 5131619}}}})
           records (object-array
                    [{:qname "q001", :flag 99, :rname "ref", :pos 1, :end 5, :mapq 0,
                      :cigar "5M", :rnext "=", :pnext 151, :tlen 150, :seq "AGAAT", :qual "HFHHH"
                      :options [{:RG {:type "Z", :value "rg001"}}
                                {:MD {:type "Z", :value "2C2"}}
-                               {:NM {:type "c", :value 1}}]
-                     ::record/tags-index 1}
+                               {:NM {:type "c", :value 1}}]}
                     {:qname "q002", :flag 99, :rname "ref", :pos 5, :end 7, :mapq 15,
                      :cigar "2S3M", :rnext "=", :pnext 15, :tlen 15, :seq "CCTGT", :qual "##AAC"
                      :options [{:RG {:type "Z", :value "rg001"}}
                                {:MD {:type "Z", :value "3"}}
-                               {:NM {:type "c", :value 0}}]
-                     ::record/tags-index 1}
+                               {:NM {:type "c", :value 0}}]}
                     {:qname "q003", :flag 177, :rname "ref", :pos 10, :end 14, :mapq 60,
                      :cigar "5M", :rnext "ref2", :pnext 100, :tlen 0, :seq "GATAA", :qual "CCCFF"
                      :options [{:RG {:type "Z", :value "rg002"}}
                                {:MD {:type "Z", :value "5"}}
-                               {:NM {:type "c", :value 0}}]
-                     ::record/tags-index 1}
+                               {:NM {:type "c", :value 0}}]}
                     {:qname "q004", :flag 147, :rname "ref", :pos 15, :end 19, :mapq 15,
                      :cigar "1M1I1M1D2M", :rnext "=", :pnext 5, :tlen -15, :seq "GAAAG", :qual "EBBFF"
                      :options [{:RG {:type "Z", :value "rg002"}}
                                {:MD {:type "Z", :value "3^T2"}}
-                               {:NM {:type "c",  :value 2}}]
-                     ::record/tags-index 1}
+                               {:NM {:type "c",  :value 2}}]}
                     {:qname "q005", :flag 73, :rname "ref", :pos 20, :end 24, :mapq 0,
                      :cigar "5M", :rnext "*", :pnext 0, :tlen 0, :seq "CTGTG", :qual "AEEEE"
-                     :options [], ::record/tags-index 0}])
-          _ (record/preprocess-slice-records test-seq-resolver rname->idx subst-mat records)
+                     :options []}])
+          _ (record/preprocess-slice-records test-seq-resolver rname->idx
+                                             tag-dict-builder subst-mat records)
+          tag-dict (tag-dict/build-tag-dict tag-dict-builder)
+          tag-encodings (tag-dict/build-tag-encodings tag-dict)
+          tag-encoders (ds/build-tag-encoders tag-encodings)
           stats (record/encode-slice-records cram-header rname->idx tag-dict
                                              ds-encoders tag-encoders records)
           ds-res (walk/prewalk #(if (fn? %) (%) %) ds-encoders)
@@ -213,7 +233,7 @@
 
       (is (= 1 (count (get ds-res :TL))))
       (is (= 13 (get-in ds-res [:TL 0 :content-id])))
-      (is (= [1 1 1 1 0] (seq (get-in ds-res [:TL 0 :data]))))
+      (is (= [0 0 0 0 1] (seq (get-in ds-res [:TL 0 :data]))))
 
       (is (= 1 (count (get ds-res :FN))))
       (is (= 14 (get-in ds-res [:FN 0 :content-id])))
@@ -309,25 +329,27 @@
           rname->idx (into {}
                            (map-indexed (fn [i {:keys [SN]}] [SN i]))
                            (:SQ cram-header))
-          tag-dict [[]]
+          tag-dict-builder (tag-dict/make-tag-dict-builder)
           ds-encoders (ds/build-data-series-encoders ds/default-data-series-encodings)
           records (object-array
                    [{:qname "q001", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "AATCC", :qual "CCFFF"
-                     :options [], ::record/tags-index 0}
+                     :options []}
                     {:qname "q001", :flag 141, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "ATTGT", :qual "BDFAD"
-                     :options [], ::record/tags-index 0}
+                     :options []}
                     {:qname "q002", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "TGGTA", :qual "ADDHF"
-                     :options [], ::record/tags-index 0}
+                     :options []}
                     {:qname "q002", :flag 141, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "TCTTG", :qual "DDDFD"
-                     :options [], ::record/tags-index 0}
+                     :options []}
                     {:qname "q003", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "GCACA", :qual "BCCFD"
-                     :options [], ::record/tags-index 0}])
-          _ (record/preprocess-slice-records test-seq-resolver rname->idx subst-mat records)
+                     :options []}])
+          _ (record/preprocess-slice-records test-seq-resolver rname->idx
+                                             tag-dict-builder subst-mat records)
+          tag-dict (tag-dict/build-tag-dict tag-dict-builder)
           stats (record/encode-slice-records cram-header rname->idx tag-dict
                                              ds-encoders {} records)
           ds-res (walk/prewalk #(if (fn? %) (%) %) ds-encoders)]

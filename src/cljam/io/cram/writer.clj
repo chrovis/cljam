@@ -4,6 +4,7 @@
             [cljam.io.cram.encode.alignment-stats :as stats]
             [cljam.io.cram.encode.record :as record]
             [cljam.io.cram.encode.structure :as struct]
+            [cljam.io.cram.encode.tag-dict :as tag-dict]
             [cljam.io.cram.seq-resolver.protocol :as resolver]
             [cljam.io.protocols :as protocols]
             [cljam.io.sam.util.header :as sam.header])
@@ -49,62 +50,11 @@
   (struct/encode-cram-header-container (.-stream wtr) header))
 
 (defn- preprocess-records
-  [seq-resolver rname->idx subst-mat ^objects container-records]
+  [seq-resolver rname->idx tag-dict-builder subst-mat ^objects container-records]
   (dotimes [i (alength container-records)]
     (let [slice-records (aget container-records i)]
-      (record/preprocess-slice-records seq-resolver rname->idx subst-mat slice-records))))
-
-(defn- build-tag-dictionary [^objects container-records]
-  (let [tags->index (volatile! {})]
-    (dotimes [i (alength container-records)]
-      (let [^objects slice-records (aget container-records i)]
-        (dotimes [j (alength slice-records)]
-          (let [record (aget slice-records j)
-                tags (into []
-                           (keep (fn [opt]
-                                   (let [[tag m] (first opt)]
-                                     (when-not (= tag :RG)
-                                       [tag (first (:type m))]))))
-                           (:options record))
-                idx (or (get @tags->index tags)
-                        (let [idx (count @tags->index)]
-                          (vswap! tags->index assoc tags idx)
-                          idx))]
-            (aset slice-records j
-                  (assoc record ::record/tags-index idx))))))
-    (->> (sort-by val @tags->index)
-         (mapv (fn [[tags _]]
-                 (mapv (fn [[tag tag-type]]
-                         {:tag tag :type tag-type})
-                       tags))))))
-
-(defn- build-tag-encoding [item]
-  (letfn [(tag-id [item]
-            (let [tag' (name (:tag item))]
-              (bit-or (bit-shift-left (int (nth tag' 0)) 16)
-                      (bit-shift-left (int (nth tag' 1)) 8)
-                      (int (:type item)))))
-          (tag-encoding-for-fixed-size [item size]
-            {:codec :byte-array-len
-             :len-encoding {:codec :huffman, :alphabet [size], :bit-len [0]}
-             :val-encoding {:codec :external, :content-id (tag-id item)}})]
-    (case (:type item)
-      (\A \c \C) (tag-encoding-for-fixed-size item 1)
-      (\s \S) (tag-encoding-for-fixed-size item 2)
-      (\i \I \f) (tag-encoding-for-fixed-size item 4)
-      (let [content-id (tag-id item)]
-        {:codec :byte-array-len
-         :len-encoding {:codec :external, :content-id content-id}
-         :val-encoding {:codec :external, :content-id content-id}}))))
-
-(defn- build-tag-encodings [tag-dict]
-  (reduce
-   (fn [m entry]
-     (reduce
-      (fn [m {tag-type :type :as item}]
-        (update-in m [(:tag item) tag-type] #(or % (build-tag-encoding item))))
-      m entry))
-   {} tag-dict))
+      (record/preprocess-slice-records seq-resolver rname->idx tag-dict-builder
+                                       subst-mat slice-records))))
 
 (defn- reference-md5 [seq-resolver cram-header {:keys [^long ri ^long start ^long end]}]
   (if (neg? ri)
@@ -222,14 +172,16 @@
         rname->idx (into {}
                          (map-indexed (fn [i {:keys [SN]}] [SN i]))
                          (:SQ cram-header))
+        tag-dict-builder (tag-dict/make-tag-dict-builder)
         subst-mat {\A {\T 0, \G 1, \C 2, \N 3}
                    \T {\A 0, \G 1, \C 2, \N 3}
                    \G {\A 0, \T 1, \C 2, \N 3}
                    \C {\A 0, \T 1, \G 2, \N 3}
                    \N {\A 0, \T 1, \G 2, \C 3}}
-        _ (preprocess-records seq-resolver rname->idx subst-mat container-records)
-        tag-dict (build-tag-dictionary container-records)
-        tag-encodings (build-tag-encodings tag-dict)
+        _ (preprocess-records seq-resolver rname->idx tag-dict-builder
+                              subst-mat container-records)
+        tag-dict (tag-dict/build-tag-dict tag-dict-builder)
+        tag-encodings (tag-dict/build-tag-encodings tag-dict)
         slices (generate-slices seq-resolver cram-header rname->idx
                                 counter tag-dict tag-encodings container-records)
         compression-header-block (struct/generate-compression-header-block

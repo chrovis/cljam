@@ -1,10 +1,9 @@
 (ns cljam.io.cram.writer
   (:require [cljam.io.crai :as crai]
-            [cljam.io.cram.data-series :as ds]
             [cljam.io.cram.encode.alignment-stats :as stats]
+            [cljam.io.cram.encode.context :as context]
             [cljam.io.cram.encode.record :as record]
             [cljam.io.cram.encode.structure :as struct]
-            [cljam.io.cram.encode.tag-dict :as tag-dict]
             [cljam.io.cram.seq-resolver.protocol :as resolver]
             [cljam.io.protocols :as protocols]
             [cljam.io.sam.util.header :as sam.header])
@@ -50,13 +49,29 @@
   (struct/encode-cram-header-container (.-stream wtr) header))
 
 (defn- preprocess-records
-  [seq-resolver rname->idx tag-dict-builder subst-mat ^objects container-records]
-  (dotimes [i (alength container-records)]
-    (let [slice-records (aget container-records i)]
-      (record/preprocess-slice-records seq-resolver rname->idx tag-dict-builder
-                                       subst-mat slice-records))))
+  [cram-header preservation-map seq-resolver ^objects container-records]
+  (let [container-ctx (context/make-container-context cram-header
+                                                      preservation-map
+                                                      seq-resolver)]
+    (dotimes [i (alength container-records)]
+      (let [slice-records (aget container-records i)]
+        (record/preprocess-slice-records container-ctx slice-records)))
+    (context/finalize-container-context container-ctx)))
 
-(defn- reference-md5 [seq-resolver cram-header {:keys [^long ri ^long start ^long end]}]
+(defn- generate-blocks [slice-ctx]
+  (->> (context/encoding-results slice-ctx)
+       (keep (fn [{:keys [content-id ^bytes data] :as block}]
+               (when (pos? (alength data))
+                 (update block :data
+                         #(struct/generate-block :raw 4 content-id %)))))
+       ;; sort + dedupe by :content-id
+       (into (sorted-map) (map (juxt :content-id identity)))
+       vals
+       (cons {:content-id 0
+              :data (struct/generate-block :raw 5 0 (byte-array 0))})))
+
+(defn- reference-md5
+  [{:keys [seq-resolver cram-header]} {:keys [^long ri ^long start ^long end]}]
   (if (neg? ri)
     (byte-array 16)
     (let [chr (:SN (nth (:SQ cram-header) ri))
@@ -71,28 +86,11 @@
    :bases nbases
    :records nrecords})
 
-(defn- generate-slice
-  [seq-resolver cram-header rname->idx counter tag-dict tag-encodings slice-records]
-  (let [ds-encoders (ds/build-data-series-encoders ds/default-data-series-encodings)
-        tag-encoders (ds/build-tag-encoders tag-encodings)
-        stats (record/encode-slice-records cram-header rname->idx tag-dict
-                                           ds-encoders tag-encoders slice-records)
-        ds-results (mapcat #(%) (vals ds-encoders))
-        tag-results (for [[_tag v] tag-encoders
-                          [_type encoder] v
-                          res (encoder)]
-                      res)
-        blocks (->> (concat ds-results tag-results)
-                    (keep (fn [{:keys [content-id ^bytes data] :as block}]
-                            (when (pos? (alength data))
-                              (update block :data
-                                      #(struct/generate-block :raw 4 content-id %)))))
-                    ;; sort + dedupe by :content-id
-                    (into (sorted-map) (map (juxt :content-id identity)))
-                    vals
-                    (cons {:content-id 0
-                           :data (struct/generate-block :raw 5 0 (byte-array 0))}))
-        ref-md5 (reference-md5 seq-resolver cram-header stats)
+(defn- generate-slice [container-ctx counter slice-records]
+  (let [slice-ctx (context/make-slice-context container-ctx)
+        stats (record/encode-slice-records slice-ctx slice-records)
+        blocks (generate-blocks slice-ctx)
+        ref-md5 (reference-md5 slice-ctx stats)
         header (assoc (stats->header-base stats)
                       :counter counter
                       :embedded-reference -1
@@ -108,14 +106,17 @@
                 (map #(alength ^bytes %))
                 (apply + (alength header-block)))}))
 
-(defn- generate-slices
-  [seq-resolver cram-header rname->idx counter tag-dict tag-encodings container-records]
+(defn- generate-slices [container-ctx counter container-records]
   (loop [[slice-records & more] container-records, counter counter, acc []]
     (if slice-records
-      (let [slice (generate-slice seq-resolver cram-header rname->idx counter
-                                  tag-dict tag-encodings slice-records)]
+      (let [slice (generate-slice container-ctx counter slice-records)]
         (recur more (:counter slice) (conj acc slice)))
       acc)))
+
+(defn- generate-compression-header-block
+  ^bytes [{:keys [preservation-map subst-mat tag-dict ds-encodings tag-encodings]}]
+  (struct/generate-compression-header-block preservation-map subst-mat tag-dict
+                                            ds-encodings tag-encodings))
 
 (defn- generate-container-header [^bytes compression-header-block slices]
   (let [stats (stats/merge-stats (map :stats slices))
@@ -166,28 +167,14 @@
     (crai/write-index-entries index-writer entries)))
 
 (defn- write-container [^CRAMWriter wtr cram-header counter container-records]
-  (let [^DataOutputStream out (.-stream wtr)
-        ds-encodings ds/default-data-series-encodings
+  (let [preservation-map {:RN true, :AP false, :RR true}
         seq-resolver (.-seq-resolver wtr)
-        rname->idx (into {}
-                         (map-indexed (fn [i {:keys [SN]}] [SN i]))
-                         (:SQ cram-header))
-        tag-dict-builder (tag-dict/make-tag-dict-builder)
-        subst-mat {\A {\T 0, \G 1, \C 2, \N 3}
-                   \T {\A 0, \G 1, \C 2, \N 3}
-                   \G {\A 0, \T 1, \C 2, \N 3}
-                   \C {\A 0, \T 1, \G 2, \N 3}
-                   \N {\A 0, \T 1, \G 2, \C 3}}
-        _ (preprocess-records seq-resolver rname->idx tag-dict-builder
-                              subst-mat container-records)
-        tag-dict (tag-dict/build-tag-dict tag-dict-builder)
-        tag-encodings (tag-dict/build-tag-encodings tag-dict)
-        slices (generate-slices seq-resolver cram-header rname->idx
-                                counter tag-dict tag-encodings container-records)
-        compression-header-block (struct/generate-compression-header-block
-                                  {:RN true, :AP false, :RR true}
-                                  subst-mat tag-dict ds-encodings tag-encodings)
+        container-ctx (preprocess-records cram-header preservation-map seq-resolver
+                                          container-records)
+        slices (generate-slices container-ctx counter container-records)
+        compression-header-block (generate-compression-header-block container-ctx)
         container-header (generate-container-header compression-header-block slices)
+        ^DataOutputStream out (.-stream wtr)
         container-offset (.size out)
         counter' (:counter (peek slices))]
     (struct/encode-container-header out (assoc container-header :counter counter))

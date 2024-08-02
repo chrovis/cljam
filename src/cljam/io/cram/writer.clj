@@ -49,26 +49,32 @@
   (struct/encode-cram-header-container (.-stream wtr) header))
 
 (defn- preprocess-records
-  [cram-header preservation-map seq-resolver ^objects container-records]
+  [cram-header preservation-map seq-resolver options ^objects container-records]
   (let [container-ctx (context/make-container-context cram-header
                                                       preservation-map
-                                                      seq-resolver)]
+                                                      seq-resolver)
+        {:keys [ds-compressor-overrides tag-compressor-overrides]} options]
     (dotimes [i (alength container-records)]
       (let [slice-records (aget container-records i)]
         (record/preprocess-slice-records container-ctx slice-records)))
-    (context/finalize-container-context container-ctx)))
+    (context/finalize-container-context container-ctx
+                                        ds-compressor-overrides
+                                        tag-compressor-overrides)))
 
 (defn- generate-blocks [slice-ctx]
   (->> (context/encoding-results slice-ctx)
-       (keep (fn [{:keys [content-id ^bytes data] :as block}]
-               (when (pos? (alength data))
+       (keep (fn [{:keys [^long raw-size] :as block}]
+               (when (pos? raw-size)
                  (update block :data
-                         #(struct/generate-block :raw 4 content-id %)))))
+                         (fn [^bytes data]
+                           (struct/generate-block (:compressor block) 4
+                                                  (:content-id block) raw-size
+                                                  data))))))
        ;; sort + dedupe by :content-id
        (into (sorted-map) (map (juxt :content-id identity)))
        vals
        (cons {:content-id 0
-              :data (struct/generate-block :raw 5 0 (byte-array 0))})))
+              :data (struct/generate-block :raw 5 0 0 (byte-array 0))})))
 
 (defn- reference-md5
   [{:keys [seq-resolver cram-header]} {:keys [^long ri ^long start ^long end]}]
@@ -168,9 +174,8 @@
 
 (defn- write-container [^CRAMWriter wtr cram-header counter container-records]
   (let [preservation-map {:RN true, :AP false, :RR true}
-        seq-resolver (.-seq-resolver wtr)
-        container-ctx (preprocess-records cram-header preservation-map seq-resolver
-                                          container-records)
+        container-ctx (preprocess-records cram-header preservation-map (.-seq-resolver wtr)
+                                          (.-options wtr) container-records)
         slices (generate-slices container-ctx counter container-records)
         compression-header-block (generate-compression-header-block container-ctx)
         container-header (generate-container-header compression-header-block slices)

@@ -1,5 +1,6 @@
 (ns cljam.io.cram.data-series
   (:require [cljam.io.cram.bit-stream :as bs]
+            [cljam.io.cram.encode.compressor :as compressor]
             [cljam.io.cram.itf8 :as itf8]
             [cljam.io.util.byte-buffer :as bb]
             [cljam.io.util.lsb.io-stream :as lsb]
@@ -146,66 +147,68 @@
 
 (def ^{:doc "Default encodings for all the data series"}
   default-data-series-encodings
-  {:BF {:content-id  1, :codec :external}
-   :CF {:content-id  2, :codec :external}
-   :RI {:content-id  3, :codec :external}
-   :RL {:content-id  4, :codec :external}
-   :AP {:content-id  5, :codec :external}
-   :RG {:content-id  6, :codec :external}
-   :RN {:content-id  7, :codec :byte-array-stop, :stop-byte (int \tab)}
-   :MF {:content-id  8, :codec :external}
-   :NS {:content-id  9, :codec :external}
-   :NP {:content-id 10, :codec :external}
-   :TS {:content-id 11, :codec :external}
-   :NF {:content-id 12, :codec :external}
-   :TL {:content-id 13, :codec :external}
-   :FN {:content-id 14, :codec :external}
-   :FC {:content-id 15, :codec :external}
-   :FP {:content-id 16, :codec :external}
-   :DL {:content-id 17, :codec :external}
+  {:BF {:content-id  1, :codec :external, :compressor :gzip}
+   :CF {:content-id  2, :codec :external, :compressor :gzip}
+   :RI {:content-id  3, :codec :external, :compressor :gzip}
+   :RL {:content-id  4, :codec :external, :compressor :gzip}
+   :AP {:content-id  5, :codec :external, :compressor :gzip}
+   :RG {:content-id  6, :codec :external, :compressor :gzip}
+   :RN {:content-id  7, :codec :byte-array-stop, :stop-byte (int \tab), :compressor :gzip}
+   :MF {:content-id  8, :codec :external, :compressor :gzip}
+   :NS {:content-id  9, :codec :external, :compressor :gzip}
+   :NP {:content-id 10, :codec :external, :compressor :gzip}
+   :TS {:content-id 11, :codec :external, :compressor :gzip}
+   :NF {:content-id 12, :codec :external, :compressor :gzip}
+   :TL {:content-id 13, :codec :external, :compressor :gzip}
+   :FN {:content-id 14, :codec :external, :compressor :gzip}
+   :FC {:content-id 15, :codec :external, :compressor :gzip}
+   :FP {:content-id 16, :codec :external, :compressor :gzip}
+   :DL {:content-id 17, :codec :external, :compressor :gzip}
    :BB {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 18}
-        :val-encoding {:codec :external, :content-id 19}}
+        :len-encoding {:codec :external, :content-id 18, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 19, :compressor :gzip}}
    :QQ {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 20}
-        :val-encoding {:codec :external, :content-id 21}}
-   :BS {:content-id 22, :codec :external}
+        :len-encoding {:codec :external, :content-id 20, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 21, :compressor :gzip}}
+   :BS {:content-id 22, :codec :external, :compressor :gzip}
    :IN {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 23}
-        :val-encoding {:codec :external, :content-id 24}}
-   :RS {:content-id 25, :codec :external}
-   :PD {:content-id 26, :codec :external}
-   :HC {:content-id 27, :codec :external}
+        :len-encoding {:codec :external, :content-id 23, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 24, :compressor :gzip}}
+   :RS {:content-id 25, :codec :external, :compressor :gzip}
+   :PD {:content-id 26, :codec :external, :compressor :gzip}
+   :HC {:content-id 27, :codec :external, :compressor :gzip}
    :SC {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 28}
-        :val-encoding {:codec :external, :content-id 29}}
-   :MQ {:content-id 30, :codec :external}
-   :BA {:content-id 31, :codec :external}
-   :QS {:content-id 32, :codec :external}})
+        :len-encoding {:codec :external, :content-id 28, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 29, :compressor :gzip}}
+   :MQ {:content-id 30, :codec :external, :compressor :gzip}
+   :BA {:content-id 31, :codec :external, :compressor :gzip}
+   :QS {:content-id 32, :codec :external, :compressor :gzip}})
 
 (defn- build-codec-encoder
-  [{:keys [codec content-id] :as params} data-type content-id->state]
+  [{:keys [codec content-id compressor] :as params} data-type content-id->state]
   (letfn [(out-for-encoder []
-            (or (get-in @content-id->state [content-id :out])
-                (let [out (ByteArrayOutputStream.)]
-                  (vswap! content-id->state assoc-in [content-id :out] out)
-                  out)))
-          (data-for-encoder []
-            (let [state (get @content-id->state content-id)]
-              (or (get state :data)
-                  (let [^ByteArrayOutputStream out (:out state)
-                        data (.toByteArray out)]
-                    (vswap! content-id->state assoc-in [content-id :data] data)
-                    data))))]
+            (-> (or (get-in @content-id->state [content-id :compressor])
+                    (let [compr (compressor/compressor (or compressor :best))]
+                      (vswap! content-id->state assoc-in [content-id :compressor] compr)
+                      compr))
+                compressor/compressor-output-stream))
+          (result-for-encoder []
+            (let [state (get @content-id->state content-id)
+                  res (or (get state :result)
+                          (let [compr (:compressor state)
+                                res (compressor/->compressed-result compr)]
+                            (vswap! content-id->state assoc-in [content-id :result] res)
+                            res))]
+              [(assoc res :content-id content-id)]))]
     (case codec
       :external
       (let [^OutputStream out (out-for-encoder)]
         (case data-type
           :byte (fn
-                  ([] [{:content-id content-id, :data (data-for-encoder)}])
+                  ([] (result-for-encoder))
                   ([v] (.write out (int v))))
           :int (fn
-                 ([] [{:content-id content-id, :data (data-for-encoder)}])
+                 ([] (result-for-encoder))
                  ([v] (itf8/encode-itf8 out v)))))
 
       :huffman
@@ -233,7 +236,7 @@
       (let [{:keys [stop-byte]} params
             ^OutputStream out (out-for-encoder)]
         (fn
-          ([] [{:content-id content-id, :data (data-for-encoder)}])
+          ([] (result-for-encoder))
           ([^bytes bs]
            (.write out bs)
            (.write out (int stop-byte))))))))
@@ -248,13 +251,45 @@
     - <encoder>: a function that has two arities
                  - arity 1: take a value to encode for the data series
                  - arity 0: finalize and return the encoding result"
-  [ds-encoding]
+  [ds-encodings]
   (let [content-id->state (volatile! {})]
-    (reduce-kv (fn [encoders ds params]
-                 (let [dt (data-series-type ds)
-                       encoder (build-codec-encoder params dt content-id->state)]
-                   (assoc encoders ds encoder)))
-               {} ds-encoding)))
+    (reduce-kv
+     (fn [encoders ds encoding]
+       (let [dt (data-series-type ds)
+             encoder (build-codec-encoder encoding dt content-id->state)]
+         (assoc encoders ds encoder)))
+     {} ds-encodings)))
+
+(defn- apply-compressor-overrides
+  [{:keys [codec] :as encoding} ks compressor-overrides]
+  (if (= codec :byte-array-len)
+    (-> encoding
+        (update :len-encoding apply-compressor-overrides
+                (conj ks :byte-array-len/len) compressor-overrides)
+        (update :val-encoding apply-compressor-overrides
+                (conj ks :byte-array-len/val) compressor-overrides))
+    (loop [ks (conj ks codec), overrides compressor-overrides]
+      (if (empty? ks)
+        encoding
+        (let [ret (overrides (first ks))]
+          (cond (nil? ret) encoding
+
+                (or (keyword? ret) (set? ret))
+                (assoc encoding :compressor ret)
+
+                :else (recur (rest ks) ret)))))))
+
+(defn apply-ds-compressor-overrides
+  "Applies the compressor overrides to the data series encodings and returns
+  the overridden encodings."
+  [ds-encodings compressor-overrides]
+  (cond->> ds-encodings
+    compressor-overrides
+    (reduce-kv
+     (fn [ds-encodings ds _]
+       (update ds-encodings ds
+               apply-compressor-overrides [ds] compressor-overrides))
+     ds-encodings)))
 
 (def ^:private digit->char
   (let [bs (.getBytes "0123456789ABCDEF")]
@@ -305,6 +340,15 @@
          (converter out v)
          (encoder (.toByteArray out)))))))
 
+(defn- reduce-tag-encodings [f init tag-encodings]
+  (reduce-kv
+   (fn [acc tag m]
+     (reduce-kv
+      (fn [acc tag-type encoding]
+        (f acc tag tag-type encoding))
+      acc m))
+   init tag-encodings))
+
 (defn build-tag-encoders
   "Builds encoders for tags based on the given encodings.
 
@@ -318,11 +362,21 @@
                  - arity 0: finalize and return the encoding result"
   [tag-encodings]
   (let [content-id->state (volatile! {})]
-    (reduce-kv
-     (fn [encoders tag m]
-       (reduce-kv
-        (fn [encoders tag-type encoding]
-          (assoc-in encoders [tag tag-type]
-                    (build-tag-encoder encoding tag-type content-id->state)))
-        encoders m))
+    (reduce-tag-encodings
+     (fn [encoders tag tag-type encoding]
+       (assoc-in encoders [tag tag-type]
+                 (build-tag-encoder encoding tag-type content-id->state)))
      {} tag-encodings)))
+
+(defn apply-tag-compressor-overrides
+  "Applies the compressor overrides to the tag encodings and returns the overridden
+  encodings."
+  [tag-encodings compressor-overrides]
+  (cond->> tag-encodings
+    compressor-overrides
+    (reduce-tag-encodings
+     (fn [tag-encodings tag tag-type _]
+       (let [ks [tag tag-type]]
+         (update-in tag-encodings ks
+                    apply-compressor-overrides ks compressor-overrides)))
+     tag-encodings)))

@@ -77,15 +77,8 @@
 (defn writer
   "Creates a new CRAM writer that writes to a CRAM file f.
 
-  Takes an option map as the second argument. An option map consists of:
-    - reference: A string representing the path to a reference file
-    - create-index?: If true, creates a .crai index file in the course of CRAM
-        file writing.
-    - skip-sort-order-check?: When creating a CRAM index for the CRAM file,
-        the CRAM writer, by default, checks if the header is declared as
-        `SO:coordinate` and raises an error if not.
-        If this option is set to true, the CRAM writer will skip the header check
-        and create an index file regardless of the header declaration."
+  Takes an option map as the second argument. See the docstring for `cljam.io.cram/writer`
+  for more details on the option map."
   ^CRAMWriter [f {:keys [reference create-index?] :as opts}]
   (let [file (cio/file f)
         url (cio/as-url file)

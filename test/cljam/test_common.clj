@@ -166,6 +166,8 @@
 ;; ### CRAM files
 
 (def test-cram-file "test-resources/cram/test.cram")
+(def test-sorted-cram-file "test-resources/cram/test.sorted.cram")
+(def test-sorted-with-unknown-so-cram-file "test-resources/cram/test.sorted_with_unknown_so.cram")
 (def medium-cram-file "test-resources/cram/medium.cram")
 (def medium-with-standard-tags-cram-file "test-resources/cram/medium_with_standard_tags.cram")
 (def medium-without-index-cram-file "test-resources/cram/medium_without_index.cram")

@@ -112,6 +112,40 @@
         (BA (aget bs i)))
       (encode-qual record QS))))
 
+(defn- build-cram-record-encoder
+  [cram-header rname->idx tag-dict {:keys [BF CF] :as ds-encoders} tag-encoders stats-builder]
+  (let [pos-encoder (build-positional-data-encoder cram-header ds-encoders)
+        name-encoder (build-read-name-encoder ds-encoders)
+        mate-encoder (build-mate-read-encoder rname->idx ds-encoders)
+        tags-encoder (build-auxiliary-tags-encoder tag-dict ds-encoders tag-encoders)
+        mapped-encoder (build-mapped-read-encoder ds-encoders)
+        unmapped-encoder (build-unmapped-read-encoder ds-encoders)]
+    (fn [record]
+      (let [bf (bit-and (long (:flag record))
+                        (bit-not (sam.flag/encoded #{:next-reversed :next-unmapped})))]
+        (stats/update! stats-builder
+                       (::ref-index record) (:pos record) (::end record)
+                       (count (:seq record)) 1)
+        (BF bf)
+        (CF (::flag record))
+        (pos-encoder record)
+        (name-encoder record)
+        (mate-encoder record)
+        (tags-encoder record)
+        (if (sam.flag/unmapped? (:flag record))
+          (unmapped-encoder record)
+          (mapped-encoder record))))))
+
+(defn encode-slice-records
+  "Encodes CRAM records in a slice all at once using the given data series encoders
+  and tag encoders. Returns the alignment stats for this slice."
+  [cram-header rname->idx tag-dict ds-encoders tag-encoders records]
+  (let [stats-builder (stats/make-alignment-stats-builder)
+        record-encoder (build-cram-record-encoder cram-header rname->idx tag-dict
+                                                  ds-encoders tag-encoders stats-builder)]
+    (run! record-encoder records)
+    (stats/build stats-builder)))
+
 (defn- add-mismatches
   [n subst-mat ^bytes ref-bases rpos ^bytes read-bases ^bytes qs spos fs]
   (loop [i (long n), rpos (long rpos), spos (long spos), fs fs]
@@ -163,52 +197,20 @@
               \P (recur more rpos spos (conj! fs {:code :padding :pos pos :len n}))))
           [(persistent! fs) (dec rpos)])))))
 
-(defn- build-cram-record-encoder
-  [seq-resolver cram-header tag-dict subst-mat {:keys [BF CF] :as ds-encoders}
-   tag-encoders stats-builder]
-  (let [rname->idx (into {}
-                         (map-indexed (fn [i {:keys [SN]}] [SN i]))
-                         (:SQ cram-header))
-        pos-encoder (build-positional-data-encoder cram-header ds-encoders)
-        name-encoder (build-read-name-encoder ds-encoders)
-        mate-encoder (build-mate-read-encoder rname->idx ds-encoders)
-        tags-encoder (build-auxiliary-tags-encoder tag-dict ds-encoders tag-encoders)
-        mapped-encoder (build-mapped-read-encoder ds-encoders)
-        unmapped-encoder (build-unmapped-read-encoder ds-encoders)]
-    (fn [record]
-      (let [bf (bit-and (long (:flag record))
-                        (bit-not (sam.flag/encoded #{:next-reversed :next-unmapped})))
-            ;; these flag bits of CF are hard-coded at the moment:
-            ;; - 0x01: quality scores stored as array (true)
-            ;; - 0x02: detached (true)
-            ;; - 0x04: has mate downstream (false)
-            cf (cond-> 0x03
-                 (= (:seq record) "*") (bit-or 0x08))
-            ri (ref-index rname->idx (:rname record))
-            [fs end] (calculate-read-features&end seq-resolver subst-mat record)
-            record' (assoc record ::flag cf ::ref-index ri ::features fs)]
-        (stats/update! stats-builder ri (:pos record') end (count (:seq record')) 1)
-        (BF bf)
-        (CF cf)
-        (pos-encoder record')
-        (name-encoder record')
-        (mate-encoder record')
-        (tags-encoder record')
-        (if (sam.flag/unmapped? (:flag record'))
-          (unmapped-encoder record')
-          (mapped-encoder record'))))))
-
-(defn encode-slice-records
-  "Encodes CRAM records in a slice all at once using the given data series encoders
-  and tag encoders. Returns the alignment stats for this slice."
-  [seq-resolver cram-header tag-dict subst-mat ds-encoders tag-encoders records]
-  (let [stats-builder (stats/make-alignment-stats-builder)
-        record-encoder (build-cram-record-encoder seq-resolver
-                                                  cram-header
-                                                  tag-dict
-                                                  subst-mat
-                                                  ds-encoders
-                                                  tag-encoders
-                                                  stats-builder)]
-    (run! record-encoder records)
-    (stats/build stats-builder)))
+(defn preprocess-slice-records
+  "Preprocesses slice records to calculate some record fields prior to record
+  encoding that are necessary for the CRAM writer to generate some header
+  components."
+  [seq-resolver rname->idx subst-mat ^objects records]
+  (dotimes [i (alength records)]
+    (let [record (aget records i)
+          ;; these flag bits of CF are hard-coded at the moment:
+          ;; - 0x01: quality scores stored as array (true)
+          ;; - 0x02: detached (true)
+          ;; - 0x04: has mate downstream (false)
+          cf (cond-> 0x03
+               (= (:seq record) "*") (bit-or 0x08))
+          ri (ref-index rname->idx (:rname record))
+          [fs end] (calculate-read-features&end seq-resolver subst-mat record)
+          record' (assoc record ::flag cf ::ref-index ri ::end end ::features fs)]
+      (aset records i record'))))

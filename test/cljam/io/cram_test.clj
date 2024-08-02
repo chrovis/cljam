@@ -9,6 +9,8 @@
             [clojure.test :refer [are deftest is testing]]))
 
 (def ^:private temp-cram-file (io/file common/temp-dir "test.cram"))
+(def ^:private temp-cram-file-2 (io/file common/temp-dir "test2.cram"))
+(def ^:private temp-cram-file-3 (io/file common/temp-dir "test3.cram"))
 
 (defn- fixup-bam-aln [aln]
   (-> (into {} aln)
@@ -105,3 +107,42 @@
              (cram/read-header r')))
       (is (= (cram/read-alignments r)
              (cram/read-alignments r'))))))
+
+(deftest writer-index-options-test
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (testing "A CRAM index file won't be created by default"
+      (with-open [r (cram/reader common/test-sorted-cram-file
+                                 {:reference common/test-fa-file})
+                  w (cram/writer temp-cram-file-2
+                                 {:reference common/test-fa-file})]
+        (cram/write-header w (cram/read-header r))
+        (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
+      (is (not (.exists (io/file (str temp-cram-file-2 ".crai"))))))
+    (testing "A CRAM index file will be created if `:create-index?` is set to true"
+      (with-open [r (cram/reader common/test-sorted-cram-file
+                                 {:reference common/test-fa-file})
+                  w (cram/writer temp-cram-file-2
+                                 {:reference common/test-fa-file
+                                  :create-index? true})]
+        (cram/write-header w (cram/read-header r))
+        (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
+      (is (.exists (io/file (str temp-cram-file-2 ".crai")))))
+    (testing "Error when trying to create an index file for a CRAM file not declared as `SO:coordinate`"
+      (with-open [r (cram/reader common/test-sorted-with-unknown-so-cram-file
+                                 {:reference common/test-fa-file})
+                  w (cram/writer temp-cram-file-3
+                                 {:reference common/test-fa-file
+                                  :create-index? true})]
+        (is (thrown-with-msg? Exception #"Cannot create CRAM index file for CRAM file not declared as sorted by coordinate"
+                              (cram/write-header w (cram/read-header r))))))
+    (testing "`:skip-sort-order-check?` skips the header check when creating an index file"
+      (with-open [r (cram/reader common/test-sorted-with-unknown-so-cram-file
+                                 {:reference common/test-fa-file})
+                  w (cram/writer temp-cram-file-3
+                                 {:reference common/test-fa-file
+                                  :create-index? true
+                                  :skip-sort-order-check? true})]
+        (cram/write-header w (cram/read-header r))
+        (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
+      (is (.exists (io/file (str temp-cram-file-3 ".crai")))))))

@@ -10,7 +10,7 @@
             [clojure.string :as str])
   (:import [cljam.io.cram.reader CRAMReader]
            [cljam.io.cram.writer CRAMWriter]
-           [java.io FileNotFoundException]
+           [java.io DataOutputStream FileNotFoundException]
            [java.net URL]
            [java.nio.channels FileChannel]
            [java.nio.file OpenOption StandardOpenOption]))
@@ -78,14 +78,23 @@
   "Creates a new CRAM writer that writes to a CRAM file f.
 
   Takes an option map as the second argument. An option map consists of:
-    - reference: a string representing the path to a reference file"
-  ^CRAMWriter [f {:keys [reference]}]
+    - reference: A string representing the path to a reference file
+    - create-index?: If true, creates a .crai index file in the course of CRAM
+        file writing.
+    - skip-sort-order-check?: When creating a CRAM index for the CRAM file,
+        the CRAM writer, by default, checks if the header is declared as
+        `SO:coordinate` and raises an error if not.
+        If this option is set to true, the CRAM writer will skip the header check
+        and create an index file regardless of the header declaration."
+  ^CRAMWriter [f {:keys [reference create-index?] :as opts}]
   (let [file (cio/file f)
         url (cio/as-url file)
         url' (str url)
         file-id (subs url' 0 (min 20 (count url')))
-        out (cio/output-stream file)
+        out (DataOutputStream. (cio/output-stream file))
+        index-writer (when create-index?
+                       (crai/writer (util/as-url (str url' ".crai"))))
         seq-resolver (some-> reference resolver/seq-resolver resolver/cached-resolver)
-        wtr (writer/->CRAMWriter url out seq-resolver)]
+        wtr (writer/->CRAMWriter url out seq-resolver index-writer opts)]
     (writer/write-file-definition wtr file-id)
     wtr))

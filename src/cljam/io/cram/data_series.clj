@@ -146,45 +146,45 @@
 
 (def ^{:doc "Default encodings for all the data series"}
   default-data-series-encodings
-  {:BF {:content-id  1, :codec :external}
-   :CF {:content-id  2, :codec :external}
-   :RI {:content-id  3, :codec :external}
-   :RL {:content-id  4, :codec :external}
-   :AP {:content-id  5, :codec :external}
-   :RG {:content-id  6, :codec :external}
-   :RN {:content-id  7, :codec :byte-array-stop, :stop-byte (int \tab)}
-   :MF {:content-id  8, :codec :external}
-   :NS {:content-id  9, :codec :external}
-   :NP {:content-id 10, :codec :external}
-   :TS {:content-id 11, :codec :external}
-   :NF {:content-id 12, :codec :external}
-   :TL {:content-id 13, :codec :external}
-   :FN {:content-id 14, :codec :external}
-   :FC {:content-id 15, :codec :external}
-   :FP {:content-id 16, :codec :external}
-   :DL {:content-id 17, :codec :external}
+  {:BF {:content-id  1, :codec :external, :compressor :gzip}
+   :CF {:content-id  2, :codec :external, :compressor :gzip}
+   :RI {:content-id  3, :codec :external, :compressor :gzip}
+   :RL {:content-id  4, :codec :external, :compressor :gzip}
+   :AP {:content-id  5, :codec :external, :compressor :gzip}
+   :RG {:content-id  6, :codec :external, :compressor :gzip}
+   :RN {:content-id  7, :codec :byte-array-stop, :stop-byte (int \tab), :compressor :gzip}
+   :MF {:content-id  8, :codec :external, :compressor :gzip}
+   :NS {:content-id  9, :codec :external, :compressor :gzip}
+   :NP {:content-id 10, :codec :external, :compressor :gzip}
+   :TS {:content-id 11, :codec :external, :compressor :gzip}
+   :NF {:content-id 12, :codec :external, :compressor :gzip}
+   :TL {:content-id 13, :codec :external, :compressor :gzip}
+   :FN {:content-id 14, :codec :external, :compressor :gzip}
+   :FC {:content-id 15, :codec :external, :compressor :gzip}
+   :FP {:content-id 16, :codec :external, :compressor :gzip}
+   :DL {:content-id 17, :codec :external, :compressor :gzip}
    :BB {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 18}
-        :val-encoding {:codec :external, :content-id 19}}
+        :len-encoding {:codec :external, :content-id 18, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 19, :compressor :gzip}}
    :QQ {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 20}
-        :val-encoding {:codec :external, :content-id 21}}
-   :BS {:content-id 22, :codec :external}
+        :len-encoding {:codec :external, :content-id 20, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 21, :compressor :gzip}}
+   :BS {:content-id 22, :codec :external, :compressor :gzip}
    :IN {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 23}
-        :val-encoding {:codec :external, :content-id 24}}
-   :RS {:content-id 25, :codec :external}
-   :PD {:content-id 26, :codec :external}
-   :HC {:content-id 27, :codec :external}
+        :len-encoding {:codec :external, :content-id 23, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 24, :compressor :gzip}}
+   :RS {:content-id 25, :codec :external, :compressor :gzip}
+   :PD {:content-id 26, :codec :external, :compressor :gzip}
+   :HC {:content-id 27, :codec :external, :compressor :gzip}
    :SC {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 28}
-        :val-encoding {:codec :external, :content-id 29}}
-   :MQ {:content-id 30, :codec :external}
-   :BA {:content-id 31, :codec :external}
-   :QS {:content-id 32, :codec :external}})
+        :len-encoding {:codec :external, :content-id 28, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 29, :compressor :gzip}}
+   :MQ {:content-id 30, :codec :external, :compressor :gzip}
+   :BA {:content-id 31, :codec :external, :compressor :gzip}
+   :QS {:content-id 32, :codec :external, :compressor :gzip}})
 
 (defn- build-codec-encoder
-  [{:keys [codec content-id] :as params} data-type content-id->state]
+  [{:keys [codec content-id compressor] :as params} data-type content-id->state]
   (letfn [(out-for-encoder []
             (or (get-in @content-id->state [content-id :out])
                 (let [out (ByteArrayOutputStream.)]
@@ -196,16 +196,18 @@
                   (let [^ByteArrayOutputStream out (:out state)
                         data (.toByteArray out)]
                     (vswap! content-id->state assoc-in [content-id :data] data)
-                    data))))]
+                    data))))
+          (encoding-result []
+            [{:content-id content-id, :data (data-for-encoder), :compressor compressor}])]
     (case codec
       :external
       (let [^OutputStream out (out-for-encoder)]
         (case data-type
           :byte (fn
-                  ([] [{:content-id content-id, :data (data-for-encoder)}])
+                  ([] (encoding-result))
                   ([v] (.write out (int v))))
           :int (fn
-                 ([] [{:content-id content-id, :data (data-for-encoder)}])
+                 ([] (encoding-result))
                  ([v] (itf8/encode-itf8 out v)))))
 
       :huffman
@@ -233,7 +235,7 @@
       (let [{:keys [stop-byte]} params
             ^OutputStream out (out-for-encoder)]
         (fn
-          ([] [{:content-id content-id, :data (data-for-encoder)}])
+          ([] (encoding-result))
           ([^bytes bs]
            (.write out bs)
            (.write out (int stop-byte))))))))
@@ -295,8 +297,10 @@
            (dotimes [i n]
              (conv out (nth vs' i)))))))
 
-(defn- build-tag-encoder [tag-encoding tag-type content-id->state]
-  (let [encoder (build-codec-encoder tag-encoding :bytes content-id->state)
+(defn- build-tag-encoder
+  [{:keys [compressor] :as tag-encoding} tag-type content-id->state]
+  (let [tag-encoding' (assoc tag-encoding :compressor (or compressor :best))
+        encoder (build-codec-encoder tag-encoding' :bytes content-id->state)
         converter (tag-value-converter tag-type)]
     (fn
       ([] (encoder))

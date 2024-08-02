@@ -60,10 +60,10 @@
 
 (defn- generate-blocks [slice-ctx]
   (->> (context/encoding-results slice-ctx)
-       (keep (fn [{:keys [content-id ^bytes data] :as block}]
+       (keep (fn [{:keys [content-id ^bytes data compressor] :as block}]
                (when (pos? (alength data))
                  (update block :data
-                         #(struct/generate-block :raw 4 content-id %)))))
+                         #(struct/generate-block compressor 4 content-id %)))))
        ;; sort + dedupe by :content-id
        (into (sorted-map) (map (juxt :content-id identity)))
        vals

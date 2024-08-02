@@ -93,34 +93,36 @@
       (itf8/encode-itf8 out' (:blocks container-header))
       (encode-itf8-array out' (:landmarks container-header)))))
 
-(def ^:private encode-block-data
+(def ^:private compress-block-data
   (let [factory (CompressorStreamFactory.)]
-    (fn [^OutputStream out method data]
+    (fn [method data]
       (case method
-        :raw (lsb/write-bytes out data)
+        :raw data
         (let [compressor (case method
                            :gzip CompressorStreamFactory/GZIP
                            :bzip CompressorStreamFactory/BZIP2
                            :lzma CompressorStreamFactory/LZMA
                            (ex-info (str "compression method " method
                                          " not supported")
-                                    {:method method}))
-              out' (.createCompressorOutputStream factory compressor out)]
-          (lsb/write-bytes out' data))))))
+                                    {:method method}))]
+          (with-out-byte-array
+            (fn [out]
+              (with-open [out' (.createCompressorOutputStream factory compressor out)]
+                (lsb/write-bytes out' data)))))))))
 
 (defn encode-block
   "Encodes a block to the given OutputStream."
-  [^OutputStream out method content-type content-id ^bytes block-data]
+  [^OutputStream out method content-type content-id ^bytes uncompressed]
   (let [method' (case method :raw 0 :gzip 1 :bzip 2 :lzma 3)
-        size (alength block-data)]
+        ^bytes compressed (compress-block-data method uncompressed)]
     (with-crc-suffixed out
       (fn [out']
         (lsb/write-ubyte out' method')
         (lsb/write-ubyte out' content-type)
         (itf8/encode-itf8 out' content-id)
-        (itf8/encode-itf8 out' size)
-        (itf8/encode-itf8 out' size)
-        (encode-block-data out' method block-data)))))
+        (itf8/encode-itf8 out' (alength compressed))
+        (itf8/encode-itf8 out' (alength uncompressed))
+        (lsb/write-bytes out' compressed)))))
 
 (defn generate-block
   "Encodes a block and returns the encoded result as a byte array."

@@ -1,5 +1,6 @@
 (ns cljam.io.cram.data-series
   (:require [cljam.io.cram.bit-stream :as bs]
+            [cljam.io.cram.encode.compressor :as compressor]
             [cljam.io.cram.itf8 :as itf8]
             [cljam.io.util.byte-buffer :as bb]
             [cljam.io.util.lsb.io-stream :as lsb]
@@ -186,28 +187,28 @@
 (defn- build-codec-encoder
   [{:keys [codec content-id compressor] :as params} data-type content-id->state]
   (letfn [(out-for-encoder []
-            (or (get-in @content-id->state [content-id :out])
-                (let [out (ByteArrayOutputStream.)]
-                  (vswap! content-id->state assoc-in [content-id :out] out)
-                  out)))
-          (data-for-encoder []
-            (let [state (get @content-id->state content-id)]
-              (or (get state :data)
-                  (let [^ByteArrayOutputStream out (:out state)
-                        data (.toByteArray out)]
-                    (vswap! content-id->state assoc-in [content-id :data] data)
-                    data))))
-          (encoding-result []
-            [{:content-id content-id, :data (data-for-encoder), :compressor compressor}])]
+            (-> (or (get-in @content-id->state [content-id :compressor])
+                    (let [compr (compressor/compressor compressor)]
+                      (vswap! content-id->state assoc-in [content-id :compressor] compr)
+                      compr))
+                compressor/compressor-output-stream))
+          (result-for-encoder []
+            (let [state (get @content-id->state content-id)
+                  res (or (get state :result)
+                          (let [compr (:compressor state)
+                                res (compressor/->compressed-result compr)]
+                            (vswap! content-id->state assoc-in [content-id :result] res)
+                            res))]
+              [(assoc res :content-id content-id)]))]
     (case codec
       :external
       (let [^OutputStream out (out-for-encoder)]
         (case data-type
           :byte (fn
-                  ([] (encoding-result))
+                  ([] (result-for-encoder))
                   ([v] (.write out (int v))))
           :int (fn
-                 ([] (encoding-result))
+                 ([] (result-for-encoder))
                  ([v] (itf8/encode-itf8 out v)))))
 
       :huffman
@@ -235,7 +236,7 @@
       (let [{:keys [stop-byte]} params
             ^OutputStream out (out-for-encoder)]
         (fn
-          ([] (encoding-result))
+          ([] (result-for-encoder))
           ([^bytes bs]
            (.write out bs)
            (.write out (int stop-byte))))))))

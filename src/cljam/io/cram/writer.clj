@@ -60,15 +60,18 @@
 
 (defn- generate-blocks [slice-ctx]
   (->> (context/encoding-results slice-ctx)
-       (keep (fn [{:keys [content-id ^bytes data compressor] :as block}]
-               (when (pos? (alength data))
+       (keep (fn [{:keys [^long raw-size] :as block}]
+               (when (pos? raw-size)
                  (update block :data
-                         #(struct/generate-block compressor 4 content-id %)))))
+                         (fn [^bytes data]
+                           (struct/generate-block (:compressor block) 4
+                                                  (:content-id block) raw-size
+                                                  data))))))
        ;; sort + dedupe by :content-id
        (into (sorted-map) (map (juxt :content-id identity)))
        vals
        (cons {:content-id 0
-              :data (struct/generate-block :raw 5 0 (byte-array 0))})))
+              :data (struct/generate-block :raw 5 0 0 (byte-array 0))})))
 
 (defn- reference-md5
   [{:keys [seq-resolver cram-header]} {:keys [^long ri ^long start ^long end]}]

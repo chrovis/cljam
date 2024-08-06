@@ -39,6 +39,28 @@
     (.finish out)
     {:compressor :lzma, :data (.toByteArray baos)}))
 
+(defn- with-out-byte-array ^bytes [f]
+  (let [out (ByteArrayOutputStream.)]
+    (f out)
+    (.toByteArray out)))
+
+(deftype SelectiveCompressor [^ByteArrayOutputStream out]
+  ICompressor
+  (compressor-output-stream [_] out)
+  (->compressed-result [_]
+    (let [uncompressed (.toByteArray out)
+          gzipped (with-out-byte-array
+                    (fn [out]
+                      (with-open [os (GzipCompressorOutputStream. out)]
+                        (.write os uncompressed))))
+          bzipped (with-out-byte-array
+                    (fn [out]
+                      (with-open [os (BZip2CompressorOutputStream. out)]
+                        (.write os uncompressed))))
+          [k v] (apply min-key #(alength ^bytes (val %))
+                       {:raw uncompressed, :gzip gzipped, :bzip bzipped})]
+      {:compressor k, :data v})))
+
 (defn compressor
   "TODO"
   [method]
@@ -48,6 +70,7 @@
                 :gzip (->GzipCompressor (GzipCompressorOutputStream. baos) baos)
                 :bzip (->BZip2Compressor (BZip2CompressorOutputStream. baos) baos)
                 :lzma (->LZMACompressor (LZMACompressorOutputStream. baos) baos)
+                :best (->SelectiveCompressor baos)
                 (throw
                  (ex-info (str "compression method " method " not supported")
                           {:method method})))

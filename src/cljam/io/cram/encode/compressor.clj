@@ -1,5 +1,5 @@
 (ns cljam.io.cram.encode.compressor
-  (:import [java.io ByteArrayOutputStream]
+  (:import [java.io ByteArrayOutputStream OutputStream]
            [org.apache.commons.compress.compressors.bzip2 BZip2CompressorOutputStream]
            [org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream]
            [org.apache.commons.compress.compressors.lzma LZMACompressorOutputStream]
@@ -39,41 +39,51 @@
     (.finish out)
     {:compressor :lzma, :data (.toByteArray baos)}))
 
-(defn- with-out-byte-array ^bytes [f]
+(defn- compress-with [f ^bytes uncompressed]
   (let [out (ByteArrayOutputStream.)]
-    (f out)
+    (with-open [^OutputStream os (f out)]
+      (.write os uncompressed))
     (.toByteArray out)))
 
-(deftype SelectiveCompressor [^ByteArrayOutputStream out]
+(deftype SelectiveCompressor [^ByteArrayOutputStream out alternatives]
   ICompressor
   (compressor-output-stream [_] out)
   (->compressed-result [_]
     (let [uncompressed (.toByteArray out)
-          gzipped (with-out-byte-array
-                    (fn [out]
-                      (with-open [os (GzipCompressorOutputStream. out)]
-                        (.write os uncompressed))))
-          bzipped (with-out-byte-array
-                    (fn [out]
-                      (with-open [os (BZip2CompressorOutputStream. out)]
-                        (.write os uncompressed))))
-          [k v] (apply min-key #(alength ^bytes (val %))
-                       {:raw uncompressed, :gzip gzipped, :bzip bzipped})]
+          [k v] (->> alternatives
+                     (into {}
+                           (map (fn [method]
+                                  (case method
+                                    :raw uncompressed
+                                    :gzip (compress-with #(GzipCompressorOutputStream. %)
+                                                         uncompressed)
+                                    :bzip (compress-with #(BZip2CompressorOutputStream. %)
+                                                         uncompressed)
+                                    :lzma (compress-with #(LZMACompressorOutputStream. %)
+                                                         uncompressed)
+                                    (throw
+                                     (ex-info (str "compression method " method
+                                                   " not supported")
+                                              {:method method}))))))
+                     (apply min-key #(alength ^bytes (val %))))]
       {:compressor k, :data v})))
 
 (defn compressor
   "TODO"
-  [method]
+  [method-or-methods]
   (let [baos (ByteArrayOutputStream.)
-        compr (case method
+        compr (case method-or-methods
                 :raw (->RawCompressor baos)
                 :gzip (->GzipCompressor (GzipCompressorOutputStream. baos) baos)
                 :bzip (->BZip2Compressor (BZip2CompressorOutputStream. baos) baos)
                 :lzma (->LZMACompressor (LZMACompressorOutputStream. baos) baos)
-                :best (->SelectiveCompressor baos)
-                (throw
-                 (ex-info (str "compression method " method " not supported")
-                          {:method method})))
+                :best (->SelectiveCompressor baos #{:raw :gzip :bzip :lzma})
+                (if (set? method-or-methods)
+                  (->SelectiveCompressor baos method-or-methods)
+                  (throw
+                   (ex-info (str "compression method " (pr-str method-or-methods)
+                                 " not supported")
+                            {:method method-or-methods}))))
         out (CountingOutputStream. (compressor-output-stream compr))]
     (reify ICompressor
       (compressor-output-stream [_] out)

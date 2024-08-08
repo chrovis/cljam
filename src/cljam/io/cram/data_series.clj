@@ -273,7 +273,10 @@
         encoding
         (let [ret (overrides (first ks))]
           (cond (nil? ret) encoding
-                (keyword? ret) (assoc encoding :compressor ret)
+
+                (or (keyword? ret) (set? ret))
+                (assoc encoding :compressor ret)
+
                 :else (recur (rest ks) ret)))))))
 
 (defn apply-ds-compressor-overrides

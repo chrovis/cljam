@@ -25,12 +25,15 @@
   "Finalizes the builders in the container context and returns a new container
   context containing those builders' results. This operation must be done before
   creating a slice context."
-  [{:keys [tag-dict-builder] :as container-ctx}]
-  (let [tag-dict (tag-dict/build-tag-dict tag-dict-builder)
-        tag-encodings (tag-dict/build-tag-encodings tag-dict)]
+  [container-ctx ds-compressor-overrides tag-compressor-overrides]
+  (let [ds-encodings (-> ds/default-data-series-encodings
+                         (ds/apply-ds-compressor-overrides ds-compressor-overrides))
+        tag-dict (tag-dict/build-tag-dict (:tag-dict-builder container-ctx))
+        tag-encodings (-> (tag-dict/build-tag-encodings tag-dict)
+                          (ds/apply-tag-compressor-overrides tag-compressor-overrides))]
     (assoc container-ctx
+           :ds-encodings ds-encodings
            :tag-dict tag-dict
-           :ds-encodings ds/default-data-series-encodings
            :tag-encodings tag-encodings)))
 
 (defn make-slice-context

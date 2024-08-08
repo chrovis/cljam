@@ -49,14 +49,17 @@
   (struct/encode-cram-header-container (.-stream wtr) header))
 
 (defn- preprocess-records
-  [cram-header preservation-map seq-resolver ^objects container-records]
+  [cram-header preservation-map seq-resolver ds-compressor-overrides tag-compressor-overrides
+   ^objects container-records]
   (let [container-ctx (context/make-container-context cram-header
                                                       preservation-map
                                                       seq-resolver)]
     (dotimes [i (alength container-records)]
       (let [slice-records (aget container-records i)]
         (record/preprocess-slice-records container-ctx slice-records)))
-    (context/finalize-container-context container-ctx)))
+    (context/finalize-container-context container-ctx
+                                        ds-compressor-overrides
+                                        tag-compressor-overrides)))
 
 (defn- generate-blocks [slice-ctx]
   (->> (context/encoding-results slice-ctx)
@@ -172,7 +175,9 @@
 (defn- write-container [^CRAMWriter wtr cram-header counter container-records]
   (let [preservation-map {:RN true, :AP false, :RR true}
         seq-resolver (.-seq-resolver wtr)
+        {:keys [ds-compressor-overrides tag-compressor-overrides]} (.-options wtr)
         container-ctx (preprocess-records cram-header preservation-map seq-resolver
+                                          ds-compressor-overrides tag-compressor-overrides
                                           container-records)
         slices (generate-slices container-ctx counter container-records)
         compression-header-block (generate-compression-header-block container-ctx)

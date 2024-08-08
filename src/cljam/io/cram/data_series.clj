@@ -251,13 +251,41 @@
     - <encoder>: a function that has two arities
                  - arity 1: take a value to encode for the data series
                  - arity 0: finalize and return the encoding result"
-  [ds-encoding]
+  [ds-encodings]
   (let [content-id->state (volatile! {})]
-    (reduce-kv (fn [encoders ds params]
-                 (let [dt (data-series-type ds)
-                       encoder (build-codec-encoder params dt content-id->state)]
-                   (assoc encoders ds encoder)))
-               {} ds-encoding)))
+    (reduce-kv
+     (fn [encoders ds encoding]
+       (let [dt (data-series-type ds)
+             encoder (build-codec-encoder encoding dt content-id->state)]
+         (assoc encoders ds encoder)))
+     {} ds-encodings)))
+
+(defn- apply-compressor-overrides
+  [{:keys [codec] :as encoding} ks compressor-overrides]
+  (if (= codec :byte-array-len)
+    (-> encoding
+        (update :len-encoding apply-compressor-overrides
+                (conj ks :byte-array-len/len) compressor-overrides)
+        (update :val-encoding apply-compressor-overrides
+                (conj ks :byte-array-len/val) compressor-overrides))
+    (loop [ks (conj ks codec), overrides compressor-overrides]
+      (if (empty? ks)
+        encoding
+        (let [ret (overrides (first ks))]
+          (cond (nil? ret) encoding
+                (keyword? ret) (assoc encoding :compressor ret)
+                :else (recur (rest ks) ret)))))))
+
+(defn apply-ds-compressor-overrides
+  "TODO"
+  [ds-encodings compressor-overrides]
+  (if compressor-overrides
+    (reduce-kv
+     (fn [ds-encodings ds _]
+       (update ds-encodings ds
+               apply-compressor-overrides [ds] compressor-overrides))
+     ds-encodings ds-encodings)
+    ds-encodings))
 
 (def ^:private digit->char
   (let [bs (.getBytes "0123456789ABCDEF")]
@@ -310,6 +338,15 @@
          (converter out v)
          (encoder (.toByteArray out)))))))
 
+(defn- reduce-tag-encodings [f init tag-encodings]
+  (reduce-kv
+   (fn [acc tag m]
+     (reduce-kv
+      (fn [acc tag-type encoding]
+        (f acc tag tag-type encoding))
+      acc m))
+   init tag-encodings))
+
 (defn build-tag-encoders
   "Builds encoders for tags based on the given encodings.
 
@@ -323,11 +360,21 @@
                  - arity 0: finalize and return the encoding result"
   [tag-encodings]
   (let [content-id->state (volatile! {})]
-    (reduce-kv
-     (fn [encoders tag m]
-       (reduce-kv
-        (fn [encoders tag-type encoding]
-          (assoc-in encoders [tag tag-type]
-                    (build-tag-encoder encoding tag-type content-id->state)))
-        encoders m))
+    (reduce-tag-encodings
+     (fn [encoders tag tag-type encoding]
+       (assoc-in encoders [tag tag-type]
+                 (build-tag-encoder encoding tag-type content-id->state)))
      {} tag-encodings)))
+
+(defn apply-tag-compressor-overrides
+  "TODO"
+  [tag-encodings compressor-overrides]
+  (if compressor-overrides
+    (reduce-tag-encodings
+     (fn [tag-encodings tag tag-type _]
+       (let [ks [tag tag-type]]
+         (update-in tag-encodings ks
+                    apply-compressor-overrides ks compressor-overrides)))
+     tag-encodings
+     tag-encodings)
+    tag-encodings))

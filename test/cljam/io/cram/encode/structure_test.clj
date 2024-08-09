@@ -3,11 +3,12 @@
             [cljam.io.cram.encode.structure :as struct]
             [cljam.io.util.byte-buffer :as bb]
             [clojure.set :as set]
-            [clojure.test :refer [deftest is]])
+            [clojure.test :refer [deftest is testing]])
   (:import [java.io ByteArrayOutputStream]
            [java.nio ByteBuffer]
            [java.util Arrays]
-           [java.util.zip CRC32]))
+           [java.util.zip CRC32]
+           [org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream]))
 
 (defn- with-encoding-result [encode-fn & args]
   (let [cont (last args)
@@ -49,20 +50,41 @@
           (is (Arrays/equals crc ^bytes (:crc decoded))))))))
 
 (deftest encode-block-test
-  (let [content (.getBytes "This is the block content.")
-        size (alength content)
-        {:keys [method content-type content-id] :as block} {:method :raw
-                                                            :content-type 4
-                                                            :content-id 42}]
-    (with-encoding-result struct/encode-block method content-type content-id content
-      (fn [bb ^bytes encoded]
-        (let [decoded (decode.struct/decode-block bb)
-              crc (calculate-crc encoded 0 (- (alength encoded) 4))]
-          (is (= (assoc block :method 0 :size size :raw-size size)
-                 (dissoc decoded :crc :data)))
-          (is (= (seq content)
-                 (seq (bb/read-bytes (:data decoded) (:size decoded)))))
-          (is (Arrays/equals crc ^bytes (:crc decoded))))))))
+  (testing "compress with :raw compressor"
+    (let [content (.getBytes "This is the block content.")
+          raw-size (alength content)
+          {:keys [method content-type content-id] :as block} {:method :raw
+                                                              :content-type 4
+                                                              :content-id 42}]
+      (with-encoding-result struct/encode-block method content-type content-id raw-size content
+        (fn [bb ^bytes encoded]
+          (let [decoded (decode.struct/decode-block bb)
+                crc (calculate-crc encoded 0 (- (alength encoded) 4))]
+            (is (= (assoc block :method 0 :size raw-size :raw-size raw-size)
+                   (dissoc decoded :crc :data)))
+            (is (= (seq content)
+                   (seq (bb/read-bytes (:data decoded) (:raw-size decoded)))))
+            (is (Arrays/equals crc ^bytes (:crc decoded))))))))
+  (testing "compress with :gzip compressor"
+    (let [content (.getBytes "This is the block content.")
+          compressed (with-open [baos (ByteArrayOutputStream.)
+                                 out (GzipCompressorOutputStream. baos)]
+                       (.write out content)
+                       (.finish out)
+                       (.toByteArray baos))
+          raw-size (alength content)
+          {:keys [method content-type content-id] :as block} {:method :gzip
+                                                              :content-type 4
+                                                              :content-id 42}]
+      (with-encoding-result struct/encode-block method content-type content-id raw-size compressed
+        (fn [bb ^bytes encoded]
+          (let [decoded (decode.struct/decode-block bb)
+                crc (calculate-crc encoded 0 (- (alength encoded) 4))]
+            (is (= (assoc block :method 1 :size (alength compressed) :raw-size raw-size)
+                   (dissoc decoded :crc :data)))
+            (is (= (seq content)
+                   (seq (bb/read-bytes (:data decoded) (:raw-size decoded)))))
+            (is (Arrays/equals crc ^bytes (:crc decoded)))))))))
 
 (deftest encode-cram-header-container-test
   (let [cram-header {:SQ

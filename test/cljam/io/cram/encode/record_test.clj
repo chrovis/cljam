@@ -162,7 +162,7 @@
                      :cigar "1M1I1M1D2M", :rnext "=", :pnext 5, :tlen -15, :seq "GAAAG", :qual "EBBFF"
                      :options [{:RG {:type "Z", :value "rg002"}}
                                {:MD {:type "Z", :value "3^T2"}}
-                               {:NM {:type "c",  :value 2}}]}
+                               {:NM {:type "c", :value 2}}]}
                     {:qname "q005", :flag 73, :rname "ref", :pos 20, :end 24, :mapq 0,
                      :cigar "5M", :rnext "*", :pnext 0, :tlen 0, :seq "CTGTG", :qual "AEEEE"
                      :options []}])

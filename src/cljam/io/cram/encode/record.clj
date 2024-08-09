@@ -3,7 +3,8 @@
             [cljam.io.sam.util.cigar :as sam.cigar]
             [cljam.io.sam.util.flag :as sam.flag]
             [cljam.io.sam.util.option :as sam.option]
-            [cljam.io.cram.seq-resolver.protocol :as resolver])
+            [cljam.io.cram.seq-resolver.protocol :as resolver]
+            [cljam.io.cram.encode.tag-dict :as tag-dict])
   (:import [java.util Arrays]))
 
 (defn- ref-index [rname->idx rname]
@@ -201,7 +202,7 @@
   "Preprocesses slice records to calculate some record fields prior to record
   encoding that are necessary for the CRAM writer to generate some header
   components."
-  [seq-resolver rname->idx subst-mat ^objects records]
+  [seq-resolver rname->idx tag-dict-builder subst-mat ^objects records]
   (dotimes [i (alength records)]
     (let [record (aget records i)
           ;; these flag bits of CF are hard-coded at the moment:
@@ -211,6 +212,9 @@
           cf (cond-> 0x03
                (= (:seq record) "*") (bit-or 0x08))
           ri (ref-index rname->idx (:rname record))
+          tags-id (tag-dict/assign-tags-id! tag-dict-builder (:options record))
           [fs end] (calculate-read-features&end seq-resolver subst-mat record)
-          record' (assoc record ::flag cf ::ref-index ri ::end end ::features fs)]
+          record' (assoc record
+                         ::flag cf ::ref-index ri ::end end
+                         ::features fs ::tags-index tags-id)]
       (aset records i record'))))

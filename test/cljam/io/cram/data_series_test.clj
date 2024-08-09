@@ -6,8 +6,11 @@
             [cljam.io.util.byte-buffer :as bb]
             [cljam.io.util.lsb.io-stream :as lsb]
             [clojure.string :as str]
-            [clojure.test :refer [deftest is testing]])
-  (:import [java.io ByteArrayOutputStream]))
+            [clojure.test :refer [are deftest is testing]])
+  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
+           [org.apache.commons.compress.compressors.bzip2 BZip2CompressorInputStream]
+           [org.apache.commons.compress.compressors.gzip GzipCompressorInputStream]
+           [org.apache.commons.compress.compressors.lzma LZMACompressorInputStream]))
 
 (deftest build-data-series-decoders-test
   (let [encodings {:BA {:codec :external, :content-id 1}
@@ -445,13 +448,23 @@
                 {:type "B" :value "f,-0.75,-1.0"}]
                [(fl) (fl) (fl) (fl)]))))))
 
+(defn- decompress ^bytes [{:keys [compressor raw-size ^bytes data]}]
+  (let [bais (ByteArrayInputStream. data)]
+    (with-open [in (case compressor
+                     :raw bais
+                     :gzip (GzipCompressorInputStream. bais)
+                     :bzip (BZip2CompressorInputStream. bais)
+                     :lzma (LZMACompressorInputStream. bais))]
+      (lsb/read-bytes in raw-size))))
+
 (deftest build-data-series-encoders-test
-  (let [encodings {:BF {:codec :external, :content-id 1}
-                   :BA {:codec :external, :content-id 2}
+  (let [encodings {:BF {:codec :external, :content-id 1, :compressor :best}
+                   :BA {:codec :external, :content-id 2, :compressor :raw}
                    :BB {:codec :byte-array-len
-                        :len-encoding {:codec :external, :content-id 3}
-                        :val-encoding {:codec :external, :content-id 4}}
-                   :RN {:codec :byte-array-stop, :stop-byte (int \tab), :content-id 5}}
+                        :len-encoding {:codec :external, :content-id 3, :compressor :gzip}
+                        :val-encoding {:codec :external, :content-id 4, :compressor :bzip}}
+                   :RN {:codec :byte-array-stop, :stop-byte (int \tab), :content-id 5
+                        :compressor :lzma}}
         {:keys [BF BA BB RN]}
         (ds/build-data-series-encoders encodings)]
     (doseq [[bf ba bb rn] (->> [[0xa1 0x63 0xa3 0x63]
@@ -465,21 +478,132 @@
       (BA ba)
       (BB bb)
       (RN rn))
-    (let [[{:keys [content-id data]}] (BF)]
+    (let [[{:keys [content-id compressor] :as res}] (BF)]
       (is (= 1 content-id))
-      (is (= [0x80 0xa1 0x63 0x80 0xa3 0x63] (map #(bit-and % 0xff) data))))
-    (let [[{:keys [content-id data]}] (BA)]
+      (is (= :raw compressor))
+      (is (= [0x80 0xa1 0x63 0x80 0xa3 0x63]
+             (map #(bit-and % 0xff) (decompress res)))))
+    (let [[{:keys [content-id compressor] :as res}] (BA)]
       (is (= 2 content-id))
-      (is (= "ATGC" (String. data))))
-    (let [[{content-id1 :content-id, data1 :data}
-           {content-id2 :content-id, data2 :data}] (BB)]
+      (is (= :raw compressor))
+      (is (= "ATGC" (String. (decompress res)))))
+    (let [[{content-id1 :content-id, compr1 :compressor :as res1}
+           {content-id2 :content-id, compr2 :compressor :as res2}] (BB)]
       (is (= 3 content-id1))
-      (is (= [3 5 4 3] (map #(bit-and % 0xff) data1)))
+      (is (= :gzip compr1))
+      (is (= [3 5 4 3] (map #(bit-and % 0xff) (decompress res1))))
       (is (= 4 content-id2))
-      (is (= "CATCGAACAACTACT" (String. data2))))
-    (let [[{:keys [content-id data]}] (RN)]
+      (is (= :bzip compr2))
+      (is (= "CATCGAACAACTACT" (String. (decompress res2)))))
+    (let [[{:keys [content-id compressor] :as res}] (RN)]
       (is (= 5 content-id))
-      (is (= "qname001\tqname002\tqname003\tqname004\t" (String. data))))))
+      (is (= :lzma compressor))
+      (is (= "qname001\tqname002\tqname003\tqname004\t"
+             (String. (decompress res)))))))
+
+(deftest apply-ds-compressor-overrides-test
+  (let [ds-encodings {:BF {:codec :external, :content-id 1, :compressor :raw}
+                      :CF {:codec :external, :content-id 2, :compressor :raw}
+                      :RN {:codec :byte-array-stop, :stop-byte (int \tab), :content-id 3
+                           :compressor :raw}
+                      :BB {:codec :byte-array-len
+                           :len-encoding {:codec :huffman, :alphabet [151], :bit-len [0]}
+                           :val-encoding {:codec :external, :content-id 4, :compressor :raw}}
+                      :QQ {:codec :byte-array-len
+                           :len-encoding {:codec :external, :content-id 5, :compressor :raw}
+                           :val-encoding {:codec :external, :content-id 6, :compressor :raw}}}]
+    (are [input expected] (= expected (ds/apply-ds-compressor-overrides ds-encodings input))
+      {}
+      ds-encodings
+
+      {:BF :gzip}
+      (assoc-in ds-encodings [:BF :compressor] :gzip)
+
+      {:RN :gzip, :BB :bzip}
+      (-> ds-encodings
+          (assoc-in [:RN :compressor] :gzip)
+          (assoc-in [:BB :len-encoding :compressor] :bzip)
+          (assoc-in [:BB :val-encoding :compressor] :bzip))
+
+      (fn [ds] (when (#{:BF :CF} ds) #{:bzip :lzma}))
+      (-> ds-encodings
+          (assoc-in [:BF :compressor] #{:bzip :lzma})
+          (assoc-in [:CF :compressor] #{:bzip :lzma}))
+
+      (constantly :gzip)
+      (-> ds-encodings
+          (assoc-in [:BF :compressor] :gzip)
+          (assoc-in [:CF :compressor] :gzip)
+          (assoc-in [:RN :compressor] :gzip)
+          (assoc-in [:BB :len-encoding :compressor] :gzip)
+          (assoc-in [:BB :val-encoding :compressor] :gzip)
+          (assoc-in [:QQ :len-encoding :compressor] :gzip)
+          (assoc-in [:QQ :val-encoding :compressor] :gzip))
+
+      (some-fn {:BF :gzip, :CF :gzip} (constantly :bzip))
+      (-> ds-encodings
+          (assoc-in [:BF :compressor] :gzip)
+          (assoc-in [:CF :compressor] :gzip)
+          (assoc-in [:RN :compressor] :bzip)
+          (assoc-in [:BB :len-encoding :compressor] :bzip)
+          (assoc-in [:BB :val-encoding :compressor] :bzip)
+          (assoc-in [:QQ :len-encoding :compressor] :bzip)
+          (assoc-in [:QQ :val-encoding :compressor] :bzip))
+
+      (fn [ds]
+        (fn [codec]
+          (when (and (= ds :BF) (= codec :external))
+            #{:bzip :lzma})))
+      (assoc-in ds-encodings [:BF :compressor] #{:bzip :lzma})
+
+      (fn [ds]
+        (fn [codec]
+          (when (and (= ds :RN) (= codec :external))
+            :gzip)))
+      ds-encodings
+
+      {:BF {:external :bzip}}
+      (assoc-in ds-encodings [:BF :compressor] :bzip)
+
+      (constantly {:external #{:bzip :lzma}})
+      (-> ds-encodings
+          (assoc-in [:BF :compressor] #{:bzip :lzma})
+          (assoc-in [:CF :compressor] #{:bzip :lzma}))
+
+      {:BB {:byte-array-len/val :gzip}}
+      (assoc-in ds-encodings [:BB :val-encoding :compressor] :gzip)
+
+      {:BF :gzip
+       :QQ {:byte-array-len/len :bzip}}
+      (-> ds-encodings
+          (assoc-in [:BF :compressor] :gzip)
+          (assoc-in [:QQ :len-encoding :compressor] :bzip))
+
+      (constantly {:byte-array-len/val :gzip})
+      (-> ds-encodings
+          (assoc-in [:BB :val-encoding :compressor] :gzip)
+          (assoc-in [:QQ :val-encoding :compressor] :gzip))
+
+      (fn [ds]
+        (fn [codec1]
+          (fn [codec2]
+            (when (and (= ds :BB)
+                       (= codec1 :byte-array-len/val)
+                       (= codec2 :external))
+              :bzip))))
+      (assoc-in ds-encodings [:BB :val-encoding :compressor] :bzip)
+
+      {:QQ {:byte-array-len/val {:external #{:bzip :lzma}}}}
+      (assoc-in ds-encodings [:QQ :val-encoding :compressor] #{:bzip :lzma})
+
+      (constantly {:byte-array-len/len {:external :gzip}})
+      (assoc-in ds-encodings [:QQ :len-encoding :compressor] :gzip)
+
+      (constantly (constantly {:external :bzip}))
+      (-> ds-encodings
+          (assoc-in [:BB :val-encoding :compressor] :bzip)
+          (assoc-in [:QQ :len-encoding :compressor] :bzip)
+          (assoc-in [:QQ :val-encoding :compressor] :bzip)))))
 
 (deftest build-tag-encoders-test
   (testing "single values"
@@ -489,13 +613,15 @@
                                                :alphabet [1]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7561827}}}
+                                               :content-id 7561827
+                                               :compressor :raw}}}
                        :ub {\C {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [1]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7692867}}}}
+                                               :content-id 7692867
+                                               :compressor :gzip}}}}
             encoders (ds/build-tag-encoders encodings)
             sb (get-in encoders [:sb \c])
             ub (get-in encoders [:ub \C])]
@@ -504,95 +630,111 @@
                              (apply map vector))]
           (sb (unchecked-byte v1))
           (ub v2))
-        (let [[{:keys [content-id data]}] (sb)]
+        (let [[{:keys [content-id compressor] :as res}] (sb)]
           (is (= 7561827 content-id))
-          (is (= [0xde 0xed 0xbe 0xef] (map #(bit-and % 0xff) data))))
-        (let [[{:keys [content-id data]}] (ub)]
+          (is (= :raw compressor))
+          (is (= [0xde 0xed 0xbe 0xef] (map #(bit-and % 0xff) (decompress res)))))
+        (let [[{:keys [content-id compressor] :as res}] (ub)]
           (is (= 7692867 content-id))
-          (is (= [0xca 0xfe 0xba 0xbe] (map #(bit-and % 0xff) data))))))
+          (is (= :gzip compressor))
+          (is (= [0xca 0xfe 0xba 0xbe] (map #(bit-and % 0xff) (decompress res)))))))
     (testing "shorts"
       (let [encodings {:ss {\s {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [2]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7566195}}}
+                                               :content-id 7566195
+                                               :compressor :bzip}}}
                        :us {\S {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [2]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7697235}}}}
+                                               :content-id 7697235
+                                               :compressor :lzma}}}}
             encoders (ds/build-tag-encoders encodings)
             ss (get-in encoders [:ss \s])
             us (get-in encoders [:us \S])]
         (doseq [v [0x0123 0x4567 0x89ab 0xcdef]]
           (ss (unchecked-short v))
           (us v))
-        (let [[{:keys [content-id data]}] (ss)]
+        (let [[{:keys [content-id compressor] :as res}] (ss)]
           (is (= 7566195 content-id))
-          (is (= [0x23 0x01 0x67 0x45 0xab 0x89 0xef 0xcd] (map #(bit-and % 0xff) data))))
-        (let [[{:keys [content-id data]}] (us)]
+          (is (= :bzip compressor))
+          (is (= [0x23 0x01 0x67 0x45 0xab 0x89 0xef 0xcd]
+                 (map #(bit-and % 0xff) (decompress res)))))
+        (let [[{:keys [content-id compressor] :as res}] (us)]
           (is (= 7697235 content-id))
-          (is (= [0x23 0x01 0x67 0x45 0xab 0x89 0xef 0xcd] (map #(bit-and % 0xff) data))))))
+          (is (= :lzma compressor))
+          (is (= [0x23 0x01 0x67 0x45 0xab 0x89 0xef 0xcd]
+                 (map #(bit-and % 0xff) (decompress res)))))))
     (testing "ints"
       (let [encodings {:si {\i {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [4]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7563625}}}
+                                               :content-id 7563625
+                                               :compressor :raw}}}
                        :ui {\I {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [4]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7694665}}}}
+                                               :content-id 7694665
+                                               :compressor :gzip}}}}
             encoders (ds/build-tag-encoders encodings)
             si (get-in encoders [:si \i])
             ui (get-in encoders [:ui \I])]
         (doseq [v [0 0x01234567 0x89abcdef 0xffffffff]]
           (si (unchecked-int v))
           (ui v))
-        (let [[{:keys [content-id data]}] (si)]
+        (let [[{:keys [content-id compressor] :as res}] (si)]
           (is (= 7563625 content-id))
+          (is (= :raw compressor))
           (is (= [0x00 0x00 0x00 0x00 0x67 0x45 0x23 0x01
                   0xef 0xcd 0xab 0x89 0xff 0xff 0xff 0xff]
-                 (map #(bit-and % 0xff) data))))
-        (let [[{:keys [content-id data]}] (ui)]
+                 (map #(bit-and % 0xff) (decompress res)))))
+        (let [[{:keys [content-id compressor] :as res}] (ui)]
           (is (= 7694665 content-id))
+          (is (= :gzip compressor))
           (is (= [0x00 0x00 0x00 0x00 0x67 0x45 0x23 0x01
                   0xef 0xcd 0xab 0x89 0xff 0xff 0xff 0xff]
-                 (map #(bit-and % 0xff) data))))))
+                 (map #(bit-and % 0xff) (decompress res)))))))
     (testing "floats"
       (let [encodings {:fl {\f {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [4]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 6712422}}}}
+                                               :content-id 6712422
+                                               :compressor :best}}}}
             encoders (ds/build-tag-encoders encodings)
             fl (get-in encoders [:fl \f])]
         (doseq [v [1.0 0.75 -0.5 0.0]]
           (fl v))
-        (let [[{:keys [content-id data]}] (fl)
+        (let [[{:keys [content-id compressor] :as res}] (fl)
               bb (doto (bb/allocate-lsb-byte-buffer 16)
                    (.putFloat 1.0)
                    (.putFloat 0.75)
                    (.putFloat -0.5)
                    (.putFloat 0.0))]
           (is (= 6712422 content-id))
-          (is (= (seq (.array bb)) (seq data))))))
+          (is (= :raw compressor))
+          (is (= (seq (.array bb)) (seq (decompress res)))))))
     (testing "strings"
       (let [encodings {:MC {\Z {:codec :byte-array-stop
                                 :stop-byte 9
-                                :content-id 5063514}}
+                                :content-id 5063514
+                                :compressor :bzip}}
                        :hx {\H {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [9]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 6846536}}}}
+                                               :content-id 6846536
+                                               :compressor :lzma}}}}
             encoders (ds/build-tag-encoders encodings)
             MC (get-in encoders [:MC \Z])
             hx (get-in encoders [:hx \H])]
@@ -604,14 +746,16 @@
                              (apply map vector))]
           (MC v1)
           (hx (byte-array v2)))
-        (let [[{:keys [content-id data]}] (MC)]
+        (let [[{:keys [content-id compressor] :as res}] (MC)]
           (is (= 5063514 content-id))
+          (is (= :bzip compressor))
           (is (= "151M\000\t20S131M\000\t16S74M1D58M2S\000\t151M\000\t"
-                 (String. data))))
-        (let [[{:keys [content-id data]}] (hx)]
+                 (String. (decompress res)))))
+        (let [[{:keys [content-id compressor] :as res}] (hx)]
           (is (= 6846536 content-id))
+          (is (= :lzma compressor))
           (is (= "01234567\00089ABCDEF\000CAFEBABE\000DEADBEEF\000"
-                 (String. data)))))))
+                 (String. (decompress res))))))))
   (testing "array values"
     (testing "byte arrays"
       (let [encodings {:sb {\B {:codec :byte-array-len
@@ -619,13 +763,15 @@
                                                :alphabet [9]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7561794}}}
+                                               :content-id 7561794
+                                               :compressor :raw}}}
                        :ub {\B {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [9]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7692866}}}}
+                                               :content-id 7692866
+                                               :compressor :gzip}}}}
             encoders (ds/build-tag-encoders encodings)
             sb (get-in encoders [:sb \B])
             ub (get-in encoders [:ub \B])]
@@ -640,33 +786,37 @@
                              (apply map vector))]
           (sb v1)
           (ub v2))
-        (let [[{:keys [content-id data]}] (sb)]
+        (let [[{:keys [content-id compressor] :as res}] (sb)]
           (is (= 7561794 content-id))
+          (is (= :raw compressor))
           (is (= [0x63 0x04 0x00 0x00 0x00 0x00 0x01 0x02 0x03
                   0x63 0x04 0x00 0x00 0x00 0x7c 0x7d 0x7e 0x7f
                   0x63 0x04 0x00 0x00 0x00 0x80 0x81 0x82 0x83
                   0x63 0x04 0x00 0x00 0x00 0xfc 0xfd 0xfe 0xff]
-                 (map #(bit-and % 0xff) data))))
-        (let [[{:keys [content-id data]}] (ub)]
+                 (map #(bit-and % 0xff) (decompress res)))))
+        (let [[{:keys [content-id compressor] :as res}] (ub)]
           (is (= 7692866 content-id))
+          (is (= :gzip compressor))
           (is (= [0x43 0x04 0x00 0x00 0x00 0x00 0x01 0x02 0x03
                   0x43 0x04 0x00 0x00 0x00 0x7c 0x7d 0x7e 0x7f
                   0x43 0x04 0x00 0x00 0x00 0x80 0x81 0x82 0x83
                   0x43 0x04 0x00 0x00 0x00 0xfc 0xfd 0xfe 0xff]
-                 (map #(bit-and % 0xff) data))))))
+                 (map #(bit-and % 0xff) (decompress res)))))))
     (testing "short arrays"
       (let [encodings {:ss {\B {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [9]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7566146}}}
+                                               :content-id 7566146
+                                               :compressor :bzip}}}
                        :us {\B {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [9]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7697218}}}}
+                                               :content-id 7697218
+                                               :compressor :lzma}}}}
             encoders (ds/build-tag-encoders encodings)
             ss (get-in encoders [:ss \B])
             us (get-in encoders [:us \B])]
@@ -676,33 +826,37 @@
                          [0xfffe 0xffff]]]
           (ss (str "s," (unchecked-short v1) "," (unchecked-short v2)))
           (us (str "S," v1 "," v2)))
-        (let [[{:keys [content-id data]}] (ss)]
+        (let [[{:keys [content-id compressor] :as res}] (ss)]
           (is (= 7566146 content-id))
+          (is (= :bzip compressor))
           (is (= [0x73 0x02 0x00 0x00 0x00 0x23 0x01 0x67 0x45
                   0x73 0x02 0x00 0x00 0x00 0xfe 0x7f 0xff 0x7f
                   0x73 0x02 0x00 0x00 0x00 0x00 0x80 0x01 0x80
                   0x73 0x02 0x00 0x00 0x00 0xfe 0xff 0xff 0xff]
-                 (map #(bit-and % 0xff) data))))
-        (let [[{:keys [content-id data]}] (us)]
+                 (map #(bit-and % 0xff) (decompress res)))))
+        (let [[{:keys [content-id compressor] :as res}] (us)]
           (is (= 7697218 content-id))
+          (is (= :lzma compressor))
           (is (= [0x53 0x02 0x00 0x00 0x00 0x23 0x01 0x67 0x45
                   0x53 0x02 0x00 0x00 0x00 0xfe 0x7f 0xff 0x7f
                   0x53 0x02 0x00 0x00 0x00 0x00 0x80 0x01 0x80
                   0x53 0x02 0x00 0x00 0x00 0xfe 0xff 0xff 0xff]
-                 (map #(bit-and % 0xff) data))))))
+                 (map #(bit-and % 0xff) (decompress res)))))))
     (testing "int arrays"
       (let [encodings {:si {\B {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [13]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7563586}}}
+                                               :content-id 7563586
+                                               :compressor :raw}}}
                        :ui {\B {:codec :byte-array-len
                                 :len-encoding {:codec :huffman
                                                :alphabet [13]
                                                :bit-len [0]}
                                 :val-encoding {:codec :external
-                                               :content-id 7694658}}}}
+                                               :content-id 7694658
+                                               :compressor :gzip}}}}
             encoders (ds/build-tag-encoders encodings)
             si (get-in encoders [:si \B])
             ui (get-in encoders [:ui \B])]
@@ -712,33 +866,37 @@
                          [0xfffffffe 0xffffffff]]]
           (si (str "i," (unchecked-int v1) "," (unchecked-int v2)))
           (ui (str "I," v1 "," v2)))
-        (let [[{:keys [content-id data]}] (si)]
+        (let [[{:keys [content-id compressor] :as res}] (si)]
           (is (= 7563586 content-id))
+          (is (= :raw compressor))
           (is (= [0x69 0x02 0x00 0x00 0x00 0x67 0x45 0x23 0x01 0x10 0x32 0x54 0x76
                   0x69 0x02 0x00 0x00 0x00 0xfe 0xff 0xff 0x7f 0xff 0xff 0xff 0x7f
                   0x69 0x02 0x00 0x00 0x00 0x00 0x00 0x00 0x80 0x01 0x00 0x00 0x80
                   0x69 0x02 0x00 0x00 0x00 0xfe 0xff 0xff 0xff 0xff 0xff 0xff 0xff]
-                 (map #(bit-and % 0xff) data))))
-        (let [[{:keys [content-id data]}] (ui)]
+                 (map #(bit-and % 0xff) (decompress res)))))
+        (let [[{:keys [content-id compressor] :as res}] (ui)]
           (is (= 7694658 content-id))
+          (is (= :gzip compressor))
           (is (= [0x49 0x02 0x00 0x00 0x00 0x67 0x45 0x23 0x01 0x10 0x32 0x54 0x76
                   0x49 0x02 0x00 0x00 0x00 0xfe 0xff 0xff 0x7f 0xff 0xff 0xff 0x7f
                   0x49 0x02 0x00 0x00 0x00 0x00 0x00 0x00 0x80 0x01 0x00 0x00 0x80
                   0x49 0x02 0x00 0x00 0x00 0xfe 0xff 0xff 0xff 0xff 0xff 0xff 0xff]
-                 (map #(bit-and % 0xff) data)))))
+                 (map #(bit-and % 0xff) (decompress res))))))
       (let [vs ["42M1D7M1D74M1D28M"
                 "44M2D45M1D58M4S"
                 "65M1D9M1D75M2S"
                 "18S76M1D57M"]
             encodings {:CG {\B {:codec :byte-array-stop
                                 :stop-byte -1
-                                :content-id 4409154}}}
+                                :content-id 4409154
+                                :compressor :gzip}}}
             encoders (ds/build-tag-encoders encodings)
             CG (get-in encoders [:CG \B])]
         (doseq [v vs]
           (CG (str/join \, (cons \I (cigar/encode-cigar v)))))
-        (let [[{:keys [content-id data]}] (CG)]
+        (let [[{:keys [content-id compressor] :as res}] (CG)]
           (is (= 4409154 content-id))
+          (is (= :gzip compressor))
           (is (= (mapcat (fn [v]
                            (let [encoded (cigar/encode-cigar v)
                                  bb (bb/allocate-lsb-byte-buffer (+ 6 (* 4 (count encoded))))]
@@ -748,21 +906,24 @@
                              (.put bb (byte 0xff))
                              (.array bb)))
                          vs)
-                 (seq data))))))
+                 (seq (decompress res)))))))
     (testing "float arrays"
       (let [encodings {:fl {\B {:codec :byte-array-len
                                 :len-encoding {:codec :external
-                                               :content-id 6712386}
+                                               :content-id 6712386
+                                               :compressor :gzip}
                                 :val-encoding {:codec :external
-                                               :content-id 6712386}}}}
+                                               :content-id 6712386
+                                               :compressor :gzip}}}}
             encoders (ds/build-tag-encoders encodings)
             fl (get-in encoders [:fl \B])]
         (doseq [v ["f,0.0,0.25" "f,0.5" "f,0.0,-0.25" "f,-0.5,-0.75,-1.0"]]
           (fl v))
-        (let [[{content-id1 :content-id data1 :data}
-               {content-id2 :content-id data2 :data}] (fl)]
+        (let [[{content-id1 :content-id, compr1 :compressor :as res1}
+               {content-id2 :content-id, compr2 :compressor :as res2}] (fl)]
           (is (= 6712386 content-id1 content-id2))
-          (is (identical? data1 data2))
+          (is (= :gzip compr1 compr2))
+          (is (identical? (:data res1) (:data res2)))
           (is (= (mapcat (fn [vs]
                            (let [out (ByteArrayOutputStream.)]
                              (.write out (+ 5 (* 4 (count vs))))
@@ -774,4 +935,64 @@
                           [0.5]
                           [0.0 -0.25]
                           [-0.5 -0.75 -1.0]])
-                 (seq data1))))))))
+                 (seq (decompress res1)))))))))
+
+(deftest apply-tag-compressor-overrides-test
+  (let [tag-encodings
+        {:NM {\c {:codec :byte-array-len
+                  :len-encoding {:codec :huffman, :alphabet [1], :bit-len [0]}
+                  :val-encoding {:codec :external, :content-id 5131619, :compressor :raw}}}
+         :MD {\Z {:codec :byte-array-len
+                  :len-encoding {:codec :external :content-id 5063770, :compressor :raw}
+                  :val-encoding {:codec :external :content-id 5063770, :compressor :raw}}}
+         :XA {\c {:codec :byte-array-len
+                  :len-encoding {:codec :huffman, :alphabet [1], :bit-len [0]}
+                  :val-encoding {:codec :external, :content-id 5783907, :compressor :raw}}
+              \i {:codec :byte-array-len
+                  :len-encoding {:codec :huffman, :alphabet [4], :bit-len [0]}
+                  :val-encoding {:codec :external, :content-id 5783913, :compressor :raw}}}}]
+    (are [input expected] (= expected (ds/apply-tag-compressor-overrides tag-encodings input))
+      {}
+      tag-encodings
+
+      {:MD :gzip}
+      (-> tag-encodings
+          (assoc-in [:MD \Z :len-encoding :compressor] :gzip)
+          (assoc-in [:MD \Z :val-encoding :compressor] :gzip))
+
+      (constantly :bzip)
+      (-> tag-encodings
+          (assoc-in [:NM \c :len-encoding :compressor] :bzip)
+          (assoc-in [:NM \c :val-encoding :compressor] :bzip)
+          (assoc-in [:MD \Z :len-encoding :compressor] :bzip)
+          (assoc-in [:MD \Z :val-encoding :compressor] :bzip)
+          (assoc-in [:XA \c :len-encoding :compressor] :bzip)
+          (assoc-in [:XA \c :val-encoding :compressor] :bzip)
+          (assoc-in [:XA \i :len-encoding :compressor] :bzip)
+          (assoc-in [:XA \i :val-encoding :compressor] :bzip))
+
+      {:XA {\c #{:bzip :lzma}}}
+      (-> tag-encodings
+          (assoc-in [:XA \c :len-encoding :compressor] #{:bzip :lzma})
+          (assoc-in [:XA \c :val-encoding :compressor] #{:bzip :lzma}))
+
+      (constantly {\i :gzip})
+      (-> tag-encodings
+          (assoc-in [:XA \i :len-encoding :compressor] :gzip)
+          (assoc-in [:XA \i :val-encoding :compressor] :gzip))
+
+      {:MD {\Z {:byte-array-len/len :bzip}}}
+      (assoc-in tag-encodings [:MD \Z :len-encoding :compressor] :bzip)
+
+      (constantly {\c {:byte-array-len/val #{:bzip :lzma}}})
+      (-> tag-encodings
+          (assoc-in [:NM \c :val-encoding :compressor] #{:bzip :lzma})
+          (assoc-in [:XA \c :val-encoding :compressor] #{:bzip :lzma}))
+
+      {:NM {\c {:byte-array-len/val {:external :gzip}}}}
+      (assoc-in tag-encodings [:NM \c :val-encoding :compressor] :gzip)
+
+      {:XA (constantly {:byte-array-len/val {:external :bzip}})}
+      (-> tag-encodings
+          (assoc-in [:XA \c :val-encoding :compressor] :bzip)
+          (assoc-in [:XA \i :val-encoding :compressor] :bzip)))))

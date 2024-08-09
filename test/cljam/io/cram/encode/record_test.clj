@@ -1,5 +1,5 @@
 (ns cljam.io.cram.encode.record-test
-  (:require [cljam.io.cram.data-series :as ds]
+  (:require [cljam.io.cram.encode.context :as context]
             [cljam.io.cram.encode.record :as record]
             [cljam.io.cram.encode.tag-dict :as tag-dict]
             [cljam.io.cram.seq-resolver.protocol :as resolver]
@@ -69,9 +69,13 @@
     [[{:code :softclip, :pos 1, :bases (mapv int "TT")}]
      4]))
 
+(defn- preprocess-slice-records [cram-header records]
+  (let [container-ctx (context/make-container-context cram-header {} test-seq-resolver)]
+    (record/preprocess-slice-records container-ctx records)
+    (context/finalize-container-context container-ctx)))
+
 (deftest preprocess-slice-records-test
-  (let [rname->idx {"ref" 0}
-        tag-dict-builder (tag-dict/make-tag-dict-builder)
+  (let [cram-header {:SQ [{:SN "ref"}]}
         records (object-array
                  [{:rname "ref", :pos 1, :cigar "5M", :seq "AGAAT", :qual "HFHHH"
                    :options [{:RG {:type "Z", :value "rg001"}}
@@ -92,9 +96,8 @@
                   {:rname "*", :pos 0, :cigar "*", :seq "CTGTG", :qual "AEEEE"
                    :options []}
                   {:rname "*", :pos 10, :cigar "*", :seq "*", :qual "*"
-                   :options []}])]
-    (record/preprocess-slice-records test-seq-resolver rname->idx
-                                     tag-dict-builder subst-mat records)
+                   :options []}])
+        container-ctx (preprocess-slice-records cram-header records)]
     (is (= [{:rname "ref", :pos 1, :cigar "5M", :seq "AGAAT", :qual "HFHHH"
              :options [{:RG {:type "Z", :value "rg001"}}
                        {:MD {:type "Z", :value "2C2"}}
@@ -127,7 +130,20 @@
              ::record/flag 0x0b, ::record/ref-index -1, ::record/end 10, ::record/tags-index 1
              ::record/features []}]
            (walk/prewalk #(if (.isArray (class %)) (vec %) %)
-                         records)))))
+                         records)))
+    (is (= [[{:tag :MD, :type \Z} {:tag :NM, :type \c}]
+            []]
+           (:tag-dict container-ctx)))
+    (is (= {:MD {\Z {:codec :byte-array-len
+                     :len-encoding {:codec :external
+                                    :content-id (#'tag-dict/tag-id {:tag :MD, :type \Z})}
+                     :val-encoding {:codec :external
+                                    :content-id (#'tag-dict/tag-id {:tag :MD, :type \Z})}}}
+            :NM {\c {:codec :byte-array-len
+                     :len-encoding {:codec :huffman, :alphabet [1], :bit-len [0]}
+                     :val-encoding {:codec :external
+                                    :content-id (#'tag-dict/tag-id {:tag :NM, :type \c})}}}}
+           (:tag-encodings container-ctx)))))
 
 (deftest encode-slice-records-test
   (testing "mapped reads"
@@ -137,11 +153,6 @@
                        :RG
                        [{:ID "rg001"}
                         {:ID "rg002"}]}
-          rname->idx (into {}
-                           (map-indexed (fn [i {:keys [SN]}] [SN i]))
-                           (:SQ cram-header))
-          tag-dict-builder (tag-dict/make-tag-dict-builder)
-          ds-encoders (ds/build-data-series-encoders ds/default-data-series-encodings)
           records (object-array
                    [{:qname "q001", :flag 99, :rname "ref", :pos 1, :end 5, :mapq 0,
                      :cigar "5M", :rnext "=", :pnext 151, :tlen 150, :seq "AGAAT", :qual "HFHHH"
@@ -166,15 +177,10 @@
                     {:qname "q005", :flag 73, :rname "ref", :pos 20, :end 24, :mapq 0,
                      :cigar "5M", :rnext "*", :pnext 0, :tlen 0, :seq "CTGTG", :qual "AEEEE"
                      :options []}])
-          _ (record/preprocess-slice-records test-seq-resolver rname->idx
-                                             tag-dict-builder subst-mat records)
-          tag-dict (tag-dict/build-tag-dict tag-dict-builder)
-          tag-encodings (tag-dict/build-tag-encodings tag-dict)
-          tag-encoders (ds/build-tag-encoders tag-encodings)
-          stats (record/encode-slice-records cram-header rname->idx tag-dict
-                                             ds-encoders tag-encoders records)
-          ds-res (walk/prewalk #(if (fn? %) (%) %) ds-encoders)
-          tag-res (walk/prewalk #(if (fn? %) (%) %) tag-encoders)]
+          slice-ctx (context/make-slice-context (preprocess-slice-records cram-header records))
+          stats (record/encode-slice-records slice-ctx records)
+          ds-res (walk/prewalk #(if (fn? %) (%) %) (:ds-encoders slice-ctx))
+          tag-res (walk/prewalk #(if (fn? %) (%) %) (:tag-encoders slice-ctx))]
       (is (= {:ri 0, :start 1, :end 24, :nbases 25, :nrecords 5}
              (into {} stats)))
 
@@ -326,11 +332,6 @@
     (let [cram-header {:SQ
                        [{:SN "ref"}
                         {:SN "ref2"}]}
-          rname->idx (into {}
-                           (map-indexed (fn [i {:keys [SN]}] [SN i]))
-                           (:SQ cram-header))
-          tag-dict-builder (tag-dict/make-tag-dict-builder)
-          ds-encoders (ds/build-data-series-encoders ds/default-data-series-encodings)
           records (object-array
                    [{:qname "q001", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "AATCC", :qual "CCFFF"
@@ -347,12 +348,10 @@
                     {:qname "q003", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "GCACA", :qual "BCCFD"
                      :options []}])
-          _ (record/preprocess-slice-records test-seq-resolver rname->idx
-                                             tag-dict-builder subst-mat records)
-          tag-dict (tag-dict/build-tag-dict tag-dict-builder)
-          stats (record/encode-slice-records cram-header rname->idx tag-dict
-                                             ds-encoders {} records)
-          ds-res (walk/prewalk #(if (fn? %) (%) %) ds-encoders)]
+          slice-ctx (context/make-slice-context (preprocess-slice-records cram-header records))
+          stats (record/encode-slice-records slice-ctx records)
+          ds-res (walk/prewalk #(if (fn? %) (%) %) (:ds-encoders slice-ctx))
+          tag-res (walk/prewalk #(if (fn? %) (%) %) (:tag-encoders slice-ctx))]
       (is (= {:ri -1, :start 0, :end 0, :nbases 25, :nrecords 5}
              (into {} stats)))
 
@@ -495,4 +494,6 @@
              (->> (get-in ds-res [:QS 0 :data])
                   (map #(+ (long %) 33))
                   byte-array
-                  String.))))))
+                  String.)))
+
+      (is (= {} tag-res)))))

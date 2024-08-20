@@ -12,7 +12,7 @@
     -1
     (get rname->idx rname)))
 
-(defn- build-positional-data-encoder [cram-header {:keys [RI RL AP RG]}]
+(defn- build-positional-data-encoder [{:keys [cram-header]} {:keys [RI RL AP RG]}]
   (let [rg-id->idx (into {}
                          (map-indexed (fn [i {:keys [ID]}] [ID i]))
                          (:RG cram-header))]
@@ -27,7 +27,7 @@
   (fn [record]
     (RN (.getBytes ^String (:qname record)))))
 
-(defn- build-mate-read-encoder [rname->idx {:keys [MF NS NP TS]}]
+(defn- build-mate-read-encoder [{:keys [rname->idx]} {:keys [MF NS NP TS]}]
   (fn [{:keys [^long flag rnext] :as record}]
     (let [mate-flag (cond-> 0
                       (pos? (bit-and flag (sam.flag/encoded #{:next-reversed})))
@@ -42,7 +42,7 @@
       (NP (:pnext record))
       (TS (:tlen record)))))
 
-(defn- build-auxiliary-tags-encoder [tag-dict {:keys [TL]} tag-encoders]
+(defn- build-auxiliary-tags-encoder [{:keys [tag-dict tag-encoders]} {:keys [TL]}]
   (let [tag-encoder (fn [{:keys [tag] :as item}]
                       (let [tag&type [tag (:type item)]
                             encoder (get-in tag-encoders tag&type)]
@@ -114,13 +114,14 @@
       (encode-qual record QS))))
 
 (defn- build-cram-record-encoder
-  [cram-header rname->idx tag-dict {:keys [BF CF] :as ds-encoders} tag-encoders stats-builder]
-  (let [pos-encoder (build-positional-data-encoder cram-header ds-encoders)
+  [{:keys [ds-encoders] :as slice-ctx} stats-builder]
+  (let [pos-encoder (build-positional-data-encoder slice-ctx ds-encoders)
         name-encoder (build-read-name-encoder ds-encoders)
-        mate-encoder (build-mate-read-encoder rname->idx ds-encoders)
-        tags-encoder (build-auxiliary-tags-encoder tag-dict ds-encoders tag-encoders)
+        mate-encoder (build-mate-read-encoder slice-ctx ds-encoders)
+        tags-encoder (build-auxiliary-tags-encoder slice-ctx ds-encoders)
         mapped-encoder (build-mapped-read-encoder ds-encoders)
-        unmapped-encoder (build-unmapped-read-encoder ds-encoders)]
+        unmapped-encoder (build-unmapped-read-encoder ds-encoders)
+        {:keys [BF CF]} ds-encoders]
     (fn [record]
       (let [bf (bit-and (long (:flag record))
                         (bit-not (sam.flag/encoded #{:next-reversed :next-unmapped})))]
@@ -138,12 +139,11 @@
           (mapped-encoder record))))))
 
 (defn encode-slice-records
-  "Encodes CRAM records in a slice all at once using the given data series encoders
-  and tag encoders. Returns the alignment stats for this slice."
-  [cram-header rname->idx tag-dict ds-encoders tag-encoders records]
+  "Encodes CRAM records in a slice all at once using the given slice context.
+  Returns the alignment stats for this slice."
+  [slice-ctx records]
   (let [stats-builder (stats/make-alignment-stats-builder)
-        record-encoder (build-cram-record-encoder cram-header rname->idx tag-dict
-                                                  ds-encoders tag-encoders stats-builder)]
+        record-encoder (build-cram-record-encoder slice-ctx stats-builder)]
     (run! record-encoder records)
     (stats/build stats-builder)))
 
@@ -202,7 +202,7 @@
   "Preprocesses slice records to calculate some record fields prior to record
   encoding that are necessary for the CRAM writer to generate some header
   components."
-  [seq-resolver rname->idx tag-dict-builder subst-mat ^objects records]
+  [{:keys [rname->idx subst-mat seq-resolver tag-dict-builder]} ^objects records]
   (dotimes [i (alength records)]
     (let [record (aget records i)
           ;; these flag bits of CF are hard-coded at the moment:

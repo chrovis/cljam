@@ -58,6 +58,12 @@
         a sequence reader that reads sequences from the reference file.
         This may be omitted only when the CRAM file to be read does not require
         a reference file.
+    - records-per-slice: The maximum number of records a slice may contain.
+        Defaults to 10000.
+    - slices-per-container: The maximum number of slices a container may contain.
+        Defaults to 1.
+    - min-single-ref-slice-size: The minimum number of records required to emit
+        a single-reference slice. Defaults to 1000.
     - ds-compressor-overrides: A function to override data series compressors.
         Given a data series keyword, returns a keyword or a set of keywords
         representing compression method. It may return another function to add

@@ -1,11 +1,11 @@
 (ns cljam.io.cram.encode.record
   (:require [cljam.io.cram.encode.alignment-stats :as stats]
+            [cljam.io.cram.encode.tag-dict :as tag-dict]
+            [cljam.io.cram.seq-resolver.protocol :as resolver]
             [cljam.io.sam.util.cigar :as sam.cigar]
             [cljam.io.sam.util.flag :as sam.flag]
-            [cljam.io.sam.util.option :as sam.option]
-            [cljam.io.cram.seq-resolver.protocol :as resolver]
-            [cljam.io.cram.encode.tag-dict :as tag-dict])
-  (:import [java.util Arrays]))
+            [cljam.io.sam.util.option :as sam.option])
+  (:import [java.util Arrays List]))
 
 (defn- ref-index [rname->idx rname]
   (if  (= rname "*")
@@ -202,9 +202,9 @@
   "Preprocesses slice records to calculate some record fields prior to record
   encoding that are necessary for the CRAM writer to generate some header
   components."
-  [{:keys [rname->idx subst-mat seq-resolver tag-dict-builder]} ^objects records]
-  (dotimes [i (alength records)]
-    (let [record (aget records i)
+  [{:keys [rname->idx subst-mat seq-resolver tag-dict-builder]} ^List records]
+  (dotimes [i (.size records)]
+    (let [record (.get records i)
           ;; these flag bits of CF are hard-coded at the moment:
           ;; - 0x01: quality scores stored as array (true)
           ;; - 0x02: detached (true)
@@ -217,4 +217,4 @@
           record' (assoc record
                          ::flag cf ::ref-index ri ::end end
                          ::features fs ::tags-index tags-id)]
-      (aset records i record'))))
+      (.set records i record'))))

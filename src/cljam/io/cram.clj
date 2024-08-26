@@ -58,6 +58,14 @@
         a sequence reader that reads sequences from the reference file.
         This may be omitted only when the CRAM file to be read does not require
         a reference file.
+    - ds-compressor-overrides: A function to override data series compressors.
+        Given a data series keyword, returns a keyword or a set of keywords
+        representing compression method. It may return another function to add
+        more conditions for the block encoding.
+    - tag-compressor-overrides: A function to override tag compressors. Given
+        a tag keyword, returns a keyword or a set of keywords representing
+        compression method. It may return another function to add more conditions
+        for the tag type and/or block encoding.
     - create-index?: If true, creates a .crai index file in the course of CRAM
         file writing.
     - skip-sort-order-check?: When creating a CRAM index for the CRAM file,

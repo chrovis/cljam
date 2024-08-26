@@ -4,8 +4,7 @@
             [cljam.io.util.byte-buffer :as bb]
             [cljam.io.util.lsb.io-stream :as lsb])
   (:import [java.io ByteArrayOutputStream OutputStream]
-           [java.util.zip CRC32 CheckedOutputStream]
-           [org.apache.commons.compress.compressors CompressorStreamFactory]))
+           [java.util.zip CRC32 CheckedOutputStream]))
 
 (defn- encode-itf8-array [out vs]
   (itf8/encode-itf8 out (count vs))
@@ -93,50 +92,35 @@
       (itf8/encode-itf8 out' (:blocks container-header))
       (encode-itf8-array out' (:landmarks container-header)))))
 
-(def ^:private encode-block-data
-  (let [factory (CompressorStreamFactory.)]
-    (fn [^OutputStream out method data]
-      (case method
-        :raw (lsb/write-bytes out data)
-        (let [compressor (case method
-                           :gzip CompressorStreamFactory/GZIP
-                           :bzip CompressorStreamFactory/BZIP2
-                           :lzma CompressorStreamFactory/LZMA
-                           (ex-info (str "compression method " method
-                                         " not supported")
-                                    {:method method}))
-              out' (.createCompressorOutputStream factory compressor out)]
-          (lsb/write-bytes out' data))))))
-
 (defn encode-block
   "Encodes a block to the given OutputStream."
-  [^OutputStream out method content-type content-id ^bytes block-data]
-  (let [method' (case method :raw 0 :gzip 1 :bzip 2 :lzma 3)
-        size (alength block-data)]
+  [^OutputStream out method content-type content-id raw-size ^bytes block-data]
+  (let [method' (case method :raw 0 :gzip 1 :bzip 2 :lzma 3)]
     (with-crc-suffixed out
       (fn [out']
         (lsb/write-ubyte out' method')
         (lsb/write-ubyte out' content-type)
         (itf8/encode-itf8 out' content-id)
-        (itf8/encode-itf8 out' size)
-        (itf8/encode-itf8 out' size)
-        (encode-block-data out' method block-data)))))
+        (itf8/encode-itf8 out' (alength block-data))
+        (itf8/encode-itf8 out' raw-size)
+        (lsb/write-bytes out' block-data)))))
 
 (defn generate-block
   "Encodes a block and returns the encoded result as a byte array."
-  ^bytes [method content-type content-id block-data]
+  ^bytes [method content-type content-id raw-size block-data]
   (with-out-byte-array
     (fn [out]
-      (encode-block out method content-type content-id block-data))))
+      (encode-block out method content-type content-id raw-size block-data))))
 
 (defn- encode-cram-header-block [out header]
   (let [^String s (sam.header/stringify-header header)
         bs (.getBytes s)
         size (alength bs)
-        bb (bb/allocate-lsb-byte-buffer (+ 4 size))]
-    (.putInt bb size)
-    (.put bb bs)
-    (encode-block out :raw 0 0 (.array bb))))
+        bb (doto (bb/allocate-lsb-byte-buffer (+ 4 size))
+             (.putInt size)
+             (.put bs))
+        block (.array bb)]
+    (encode-block out :raw 0 0 (alength block) block)))
 
 (defn encode-cram-header-container
   "Encodes a CRAM header container to the given OutputStream."
@@ -231,7 +215,7 @@
                (encode-preservation-map out' preservation-map subst-mat tag-dict)
                (encode-data-series-encodings out' ds-encodings)
                (encode-tag-encoding-map out' tag-encodings)))]
-    (encode-block out :raw 1 0 bs)))
+    (encode-block out :raw 1 0 (alength bs) bs)))
 
 (defn generate-compression-header-block
   "Encodes a compression header block and returns the encoded result as a byte array."
@@ -255,7 +239,7 @@
                (encode-itf8-array out' (map :content-id blocks))
                (itf8/encode-itf8 out' (:embedded-reference slice-header))
                (lsb/write-bytes out' (:reference-md5 slice-header))))]
-    (encode-block out :raw 2 0 bs)))
+    (encode-block out :raw 2 0 (alength bs) bs)))
 
 (defn generate-slice-header-block
   "Encodes a slice header block and returns the encoded result as a byte array."

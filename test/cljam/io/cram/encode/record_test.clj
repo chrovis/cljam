@@ -72,7 +72,9 @@
 (defn- preprocess-slice-records [cram-header records]
   (let [container-ctx (context/make-container-context cram-header {} test-seq-resolver)]
     (record/preprocess-slice-records container-ctx records)
-    (context/finalize-container-context container-ctx)))
+    (context/finalize-container-context container-ctx
+                                        (constantly :raw)
+                                        (constantly (constantly (constantly {:external :raw}))))))
 
 (deftest preprocess-slice-records-test
   (let [cram-header {:SQ [{:SN "ref"}]}
@@ -136,13 +138,16 @@
            (:tag-dict container-ctx)))
     (is (= {:MD {\Z {:codec :byte-array-len
                      :len-encoding {:codec :external
-                                    :content-id (#'tag-dict/tag-id {:tag :MD, :type \Z})}
+                                    :content-id (#'tag-dict/tag-id {:tag :MD, :type \Z})
+                                    :compressor :raw}
                      :val-encoding {:codec :external
-                                    :content-id (#'tag-dict/tag-id {:tag :MD, :type \Z})}}}
+                                    :content-id (#'tag-dict/tag-id {:tag :MD, :type \Z})
+                                    :compressor :raw}}}
             :NM {\c {:codec :byte-array-len
                      :len-encoding {:codec :huffman, :alphabet [1], :bit-len [0]}
                      :val-encoding {:codec :external
-                                    :content-id (#'tag-dict/tag-id {:tag :NM, :type \c})}}}}
+                                    :content-id (#'tag-dict/tag-id {:tag :NM, :type \c})
+                                    :compressor :raw}}}}
            (:tag-encodings container-ctx)))))
 
 (deftest encode-slice-records-test

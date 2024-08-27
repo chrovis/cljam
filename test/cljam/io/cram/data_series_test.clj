@@ -10,7 +10,7 @@
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            [org.apache.commons.compress.compressors.bzip2 BZip2CompressorInputStream]
            [org.apache.commons.compress.compressors.gzip GzipCompressorInputStream]
-           [org.apache.commons.compress.compressors.lzma LZMACompressorInputStream]))
+           [org.apache.commons.compress.compressors.xz XZCompressorInputStream]))
 
 (deftest build-data-series-decoders-test
   (let [encodings {:BA {:codec :external, :content-id 1}
@@ -454,7 +454,7 @@
                      :raw bais
                      :gzip (GzipCompressorInputStream. bais)
                      :bzip (BZip2CompressorInputStream. bais)
-                     :lzma (LZMACompressorInputStream. bais))]
+                     :lzma (XZCompressorInputStream. bais))]
       (lsb/read-bytes in raw-size))))
 
 (deftest build-data-series-encoders-test

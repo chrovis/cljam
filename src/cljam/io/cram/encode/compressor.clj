@@ -2,7 +2,7 @@
   (:import [java.io ByteArrayOutputStream OutputStream]
            [org.apache.commons.compress.compressors.bzip2 BZip2CompressorOutputStream]
            [org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream]
-           [org.apache.commons.compress.compressors.lzma LZMACompressorOutputStream]
+           [org.apache.commons.compress.compressors.xz XZCompressorOutputStream]
            [org.apache.commons.io.output CountingOutputStream]))
 
 (defprotocol ICompressor
@@ -32,7 +32,7 @@
     {:compressor :bzip, :data (.toByteArray baos)}))
 
 (deftype LZMACompressor
-         [^LZMACompressorOutputStream out ^ByteArrayOutputStream baos]
+         [^XZCompressorOutputStream out ^ByteArrayOutputStream baos]
   ICompressor
   (compressor-output-stream [_] out)
   (->compressed-result [_]
@@ -60,7 +60,7 @@
                                                           uncompressed)
                                      :bzip (compress-with #(BZip2CompressorOutputStream. %)
                                                           uncompressed)
-                                     :lzma (compress-with #(LZMACompressorOutputStream. %)
+                                     :lzma (compress-with #(XZCompressorOutputStream. %)
                                                           uncompressed)
                                      (throw
                                       (ex-info (str "compression method " method
@@ -78,7 +78,7 @@
                 :raw (->RawCompressor baos)
                 :gzip (->GzipCompressor (GzipCompressorOutputStream. baos) baos)
                 :bzip (->BZip2Compressor (BZip2CompressorOutputStream. baos) baos)
-                :lzma (->LZMACompressor (LZMACompressorOutputStream. baos) baos)
+                :lzma (->LZMACompressor (XZCompressorOutputStream. baos) baos)
                 :best (->SelectiveCompressor baos #{:raw :gzip :bzip :lzma})
                 (if (set? method-or-methods)
                   (->SelectiveCompressor baos method-or-methods)

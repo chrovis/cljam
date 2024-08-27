@@ -115,7 +115,7 @@
                 compressor (case method
                              1 CompressorStreamFactory/GZIP
                              2 CompressorStreamFactory/BZIP2
-                             3 CompressorStreamFactory/LZMA
+                             3 CompressorStreamFactory/XZ
                              (throw
                               (ex-info (str "compression method " method
                                             " not supported")

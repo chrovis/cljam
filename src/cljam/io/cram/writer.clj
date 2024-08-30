@@ -2,6 +2,7 @@
   (:require [cljam.io.crai :as crai]
             [cljam.io.cram.encode.alignment-stats :as stats]
             [cljam.io.cram.encode.context :as context]
+            [cljam.io.cram.encode.partitioning :as partition]
             [cljam.io.cram.encode.record :as record]
             [cljam.io.cram.encode.structure :as struct]
             [cljam.io.cram.seq-resolver.protocol :as resolver]
@@ -54,9 +55,7 @@
                                                       preservation-map
                                                       seq-resolver)
         {:keys [ds-compressor-overrides tag-compressor-overrides]} options]
-    (dotimes [i (alength container-records)]
-      (let [slice-records (aget container-records i)]
-        (record/preprocess-slice-records container-ctx slice-records)))
+    (run! (partial record/preprocess-slice-records container-ctx) container-records)
     (context/finalize-container-context container-ctx
                                         ds-compressor-overrides
                                         tag-compressor-overrides)))
@@ -180,8 +179,7 @@
         compression-header-block (generate-compression-header-block container-ctx)
         container-header (generate-container-header compression-header-block slices)
         ^DataOutputStream out (.-stream wtr)
-        container-offset (.size out)
-        counter' (:counter (peek slices))]
+        container-offset (.size out)]
     (struct/encode-container-header out (assoc container-header :counter counter))
     (.write out compression-header-block)
     (run! (fn [{:keys [^bytes header-block data-blocks]}]
@@ -190,17 +188,11 @@
           slices)
     (when-let [index-writer (.-index-writer wtr)]
       (write-index-entries index-writer container-offset container-header
-                           slices container-records))
-    counter'))
-
-(defn- partition-alignments [slices-per-container records-per-slice alns]
-  (->> alns
-       (partition-all records-per-slice)
-       (map object-array)
-       (partition-all slices-per-container)
-       (map object-array)))
+                           slices container-records))))
 
 (defn write-alignments
   "Writes all the given alignments, which is a sequence of alignment maps."
-  [wtr alns header]
-  (reduce (partial write-container wtr header) 0 (partition-alignments 1 10000 alns)))
+  [^CRAMWriter wtr alns header]
+  (partition/with-each-container header (.-options wtr) alns
+    (fn [counter container-records]
+      (write-container wtr header counter container-records))))

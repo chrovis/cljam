@@ -6,7 +6,8 @@
             [cljam.io.sequence :as cseq]
             [cljam.test-common :as common]
             [clojure.test :refer [are deftest is testing]]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk])
+  (:import [java.util ArrayList]))
 
 (def ^:private test-seq-resolver
   (let [seqs (with-open [r (cseq/reader common/test-fa-file)]
@@ -78,7 +79,7 @@
 
 (deftest preprocess-slice-records-test
   (let [cram-header {:SQ [{:SN "ref"}]}
-        records (object-array
+        records (ArrayList.
                  [{:rname "ref", :pos 1, :cigar "5M", :seq "AGAAT", :qual "HFHHH"
                    :options [{:RG {:type "Z", :value "rg001"}}
                              {:MD {:type "Z", :value "2C2"}}
@@ -132,7 +133,7 @@
              ::record/flag 0x0b, ::record/ref-index -1, ::record/end 10, ::record/tags-index 1
              ::record/features []}]
            (walk/prewalk #(if (.isArray (class %)) (vec %) %)
-                         records)))
+                         (vec records))))
     (is (= [[{:tag :MD, :type \Z} {:tag :NM, :type \c}]
             []]
            (:tag-dict container-ctx)))
@@ -158,7 +159,7 @@
                        :RG
                        [{:ID "rg001"}
                         {:ID "rg002"}]}
-          records (object-array
+          records (ArrayList.
                    [{:qname "q001", :flag 99, :rname "ref", :pos 1, :end 5, :mapq 0,
                      :cigar "5M", :rnext "=", :pnext 151, :tlen 150, :seq "AGAAT", :qual "HFHHH"
                      :options [{:RG {:type "Z", :value "rg001"}}
@@ -337,7 +338,7 @@
     (let [cram-header {:SQ
                        [{:SN "ref"}
                         {:SN "ref2"}]}
-          records (object-array
+          records (ArrayList.
                    [{:qname "q001", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "AATCC", :qual "CCFFF"
                      :options []}

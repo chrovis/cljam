@@ -11,6 +11,7 @@
 (def ^:private temp-cram-file (io/file common/temp-dir "test.cram"))
 (def ^:private temp-cram-file-2 (io/file common/temp-dir "test2.cram"))
 (def ^:private temp-cram-file-3 (io/file common/temp-dir "test3.cram"))
+(def ^:private temp-sorted-cram-file (io/file common/temp-dir "test.sorted.cram"))
 
 (defn- fixup-bam-aln [aln]
   (-> (into {} aln)
@@ -74,20 +75,36 @@
 (deftest writer-test
   (with-before-after {:before (prepare-cache!)
                       :after (clean-cache!)}
-    (with-open [r (cram/reader common/test-cram-file
-                               {:reference common/test-fa-file})
-                w (cram/writer temp-cram-file
-                               {:reference common/test-fa-file})]
-      (cram/write-header w (cram/read-header r))
-      (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
-    (with-open [r (cram/reader common/test-cram-file
-                               {:reference common/test-fa-file})
-                r' (cram/reader temp-cram-file
-                                {:reference common/test-fa-file})]
-      (is (= (cram/read-header r)
-             (cram/read-header r')))
-      (is (= (cram/read-alignments r)
-             (cram/read-alignments r'))))))
+    (testing "unsorted"
+      (with-open [r (cram/reader common/test-cram-file
+                                 {:reference common/test-fa-file})
+                  w (cram/writer temp-cram-file
+                                 {:reference common/test-fa-file})]
+        (cram/write-header w (cram/read-header r))
+        (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
+      (with-open [r (cram/reader common/test-cram-file
+                                 {:reference common/test-fa-file})
+                  r' (cram/reader temp-cram-file
+                                  {:reference common/test-fa-file})]
+        (is (= (cram/read-header r)
+               (cram/read-header r')))
+        (is (= (cram/read-alignments r)
+               (cram/read-alignments r')))))
+    (testing "sorted by coordinate"
+      (with-open [r (cram/reader common/test-sorted-cram-file
+                                 {:reference common/test-fa-file})
+                  w (cram/writer temp-sorted-cram-file
+                                 {:reference common/test-fa-file})]
+        (cram/write-header w (cram/read-header r))
+        (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
+      (with-open [r (cram/reader common/test-sorted-cram-file
+                                 {:reference common/test-fa-file})
+                  r' (cram/reader temp-sorted-cram-file
+                                  {:reference common/test-fa-file})]
+        (is (= (cram/read-header r)
+               (cram/read-header r')))
+        (is (= (cram/read-alignments r)
+               (cram/read-alignments r')))))))
 
 (deftest-remote writer-with-multiple-containers-test
   (with-before-after {:before (do (prepare-cavia!)

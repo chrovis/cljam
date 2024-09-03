@@ -1,13 +1,18 @@
 (ns cljam.io.cram.encode.context
   (:require [cljam.io.cram.data-series :as ds]
-            [cljam.io.cram.encode.tag-dict :as tag-dict]))
+            [cljam.io.cram.encode.tag-dict :as tag-dict]
+            [cljam.io.sam.util.header :as sam.header]))
 
 (defn make-container-context
   "Creates a new container context."
-  [cram-header preservation-map seq-resolver]
+  [cram-header seq-resolver]
   (let [rname->idx (into {}
                          (map-indexed (fn [i {:keys [SN]}] [SN i]))
                          (:SQ cram-header))
+        preservation-map (cond-> {:RN true, :AP false, :RR true}
+                           (= (sam.header/sort-order cram-header)
+                              sam.header/order-coordinate)
+                           (assoc :AP true))
         subst-mat {\A {\T 0, \G 1, \C 2, \N 3}
                    \T {\A 0, \G 1, \C 2, \N 3}
                    \G {\A 0, \T 1, \C 2, \N 3}
@@ -25,24 +30,26 @@
   "Finalizes the builders in the container context and returns a new container
   context containing those builders' results. This operation must be done before
   creating a slice context."
-  [container-ctx ds-compressor-overrides tag-compressor-overrides]
+  [container-ctx alignment-stats ds-compressor-overrides tag-compressor-overrides]
   (let [ds-encodings (-> ds/default-data-series-encodings
                          (ds/apply-ds-compressor-overrides ds-compressor-overrides))
         tag-dict (tag-dict/build-tag-dict (:tag-dict-builder container-ctx))
         tag-encodings (-> (tag-dict/build-tag-encodings tag-dict)
                           (ds/apply-tag-compressor-overrides tag-compressor-overrides))]
     (assoc container-ctx
+           :alignment-stats alignment-stats
            :ds-encodings ds-encodings
            :tag-dict tag-dict
            :tag-encodings tag-encodings)))
 
 (defn make-slice-context
-  "Creates a slice context from the given container context. Note that the container
-  context must be finalized with `finalize-container-context`."
-  [{:keys [ds-encodings tag-encodings] :as container-ctx}]
+  "Creates a slice context for the ith slice from the given container context.
+  Note that the container context must be finalized with `finalize-container-context`."
+  [{:keys [alignment-stats ds-encodings tag-encodings] :as container-ctx} i]
   (let [ds-encoders (ds/build-data-series-encoders ds-encodings)
         tag-encoders (ds/build-tag-encoders tag-encodings)]
     (assoc container-ctx
+           :alignment-stats (nth alignment-stats i)
            :ds-encoders ds-encoders
            :tag-encoders tag-encoders)))
 

@@ -12,15 +12,22 @@
     -1
     (get rname->idx rname)))
 
-(defn- build-positional-data-encoder [{:keys [cram-header]} {:keys [RI RL AP RG]}]
+(defn- build-positional-data-encoder
+  [{:keys [cram-header preservation-map alignment-stats]} {:keys [RI RL AP RG]}]
   (let [rg-id->idx (into {}
                          (map-indexed (fn [i {:keys [ID]}] [ID i]))
-                         (:RG cram-header))]
+                         (:RG cram-header))
+        AP' (if (:AP preservation-map)
+              (let [pos (volatile! (:start alignment-stats))]
+                (fn [^long pos']
+                  (AP (- pos' (long @pos)))
+                  (vreset! pos pos')))
+              AP)]
     (fn [record]
       (let [rg (sam.option/value-for-tag :RG record)]
         (RI (::ref-index record))
         (RL (count (:seq record)))
-        (AP (:pos record))
+        (AP' (:pos record))
         (RG (if rg (get rg-id->idx rg) -1))))))
 
 (defn- build-read-name-encoder [{:keys [RN]}]
@@ -113,8 +120,7 @@
         (BA (aget bs i)))
       (encode-qual record QS))))
 
-(defn- build-cram-record-encoder
-  [{:keys [ds-encoders] :as slice-ctx} stats-builder]
+(defn- build-cram-record-encoder [{:keys [ds-encoders] :as slice-ctx}]
   (let [pos-encoder (build-positional-data-encoder slice-ctx ds-encoders)
         name-encoder (build-read-name-encoder ds-encoders)
         mate-encoder (build-mate-read-encoder slice-ctx ds-encoders)
@@ -125,9 +131,6 @@
     (fn [record]
       (let [bf (bit-and (long (:flag record))
                         (bit-not (sam.flag/encoded #{:next-reversed :next-unmapped})))]
-        (stats/update! stats-builder
-                       (::ref-index record) (:pos record) (::end record)
-                       (count (:seq record)) 1)
         (BF bf)
         (CF (::flag record))
         (pos-encoder record)
@@ -142,10 +145,8 @@
   "Encodes CRAM records in a slice all at once using the given slice context.
   Returns the alignment stats for this slice."
   [slice-ctx records]
-  (let [stats-builder (stats/make-alignment-stats-builder)
-        record-encoder (build-cram-record-encoder slice-ctx stats-builder)]
-    (run! record-encoder records)
-    (stats/build stats-builder)))
+  (let [record-encoder (build-cram-record-encoder slice-ctx)]
+    (run! record-encoder records)))
 
 (defn- add-mismatches
   [n subst-mat ^bytes ref-bases rpos ^bytes read-bases ^bytes qs spos fs]
@@ -203,18 +204,21 @@
   encoding that are necessary for the CRAM writer to generate some header
   components."
   [{:keys [rname->idx subst-mat seq-resolver tag-dict-builder]} ^List records]
-  (dotimes [i (.size records)]
-    (let [record (.get records i)
-          ;; these flag bits of CF are hard-coded at the moment:
-          ;; - 0x01: quality scores stored as array (true)
-          ;; - 0x02: detached (true)
-          ;; - 0x04: has mate downstream (false)
-          cf (cond-> 0x03
-               (= (:seq record) "*") (bit-or 0x08))
-          ri (ref-index rname->idx (:rname record))
-          tags-id (tag-dict/assign-tags-id! tag-dict-builder (:options record))
-          [fs end] (calculate-read-features&end seq-resolver subst-mat record)
-          record' (assoc record
-                         ::flag cf ::ref-index ri ::end end
-                         ::features fs ::tags-index tags-id)]
-      (.set records i record'))))
+  (let [stats-builder (stats/make-alignment-stats-builder)]
+    (dotimes [i (.size records)]
+      (let [record (.get records i)
+            ;; these flag bits of CF are hard-coded at the moment:
+            ;; - 0x01: quality scores stored as array (true)
+            ;; - 0x02: detached (true)
+            ;; - 0x04: has mate downstream (false)
+            cf (cond-> 0x03
+                 (= (:seq record) "*") (bit-or 0x08))
+            ri (ref-index rname->idx (:rname record))
+            tags-id (tag-dict/assign-tags-id! tag-dict-builder (:options record))
+            [fs end] (calculate-read-features&end seq-resolver subst-mat record)
+            record' (assoc record
+                           ::flag cf ::ref-index ri ::end end
+                           ::features fs ::tags-index tags-id)]
+        (stats/update! stats-builder ri (:pos record) end (count (:seq record)) 1)
+        (.set records i record')))
+    (stats/build stats-builder)))

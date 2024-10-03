@@ -50,13 +50,13 @@
   (struct/encode-cram-header-container (.-stream wtr) header))
 
 (defn- preprocess-records
-  [cram-header preservation-map seq-resolver options ^objects container-records]
-  (let [container-ctx (context/make-container-context cram-header
-                                                      preservation-map
-                                                      seq-resolver)
-        {:keys [ds-compressor-overrides tag-compressor-overrides]} options]
-    (run! (partial record/preprocess-slice-records container-ctx) container-records)
+  [cram-header seq-resolver options ^objects container-records]
+  (let [container-ctx (context/make-container-context cram-header seq-resolver)
+        {:keys [ds-compressor-overrides tag-compressor-overrides]} options
+        stats (mapv (partial record/preprocess-slice-records container-ctx)
+                    container-records)]
     (context/finalize-container-context container-ctx
+                                        stats
                                         ds-compressor-overrides
                                         tag-compressor-overrides)))
 
@@ -91,9 +91,9 @@
    :bases nbases
    :records nrecords})
 
-(defn- generate-slice [container-ctx counter slice-records]
-  (let [slice-ctx (context/make-slice-context container-ctx)
-        stats (record/encode-slice-records slice-ctx slice-records)
+(defn- generate-slice [slice-ctx counter slice-records]
+  (record/encode-slice-records slice-ctx slice-records)
+  (let [stats (:alignment-stats slice-ctx)
         blocks (generate-blocks slice-ctx)
         ref-md5 (reference-md5 slice-ctx stats)
         header (assoc (stats->header-base stats)
@@ -103,7 +103,6 @@
         header-block (struct/generate-slice-header-block header blocks)
         block-data (mapv :data blocks)]
     {:header header
-     :stats stats
      :header-block header-block
      :data-blocks block-data
      :counter (+ (long counter) (long (:nrecords stats)))
@@ -112,10 +111,11 @@
                 (apply + (alength header-block)))}))
 
 (defn- generate-slices [container-ctx counter container-records]
-  (loop [[slice-records & more] container-records, counter counter, acc []]
+  (loop [i 0, [slice-records & more] container-records, counter counter, acc []]
     (if slice-records
-      (let [slice (generate-slice container-ctx counter slice-records)]
-        (recur more (:counter slice) (conj acc slice)))
+      (let [slice-ctx (context/make-slice-context container-ctx i)
+            slice (generate-slice slice-ctx counter slice-records)]
+        (recur (inc i) more (:counter slice) (conj acc slice)))
       acc)))
 
 (defn- generate-compression-header-block
@@ -123,8 +123,8 @@
   (struct/generate-compression-header-block preservation-map subst-mat tag-dict
                                             ds-encodings tag-encodings))
 
-(defn- generate-container-header [^bytes compression-header-block slices]
-  (let [stats (stats/merge-stats (map :stats slices))
+(defn- generate-container-header [container-ctx ^bytes compression-header-block slices]
+  (let [stats (stats/merge-stats (:alignment-stats container-ctx))
         container-len (->> slices
                            (map (fn [{:keys [^bytes header-block data-blocks]}]
                                   (apply + (alength header-block)
@@ -172,12 +172,13 @@
     (crai/write-index-entries index-writer entries)))
 
 (defn- write-container [^CRAMWriter wtr cram-header counter container-records]
-  (let [preservation-map {:RN true, :AP false, :RR true}
-        container-ctx (preprocess-records cram-header preservation-map (.-seq-resolver wtr)
+  (let [container-ctx (preprocess-records cram-header (.-seq-resolver wtr)
                                           (.-options wtr) container-records)
         slices (generate-slices container-ctx counter container-records)
         compression-header-block (generate-compression-header-block container-ctx)
-        container-header (generate-container-header compression-header-block slices)
+        container-header (generate-container-header container-ctx
+                                                    compression-header-block
+                                                    slices)
         ^DataOutputStream out (.-stream wtr)
         container-offset (.size out)]
     (struct/encode-container-header out (assoc container-header :counter counter))

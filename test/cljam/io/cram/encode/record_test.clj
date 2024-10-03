@@ -71,9 +71,9 @@
      4]))
 
 (defn- preprocess-slice-records [cram-header records]
-  (let [container-ctx (context/make-container-context cram-header {} test-seq-resolver)]
-    (record/preprocess-slice-records container-ctx records)
-    (context/finalize-container-context container-ctx
+  (let [container-ctx (context/make-container-context cram-header test-seq-resolver)
+        stats (record/preprocess-slice-records container-ctx records)]
+    (context/finalize-container-context container-ctx [stats]
                                         (constantly :raw)
                                         (constantly (constantly (constantly {:external :raw}))))))
 
@@ -153,7 +153,8 @@
 
 (deftest encode-slice-records-test
   (testing "mapped reads"
-    (let [cram-header {:SQ
+    (let [cram-header {:HD {:SO "coordinate"}
+                       :SQ
                        [{:SN "ref"}
                         {:SN "ref2"}]
                        :RG
@@ -183,12 +184,12 @@
                     {:qname "q005", :flag 73, :rname "ref", :pos 20, :end 24, :mapq 0,
                      :cigar "5M", :rnext "*", :pnext 0, :tlen 0, :seq "CTGTG", :qual "AEEEE"
                      :options []}])
-          slice-ctx (context/make-slice-context (preprocess-slice-records cram-header records))
-          stats (record/encode-slice-records slice-ctx records)
+          slice-ctx (context/make-slice-context (preprocess-slice-records cram-header records) 0)
+          _ (record/encode-slice-records slice-ctx records)
           ds-res (walk/prewalk #(if (fn? %) (%) %) (:ds-encoders slice-ctx))
           tag-res (walk/prewalk #(if (fn? %) (%) %) (:tag-encoders slice-ctx))]
       (is (= {:ri 0, :start 1, :end 24, :nbases 25, :nrecords 5}
-             (into {} stats)))
+             (into {} (:alignment-stats slice-ctx))))
 
       (is (= 1 (count (get ds-res :BF))))
       (is (= 1 (get-in ds-res [:BF 0 :content-id])))
@@ -209,7 +210,7 @@
 
       (is (= 1 (count (get ds-res :AP))))
       (is (= 5 (get-in ds-res [:AP 0 :content-id])))
-      (is (= [1 5 10 15 20] (seq (get-in ds-res [:AP 0 :data]))))
+      (is (= [0 4 5 5 5] (seq (get-in ds-res [:AP 0 :data]))))
 
       (is (= 1 (count (get ds-res :RG))))
       (is (= 6 (get-in ds-res [:RG 0 :content-id])))
@@ -354,12 +355,12 @@
                     {:qname "q003", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "GCACA", :qual "BCCFD"
                      :options []}])
-          slice-ctx (context/make-slice-context (preprocess-slice-records cram-header records))
-          stats (record/encode-slice-records slice-ctx records)
+          slice-ctx (context/make-slice-context (preprocess-slice-records cram-header records) 0)
+          _ (record/encode-slice-records slice-ctx records)
           ds-res (walk/prewalk #(if (fn? %) (%) %) (:ds-encoders slice-ctx))
           tag-res (walk/prewalk #(if (fn? %) (%) %) (:tag-encoders slice-ctx))]
       (is (= {:ri -1, :start 0, :end 0, :nbases 25, :nrecords 5}
-             (into {} stats)))
+             (into {} (:alignment-stats slice-ctx))))
 
       (is (= 1 (count (get ds-res :BF))))
       (is (= 1 (get-in ds-res [:BF 0 :content-id])))

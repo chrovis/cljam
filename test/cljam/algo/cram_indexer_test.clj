@@ -12,11 +12,11 @@
     (doall (#'crai/read-index-entries r))))
 
 (deftest create-index-test
-  (let [f (io/file common/temp-dir "medium.cram.crai")]
+  (let [f (io/file common/temp-dir "medium_without_index.cram.crai")]
     (common/with-before-after {:before (common/prepare-cache!)
                                :after (common/clean-cache!)}
       (is (thrown-with-msg? Exception #"Cannot create CRAM index file .*"
-                            (indexer/create-index common/medium-cram-file f)))
+                            (indexer/create-index common/medium-without-index-cram-file f)))
       (indexer/create-index common/medium-cram-file f
                             :skip-sort-order-check? true)
       (is (= (read-index-entries common/medium-crai-file)

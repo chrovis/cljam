@@ -1,6 +1,7 @@
 (ns cljam.io.cram.writer
   (:require [cljam.io.crai :as crai]
             [cljam.io.cram.encode.alignment-stats :as stats]
+            [cljam.io.cram.encode.compressor :as compressor]
             [cljam.io.cram.encode.context :as context]
             [cljam.io.cram.encode.partitioning :as partition]
             [cljam.io.cram.encode.record :as record]
@@ -41,46 +42,69 @@
 (defn write-header
   "Writes the CRAM header."
   [^CRAMWriter wtr header]
-  (when (and (.-index-writer wtr)
-             (not (:skip-sort-order-check? (.-options wtr)))
-             (not= (sam.header/sort-order header) sam.header/order-coordinate))
-    (throw
-     (ex-info "Cannot create CRAM index file for CRAM file not declared as sorted by coordinate"
-              {:sort-order (sam.header/sort-order header)})))
-  (struct/encode-cram-header-container (.-stream wtr) header))
+  (let [opts (.-options wtr)
+        sort-order (sam.header/sort-order header)]
+    (when (and (not (= sort-order sam.header/order-coordinate))
+               (not (:skip-sort-order-check? opts)))
+      (when (.-index-writer wtr)
+        (throw
+         (ex-info (str "Cannot create CRAM index file for CRAM file not declared "
+                       "as sorted by coordinate")
+                  {:sort-order sort-order})))
+      (when (:embed-reference? opts)
+        (throw
+         (ex-info (str "Cannot embed reference sequences for CRAM file not declared "
+                       "as sorted by coordinate")
+                  {:sort-order sort-order}))))
+    (struct/encode-cram-header-container (.-stream wtr) header)))
 
 (defn- preprocess-records
   [cram-header seq-resolver options ^objects container-records]
-  (let [container-ctx (context/make-container-context cram-header seq-resolver)
-        {:keys [ds-compressor-overrides tag-compressor-overrides]} options
+  (let [container-ctx (context/make-container-context cram-header seq-resolver options)
         stats (mapv (partial record/preprocess-slice-records container-ctx)
                     container-records)]
-    (context/finalize-container-context container-ctx
-                                        stats
-                                        ds-compressor-overrides
-                                        tag-compressor-overrides)))
+    (context/finalize-container-context container-ctx stats)))
 
-(defn- generate-blocks [slice-ctx]
-  (->> (context/encoding-results slice-ctx)
-       (keep (fn [{:keys [^long raw-size] :as block}]
-               (when (pos? raw-size)
-                 (update block :data
-                         (fn [^bytes data]
-                           (struct/generate-block (:compressor block) 4
-                                                  (:content-id block) raw-size
-                                                  data))))))
-       ;; sort + dedupe by :content-id
-       (into (sorted-map) (map (juxt :content-id identity)))
-       vals
-       (cons {:content-id 0
-              :data (struct/generate-block :raw 5 0 0 (byte-array 0))})))
+(def ^:private ^:const embedded-ref-content-id 1)
 
-(defn- reference-md5
-  [{:keys [seq-resolver cram-header]} {:keys [^long ri ^long start ^long end]}]
+(defn- generate-embedded-ref-block [slice-ctx ^bytes embedded-ref]
+  (let [raw-size (alength embedded-ref)
+        compr (compressor/compressor (get-in slice-ctx [:ds-encodings :embedded-ref :compressor]))
+        _ (with-open [^OutputStream os (compressor/compressor-output-stream compr)]
+            (.write os embedded-ref))
+        {:keys [compressor data]} (compressor/->compressed-result compr)]
+    {:content-id embedded-ref-content-id
+     :data (struct/generate-block compressor 4 embedded-ref-content-id raw-size data)}))
+
+(defn- generate-blocks [slice-ctx ^bytes embedded-ref]
+  (letfn [(inject-embedded-ref-block [blocks]
+            (cond->> blocks
+              embedded-ref
+              (cons (generate-embedded-ref-block slice-ctx embedded-ref))))]
+    (->> (context/encoding-results slice-ctx)
+         (keep (fn [{:keys [^long raw-size] :as block}]
+                 (when (pos? raw-size)
+                   (update block :data
+                           (fn [^bytes data]
+                             (struct/generate-block (:compressor block) 4
+                                                    (:content-id block) raw-size
+                                                    data))))))
+         ;; sort + dedupe by :content-id
+         (into (sorted-map) (map (juxt :content-id identity)))
+         vals
+         inject-embedded-ref-block
+         (cons {:content-id 0
+                :data (struct/generate-block :raw 5 0 0 (byte-array 0))}))))
+
+(defn- resolve-reference-seq
+  ^bytes [{:keys [seq-resolver cram-header]} {:keys [^long ri ^long start ^long end]}]
+  (let [chr (:SN (nth (:SQ cram-header) ri))]
+    (resolver/resolve-sequence seq-resolver chr start end)))
+
+(defn- reference-md5 [slice-ctx ^bytes embedded-ref {:keys [^long ri] :as stats}]
   (if (neg? ri)
     (byte-array 16)
-    (let [chr (:SN (nth (:SQ cram-header) ri))
-          ref-bases (resolver/resolve-sequence seq-resolver chr start end)
+    (let [ref-bases (or embedded-ref (resolve-reference-seq slice-ctx stats))
           md5 (MessageDigest/getInstance "md5")]
       (.digest md5 ref-bases))))
 
@@ -94,11 +118,14 @@
 (defn- generate-slice [slice-ctx counter slice-records]
   (record/encode-slice-records slice-ctx slice-records)
   (let [stats (:alignment-stats slice-ctx)
-        blocks (generate-blocks slice-ctx)
-        ref-md5 (reference-md5 slice-ctx stats)
+        embedded-ref (when (and (:embed-reference? (:options slice-ctx))
+                                (>= (long (:ri stats)) 0))
+                       (resolve-reference-seq slice-ctx stats))
+        blocks (generate-blocks slice-ctx embedded-ref)
+        ref-md5 (reference-md5 slice-ctx embedded-ref stats)
         header (assoc (stats->header-base stats)
                       :counter counter
-                      :embedded-reference -1
+                      :embedded-reference (if embedded-ref embedded-ref-content-id -1)
                       :reference-md5 ref-md5)
         header-block (struct/generate-slice-header-block header blocks)
         block-data (mapv :data blocks)]
@@ -119,9 +146,20 @@
       acc)))
 
 (defn- generate-compression-header-block
-  ^bytes [{:keys [preservation-map subst-mat tag-dict ds-encodings tag-encodings]}]
-  (struct/generate-compression-header-block preservation-map subst-mat tag-dict
-                                            ds-encodings tag-encodings))
+  ^bytes
+  [{:keys [preservation-map subst-mat tag-dict ds-encodings tag-encodings]} slices]
+  (let [preservation-map' (cond-> preservation-map
+                            ;; A reference file is not required when either of
+                            ;; the following holds for every slice in the container:
+                            ;; - the slice has an embedded reference block
+                            ;; - the slice only contains unmapped records
+                            (every? (fn [{:keys [header]}]
+                                      (or (>= (long (:embedded-reference header)) 0)
+                                          (= (long (:ref-seq-id header)) -1)))
+                                    slices)
+                            (assoc :RR false))]
+    (struct/generate-compression-header-block preservation-map' subst-mat tag-dict
+                                              ds-encodings tag-encodings)))
 
 (defn- generate-container-header [container-ctx ^bytes compression-header-block slices]
   (let [stats (stats/merge-stats (:alignment-stats container-ctx))
@@ -175,7 +213,8 @@
   (let [container-ctx (preprocess-records cram-header (.-seq-resolver wtr)
                                           (.-options wtr) container-records)
         slices (generate-slices container-ctx counter container-records)
-        compression-header-block (generate-compression-header-block container-ctx)
+        compression-header-block (generate-compression-header-block container-ctx
+                                                                    slices)
         container-header (generate-container-header container-ctx
                                                     compression-header-block
                                                     slices)

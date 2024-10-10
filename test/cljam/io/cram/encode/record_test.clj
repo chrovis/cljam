@@ -71,11 +71,11 @@
      4]))
 
 (defn- preprocess-slice-records [cram-header records]
-  (let [container-ctx (context/make-container-context cram-header test-seq-resolver)
+  (let [opts {:ds-compressor-overrides (constantly :raw)
+              :tag-compressor-overrides (constantly (constantly (constantly {:external :raw})))}
+        container-ctx (context/make-container-context cram-header test-seq-resolver opts)
         stats (record/preprocess-slice-records container-ctx records)]
-    (context/finalize-container-context container-ctx [stats]
-                                        (constantly :raw)
-                                        (constantly (constantly (constantly {:external :raw}))))))
+    (context/finalize-container-context container-ctx [stats])))
 
 (deftest preprocess-slice-records-test
   (let [cram-header {:SQ [{:SN "ref"}]}
@@ -192,129 +192,129 @@
              (into {} (:alignment-stats slice-ctx))))
 
       (is (= 1 (count (get ds-res :BF))))
-      (is (= 1 (get-in ds-res [:BF 0 :content-id])))
+      (is (= 2 (get-in ds-res [:BF 0 :content-id])))
       (is (= [0x43 0x43 0x80 0x91 0x80 0x93 0x41]
              (map #(bit-and % 0xff) (get-in ds-res [:BF 0 :data]))))
 
       (is (= 1 (count (get ds-res :CF))))
-      (is (= 2 (get-in ds-res [:CF 0 :content-id])))
+      (is (= 3 (get-in ds-res [:CF 0 :content-id])))
       (is (= [3 3 3 3 3] (seq (get-in ds-res [:CF 0 :data]))))
 
       (is (= 1 (count (get ds-res :RI))))
-      (is (= 3 (get-in ds-res [:RI 0 :content-id])))
+      (is (= 4 (get-in ds-res [:RI 0 :content-id])))
       (is (= [0 0 0 0 0] (seq (get-in ds-res [:RI 0 :data]))))
 
       (is (= 1 (count (get ds-res :RL))))
-      (is (= 4 (get-in ds-res [:RL 0 :content-id])))
+      (is (= 5 (get-in ds-res [:RL 0 :content-id])))
       (is (= [5 5 5 5 5] (seq (get-in ds-res [:RL 0 :data]))))
 
       (is (= 1 (count (get ds-res :AP))))
-      (is (= 5 (get-in ds-res [:AP 0 :content-id])))
+      (is (= 6 (get-in ds-res [:AP 0 :content-id])))
       (is (= [0 4 5 5 5] (seq (get-in ds-res [:AP 0 :data]))))
 
       (is (= 1 (count (get ds-res :RG))))
-      (is (= 6 (get-in ds-res [:RG 0 :content-id])))
+      (is (= 7 (get-in ds-res [:RG 0 :content-id])))
       (is (= [0 0 1 1 0xff 0xff 0xff 0xff 0x0f]
              (map #(bit-and % 0xff) (get-in ds-res [:RG 0 :data]))))
 
       (is (= 1 (count (get ds-res :RN))))
-      (is (= 7 (get-in ds-res [:RN 0 :content-id])))
+      (is (= 8 (get-in ds-res [:RN 0 :content-id])))
       (is (= "q001\tq002\tq003\tq004\tq005\t" (String. ^bytes (get-in ds-res [:RN 0 :data]))))
 
       (is (= 1 (count (get ds-res :MF))))
-      (is (= 8 (get-in ds-res [:MF 0 :content-id])))
+      (is (= 9 (get-in ds-res [:MF 0 :content-id])))
       (is (= [1 1 1 0 2] (seq (get-in ds-res [:MF 0 :data]))))
 
       (is (= 1 (count (get ds-res :NS))))
-      (is (= 9 (get-in ds-res [:NS 0 :content-id])))
+      (is (= 10 (get-in ds-res [:NS 0 :content-id])))
       (is (= [0 0 1 0 0xff 0xff 0xff 0xff 0x0f]
              (map #(bit-and % 0xff) (get-in ds-res [:NS 0 :data]))))
 
       (is (= 1 (count (get ds-res :NP))))
-      (is (= 10 (get-in ds-res [:NP 0 :content-id])))
+      (is (= 11 (get-in ds-res [:NP 0 :content-id])))
       (is (= [0x80 0x97 0x0f 0x64 0x05 0x00]
              (map #(bit-and % 0xff) (get-in ds-res [:NP 0 :data]))))
 
       (is (= 1 (count (get ds-res :TS))))
-      (is (= 11 (get-in ds-res [:TS 0 :content-id])))
+      (is (= 12 (get-in ds-res [:TS 0 :content-id])))
       (is (= [0x80 0x96 0x0f 0x00 0xff 0xff 0xff 0xff 0x01 0x00]
              (map #(bit-and % 0xff) (get-in ds-res [:TS 0 :data]))))
 
       (is (= 1 (count (get ds-res :NF))))
-      (is (= 12 (get-in ds-res [:NF 0 :content-id])))
+      (is (= 13 (get-in ds-res [:NF 0 :content-id])))
       (is (zero? (count (get-in ds-res [:NF 0 :data]))))
 
       (is (= 1 (count (get ds-res :TL))))
-      (is (= 13 (get-in ds-res [:TL 0 :content-id])))
+      (is (= 14 (get-in ds-res [:TL 0 :content-id])))
       (is (= [0 0 0 0 1] (seq (get-in ds-res [:TL 0 :data]))))
 
       (is (= 1 (count (get ds-res :FN))))
-      (is (= 14 (get-in ds-res [:FN 0 :content-id])))
+      (is (= 15 (get-in ds-res [:FN 0 :content-id])))
       (is (= [1 1 0 2 0] (seq (get-in ds-res [:FN 0 :data]))))
 
       (is (= 1 (count (get ds-res :FC))))
-      (is (= 15 (get-in ds-res [:FC 0 :content-id])))
+      (is (= 16 (get-in ds-res [:FC 0 :content-id])))
       (is (= [(int \X) (int \S) (int \I) (int \D)]
              (seq (get-in ds-res [:FC 0 :data]))))
 
       (is (= 1 (count (get ds-res :FP))))
-      (is (= 16 (get-in ds-res [:FP 0 :content-id])))
+      (is (= 17 (get-in ds-res [:FP 0 :content-id])))
       (is (= [3 1 2 2] (seq (get-in ds-res [:FP 0 :data]))))
 
       (is (= 1 (count (get ds-res :DL))))
-      (is (= 17 (get-in ds-res [:DL 0 :content-id])))
+      (is (= 18 (get-in ds-res [:DL 0 :content-id])))
       (is (= [1] (seq (get-in ds-res [:DL 0 :data]))))
 
       (is (= 2 (count (get ds-res :BB))))
-      (is (= 18 (get-in ds-res [:BB 0 :content-id])))
+      (is (= 19 (get-in ds-res [:BB 0 :content-id])))
       (is (zero? (count (get-in ds-res [:BB 0 :data]))))
-      (is (= 19 (get-in ds-res [:BB 1 :content-id])))
+      (is (= 20 (get-in ds-res [:BB 1 :content-id])))
       (is (zero? (count (get-in ds-res [:BB 1 :data]))))
 
       (is (= 2 (count (get ds-res :QQ))))
-      (is (= 20 (get-in ds-res [:QQ 0 :content-id])))
+      (is (= 21 (get-in ds-res [:QQ 0 :content-id])))
       (is (zero? (count (get-in ds-res [:QQ 0 :data]))))
-      (is (= 21 (get-in ds-res [:QQ 1 :content-id])))
+      (is (= 22 (get-in ds-res [:QQ 1 :content-id])))
       (is (zero? (count (get-in ds-res [:QQ 1 :data]))))
 
       (is (= 1 (count (get ds-res :BS))))
-      (is (= 22 (get-in ds-res [:BS 0 :content-id])))
+      (is (= 23 (get-in ds-res [:BS 0 :content-id])))
       (is (= [0] (seq (get-in ds-res [:BS 0 :data]))))
 
       (is (= 2 (count (get ds-res :IN))))
-      (is (= 23 (get-in ds-res [:IN 0 :content-id])))
+      (is (= 24 (get-in ds-res [:IN 0 :content-id])))
       (is (= [1] (seq (get-in ds-res [:IN 0 :data]))))
-      (is (= 24 (get-in ds-res [:IN 1 :content-id])))
+      (is (= 25 (get-in ds-res [:IN 1 :content-id])))
       (is (= "A" (String. ^bytes (get-in ds-res [:IN 1 :data]))))
 
       (is (= 1 (count (get ds-res :RS))))
-      (is (= 25 (get-in ds-res [:RS 0 :content-id])))
+      (is (= 26 (get-in ds-res [:RS 0 :content-id])))
       (is (zero? (count (get-in ds-res [:RS 0 :data]))))
 
       (is (= 1 (count (get ds-res :PD))))
-      (is (= 26 (get-in ds-res [:PD 0 :content-id])))
+      (is (= 27 (get-in ds-res [:PD 0 :content-id])))
       (is (zero? (count (get-in ds-res [:PD 0 :data]))))
 
       (is (= 1 (count (get ds-res :HC))))
-      (is (= 27 (get-in ds-res [:HC 0 :content-id])))
+      (is (= 28 (get-in ds-res [:HC 0 :content-id])))
       (is (zero? (count (get-in ds-res [:HC 0 :data]))))
 
       (is (= 2 (count (get ds-res :SC))))
-      (is (= 28 (get-in ds-res [:SC 0 :content-id])))
+      (is (= 29 (get-in ds-res [:SC 0 :content-id])))
       (is (= [2] (seq (get-in ds-res [:SC 0 :data]))))
-      (is (= 29 (get-in ds-res [:SC 1 :content-id])))
+      (is (= 30 (get-in ds-res [:SC 1 :content-id])))
       (is (= "CC" (String. ^bytes (get-in ds-res [:SC 1 :data]))))
 
       (is (= 1 (count (get ds-res :MQ))))
-      (is (= 30 (get-in ds-res [:MQ 0 :content-id])))
+      (is (= 31 (get-in ds-res [:MQ 0 :content-id])))
       (is (= [0 15 60 15 0] (seq (get-in ds-res [:MQ 0 :data]))))
 
       (is (= 1 (count (get ds-res :BA))))
-      (is (= 31 (get-in ds-res [:BA 0 :content-id])))
+      (is (= 32 (get-in ds-res [:BA 0 :content-id])))
       (is (zero? (count (get-in ds-res [:BA 0 :data]))))
 
       (is (= 1 (count (get ds-res :QS))))
-      (is (= 32 (get-in ds-res [:QS 0 :content-id])))
+      (is (= 33 (get-in ds-res [:QS 0 :content-id])))
       (is (= "HFHHH##AACCCCFFEBBFFAEEEE"
              (->> (get-in ds-res [:QS 0 :data])
                   (map #(+ (long %) 33))
@@ -363,16 +363,16 @@
              (into {} (:alignment-stats slice-ctx))))
 
       (is (= 1 (count (get ds-res :BF))))
-      (is (= 1 (get-in ds-res [:BF 0 :content-id])))
+      (is (= 2 (get-in ds-res [:BF 0 :content-id])))
       (is (= [0x45 0x80 0x85 0x45 0x80 0x85 0x45]
              (map #(bit-and % 0xff) (get-in ds-res [:BF 0 :data]))))
 
       (is (= 1 (count (get ds-res :CF))))
-      (is (= 2 (get-in ds-res [:CF 0 :content-id])))
+      (is (= 3 (get-in ds-res [:CF 0 :content-id])))
       (is (= [3 3 3 3 3] (seq (get-in ds-res [:CF 0 :data]))))
 
       (is (= 1 (count (get ds-res :RI))))
-      (is (= 3 (get-in ds-res [:RI 0 :content-id])))
+      (is (= 4 (get-in ds-res [:RI 0 :content-id])))
       (is (= [0xff 0xff 0xff 0xff 0x0f
               0xff 0xff 0xff 0xff 0x0f
               0xff 0xff 0xff 0xff 0x0f
@@ -381,15 +381,15 @@
              (map #(bit-and % 0xff) (get-in ds-res [:RI 0 :data]))))
 
       (is (= 1 (count (get ds-res :RL))))
-      (is (= 4 (get-in ds-res [:RL 0 :content-id])))
+      (is (= 5 (get-in ds-res [:RL 0 :content-id])))
       (is (= [5 5 5 5 5] (seq (get-in ds-res [:RL 0 :data]))))
 
       (is (= 1 (count (get ds-res :AP))))
-      (is (= 5 (get-in ds-res [:AP 0 :content-id])))
+      (is (= 6 (get-in ds-res [:AP 0 :content-id])))
       (is (= [0 0 0 0 0] (seq (get-in ds-res [:AP 0 :data]))))
 
       (is (= 1 (count (get ds-res :RG))))
-      (is (= 6 (get-in ds-res [:RG 0 :content-id])))
+      (is (= 7 (get-in ds-res [:RG 0 :content-id])))
       (is (= [0xff 0xff 0xff 0xff 0x0f
               0xff 0xff 0xff 0xff 0x0f
               0xff 0xff 0xff 0xff 0x0f
@@ -398,15 +398,15 @@
              (map #(bit-and % 0xff) (get-in ds-res [:RG 0 :data]))))
 
       (is (= 1 (count (get ds-res :RN))))
-      (is (= 7 (get-in ds-res [:RN 0 :content-id])))
+      (is (= 8 (get-in ds-res [:RN 0 :content-id])))
       (is (= "q001\tq001\tq002\tq002\tq003\t" (String. ^bytes (get-in ds-res [:RN 0 :data]))))
 
       (is (= 1 (count (get ds-res :MF))))
-      (is (= 8 (get-in ds-res [:MF 0 :content-id])))
+      (is (= 9 (get-in ds-res [:MF 0 :content-id])))
       (is (= [2 2 2 2 2] (seq (get-in ds-res [:MF 0 :data]))))
 
       (is (= 1 (count (get ds-res :NS))))
-      (is (= 9 (get-in ds-res [:NS 0 :content-id])))
+      (is (= 10 (get-in ds-res [:NS 0 :content-id])))
       (is (= [0xff 0xff 0xff 0xff 0x0f
               0xff 0xff 0xff 0xff 0x0f
               0xff 0xff 0xff 0xff 0x0f
@@ -415,88 +415,88 @@
              (map #(bit-and % 0xff) (get-in ds-res [:NS 0 :data]))))
 
       (is (= 1 (count (get ds-res :NP))))
-      (is (= 10 (get-in ds-res [:NP 0 :content-id])))
+      (is (= 11 (get-in ds-res [:NP 0 :content-id])))
       (is (= [0 0 0 0 0] (seq (get-in ds-res [:NP 0 :data]))))
 
       (is (= 1 (count (get ds-res :TS))))
-      (is (= 11 (get-in ds-res [:TS 0 :content-id])))
+      (is (= 12 (get-in ds-res [:TS 0 :content-id])))
       (is (= [0 0 0 0 0] (seq (get-in ds-res [:TS 0 :data]))))
 
       (is (= 1 (count (get ds-res :NF))))
-      (is (= 12 (get-in ds-res [:NF 0 :content-id])))
+      (is (= 13 (get-in ds-res [:NF 0 :content-id])))
       (is (zero? (count (get-in ds-res [:NF 0 :data]))))
 
       (is (= 1 (count (get ds-res :TL))))
-      (is (= 13 (get-in ds-res [:TL 0 :content-id])))
+      (is (= 14 (get-in ds-res [:TL 0 :content-id])))
       (is (= [0 0 0 0 0] (seq (get-in ds-res [:TL 0 :data]))))
 
       (is (= 1 (count (get ds-res :FN))))
-      (is (= 14 (get-in ds-res [:FN 0 :content-id])))
+      (is (= 15 (get-in ds-res [:FN 0 :content-id])))
       (is (zero? (count (get-in ds-res [:FN 0 :data]))))
 
       (is (= 1 (count (get ds-res :FC))))
-      (is (= 15 (get-in ds-res [:FC 0 :content-id])))
+      (is (= 16 (get-in ds-res [:FC 0 :content-id])))
       (is (zero? (count (get-in ds-res [:FC 0 :data]))))
 
       (is (= 1 (count (get ds-res :FP))))
-      (is (= 16 (get-in ds-res [:FP 0 :content-id])))
+      (is (= 17 (get-in ds-res [:FP 0 :content-id])))
       (is (zero? (count (get-in ds-res [:FP 0 :data]))))
 
       (is (= 1 (count (get ds-res :DL))))
-      (is (= 17 (get-in ds-res [:DL 0 :content-id])))
+      (is (= 18 (get-in ds-res [:DL 0 :content-id])))
       (is (zero? (count (get-in ds-res [:DL 0 :data]))))
 
       (is (= 2 (count (get ds-res :BB))))
-      (is (= 18 (get-in ds-res [:BB 0 :content-id])))
+      (is (= 19 (get-in ds-res [:BB 0 :content-id])))
       (is (zero? (count (get-in ds-res [:BB 0 :data]))))
-      (is (= 19 (get-in ds-res [:BB 1 :content-id])))
+      (is (= 20 (get-in ds-res [:BB 1 :content-id])))
       (is (zero? (count (get-in ds-res [:BB 1 :data]))))
 
       (is (= 2 (count (get ds-res :QQ))))
-      (is (= 20 (get-in ds-res [:QQ 0 :content-id])))
+      (is (= 21 (get-in ds-res [:QQ 0 :content-id])))
       (is (zero? (count (get-in ds-res [:QQ 0 :data]))))
-      (is (= 21 (get-in ds-res [:QQ 1 :content-id])))
+      (is (= 22 (get-in ds-res [:QQ 1 :content-id])))
       (is (zero? (count (get-in ds-res [:QQ 1 :data]))))
 
       (is (= 1 (count (get ds-res :BS))))
-      (is (= 22 (get-in ds-res [:BS 0 :content-id])))
+      (is (= 23 (get-in ds-res [:BS 0 :content-id])))
       (is (zero? (count (get-in ds-res [:BS 0 :data]))))
 
       (is (= 2 (count (get ds-res :IN))))
-      (is (= 23 (get-in ds-res [:IN 0 :content-id])))
+      (is (= 24 (get-in ds-res [:IN 0 :content-id])))
       (is (zero? (count (get-in ds-res [:IN 0 :data]))))
-      (is (= 24 (get-in ds-res [:IN 1 :content-id])))
+      (is (= 25 (get-in ds-res [:IN 1 :content-id])))
       (is (zero? (count (get-in ds-res [:IN 1 :data]))))
 
       (is (= 1 (count (get ds-res :RS))))
-      (is (= 25 (get-in ds-res [:RS 0 :content-id])))
+      (is (= 26 (get-in ds-res [:RS 0 :content-id])))
       (is (zero? (count (get-in ds-res [:RS 0 :data]))))
 
       (is (= 1 (count (get ds-res :PD))))
-      (is (= 26 (get-in ds-res [:PD 0 :content-id])))
+      (is (= 27 (get-in ds-res [:PD 0 :content-id])))
       (is (zero? (count (get-in ds-res [:PD 0 :data]))))
 
       (is (= 1 (count (get ds-res :HC))))
-      (is (= 27 (get-in ds-res [:HC 0 :content-id])))
+      (is (= 28 (get-in ds-res [:HC 0 :content-id])))
       (is (zero? (count (get-in ds-res [:HC 0 :data]))))
 
       (is (= 2 (count (get ds-res :SC))))
-      (is (= 28 (get-in ds-res [:SC 0 :content-id])))
+      (is (= 29 (get-in ds-res [:SC 0 :content-id])))
       (is (zero? (count (get-in ds-res [:SC 0 :data]))))
-      (is (= 29 (get-in ds-res [:SC 1 :content-id])))
+      (is (= 30 (get-in ds-res [:SC 1 :content-id])))
       (is (zero? (count (get-in ds-res [:SC 1 :data]))))
 
       (is (= 1 (count (get ds-res :MQ))))
-      (is (= 30 (get-in ds-res [:MQ 0 :content-id])))
+      (is (= 31 (get-in ds-res [:MQ 0 :content-id])))
       (is (zero? (count (get-in ds-res [:MQ 0 :data]))))
 
       (is (= 1 (count (get ds-res :BA))))
-      (is (= 31 (get-in ds-res [:BA 0 :content-id])))
+      (is (= 32 (get-in ds-res [:BA 0 :content-id])))
       (is (= "AATCCATTGTTGGTATCTTGGCACA"
              (String. ^bytes (get-in ds-res [:BA 0 :data]))))
 
       (is (= 1 (count (get ds-res :QS))))
-      (is (= 32 (get-in ds-res [:QS 0 :content-id])))
+      (is (= 33 (get-in ds-res [:QS 0 :content-id])))
       (is (= "CCFFFBDFADADDHFDDDFDBCCFD"
              (->> (get-in ds-res [:QS 0 :data])
                   (map #(+ (long %) 33))

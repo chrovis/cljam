@@ -1,12 +1,16 @@
 (ns cljam.io.cram-test
   (:require [cljam.io.cram :as cram]
+            [cljam.io.cram.decode.structure :as struct]
+            [cljam.io.cram.reader :as reader]
             [cljam.io.sam :as sam]
             [cljam.test-common :as common :refer [clean-cache! deftest-remote
                                                   prepare-cache!
                                                   prepare-cavia!
                                                   with-before-after]]
             [clojure.java.io :as io]
-            [clojure.test :refer [are deftest is testing]]))
+            [clojure.test :refer [are deftest is testing]])
+  (:import [cljam.io.cram.reader CRAMReader]
+           [java.nio.channels FileChannel]))
 
 (def ^:private temp-cram-file (io/file common/temp-dir "test.cram"))
 (def ^:private temp-cram-file-2 (io/file common/temp-dir "test2.cram"))
@@ -124,6 +128,60 @@
              (cram/read-header r')))
       (is (= (cram/read-alignments r)
              (cram/read-alignments r'))))))
+
+(defn- all-compression-headers [^CRAMReader r]
+  (let [^FileChannel ch (.-channel r)]
+    (letfn [(read1 [container-header bb]
+              (when-not (struct/eof-container? container-header)
+                (struct/decode-compression-header-block bb)))
+            (step []
+              (when (< (.position ch) (.size ch))
+                (when-let [header (#'reader/read-container-with r read1)]
+                  (cons header (lazy-seq (step))))))]
+      (step))))
+
+(deftest writer-with-reference-embedding-test
+  (with-before-after {:before (prepare-cache!)
+                      :after (clean-cache!)}
+    (testing "Reference embedding will be enabled if `:embed-reference?` is set to true"
+      (with-open [r (cram/reader common/test-sorted-cram-file
+                                 {:reference common/test-fa-file})
+                  w (cram/writer temp-sorted-cram-file
+                                 {:reference common/test-fa-file
+                                  :embed-reference? true
+                                  :skip-sort-order-check? true
+                                  :ds-compressor-overrides {:embedded-ref :raw}})]
+        (cram/write-header w (cram/read-header r))
+        (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
+      (with-open [r (cram/reader common/test-sorted-cram-file
+                                 {:reference common/test-fa-file})
+                  r' (cram/reader temp-sorted-cram-file)]
+        (is (= (cram/read-header r)
+               (cram/read-header r')))
+        (is (= (cram/read-alignments r)
+               (cram/read-alignments r'))))
+      (with-open [r (cram/reader temp-sorted-cram-file)]
+        (let [headers (all-compression-headers r)]
+          (is (seq headers))
+          (is (every? #(false? (get-in % [:preservation-map :RR])) headers)))))
+    (testing "Error when trying to embed reference sequences for a CRAM file not declared as `SO:coordinate`"
+      (with-open [r (cram/reader common/test-sorted-with-unknown-so-cram-file
+                                 {:reference common/test-fa-file})
+                  w (cram/writer temp-cram-file
+                                 {:reference common/test-fa-file
+                                  :embed-reference? true
+                                  :ds-compressor-overrides {:embedded-ref :raw}})]
+        (is (thrown-with-msg? Exception #"Cannot embed reference sequences for CRAM file not declared as sorted by coordinate"
+                              (cram/write-header w (cram/read-header r))))))
+    (testing "`:skip-sort-order-check?` skips the header check when embedding reference sequences"
+      (with-open [r (cram/reader common/test-sorted-with-unknown-so-cram-file
+                                 {:reference common/test-fa-file})
+                  w (cram/writer temp-cram-file
+                                 {:reference common/test-fa-file
+                                  :embed-reference? true
+                                  :skip-sort-order-check? true
+                                  :ds-compressor-overrides {:embedded-ref :raw}})]
+        (is (common/not-throw? (cram/write-header w (cram/read-header r))))))))
 
 (deftest writer-index-options-test
   (with-before-after {:before (prepare-cache!)

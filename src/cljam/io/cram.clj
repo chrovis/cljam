@@ -72,13 +72,16 @@
         a tag keyword, returns a keyword or a set of keywords representing
         compression method. It may return another function to add more conditions
         for the tag type and/or block encoding.
-    - create-index?: If true, creates a .crai index file in the course of CRAM
-        file writing.
-    - skip-sort-order-check?: When creating a CRAM index for the CRAM file,
-        the CRAM writer, by default, checks if the header is declared as
-        `SO:coordinate` and raises an error if not.
-        If this option is set to true, the CRAM writer will skip the header check
-        and create an index file regardless of the header declaration."
+    - create-index?: If set to true, the CRAM writer creates a .crai index file
+        in the course of CRAM file writing.
+    - embed-reference?: If set to true, the CRAM writer embeds the reference
+        sequences into the resulting CRAM file, allowing it to be read without
+        needing an external reference file.
+    - skip-sort-order-check?: When creating a CRAM index or embedding reference
+        sequences into a CRAM file, the CRAM writer, by default, checks if
+        the header specifies `SO:coordinate` and raises an error if it does not.
+        If this option is set to true, the CRAM writer will skip this header
+        check and proceed regardless of the header's sort order declaration."
   (^CRAMWriter [f] (writer f {}))
   (^CRAMWriter [f option] (cram/writer f option)))
 

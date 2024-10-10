@@ -147,42 +147,46 @@
 
 (def ^{:doc "Default encodings for all the data series"}
   default-data-series-encodings
-  {:BF {:content-id  1, :codec :external, :compressor :gzip}
-   :CF {:content-id  2, :codec :external, :compressor :gzip}
-   :RI {:content-id  3, :codec :external, :compressor :gzip}
-   :RL {:content-id  4, :codec :external, :compressor :gzip}
-   :AP {:content-id  5, :codec :external, :compressor :gzip}
-   :RG {:content-id  6, :codec :external, :compressor :gzip}
-   :RN {:content-id  7, :codec :byte-array-stop, :stop-byte (int \tab), :compressor :gzip}
-   :MF {:content-id  8, :codec :external, :compressor :gzip}
-   :NS {:content-id  9, :codec :external, :compressor :gzip}
-   :NP {:content-id 10, :codec :external, :compressor :gzip}
-   :TS {:content-id 11, :codec :external, :compressor :gzip}
-   :NF {:content-id 12, :codec :external, :compressor :gzip}
-   :TL {:content-id 13, :codec :external, :compressor :gzip}
-   :FN {:content-id 14, :codec :external, :compressor :gzip}
-   :FC {:content-id 15, :codec :external, :compressor :gzip}
-   :FP {:content-id 16, :codec :external, :compressor :gzip}
-   :DL {:content-id 17, :codec :external, :compressor :gzip}
+  {;; :embedded-ref is a pseudo data series and won't be used for the real encoding
+   ;; except for the value for :compressor, which is used when compressing embedded
+   ;; reference blocks
+   :embedded-ref {:content-id 1, :codec :external, :compressor :gzip}
+   :BF {:content-id  2, :codec :external, :compressor :gzip}
+   :CF {:content-id  3, :codec :external, :compressor :gzip}
+   :RI {:content-id  4, :codec :external, :compressor :gzip}
+   :RL {:content-id  5, :codec :external, :compressor :gzip}
+   :AP {:content-id  6, :codec :external, :compressor :gzip}
+   :RG {:content-id  7, :codec :external, :compressor :gzip}
+   :RN {:content-id  8, :codec :byte-array-stop, :stop-byte (int \tab), :compressor :gzip}
+   :MF {:content-id  9, :codec :external, :compressor :gzip}
+   :NS {:content-id 10, :codec :external, :compressor :gzip}
+   :NP {:content-id 11, :codec :external, :compressor :gzip}
+   :TS {:content-id 12, :codec :external, :compressor :gzip}
+   :NF {:content-id 13, :codec :external, :compressor :gzip}
+   :TL {:content-id 14, :codec :external, :compressor :gzip}
+   :FN {:content-id 15, :codec :external, :compressor :gzip}
+   :FC {:content-id 16, :codec :external, :compressor :gzip}
+   :FP {:content-id 17, :codec :external, :compressor :gzip}
+   :DL {:content-id 18, :codec :external, :compressor :gzip}
    :BB {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 18, :compressor :gzip}
-        :val-encoding {:codec :external, :content-id 19, :compressor :gzip}}
+        :len-encoding {:codec :external, :content-id 19, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 20, :compressor :gzip}}
    :QQ {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 20, :compressor :gzip}
-        :val-encoding {:codec :external, :content-id 21, :compressor :gzip}}
-   :BS {:content-id 22, :codec :external, :compressor :gzip}
+        :len-encoding {:codec :external, :content-id 21, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 22, :compressor :gzip}}
+   :BS {:content-id 23, :codec :external, :compressor :gzip}
    :IN {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 23, :compressor :gzip}
-        :val-encoding {:codec :external, :content-id 24, :compressor :gzip}}
-   :RS {:content-id 25, :codec :external, :compressor :gzip}
-   :PD {:content-id 26, :codec :external, :compressor :gzip}
-   :HC {:content-id 27, :codec :external, :compressor :gzip}
+        :len-encoding {:codec :external, :content-id 24, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 25, :compressor :gzip}}
+   :RS {:content-id 26, :codec :external, :compressor :gzip}
+   :PD {:content-id 27, :codec :external, :compressor :gzip}
+   :HC {:content-id 28, :codec :external, :compressor :gzip}
    :SC {:codec :byte-array-len
-        :len-encoding {:codec :external, :content-id 28, :compressor :gzip}
-        :val-encoding {:codec :external, :content-id 29, :compressor :gzip}}
-   :MQ {:content-id 30, :codec :external, :compressor :gzip}
-   :BA {:content-id 31, :codec :external, :compressor :gzip}
-   :QS {:content-id 32, :codec :external, :compressor :gzip}})
+        :len-encoding {:codec :external, :content-id 29, :compressor :gzip}
+        :val-encoding {:codec :external, :content-id 30, :compressor :gzip}}
+   :MQ {:content-id 31, :codec :external, :compressor :gzip}
+   :BA {:content-id 32, :codec :external, :compressor :gzip}
+   :QS {:content-id 33, :codec :external, :compressor :gzip}})
 
 (defn- build-codec-encoder
   [{:keys [codec content-id compressor] :as params} data-type content-id->state]

@@ -210,10 +210,13 @@
 (defn encode-compression-header-block
   "Encodes a compression header block to the given OutputStream."
   [out preservation-map subst-mat tag-dict ds-encodings tag-encodings]
-  (let [bs (with-out-byte-array
+  ;; ensure that ds-encodings does not contain the encoding for the :embedded-ref
+  ;; pseudo data series
+  (let [ds-encodings' (dissoc ds-encodings :embedded-ref)
+        bs (with-out-byte-array
              (fn [out']
                (encode-preservation-map out' preservation-map subst-mat tag-dict)
-               (encode-data-series-encodings out' ds-encodings)
+               (encode-data-series-encodings out' ds-encodings')
                (encode-tag-encoding-map out' tag-encodings)))]
     (encode-block out :raw 1 0 (alength bs) bs)))
 

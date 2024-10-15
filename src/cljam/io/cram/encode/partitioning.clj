@@ -3,8 +3,9 @@
   (:import [java.util ArrayList List]))
 
 (defn- slice-record-collector
-  [header {:keys [^long records-per-slice ^long min-single-ref-slice-size]
-           :or {records-per-slice 10000, min-single-ref-slice-size 1000}}]
+  [header
+   {:keys [^long records-per-slice ^long min-single-ref-slice-size embed-reference?]
+    :or {records-per-slice 10000, min-single-ref-slice-size 1000}}]
   (let [sort-by-coord? (= (sam.header/sort-order header) sam.header/order-coordinate)
         ;; CRAM files sorted by coord can easily get back from a multi-ref state
         ;; to a single-ref state. To support this, multi-ref slices should be kept
@@ -26,15 +27,17 @@
 
                 :unmapped
                 (if (< n-records records-per-slice)
-                  (let [ref-state' (cond (= rname "*") ref-state
-                                         sort-by-coord? (throw
-                                                         (ex-info
-                                                          (str "Unmapped records "
-                                                               "must be last")
-                                                          {}))
-                                         :else :multi-ref)]
-                    (.add slice-records aln)
-                    (recur ref-state' more))
+                  (if-let [ref-state' (cond (= rname "*") ref-state
+                                            sort-by-coord? (throw
+                                                            (ex-info
+                                                             (str "Unmapped records "
+                                                                  "must be last")
+                                                             {}))
+                                            embed-reference? nil
+                                            :else :multi-ref)]
+                    (do (.add slice-records aln)
+                        (recur ref-state' more))
+                    [ref-state slice-records alns])
                   [ref-state slice-records alns])
 
                 :multi-ref
@@ -52,7 +55,10 @@
                   ;; slices, instead of creating and adding a new multi-ref slice
                   ;; to that container, add the accumulated single-ref slice
                   ;; to the container and add the current record to the next slice
-                  (if (and empty-container? (< n-records min-single-ref-slice-size))
+                  (if (and empty-container?
+                           ;; reference embedding is not compatible with multi-ref slices
+                           (not embed-reference?)
+                           (< n-records min-single-ref-slice-size))
                     (do (.add slice-records aln)
                         (recur :multi-ref more))
                     [ref-state slice-records alns]))))

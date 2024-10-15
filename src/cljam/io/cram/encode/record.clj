@@ -1,5 +1,6 @@
 (ns cljam.io.cram.encode.record
   (:require [cljam.io.cram.encode.alignment-stats :as stats]
+            [cljam.io.cram.encode.subst-matrix :as subst-mat]
             [cljam.io.cram.encode.tag-dict :as tag-dict]
             [cljam.io.cram.seq-resolver.protocol :as resolver]
             [cljam.io.sam.util.cigar :as sam.cigar]
@@ -82,7 +83,7 @@
                                  (BA (:base f))
                                  (QS (:qual f)))
                   :subst (do (FC (int \X))
-                             (BS (:subst f)))
+                             (BS @(:subst f)))
                   :insertion (do (FC (int \I))
                                  (IN (:bases f)))
                   :deletion (do (FC (int \D))
@@ -149,7 +150,7 @@
     (run! record-encoder records)))
 
 (defn- add-mismatches
-  [n subst-mat ^bytes ref-bases rpos ^bytes read-bases ^bytes qs spos fs]
+  [n subst-mat-builder ^bytes ref-bases rpos ^bytes read-bases ^bytes qs spos fs]
   (loop [i (long n), rpos (long rpos), spos (long spos), fs fs]
     (if (zero? i)
       fs
@@ -164,13 +165,11 @@
                      :base read-base
                      :qual (if qs (- (aget qs spos) 33) -1)}
                     {:code :subst :pos pos
-                     :subst (-> subst-mat
-                                (get (char ref-base))
-                                (get (char read-base)))})]
+                     :subst (subst-mat/assign-code! subst-mat-builder ref-base read-base)})]
             (recur (dec i) (inc rpos) (inc spos) (conj! fs f))))))))
 
 (defn- calculate-read-features&end
-  [seq-resolver subst-mat {:keys [rname ^long pos qual cigar] :as record}]
+  [seq-resolver subst-mat-builder {:keys [rname ^long pos qual cigar] :as record}]
   (if (or (zero? pos) (= (:seq record) "*"))
     [[] pos]
     (let [ref-bases ^bytes (resolver/resolve-sequence seq-resolver rname)
@@ -185,7 +184,7 @@
           (let [pos (inc spos)]
             (case op
               (\M \X \=) (recur more (+ rpos n) (+ spos n)
-                                (add-mismatches n subst-mat ref-bases rpos
+                                (add-mismatches n subst-mat-builder ref-bases rpos
                                                 read-bases qs spos fs))
               \I (let [spos' (+ spos n)
                        bs (Arrays/copyOfRange read-bases spos spos')]
@@ -203,7 +202,7 @@
   "Preprocesses slice records to calculate some record fields prior to record
   encoding that are necessary for the CRAM writer to generate some header
   components."
-  [{:keys [rname->idx subst-mat seq-resolver tag-dict-builder]} ^List records]
+  [{:keys [rname->idx seq-resolver subst-mat-builder tag-dict-builder]} ^List records]
   (let [stats-builder (stats/make-alignment-stats-builder)]
     (dotimes [i (.size records)]
       (let [record (.get records i)
@@ -215,7 +214,7 @@
                  (= (:seq record) "*") (bit-or 0x08))
             ri (ref-index rname->idx (:rname record))
             tags-id (tag-dict/assign-tags-id! tag-dict-builder (:options record))
-            [fs end] (calculate-read-features&end seq-resolver subst-mat record)
+            [fs end] (calculate-read-features&end seq-resolver subst-mat-builder record)
             record' (assoc record
                            ::flag cf ::ref-index ri ::end end
                            ::features fs ::tags-index tags-id)]

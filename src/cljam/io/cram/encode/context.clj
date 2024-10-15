@@ -1,5 +1,6 @@
 (ns cljam.io.cram.encode.context
   (:require [cljam.io.cram.data-series :as ds]
+            [cljam.io.cram.encode.subst-matrix :as subst-mat]
             [cljam.io.cram.encode.tag-dict :as tag-dict]
             [cljam.io.sam.util.header :as sam.header]))
 
@@ -13,17 +14,13 @@
                            (= (sam.header/sort-order cram-header)
                               sam.header/order-coordinate)
                            (assoc :AP true))
-        subst-mat {\A {\T 0, \G 1, \C 2, \N 3}
-                   \T {\A 0, \G 1, \C 2, \N 3}
-                   \G {\A 0, \T 1, \C 2, \N 3}
-                   \C {\A 0, \T 1, \G 2, \N 3}
-                   \N {\A 0, \T 1, \G 2, \C 3}}
+        subst-mat-builder (subst-mat/make-subst-matrix-builder)
         tag-dict-builder (tag-dict/make-tag-dict-builder)]
     {:cram-header cram-header
      :rname->idx rname->idx
      :preservation-map preservation-map
-     :subst-mat subst-mat
      :seq-resolver seq-resolver
+     :subst-mat-builder subst-mat-builder
      :tag-dict-builder tag-dict-builder
      :options options}))
 
@@ -36,12 +33,14 @@
                 tag-compressor-overrides]} (:options container-ctx)
         ds-encodings (-> ds/default-data-series-encodings
                          (ds/apply-ds-compressor-overrides ds-compressor-overrides))
+        subst-mat (subst-mat/build-subst-matrix (:subst-mat-builder container-ctx))
         tag-dict (tag-dict/build-tag-dict (:tag-dict-builder container-ctx))
         tag-encodings (-> (tag-dict/build-tag-encodings tag-dict)
                           (ds/apply-tag-compressor-overrides tag-compressor-overrides))]
     (assoc container-ctx
            :alignment-stats alignment-stats
            :ds-encodings ds-encodings
+           :subst-mat subst-mat
            :tag-dict tag-dict
            :tag-encodings tag-encodings)))
 

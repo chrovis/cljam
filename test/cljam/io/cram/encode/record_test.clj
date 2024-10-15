@@ -1,6 +1,7 @@
 (ns cljam.io.cram.encode.record-test
   (:require [cljam.io.cram.encode.context :as context]
             [cljam.io.cram.encode.record :as record]
+            [cljam.io.cram.encode.subst-matrix :as subst-mat]
             [cljam.io.cram.encode.tag-dict :as tag-dict]
             [cljam.io.cram.seq-resolver.protocol :as resolver]
             [cljam.io.sequence :as cseq]
@@ -19,66 +20,79 @@
         (let [s (get seqs chr)]
           (.getBytes (subs s (dec (long start)) end)))))))
 
-(def subst-mat
-  {\A {\T 0, \G 1, \C 2, \N 3}
-   \T {\A 0, \G 1, \C 2, \N 3}
-   \G {\A 0, \T 1, \C 2, \N 3}
-   \C {\A 0, \T 1, \G 2, \N 3}
-   \N {\A 0, \T 1, \G 2, \C 3}})
+(defn- test-subst-mat-builder [m]
+  (let [^objects arr (make-array Object 5 5)
+        bs (map-indexed vector "ACGTN")]
+    (doseq [[i r] bs
+            [j a] bs
+            :when (not= i j)]
+      (aset ^objects (aget arr i) j
+            (or (get-in m [r a]) (subst-mat/->MutableInt 0))))
+    (subst-mat/->SubstMatrixBuilder arr)))
 
 (deftest calculate-read-features&end
-  (are [?record ?expected]
-       (= ?expected
-          (walk/prewalk
-           #(if (instance? (Class/forName "[B") %) (vec %) %)
-           (#'record/calculate-read-features&end test-seq-resolver subst-mat ?record)))
-    {:rname "ref", :pos 2, :seq "GCATG", :qual "ABCDE", :cigar "5M"}
-    [[]
-     6]
+  (let [a->c (subst-mat/->MutableInt 0)
+        c->t (subst-mat/->MutableInt 0)
+        g->c (subst-mat/->MutableInt 0)
+        subst-mat-builder (test-subst-mat-builder {\A {\C a->c}, \C {\T c->t}, \G {\C g->c}})]
+    (are [?record ?expected]
+         (= ?expected
+            (walk/prewalk
+             #(if (instance? (Class/forName "[B") %) (vec %) %)
+             (#'record/calculate-read-features&end test-seq-resolver subst-mat-builder ?record)))
+      {:rname "ref", :pos 2, :seq "GCATG", :qual "ABCDE", :cigar "5M"}
+      [[]
+       6]
 
-    {:rname "ref", :pos 2, :seq "GCCTG", :qual "ABCDE", :cigar "5M"}
-    [[{:code :subst, :pos 3, :subst 2}]
-     6]
+      {:rname "ref", :pos 2, :seq "GCCTG", :qual "ABCDE", :cigar "5M"}
+      [[{:code :subst, :pos 3, :subst a->c}]
+       6]
 
-    {:rname "ref", :pos 2, :seq "GCRTG", :qual "ABCDE", :cigar "5M"}
-    [[{:code :read-base, :pos 3, :base (int \R), :qual (- (int \C) 33)}]
-     6]
+      {:rname "ref", :pos 2, :seq "GCRTG", :qual "ABCDE", :cigar "5M"}
+      [[{:code :read-base, :pos 3, :base (int \R), :qual (- (int \C) 33)}]
+       6]
 
-    {:rname "ref", :pos 2, :seq "GCCAA", :qual "ABCDE", :cigar "2M2I1M"}
-    [[{:code :insertion, :pos 3, :bases (mapv int "CA")}]
-     4]
+      {:rname "ref", :pos 2, :seq "GCCAA", :qual "ABCDE", :cigar "2M2I1M"}
+      [[{:code :insertion, :pos 3, :bases (mapv int "CA")}]
+       4]
 
-    {:rname "ref", :pos 2, :seq "GTCAA", :qual "ABCDE", :cigar "2M2I1M"}
-    [[{:code :subst, :pos 2, :subst 1}
-      {:code :insertion, :pos 3, :bases (mapv int "CA")}]
-     4]
+      {:rname "ref", :pos 2, :seq "GTCAA", :qual "ABCDE", :cigar "2M2I1M"}
+      [[{:code :subst, :pos 2, :subst c->t}
+        {:code :insertion, :pos 3, :bases (mapv int "CA")}]
+       4]
 
-    {:rname "ref", :pos 2, :seq "GCGTT", :qual "ABCDE", :cigar "2M2D3M"}
-    [[{:code :deletion, :pos 3, :len 2}]
-     8]
+      {:rname "ref", :pos 2, :seq "GCGTT", :qual "ABCDE", :cigar "2M2D3M"}
+      [[{:code :deletion, :pos 3, :len 2}]
+       8]
 
-    {:rname "ref", :pos 2, :seq "GCCTT", :qual "ABCDE", :cigar "2M2D3M"}
-    [[{:code :deletion, :pos 3, :len 2}
-      {:code :subst, :pos 3, :subst 2}]
-     8]
+      {:rname "ref", :pos 2, :seq "GCCTT", :qual "ABCDE", :cigar "2M2D3M"}
+      [[{:code :deletion, :pos 3, :len 2}
+        {:code :subst, :pos 3, :subst g->c}]
+       8]
 
-    {:rname "ref", :pos 2, :seq "GCATT", :qual "ABCDE", :cigar "3M2S"}
-    [[{:code :softclip, :pos 4, :bases (mapv int "TT")}]
-     4]
+      {:rname "ref", :pos 2, :seq "GCATT", :qual "ABCDE", :cigar "3M2S"}
+      [[{:code :softclip, :pos 4, :bases (mapv int "TT")}]
+       4]
 
-    {:rname "ref", :pos 2, :seq "TTGCA", :qual "ABCDE", :cigar "2S3M"}
-    [[{:code :softclip, :pos 1, :bases (mapv int "TT")}]
-     4]))
+      {:rname "ref", :pos 2, :seq "TTGCA", :qual "ABCDE", :cigar "2S3M"}
+      [[{:code :softclip, :pos 1, :bases (mapv int "TT")}]
+       4])
+    (is (= 1 @a->c))
+    (is (= 1 @c->t))
+    (is (= 1 @g->c))))
 
-(defn- preprocess-slice-records [cram-header records]
+(defn- preprocess-slice-records [cram-header subst-mat-init records]
   (let [opts {:ds-compressor-overrides (constantly :raw)
               :tag-compressor-overrides (constantly (constantly (constantly {:external :raw})))}
-        container-ctx (context/make-container-context cram-header test-seq-resolver opts)
+        container-ctx (-> (context/make-container-context cram-header test-seq-resolver opts)
+                          (assoc :subst-mat-builder (test-subst-mat-builder subst-mat-init)))
         stats (record/preprocess-slice-records container-ctx records)]
     (context/finalize-container-context container-ctx [stats])))
 
 (deftest preprocess-slice-records-test
   (let [cram-header {:SQ [{:SN "ref"}]}
+        c->a (subst-mat/->MutableInt 0)
+        subst-mat-init {\C {\A c->a}}
         records (ArrayList.
                  [{:rname "ref", :pos 1, :cigar "5M", :seq "AGAAT", :qual "HFHHH"
                    :options [{:RG {:type "Z", :value "rg001"}}
@@ -100,13 +114,13 @@
                    :options []}
                   {:rname "*", :pos 10, :cigar "*", :seq "*", :qual "*"
                    :options []}])
-        container-ctx (preprocess-slice-records cram-header records)]
+        container-ctx (preprocess-slice-records cram-header subst-mat-init records)]
     (is (= [{:rname "ref", :pos 1, :cigar "5M", :seq "AGAAT", :qual "HFHHH"
              :options [{:RG {:type "Z", :value "rg001"}}
                        {:MD {:type "Z", :value "2C2"}}
                        {:NM {:type "c", :value 1}}]
              ::record/flag 0x03, ::record/ref-index 0, ::record/end 5, ::record/tags-index 0
-             ::record/features [{:code :subst, :pos 3 :subst 0}]}
+             ::record/features [{:code :subst, :pos 3 :subst c->a}]}
             {:rname "ref", :pos 5, :cigar "2S3M", :seq "CCTGT", :qual "##AAC"
              :options [{:RG {:type "Z", :value "rg001"}}
                        {:MD {:type "Z", :value "3"}}
@@ -134,6 +148,7 @@
              ::record/features []}]
            (walk/prewalk #(if (.isArray (class %)) (vec %) %)
                          (vec records))))
+    (is (= 0 @c->a))
     (is (= [[{:tag :MD, :type \Z} {:tag :NM, :type \c}]
             []]
            (:tag-dict container-ctx)))
@@ -160,6 +175,8 @@
                        :RG
                        [{:ID "rg001"}
                         {:ID "rg002"}]}
+          c->a (subst-mat/->MutableInt 0)
+          subst-mat-init {\C {\A c->a}}
           records (ArrayList.
                    [{:qname "q001", :flag 99, :rname "ref", :pos 1, :end 5, :mapq 0,
                      :cigar "5M", :rnext "=", :pnext 151, :tlen 150, :seq "AGAAT", :qual "HFHHH"
@@ -184,7 +201,8 @@
                     {:qname "q005", :flag 73, :rname "ref", :pos 20, :end 24, :mapq 0,
                      :cigar "5M", :rnext "*", :pnext 0, :tlen 0, :seq "CTGTG", :qual "AEEEE"
                      :options []}])
-          slice-ctx (context/make-slice-context (preprocess-slice-records cram-header records) 0)
+          slice-ctx (-> (preprocess-slice-records cram-header subst-mat-init records)
+                        (context/make-slice-context 0))
           _ (record/encode-slice-records slice-ctx records)
           ds-res (walk/prewalk #(if (fn? %) (%) %) (:ds-encoders slice-ctx))
           tag-res (walk/prewalk #(if (fn? %) (%) %) (:tag-encoders slice-ctx))]
@@ -279,7 +297,7 @@
 
       (is (= 1 (count (get ds-res :BS))))
       (is (= 23 (get-in ds-res [:BS 0 :content-id])))
-      (is (= [0] (seq (get-in ds-res [:BS 0 :data]))))
+      (is (= [@c->a] (seq (get-in ds-res [:BS 0 :data]))))
 
       (is (= 2 (count (get ds-res :IN))))
       (is (= 24 (get-in ds-res [:IN 0 :content-id])))
@@ -355,7 +373,8 @@
                     {:qname "q003", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "GCACA", :qual "BCCFD"
                      :options []}])
-          slice-ctx (context/make-slice-context (preprocess-slice-records cram-header records) 0)
+          slice-ctx (-> (preprocess-slice-records cram-header {} records)
+                        (context/make-slice-context 0))
           _ (record/encode-slice-records slice-ctx records)
           ds-res (walk/prewalk #(if (fn? %) (%) %) (:ds-encoders slice-ctx))
           tag-res (walk/prewalk #(if (fn? %) (%) %) (:tag-encoders slice-ctx))]

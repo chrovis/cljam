@@ -1,5 +1,6 @@
 (ns cljam.io.cram.encode.record
   (:require [cljam.io.cram.encode.alignment-stats :as stats]
+            [cljam.io.cram.encode.mate-records :as mate]
             [cljam.io.cram.encode.subst-matrix :as subst-mat]
             [cljam.io.cram.encode.tag-dict :as tag-dict]
             [cljam.io.cram.seq-resolver.protocol :as resolver]
@@ -7,6 +8,11 @@
             [cljam.io.sam.util.flag :as sam.flag]
             [cljam.io.sam.util.option :as sam.option])
   (:import [java.util Arrays List]))
+
+(def ^:private ^:const CF_PRESERVED_QUAL  0x01)
+(def ^:private ^:const CF_DETACHED        0x02)
+(def ^:private ^:const CF_MATE_DOWNSTREAM 0x04)
+(def ^:private ^:const CF_NO_SEQ          0x08)
 
 (defn- ref-index [rname->idx rname]
   (if  (= rname "*")
@@ -35,20 +41,23 @@
   (fn [record]
     (RN (.getBytes ^String (:qname record)))))
 
-(defn- build-mate-read-encoder [{:keys [rname->idx]} {:keys [MF NS NP TS]}]
+(defn- build-mate-read-encoder [{:keys [rname->idx]} {:keys [NF MF NS NP TS]}]
   (fn [{:keys [^long flag rnext] :as record}]
-    (let [mate-flag (cond-> 0
-                      (pos? (bit-and flag (sam.flag/encoded #{:next-reversed})))
-                      (bit-or 0x01)
+    (if (zero? (bit-and (long (::flag record)) CF_DETACHED))
+      (when-let [nf (::next-fragment record)]
+        (NF nf))
+      (let [mate-flag (cond-> 0
+                        (pos? (bit-and flag (sam.flag/encoded #{:next-reversed})))
+                        (bit-or 0x01)
 
-                      (pos? (bit-and flag (sam.flag/encoded #{:next-unmapped})))
-                      (bit-or 0x02))]
-      (MF mate-flag)
-      (NS (if (= rnext "=")
-            (::ref-index record)
-            (ref-index rname->idx rnext)))
-      (NP (:pnext record))
-      (TS (:tlen record)))))
+                        (pos? (bit-and flag (sam.flag/encoded #{:next-unmapped})))
+                        (bit-or 0x02))]
+        (MF mate-flag)
+        (NS (if (= rnext "=")
+              (::ref-index record)
+              (ref-index rname->idx rnext)))
+        (NP (:pnext record))
+        (TS (:tlen record))))))
 
 (defn- build-auxiliary-tags-encoder [{:keys [tag-dict tag-encoders]} {:keys [TL]}]
   (let [tag-encoder (fn [{:keys [tag] :as item}]
@@ -198,26 +207,61 @@
               \P (recur more rpos spos (conj! fs {:code :padding :pos pos :len n}))))
           [(persistent! fs) (dec rpos)])))))
 
+(defn- mate-consistent? [record mate]
+  (and (or (and (= (:rnext mate) "=")
+                (= (:rname record) (:rname mate)))
+           (= (:rname record) (:rnext mate)))
+       (= (long (:pos record)) (long (:pnext mate)))
+       (= (bit-and (long (:flag record))
+                   (sam.flag/encoded #{:unmapped :reversed}))
+          ;; takes advantages of the fact that:
+          ;;  - :unmapped == :next-unmapped >> 1
+          ;;  - :reversed == :next-reversed >> 1
+          (-> (long (:flag mate))
+              (bit-and (sam.flag/encoded #{:next-unmapped :next-reversed}))
+              (unsigned-bit-shift-right 1)))))
+
+(defn- resolve-mate! [mate-resolver ^List records ^long i record]
+  (when-let [^long mate-index (mate/resolve-mate! mate-resolver i record)]
+    (let [upstream-mate (.get records mate-index)]
+      (when (and (mate-consistent? record upstream-mate)
+                 (mate-consistent? upstream-mate record)
+                 (let [{^long tlen1 :tlen, ^long s1 :pos, ^long e1 ::end} record
+                       {^long tlen2 :tlen, ^long s2 :pos, ^long e2 ::end} upstream-mate]
+                   (or (and (zero? tlen1) (zero? tlen2)
+                            (zero? s1) (zero? s2))
+                       (if (<= s1 s2)
+                         (= tlen1 (- tlen2) (inc (- e2 s1)))
+                         (= (- tlen1) tlen2 (inc (- e1 s2)))))))
+        (.set records mate-index
+              (assoc upstream-mate
+                     ::flag (-> (long (::flag upstream-mate))
+                                (bit-and (bit-not CF_DETACHED))
+                                (bit-or CF_MATE_DOWNSTREAM))
+                     ::next-fragment (dec (- i mate-index))))
+        mate-index))))
+
 (defn preprocess-slice-records
   "Preprocesses slice records to calculate some record fields prior to record
   encoding that are necessary for the CRAM writer to generate some header
   components."
   [{:keys [rname->idx seq-resolver subst-mat-builder tag-dict-builder]} ^List records]
-  (let [stats-builder (stats/make-alignment-stats-builder)]
+  (let [mate-resolver (mate/make-mate-resolver)
+        stats-builder (stats/make-alignment-stats-builder)]
     (dotimes [i (.size records)]
       (let [record (.get records i)
-            ;; these flag bits of CF are hard-coded at the moment:
-            ;; - 0x01: quality scores stored as array (true)
-            ;; - 0x02: detached (true)
-            ;; - 0x04: has mate downstream (false)
-            cf (cond-> 0x03
-                 (= (:seq record) "*") (bit-or 0x08))
             ri (ref-index rname->idx (:rname record))
             tags-id (tag-dict/assign-tags-id! tag-dict-builder (:options record))
             [fs end] (calculate-read-features&end seq-resolver subst-mat-builder record)
+            cf (cond-> (bit-or CF_PRESERVED_QUAL CF_DETACHED)
+                 (= (:seq record) "*") (bit-or CF_NO_SEQ))
             record' (assoc record
                            ::flag cf ::ref-index ri ::end end
-                           ::features fs ::tags-index tags-id)]
+                           ::features fs ::tags-index tags-id)
+            mate-index (resolve-mate! mate-resolver records i record')]
         (stats/update! stats-builder ri (:pos record) end (count (:seq record)) 1)
-        (.set records i record')))
+        (.set records i
+              (cond-> record'
+                mate-index
+                (update ::flag bit-and (bit-not CF_DETACHED))))))
     (stats/build stats-builder)))

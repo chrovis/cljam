@@ -37,27 +37,35 @@
         (AP' (:pos record))
         (RG (if rg (get rg-id->idx rg) -1))))))
 
-(defn- build-read-name-encoder [{:keys [RN]}]
-  (fn [record]
-    (RN (.getBytes ^String (:qname record)))))
+(defn- build-read-name-encoder [{:keys [options]} {:keys [RN]}]
+  (if (:omit-read-names? options)
+    (constantly nil)
+    (fn [record]
+      (RN (.getBytes ^String (:qname record))))))
 
-(defn- build-mate-read-encoder [{:keys [rname->idx]} {:keys [NF MF NS NP TS]}]
-  (fn [{:keys [^long flag rnext] :as record}]
-    (if (zero? (bit-and (long (::flag record)) CF_DETACHED))
-      (when-let [nf (::next-fragment record)]
-        (NF nf))
-      (let [mate-flag (cond-> 0
-                        (pos? (bit-and flag (sam.flag/encoded #{:next-reversed})))
-                        (bit-or 0x01)
+(defn- build-mate-read-encoder [{:keys [rname->idx options]} {:keys [RN NF MF NS NP TS]}]
+  (let [RN' (if (:omit-read-names? options)
+              ;; read names must be preserved for detached mate records even when
+              ;; :omit-read-names? is true
+              #(RN (.getBytes ^String %))
+              (constantly nil))]
+    (fn [{:keys [^long flag rnext] :as record}]
+      (if (zero? (bit-and (long (::flag record)) CF_DETACHED))
+        (when-let [nf (::next-fragment record)]
+          (NF nf))
+        (let [mate-flag (cond-> 0
+                          (pos? (bit-and flag (sam.flag/encoded #{:next-reversed})))
+                          (bit-or 0x01)
 
-                        (pos? (bit-and flag (sam.flag/encoded #{:next-unmapped})))
-                        (bit-or 0x02))]
-        (MF mate-flag)
-        (NS (if (= rnext "=")
-              (::ref-index record)
-              (ref-index rname->idx rnext)))
-        (NP (:pnext record))
-        (TS (:tlen record))))))
+                          (pos? (bit-and flag (sam.flag/encoded #{:next-unmapped})))
+                          (bit-or 0x02))]
+          (MF mate-flag)
+          (RN' (:qname record))
+          (NS (if (= rnext "=")
+                (::ref-index record)
+                (ref-index rname->idx rnext)))
+          (NP (:pnext record))
+          (TS (:tlen record)))))))
 
 (defn- build-auxiliary-tags-encoder [{:keys [tag-dict tag-encoders]} {:keys [TL]}]
   (let [tag-encoder (fn [{:keys [tag] :as item}]
@@ -132,7 +140,7 @@
 
 (defn- build-cram-record-encoder [{:keys [ds-encoders] :as slice-ctx}]
   (let [pos-encoder (build-positional-data-encoder slice-ctx ds-encoders)
-        name-encoder (build-read-name-encoder ds-encoders)
+        name-encoder (build-read-name-encoder slice-ctx ds-encoders)
         mate-encoder (build-mate-read-encoder slice-ctx ds-encoders)
         tags-encoder (build-auxiliary-tags-encoder slice-ctx ds-encoders)
         mapped-encoder (build-mapped-read-encoder ds-encoders)
@@ -221,7 +229,17 @@
               (bit-and (sam.flag/encoded #{:next-unmapped :next-reversed}))
               (unsigned-bit-shift-right 1)))))
 
-(defn- resolve-mate! [mate-resolver ^List records ^long i record]
+(defn- has-only-primary-mates? [record mate]
+  (and (if-let [tc (sam.option/value-for-tag :TC record)]
+         (= tc 2)
+         true)
+       (if-let [tc (sam.option/value-for-tag :TC mate)]
+         (= tc 2)
+         true)
+       (nil? (sam.option/value-for-tag :SA record))
+       (nil? (sam.option/value-for-tag :SA mate))))
+
+(defn- resolve-mate! [mate-resolver omit-read-names? ^List records i record]
   (when-let [^long mate-index (mate/resolve-mate! mate-resolver i record)]
     (let [upstream-mate (.get records mate-index)]
       (when (and (mate-consistent? record upstream-mate)
@@ -232,22 +250,28 @@
                             (zero? s1) (zero? s2))
                        (if (<= s1 s2)
                          (= tlen1 (- tlen2) (inc (- e2 s1)))
-                         (= (- tlen1) tlen2 (inc (- e1 s2)))))))
+                         (= (- tlen1) tlen2 (inc (- e1 s2))))))
+                 (or (not omit-read-names?)
+                     ;; to omit the read name from these mate records, they
+                     ;; must not have any secondary/supplementary alignments
+                     (has-only-primary-mates? record upstream-mate)))
         (.set records mate-index
               (assoc upstream-mate
                      ::flag (-> (long (::flag upstream-mate))
                                 (bit-and (bit-not CF_DETACHED))
                                 (bit-or CF_MATE_DOWNSTREAM))
-                     ::next-fragment (dec (- i mate-index))))
+                     ::next-fragment (dec (- (long i) mate-index))))
         mate-index))))
 
 (defn preprocess-slice-records
   "Preprocesses slice records to calculate some record fields prior to record
   encoding that are necessary for the CRAM writer to generate some header
   components."
-  [{:keys [rname->idx seq-resolver subst-mat-builder tag-dict-builder]} ^List records]
+  [{:keys [rname->idx seq-resolver subst-mat-builder tag-dict-builder options]}
+   ^List records]
   (let [mate-resolver (mate/make-mate-resolver)
-        stats-builder (stats/make-alignment-stats-builder)]
+        stats-builder (stats/make-alignment-stats-builder)
+        omit-read-names? (:omit-read-names? options)]
     (dotimes [i (.size records)]
       (let [record (.get records i)
             ri (ref-index rname->idx (:rname record))
@@ -258,7 +282,7 @@
             record' (assoc record
                            ::flag cf ::ref-index ri ::end end
                            ::features fs ::tags-index tags-id)
-            mate-index (resolve-mate! mate-resolver records i record')]
+            mate-index (resolve-mate! mate-resolver omit-read-names? records i record')]
         (stats/update! stats-builder ri (:pos record) end (count (:seq record)) 1)
         (.set records i
               (cond-> record'

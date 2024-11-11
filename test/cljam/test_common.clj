@@ -35,6 +35,9 @@
   {:resources [{:id "hg19.2bit"
                 :url "https://test.chrov.is/data/refs/hg19.2bit"
                 :sha1 "95e5806aee9ecc092d30a482aaa008ef66cbc468"}
+               {:id "hg38.2bit"
+                :url "https://test.chrov.is/data/refs/hg38.2bit"
+                :sha1 "6fb20ba4de0b49247b78e08c2394d0c4f8594148"}
                {:id "large.bam"
                 :url "https://test.chrov.is/data/GSM721144_H3K36me3.nodup.bam"
                 :sha1 "ad282c3779120057abc274ad8fad1910a4ad867b"}
@@ -168,6 +171,7 @@
 (def test-cram-file "test-resources/cram/test.cram")
 (def test-sorted-cram-file "test-resources/cram/test.sorted.cram")
 (def test-sorted-with-unknown-so-cram-file "test-resources/cram/test.sorted_with_unknown_so.cram")
+(def paired-sorted-cram-file "test-resources/cram/paired.sorted.cram")
 (def medium-cram-file "test-resources/cram/medium.cram")
 (def medium-with-standard-tags-cram-file "test-resources/cram/medium_with_standard_tags.cram")
 (def medium-without-index-cram-file "test-resources/cram/medium_without_index.cram")
@@ -200,6 +204,7 @@
 (def test-twobit-be-n-file "test-resources/twobit/be-test-n.2bit")
 (def medium-twobit-file "test-resources/twobit/medium.2bit")
 (def hg19-twobit-file (cavia/resource mycavia "hg19.2bit"))
+(def hg38-twobit-file (cavia/resource mycavia "hg38.2bit"))
 
 ;; ### FASTQ files
 

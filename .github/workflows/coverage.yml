@@ -20,8 +20,7 @@ jobs:
       run: |
         lein cloverage --codecov
     - name: Coverage Graph
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         files: ./target/coverage/codecov.json
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ secrets.CODECOV_TOKEN }}

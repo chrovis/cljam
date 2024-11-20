@@ -94,57 +94,95 @@
         c->a (subst-mat/->MutableInt 0)
         subst-mat-init {\C {\A c->a}}
         records (ArrayList.
-                 [{:rname "ref", :pos 1, :cigar "5M", :seq "AGAAT", :qual "HFHHH"
+                 [{:qname "q001", :flag 99, :rname "ref", :pos 1, :cigar "5M",
+                   :rnext "=", :pnext 151, :tlen 150, :seq "AGAAT", :qual "HFHHH",
                    :options [{:RG {:type "Z", :value "rg001"}}
                              {:MD {:type "Z", :value "2C2"}}
                              {:NM {:type "c", :value 1}}]}
-                  {:rname "ref", :pos 5, :cigar "2S3M", :seq "CCTGT", :qual "##AAC"
+                  {:qname "q002", :flag 99, :rname "ref", :pos 5, :cigar "2S3M",
+                   :rnext "=", :pnext 15, :tlen 15, :seq "CCTGT", :qual "##AAC"
                    :options [{:RG {:type "Z", :value "rg001"}}
                              {:MD {:type "Z", :value "3"}}
                              {:NM {:type "c", :value 0}}]}
-                  {:rname "ref", :pos 10, :cigar "5M", :seq "GATAA", :qual "CCCFF"
+                  {:qname "q003", :flag 177, :rname "ref", :pos 10, :cigar "5M",
+                   :rnext "ref2", :pnext 100, :tlen 0, :seq "GATAA", :qual "CCCFF"
                    :options [{:RG {:type "Z", :value "rg002"}}
                              {:MD {:type "Z", :value "5"}}
                              {:NM {:type "c", :value 0}}]}
-                  {:rname "ref", :pos 15, :cigar "1M1I1M1D2M", :seq "GAAAG", :qual "EBBFF"
+                  {:qname "q002", :flag 147, :rname "ref", :pos 15, :cigar "1M1I1M1D2M",
+                   :rnext "=", :pnext 5, :tlen -15, :seq "GAAAG", :qual "EBBFF"
                    :options [{:RG {:type "Z", :value "rg002"}}
                              {:MD {:type "Z", :value "3^T2"}}
                              {:NM {:type "c",  :value 2}}]}
-                  {:rname "*", :pos 0, :cigar "*", :seq "CTGTG", :qual "AEEEE"
+                  {:qname "q004", :flag 65, :rname "ref", :pos 20, :cigar "5M",
+                   :rnext "=", :pnext 20, :tlen 0, :seq "CTGTG", :qual "DBBDD"
+                   :options [{:RG {:type "Z", :value "rg001"}}
+                             {:MD {:type "Z", :value "5"}}
+                             {:NM {:type "c", :value 0}}]}
+                  {:qname "q004", :flag 129, :rname "ref", :pos 20, :cigar "5M",
+                   :rnext "=", :pnext 20, :tlen 0, :seq "CTGTG", :qual "DBBDD"
+                   :options [{:RG {:type "Z", :value "rg001"}}
+                             {:MD {:type "Z", :value "5"}}
+                             {:NM {:type "c",  :value 0}}]}
+                  {:qname "q005", :flag 77, :rname "*", :pos 0, :cigar "*",
+                   :rnext "*", :pnext 0, :tlen 0, :seq "ATGCA", :qual "AEEEE"
                    :options []}
-                  {:rname "*", :pos 10, :cigar "*", :seq "*", :qual "*"
+                  {:qname "q005", :flag 141, :rname "*", :pos 0, :cigar "*",
+                   :rnext "*", :pnext 0, :tlen 0, :seq "*", :qual "*"
                    :options []}])
         container-ctx (preprocess-slice-records cram-header subst-mat-init records)]
-    (is (= [{:rname "ref", :pos 1, :cigar "5M", :seq "AGAAT", :qual "HFHHH"
+    (is (= [{:qname "q001", :flag 99, :rname "ref", :pos 1, :cigar "5M",
+             :rnext "=", :pnext 151, :tlen 150, :seq "AGAAT", :qual "HFHHH"
              :options [{:RG {:type "Z", :value "rg001"}}
                        {:MD {:type "Z", :value "2C2"}}
                        {:NM {:type "c", :value 1}}]
-             ::record/flag 0x03, ::record/ref-index 0, ::record/end 5, ::record/tags-index 0
+             ::record/flag 0x03, ::record/ref-index 0, ::record/end 5, ::record/tags-index 0,
              ::record/features [{:code :subst, :pos 3 :subst c->a}]}
-            {:rname "ref", :pos 5, :cigar "2S3M", :seq "CCTGT", :qual "##AAC"
+            {:qname "q002", :flag 99, :rname "ref", :pos 5, :cigar "2S3M",
+             :rnext "=", :pnext 15, :tlen 15, :seq "CCTGT", :qual "##AAC"
              :options [{:RG {:type "Z", :value "rg001"}}
                        {:MD {:type "Z", :value "3"}}
                        {:NM {:type "c", :value 0}}]
-             ::record/flag 0x03, ::record/ref-index 0, ::record/end 7, ::record/tags-index 0
+             ::record/flag 0x05, ::record/ref-index 0, ::record/end 7,
+             ::record/tags-index 0, ::record/next-fragment 1,
              ::record/features [{:code :softclip, :pos 1, :bases [(int \C) (int \C)]}]}
-            {:rname "ref", :pos 10, :cigar "5M", :seq "GATAA", :qual "CCCFF"
+            {:qname "q003", :flag 177, :rname "ref", :pos 10, :cigar "5M",
+             :rnext "ref2", :pnext 100, :tlen 0,  :seq "GATAA", :qual "CCCFF"
              :options [{:RG {:type "Z", :value "rg002"}}
                        {:MD {:type "Z", :value "5"}}
                        {:NM {:type "c", :value 0}}]
              ::record/flag 0x03, ::record/ref-index 0, ::record/end 14, ::record/tags-index 0
              ::record/features []}
-            {:rname "ref", :pos 15, :cigar "1M1I1M1D2M", :seq "GAAAG", :qual "EBBFF"
+            {:qname "q002", :flag 147, :rname "ref", :pos 15, :cigar "1M1I1M1D2M",
+             :rnext "=", :pnext 5, :tlen -15,  :seq "GAAAG", :qual "EBBFF"
              :options [{:RG {:type "Z", :value "rg002"}}
                        {:MD {:type "Z", :value "3^T2"}}
                        {:NM {:type "c",  :value 2}}]
-             ::record/flag 0x03, ::record/ref-index 0, ::record/end 19, ::record/tags-index 0
+             ::record/flag 0x01, ::record/ref-index 0, ::record/end 19, ::record/tags-index 0
              ::record/features [{:code :insertion, :pos 2, :bases [(int \A)]}
                                 {:code :deletion, :pos 4, :len 1}]}
-            {:rname "*", :pos 0, :cigar "*", :seq "CTGTG", :qual "AEEEE", :options []
-             ::record/flag 0x03, ::record/ref-index -1, ::record/end 0, ::record/tags-index 1
+            {:qname "q004", :flag 65, :rname "ref", :pos 20, :cigar "5M",
+             :rnext "=", :pnext 20, :tlen 0, :seq "CTGTG", :qual "DBBDD"
+             :options [{:RG {:type "Z", :value "rg001"}}
+                       {:MD {:type "Z", :value "5"}}
+                       {:NM {:type "c", :value 0}}]
+             ::record/flag 0x03, ::record/ref-index 0, ::record/end 24,
+             ::record/tags-index 0, ::record/features []}
+            {:qname "q004", :flag 129, :rname "ref", :pos 20, :cigar "5M",
+             :rnext "=", :pnext 20, :tlen 0, :seq "CTGTG", :qual "DBBDD"
+             :options [{:RG {:type "Z", :value "rg001"}}
+                       {:MD {:type "Z", :value "5"}}
+                       {:NM {:type "c",  :value 0}}]
+             ::record/flag 0x03, ::record/ref-index 0, ::record/end 24,
+             ::record/tags-index 0, ::record/features []}
+            {:qname "q005", :flag 77, :rname "*", :pos 0, :cigar "*",
+             :rnext "*", :pnext 0, :tlen 0, :seq "ATGCA", :qual "AEEEE", :options []
+             ::record/flag 0x05, ::record/ref-index -1, ::record/end 0,
+             ::record/tags-index 1, ::record/next-fragment 0,
              ::record/features []}
-            {:rname "*", :pos 10, :cigar "*", :seq "*", :qual "*", :options []
-             ::record/flag 0x0b, ::record/ref-index -1, ::record/end 10, ::record/tags-index 1
+            {:qname "q005", :flag 141, :rname "*", :pos 0, :cigar "*",
+             :rnext "*", :pnext 0, :tlen 0, :seq "*", :qual "*", :options []
+             ::record/flag 0x09, ::record/ref-index -1, ::record/end 0, ::record/tags-index 1
              ::record/features []}]
            (walk/prewalk #(if (.isArray (class %)) (vec %) %)
                          (vec records))))
@@ -193,12 +231,12 @@
                      :options [{:RG {:type "Z", :value "rg002"}}
                                {:MD {:type "Z", :value "5"}}
                                {:NM {:type "c", :value 0}}]}
-                    {:qname "q004", :flag 147, :rname "ref", :pos 15, :end 19, :mapq 15,
+                    {:qname "q002", :flag 147, :rname "ref", :pos 15, :end 19, :mapq 15,
                      :cigar "1M1I1M1D2M", :rnext "=", :pnext 5, :tlen -15, :seq "GAAAG", :qual "EBBFF"
                      :options [{:RG {:type "Z", :value "rg002"}}
                                {:MD {:type "Z", :value "3^T2"}}
                                {:NM {:type "c", :value 2}}]}
-                    {:qname "q005", :flag 73, :rname "ref", :pos 20, :end 24, :mapq 0,
+                    {:qname "q004", :flag 73, :rname "ref", :pos 20, :end 24, :mapq 0,
                      :cigar "5M", :rnext "*", :pnext 0, :tlen 0, :seq "CTGTG", :qual "AEEEE"
                      :options []}])
           slice-ctx (-> (preprocess-slice-records cram-header subst-mat-init records)
@@ -216,7 +254,7 @@
 
       (is (= 1 (count (get ds-res :CF))))
       (is (= 3 (get-in ds-res [:CF 0 :content-id])))
-      (is (= [3 3 3 3 3] (seq (get-in ds-res [:CF 0 :data]))))
+      (is (= [3 5 3 1 3] (seq (get-in ds-res [:CF 0 :data]))))
 
       (is (= 1 (count (get ds-res :RI))))
       (is (= 4 (get-in ds-res [:RI 0 :content-id])))
@@ -237,30 +275,30 @@
 
       (is (= 1 (count (get ds-res :RN))))
       (is (= 8 (get-in ds-res [:RN 0 :content-id])))
-      (is (= "q001\tq002\tq003\tq004\tq005\t" (String. ^bytes (get-in ds-res [:RN 0 :data]))))
+      (is (= "q001\tq002\tq003\tq002\tq004\t" (String. ^bytes (get-in ds-res [:RN 0 :data]))))
 
       (is (= 1 (count (get ds-res :MF))))
       (is (= 9 (get-in ds-res [:MF 0 :content-id])))
-      (is (= [1 1 1 0 2] (seq (get-in ds-res [:MF 0 :data]))))
+      (is (= [1 1 2] (seq (get-in ds-res [:MF 0 :data]))))
 
       (is (= 1 (count (get ds-res :NS))))
       (is (= 10 (get-in ds-res [:NS 0 :content-id])))
-      (is (= [0 0 1 0 0xff 0xff 0xff 0xff 0x0f]
+      (is (= [0 1 0xff 0xff 0xff 0xff 0x0f]
              (map #(bit-and % 0xff) (get-in ds-res [:NS 0 :data]))))
 
       (is (= 1 (count (get ds-res :NP))))
       (is (= 11 (get-in ds-res [:NP 0 :content-id])))
-      (is (= [0x80 0x97 0x0f 0x64 0x05 0x00]
+      (is (= [0x80 0x97 0x64 0x00]
              (map #(bit-and % 0xff) (get-in ds-res [:NP 0 :data]))))
 
       (is (= 1 (count (get ds-res :TS))))
       (is (= 12 (get-in ds-res [:TS 0 :content-id])))
-      (is (= [0x80 0x96 0x0f 0x00 0xff 0xff 0xff 0xff 0x01 0x00]
+      (is (= [0x80 0x96 0x00 0x00]
              (map #(bit-and % 0xff) (get-in ds-res [:TS 0 :data]))))
 
       (is (= 1 (count (get ds-res :NF))))
       (is (= 13 (get-in ds-res [:NF 0 :content-id])))
-      (is (zero? (count (get-in ds-res [:NF 0 :data]))))
+      (is (= [1] (seq (get-in ds-res [:NF 0 :data]))))
 
       (is (= 1 (count (get ds-res :TL))))
       (is (= 14 (get-in ds-res [:TL 0 :content-id])))
@@ -388,7 +426,7 @@
 
       (is (= 1 (count (get ds-res :CF))))
       (is (= 3 (get-in ds-res [:CF 0 :content-id])))
-      (is (= [3 3 3 3 3] (seq (get-in ds-res [:CF 0 :data]))))
+      (is (= [5 1 5 1 3] (seq (get-in ds-res [:CF 0 :data]))))
 
       (is (= 1 (count (get ds-res :RI))))
       (is (= 4 (get-in ds-res [:RI 0 :content-id])))
@@ -422,28 +460,24 @@
 
       (is (= 1 (count (get ds-res :MF))))
       (is (= 9 (get-in ds-res [:MF 0 :content-id])))
-      (is (= [2 2 2 2 2] (seq (get-in ds-res [:MF 0 :data]))))
+      (is (= [2] (seq (get-in ds-res [:MF 0 :data]))))
 
       (is (= 1 (count (get ds-res :NS))))
       (is (= 10 (get-in ds-res [:NS 0 :content-id])))
-      (is (= [0xff 0xff 0xff 0xff 0x0f
-              0xff 0xff 0xff 0xff 0x0f
-              0xff 0xff 0xff 0xff 0x0f
-              0xff 0xff 0xff 0xff 0x0f
-              0xff 0xff 0xff 0xff 0x0f]
+      (is (= [0xff 0xff 0xff 0xff 0x0f]
              (map #(bit-and % 0xff) (get-in ds-res [:NS 0 :data]))))
 
       (is (= 1 (count (get ds-res :NP))))
       (is (= 11 (get-in ds-res [:NP 0 :content-id])))
-      (is (= [0 0 0 0 0] (seq (get-in ds-res [:NP 0 :data]))))
+      (is (= [0] (seq (get-in ds-res [:NP 0 :data]))))
 
       (is (= 1 (count (get ds-res :TS))))
       (is (= 12 (get-in ds-res [:TS 0 :content-id])))
-      (is (= [0 0 0 0 0] (seq (get-in ds-res [:TS 0 :data]))))
+      (is (= [0] (seq (get-in ds-res [:TS 0 :data]))))
 
       (is (= 1 (count (get ds-res :NF))))
       (is (= 13 (get-in ds-res [:NF 0 :content-id])))
-      (is (zero? (count (get-in ds-res [:NF 0 :data]))))
+      (is (= [0 0] (seq (get-in ds-res [:NF 0 :data]))))
 
       (is (= 1 (count (get ds-res :TL))))
       (is (= 14 (get-in ds-res [:TL 0 :content-id])))

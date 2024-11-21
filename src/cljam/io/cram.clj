@@ -81,7 +81,15 @@
         sequences into a CRAM file, the CRAM writer, by default, checks if
         the header specifies `SO:coordinate` and raises an error if it does not.
         If this option is set to true, the CRAM writer will skip this header
-        check and proceed regardless of the header's sort order declaration."
+        check and proceed regardless of the header's sort order declaration.
+    - omit-read-names?: If set to true, the CRAM writer omits read names (QNAME)
+        from records while preserving consistency across mate records.
+        Read name omission does not apply to single-end reads, detached mate
+        records or mate records that involve secondary or supplementary alignments.
+        Whether or not secondary/supplementary alignments are involved in a set
+        of mate records is determined by the tags TC (for secondary alignments)
+        and SA (for supplementary alignments). Make sure that these tags are
+        appropriately attached to the records when such alignments are present."
   (^CRAMWriter [f] (writer f {}))
   (^CRAMWriter [f option] (cram/writer f option)))
 

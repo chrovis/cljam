@@ -81,10 +81,13 @@
     (is (= 1 @c->t))
     (is (= 1 @g->c))))
 
-(defn- preprocess-slice-records [cram-header subst-mat-init records]
-  (let [opts {:ds-compressor-overrides (constantly :raw)
-              :tag-compressor-overrides (constantly (constantly (constantly {:external :raw})))}
-        container-ctx (-> (context/make-container-context cram-header test-seq-resolver opts)
+(defn- preprocess-slice-records [cram-header subst-mat-init opts records]
+  (let [opts' (merge opts
+                     {:ds-compressor-overrides (constantly :raw)
+                      :tag-compressor-overrides (constantly
+                                                 (constantly
+                                                  (constantly {:external :raw})))})
+        container-ctx (-> (context/make-container-context cram-header test-seq-resolver opts')
                           (assoc :subst-mat-builder (test-subst-mat-builder subst-mat-init)))
         stats (record/preprocess-slice-records container-ctx records)]
     (context/finalize-container-context container-ctx [stats])))
@@ -130,7 +133,7 @@
                   {:qname "q005", :flag 141, :rname "*", :pos 0, :cigar "*",
                    :rnext "*", :pnext 0, :tlen 0, :seq "*", :qual "*"
                    :options []}])
-        container-ctx (preprocess-slice-records cram-header subst-mat-init records)]
+        container-ctx (preprocess-slice-records cram-header subst-mat-init {} records)]
     (is (= [{:qname "q001", :flag 99, :rname "ref", :pos 1, :cigar "5M",
              :rnext "=", :pnext 151, :tlen 150, :seq "AGAAT", :qual "HFHHH"
              :options [{:RG {:type "Z", :value "rg001"}}
@@ -239,7 +242,7 @@
                     {:qname "q004", :flag 73, :rname "ref", :pos 20, :end 24, :mapq 0,
                      :cigar "5M", :rnext "*", :pnext 0, :tlen 0, :seq "CTGTG", :qual "AEEEE"
                      :options []}])
-          slice-ctx (-> (preprocess-slice-records cram-header subst-mat-init records)
+          slice-ctx (-> (preprocess-slice-records cram-header subst-mat-init {} records)
                         (context/make-slice-context 0))
           _ (record/encode-slice-records slice-ctx records)
           ds-res (walk/prewalk #(if (fn? %) (%) %) (:ds-encoders slice-ctx))
@@ -411,7 +414,7 @@
                     {:qname "q003", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
                      :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "GCACA", :qual "BCCFD"
                      :options []}])
-          slice-ctx (-> (preprocess-slice-records cram-header {} records)
+          slice-ctx (-> (preprocess-slice-records cram-header {} {} records)
                         (context/make-slice-context 0))
           _ (record/encode-slice-records slice-ctx records)
           ds-res (walk/prewalk #(if (fn? %) (%) %) (:ds-encoders slice-ctx))
@@ -555,5 +558,72 @@
                   (map #(+ (long %) 33))
                   byte-array
                   String.)))
+      (is (= {} tag-res))))
+  (testing "omit read names"
+    (let [cram-header {:SQ
+                       [{:SN "ref"}
+                        {:SN "ref2"}]}
+          opts {:omit-read-names? true}
+          records (ArrayList.
+                   [{:qname "q001", :flag 99, :rname "ref", :pos 1, :end 5, :mapq 60,
+                     :cigar "5M", :rnext "=", :pnext 11, :tlen 15, :seq "AGAAT", :qual "AAAAA"
+                     :options []}
+                    {:qname "q002", :flag 97, :rname "ref", :pos 6, :end 10, :mapq 15,
+                     :cigar "5M", :rnext "=", :pnext 16, :tlen 15, :seq "GTTAG", :qual "AAAAA"
+                     :options [{:TC {:type "i", :value 3}}]}
+                    {:qname "q003", :flag 97, :rname "ref", :pos 11, :end 15, :mapq 30,
+                     :cigar "4M1S", :rnext "=", :pnext 21, :tlen 15, :seq "ATAAA", :qual "AAAAA"
+                     :options [{:SA {:type "Z", :value "ref2,12345,+,4S1M,10,0"}}]}
+                    {:qname "q004", :flag 73, :rname "ref", :pos 16, :end 20, :mapq 60,
+                     :cigar "5M", :rnext "=", :pnext 19, :tlen 15, :seq "ATAGC", :qual "AAAAA"
+                     :options []}
+                    {:qname "q001", :flag 147, :rname "ref", :pos 11, :end 15, :mapq 60,
+                     :cigar "5M", :rnext "=", :pnext 1, :tlen -15, :seq "ATAAG", :qual "AAAAA"
+                     :options []}
+                    {:qname "q002", :flag 145, :rname "ref", :pos 16, :end 20, :mapq 15,
+                     :cigar "5M", :rnext "=", :pnext 6, :tlen -15, :seq "ATAGC", :qual "AAAAA"
+                     :options [{:TC {:type "i", :value 3}}]}
+                    {:qname "q003", :flag 145, :rname "ref", :pos 21, :end 25, :mapq 30,
+                     :cigar "5M", :rnext "=", :pnext 11, :tlen -15, :seq "TGTGC", :qual "AAAAA"
+                     :options []}
+                    {:qname "q005", :flag 77, :rname "*", :pos 0, :end 0, :mapq 0,
+                     :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "ATGCA", :qual "AAAAA"
+                     :options []}
+                    {:qname "q005", :flag 141, :rname "*", :pos 0, :end 4, :mapq 0,
+                     :cigar "*", :rnext "*", :pnext 0, :tlen 0, :seq "TGCAT", :qual "AAAAA"
+                     :options []}])
+          slice-ctx (-> (preprocess-slice-records cram-header {} opts records)
+                        (context/make-slice-context 0))
+          _ (record/encode-slice-records slice-ctx records)
+          ds-res (walk/prewalk #(if (fn? %) (%) %) (:ds-encoders slice-ctx))]
+      (is (= 1 (count (get ds-res :CF))))
+      (is (= 3 (get-in ds-res [:CF 0 :content-id])))
+      (is (= [5 3 3 3 1 3 3 5 1] (seq (get-in ds-res [:CF 0 :data]))))
 
-      (is (= {} tag-res)))))
+      (is (= 1 (count (get ds-res :RN))))
+      (is (= 8 (get-in ds-res [:RN 0 :content-id])))
+      (is (= "q002\tq003\tq004\tq002\tq003\t" (String. ^bytes (get-in ds-res [:RN 0 :data]))))
+
+      (is (= 1 (count (get ds-res :MF))))
+      (is (= 9 (get-in ds-res [:MF 0 :content-id])))
+      (is (= [1 1 2 0 0] (seq (get-in ds-res [:MF 0 :data]))))
+
+      (is (= 1 (count (get ds-res :NS))))
+      (is (= 10 (get-in ds-res [:NS 0 :content-id])))
+      (is (= [0 0 0 0 0]
+             (map #(bit-and % 0xff) (get-in ds-res [:NS 0 :data]))))
+
+      (is (= 1 (count (get ds-res :NP))))
+      (is (= 11 (get-in ds-res [:NP 0 :content-id])))
+      (is (= [16 21 19 6 11]
+             (map #(bit-and % 0xff) (get-in ds-res [:NP 0 :data]))))
+
+      (is (= 1 (count (get ds-res :TS))))
+      (is (= 12 (get-in ds-res [:TS 0 :content-id])))
+      (is (= [15 15 15 0xff 0xff 0xff 0xff 0x01 0xff 0xff 0xff 0xff 0x01]
+             (map #(bit-and % 0xff) (get-in ds-res [:TS 0 :data]))))
+
+      (is (= 1 (count (get ds-res :NF))))
+      (is (= 13 (get-in ds-res [:NF 0 :content-id])))
+      (is (= [3 0] (seq (get-in ds-res [:NF 0 :data])))))))
+

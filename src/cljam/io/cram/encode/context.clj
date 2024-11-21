@@ -11,6 +11,9 @@
                          (map-indexed (fn [i {:keys [SN]}] [SN i]))
                          (:SQ cram-header))
         preservation-map (cond-> {:RN true, :AP false, :RR true}
+                           (:omit-read-names? options)
+                           (assoc :RN false)
+
                            (= (sam.header/sort-order cram-header)
                               sam.header/order-coordinate)
                            (assoc :AP true))

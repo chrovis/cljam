@@ -3,11 +3,10 @@
             [cljam.io.cram.decode.structure :as struct]
             [cljam.io.cram.reader :as reader]
             [cljam.io.sam :as sam]
-            [cljam.test-common :as common :refer [clean-cache! deftest-remote
-                                                  prepare-cache!
-                                                  prepare-cavia!
-                                                  with-before-after]]
+            [cljam.io.sam.util.flag :as flag]
+            [cljam.test-common :as common :refer [deftest-remote deftest-slow]]
             [clojure.java.io :as io]
+            [clojure.set :as set]
             [clojure.test :refer [are deftest is testing]])
   (:import [cljam.io.cram.reader CRAMReader]
            [java.nio.channels FileChannel]))
@@ -44,7 +43,7 @@
       {:chr "ref2", :start 35, :end 35} 2)))
 
 (deftest-remote reader-with-multiple-containers-test
-  (with-before-after {:before (prepare-cavia!)}
+  (common/with-before-after {:before (common/prepare-cavia!)}
     (testing "read all the alignments"
       (with-open [bam-rdr (sam/reader common/medium-bam-file)
                   cram-rdr (cram/reader common/medium-cram-file
@@ -77,8 +76,8 @@
           {:chr "chr19", :start 54000000, :end 55000000} 12)))))
 
 (deftest writer-test
-  (with-before-after {:before (prepare-cache!)
-                      :after (clean-cache!)}
+  (common/with-before-after {:before (common/prepare-cache!)
+                             :after (common/clean-cache!)}
     (testing "unsorted"
       (with-open [r (cram/reader common/test-cram-file
                                  {:reference common/test-fa-file})
@@ -111,9 +110,9 @@
                (cram/read-alignments r')))))))
 
 (deftest-remote writer-with-multiple-containers-test
-  (with-before-after {:before (do (prepare-cavia!)
-                                  (prepare-cache!))
-                      :after (clean-cache!)}
+  (common/with-before-after {:before (do (common/prepare-cavia!)
+                                         (common/prepare-cache!))
+                             :after (common/clean-cache!)}
     (with-open [r (cram/reader common/medium-cram-file
                                {:reference common/hg19-twobit-file})
                 w (cram/writer temp-cram-file
@@ -141,8 +140,8 @@
       (step))))
 
 (deftest writer-with-reference-embedding-test
-  (with-before-after {:before (prepare-cache!)
-                      :after (clean-cache!)}
+  (common/with-before-after {:before (common/prepare-cache!)
+                             :after (common/clean-cache!)}
     (testing "Reference embedding will be enabled if `:embed-reference?` is set to true"
       (with-open [r (cram/reader common/test-sorted-cram-file
                                  {:reference common/test-fa-file})
@@ -184,8 +183,8 @@
         (is (common/not-throw? (cram/write-header w (cram/read-header r))))))))
 
 (deftest writer-index-options-test
-  (with-before-after {:before (prepare-cache!)
-                      :after (clean-cache!)}
+  (common/with-before-after {:before (common/prepare-cache!)
+                             :after (common/clean-cache!)}
     (testing "A CRAM index file won't be created by default"
       (with-open [r (cram/reader common/test-sorted-cram-file
                                  {:reference common/test-fa-file})
@@ -221,3 +220,48 @@
         (cram/write-header w (cram/read-header r))
         (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
       (is (.exists (io/file (str temp-cram-file-3 ".crai")))))))
+
+(deftest-slow writer-with-read-name-omission-test
+  (common/with-before-after {:before (do (common/prepare-cavia!)
+                                         (common/prepare-cache!))
+                             :after (common/clean-cache!)}
+    (with-open [r (cram/reader common/paired-sorted-cram-file
+                               {:reference common/hg38-twobit-file})
+                w (cram/writer temp-cram-file
+                               {:reference common/hg38-twobit-file
+                                :omit-read-names? true
+                                :min-single-ref-slice-size 1})]
+      (cram/write-header w (cram/read-header r))
+      (cram/write-alignments w (cram/read-alignments r) (cram/read-header r)))
+    (with-open [r (cram/reader common/paired-sorted-cram-file
+                               {:reference common/hg38-twobit-file})
+                r' (cram/reader temp-cram-file
+                                {:reference common/hg38-twobit-file})]
+      (is (= (cram/read-header r)
+             (cram/read-header r')))
+      (let [alns (vec (cram/read-alignments r))
+            alns' (vec (cram/read-alignments r'))
+            mates (->> alns
+                       (map-indexed #(assoc %2 :idx %1))
+                       (group-by :qname)
+                       (into {} (map (fn [[qname xs]]
+                                       [qname (into #{} (map :idx) xs)]))))
+            mates' (->> alns'
+                        (map-indexed #(assoc %2 :idx %1))
+                        (group-by :qname)
+                        (into {} (map (fn [[qname xs]]
+                                        [qname (into #{} (map :idx) xs)]))))
+            qnames (set (keys mates))
+            qnames' (set (keys mates'))]
+        (is (= (map #(dissoc % :qname) alns)
+               (map #(dissoc % :qname) alns')))
+        (is (not= qnames qnames'))
+        (is (every? #(= (get mates %) (get mates' %))
+                    (set/intersection qnames qnames')))
+        (is (every? (fn [qname]
+                      (let [indices (get mates' qname)]
+                        (and (= (count indices) 2)
+                             (every? #(flag/primary? (:flag (nth alns' %)))
+                                     indices))))
+                    (set/difference qnames' qnames)))
+        (is (= (set (vals mates)) (set (vals mates'))))))))

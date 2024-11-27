@@ -1,4 +1,6 @@
 (ns cljam.io.cram.encode.compressor
+  (:require [cljam.io.cram.codecs.rans4x8 :as rans]
+            [cljam.io.util.byte-buffer :as bb])
   (:import [java.io ByteArrayOutputStream OutputStream]
            [org.apache.commons.compress.compressors.bzip2 BZip2CompressorOutputStream]
            [org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream]
@@ -39,6 +41,15 @@
     (.finish out)
     {:compressor :lzma, :data (.toByteArray baos)}))
 
+(defn- compress-with-rans4x8 [uncompressed]
+  (rans/encode (bb/make-lsb-byte-buffer uncompressed)))
+
+(deftype RANS4x8Compressor [^ByteArrayOutputStream out]
+  ICompressor
+  (compressor-output-stream [_] out)
+  (->compressed-result [_]
+    {:compressor :r4x8, :data (compress-with-rans4x8 (.toByteArray out))}))
+
 (defn- compress-with [f ^bytes uncompressed]
   (let [out (ByteArrayOutputStream.)]
     (with-open [^OutputStream os (f out)]
@@ -62,6 +73,7 @@
                                                           uncompressed)
                                      :lzma (compress-with #(XZCompressorOutputStream. %)
                                                           uncompressed)
+                                     :r4x8 (compress-with-rans4x8 uncompressed)
                                      (throw
                                       (ex-info (str "compression method " method
                                                     " not supported")
@@ -79,6 +91,7 @@
                 :gzip (->GzipCompressor (GzipCompressorOutputStream. baos) baos)
                 :bzip (->BZip2Compressor (BZip2CompressorOutputStream. baos) baos)
                 :lzma (->LZMACompressor (XZCompressorOutputStream. baos) baos)
+                :r4x8 (->RANS4x8Compressor baos)
                 :best (->SelectiveCompressor baos #{:raw :gzip :bzip :lzma})
                 (if (set? method-or-methods)
                   (->SelectiveCompressor baos method-or-methods)

@@ -151,17 +151,17 @@
    ;; except for the value for :compressor, which is used when compressing embedded
    ;; reference blocks
    :embedded-ref {:content-id 1, :codec :external, :compressor :gzip}
-   :BF {:content-id  2, :codec :external, :compressor :gzip}
-   :CF {:content-id  3, :codec :external, :compressor :gzip}
-   :RI {:content-id  4, :codec :external, :compressor :gzip}
-   :RL {:content-id  5, :codec :external, :compressor :gzip}
-   :AP {:content-id  6, :codec :external, :compressor :gzip}
-   :RG {:content-id  7, :codec :external, :compressor :gzip}
+   :BF {:content-id  2, :codec :external, :compressor :r4x8-o1}
+   :CF {:content-id  3, :codec :external, :compressor :r4x8-o1}
+   :RI {:content-id  4, :codec :external, :compressor :r4x8-o0}
+   :RL {:content-id  5, :codec :external, :compressor :r4x8-o1}
+   :AP {:content-id  6, :codec :external, :compressor :r4x8-o0}
+   :RG {:content-id  7, :codec :external, :compressor :r4x8-o1}
    :RN {:content-id  8, :codec :byte-array-stop, :stop-byte (int \tab), :compressor :gzip}
    :MF {:content-id  9, :codec :external, :compressor :gzip}
-   :NS {:content-id 10, :codec :external, :compressor :gzip}
+   :NS {:content-id 10, :codec :external, :compressor :r4x8-o1}
    :NP {:content-id 11, :codec :external, :compressor :gzip}
-   :TS {:content-id 12, :codec :external, :compressor :gzip}
+   :TS {:content-id 12, :codec :external, :compressor :r4x8-o1}
    :NF {:content-id 13, :codec :external, :compressor :gzip}
    :TL {:content-id 14, :codec :external, :compressor :gzip}
    :FN {:content-id 15, :codec :external, :compressor :gzip}
@@ -185,8 +185,8 @@
         :len-encoding {:codec :external, :content-id 29, :compressor :gzip}
         :val-encoding {:codec :external, :content-id 30, :compressor :gzip}}
    :MQ {:content-id 31, :codec :external, :compressor :gzip}
-   :BA {:content-id 32, :codec :external, :compressor :gzip}
-   :QS {:content-id 33, :codec :external, :compressor :gzip}})
+   :BA {:content-id 32, :codec :external, :compressor :r4x8-o1}
+   :QS {:content-id 33, :codec :external, :compressor :r4x8-o1}})
 
 (defn- build-codec-encoder
   [{:keys [codec content-id compressor] :as params} data-type content-id->state]

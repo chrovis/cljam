@@ -122,3 +122,42 @@
           compressed (read-as-buffer "test-resources/cram/codecs/rans4x8/compressed_order1.dat.rans4x8")]
       (is (Arrays/equals ^bytes (.array uncompressed) ^bytes (rans/decode compressed)))
       (is (zero? (.remaining compressed))))))
+
+(deftest calculate-frequencies0-test
+  (let [arr (->> (concat (repeat 5 0x61)
+                         (repeat 2 0x62)
+                         (repeat 1 0x63)
+                         (repeat 1 0x64)
+                         (repeat 2 0x72))
+                 shuffle
+                 byte-array)
+        bb (bb/make-lsb-byte-buffer arr)]
+    (is (= {0x61 1863
+            0x62 744
+            0x63 372
+            0x64 372
+            0x72 744}
+           (into {} (keep-indexed (fn [i x] (when (pos? x) [i x])))
+                 (#'rans/calculate-frequencies0 bb))))))
+
+(deftest write-frequencies0-test
+  (let [freqs {0x61 1863
+               0x62 744
+               0x63 372
+               0x64 372
+               0x72 744}
+        arr (int-array 256)
+        _ (doseq [[s f] freqs]
+            (aset arr s f))
+        bb (#'rans/allocate-output-buffer 11)]
+    (#'rans/write-frequencies0 bb arr)
+    (.flip bb)
+    (is (= freqs
+           (into {} (keep-indexed (fn [i x] (when (pos? x) [i x])))
+                 (#'rans/read-frequencies0 bb))))))
+
+(deftest encode-test
+  (testing "Order-0"
+    (let [uncompressed (read-as-buffer "test-resources/cram/codecs/rans4x8/uncompressed_order0.dat")
+          compressed (read-as-buffer "test-resources/cram/codecs/rans4x8/compressed_order0.dat.rans4x8")]
+      (is (Arrays/equals ^bytes (.array compressed) ^bytes (.array (rans/encode uncompressed)))))))

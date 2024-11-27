@@ -1,7 +1,8 @@
 (ns cljam.io.cram.codecs.rans4x8
-  (:require [cljam.io.util.byte-buffer :as bb]
-            [cljam.io.cram.itf8 :as itf8])
-  (:import [java.util Arrays]))
+  (:require [cljam.io.cram.itf8 :as itf8]
+            [cljam.io.util.byte-buffer :as bb])
+  (:import [java.nio ByteBuffer]
+           [java.util Arrays]))
 
 (def ^:private byte-array-type (type (byte-array 0)))
 (def ^:private int-array-type (type (int-array 0)))
@@ -135,3 +136,329 @@
     (if (zero? order)
       (decode0 bb n-out)
       (decode1 bb n-out))))
+
+(defn- calculate-frequencies0 ^"[I" [^ByteBuffer bb]
+  (let [size (.remaining bb)
+        freqs (int-array 256)
+        _ (dotimes [_ size]
+            (let [b (long (bb/read-ubyte bb))]
+              (aset freqs b (inc (aget freqs b)))))
+        tr (+ (quot (bit-shift-left 4096 31) size)
+              (quot (bit-shift-left 1 31) size))
+        max-idx (loop [i 0, cur 0, m 0]
+                  (if (< i 256)
+                    (let [f (aget freqs i)]
+                      (if (<= f m)
+                        (recur (inc i) cur m)
+                        (recur (inc i) i f)))
+                    cur))
+        fsum (long
+              (loop [i 0, fsum 0]
+                (if (< i 256)
+                  (let [f (aget freqs i)]
+                    (if (zero? f)
+                      (recur (inc i) fsum)
+                      (let [f' (as-> (unsigned-bit-shift-right (* f tr) 31) f'
+                                 (if (zero? f') 1 f'))]
+                        (aset freqs i f')
+                        (recur (inc i) (+ fsum f')))))
+                  (inc fsum))))]
+    (aset freqs max-idx
+          (if (< fsum 4096)
+            (+ (aget freqs max-idx) (- 4096 fsum))
+            (- (aget freqs max-idx) (- fsum 4096))))
+    freqs))
+
+(defn- calculate-frequencies1 ^"[[I" [^ByteBuffer bb]
+  (let [size (.remaining bb)
+        ^"[[I" freqs (make-array Integer/TYPE 256 256)
+        sums (int-array 256)
+        _ (loop [i 0, prev 0]
+            (when (< i size)
+              (let [b (long (bb/read-ubyte bb))
+                    ^ints fs (aget freqs prev)]
+                (aset fs b (inc (aget fs b)))
+                (aset sums prev (inc (aget sums prev)))
+                (recur (inc i) b))))
+        ^ints f0 (aget freqs 0)
+        b (bit-and 0xff (.get bb (unsigned-bit-shift-right size 2)))
+        _ (aset f0 b (inc (aget f0 b)))
+        b (bit-and 0xff (.get bb (* 2 (unsigned-bit-shift-right size 2))))
+        _ (aset f0 b (inc (aget f0 b)))
+        b (bit-and 0xff (.get bb (* 3 (unsigned-bit-shift-right size 2))))
+        _ (aset f0 b (inc (aget f0 b)))]
+    (aset sums 0 (+ (aget sums 0) 3))
+    (loop [i 0]
+      (when (< i 256)
+        (let [sum (aget sums i)]
+          (if (zero? sum)
+            (recur (inc i))
+            (let [p (/ 4096.0 sum)
+                  ^ints fs (aget freqs i)]
+              (loop [j 0, m 0, M 0, fsum 0]
+                (if (< j 256)
+                  (let [f (aget fs j)]
+                    (if (zero? f)
+                      (recur (inc j) m M fsum)
+                      (let [f' (as-> (long (* f p)) f'
+                                 (if (zero? f') 1 f'))
+                            fsum' (+ fsum f')]
+                        (aset fs j f')
+                        (if (< m f')
+                          (recur (inc j) f' j fsum')
+                          (recur (inc j) m M fsum')))))
+                  (let [f (aget fs M)
+                        fsum' (inc fsum)]
+                    (if (< fsum' 4096)
+                      (aset fs M (+ f (- 4096 fsum')))
+                      (aset fs M (- f (- fsum' 4096)))))))
+              (recur (inc i)))))))
+    freqs))
+
+(defn- next-rle ^long [^long rle ^ints freqs ^long i ^ByteBuffer out]
+  (if (zero? rle)
+    (do (.put out (byte i))
+        (if (and (> i 0) (not (zero? (aget freqs (dec i)))))
+          (let [rle' (loop [rle (inc i)]
+                       (if (and (< rle 256)
+                                (not (zero? (aget freqs rle))))
+                         (recur (inc rle))
+                         (- rle (inc i))))]
+            (.put out (byte rle'))
+            rle')
+          rle))
+    (dec rle)))
+
+(defn- encode-itf8 [^ByteBuffer out ^long n]
+  (if (< n 128)
+    (.put out (byte n))
+    (do (.put out (byte (bit-or 128 (unsigned-bit-shift-right n 8))))
+        (.put out (byte (bit-and 0xff n))))))
+
+(defn- write-frequencies0 ^long [^ByteBuffer out ^ints freqs]
+  (let [start (.position out)]
+    (loop [i 0, rle 0]
+      (when (< i 256)
+        (let [f (aget freqs i)]
+          (if (zero? f)
+            (recur (inc i) rle)
+            (let [rle' (next-rle rle freqs i out)]
+              (encode-itf8 out f)
+              (recur (inc i) rle'))))))
+    (.put out (byte 0))
+    (- (.position out) start)))
+
+(defn- write-frequencies1 ^long [^ByteBuffer out ^"[[I" freqs]
+  (let [start (.position out)
+        sums (int-array 256)
+        _ (dotimes [i 256]
+            (dotimes [j 256]
+              (aset sums i (+ (aget sums i) (aget ^ints (aget freqs i) j)))))]
+    (loop [i 0, rle-i 0]
+      (when (< i 256)
+        (if (zero? (aget sums i))
+          (recur (inc i) rle-i)
+          (let [rle-i' (next-rle rle-i sums i out)
+                ^ints fs (aget freqs i)]
+            (loop [j 0, rle-j 0]
+              (when (< j 256)
+                (let [f (aget fs j)]
+                  (if (zero? f)
+                    (recur (inc j) rle-j)
+                    (let [rle-j' (next-rle rle-j fs j out)]
+                      (encode-itf8 out f)
+                      (recur (inc j) rle-j'))))))
+            (.put out (byte 0))
+            (recur (inc i) rle-i')))))
+    (.put out (byte 0))
+    (- (.position out) start)))
+
+(defprotocol ISymbolState
+  (init! [this start freq])
+  (update! [this ^ByteBuffer bb b]))
+
+(deftype SymbolState
+         [^:unsynchronized-mutable ^long xmax
+          ^:unsynchronized-mutable ^long rcp-freq
+          ^:unsynchronized-mutable ^long bias
+          ^:unsynchronized-mutable ^long cmpl-freq
+          ^:unsynchronized-mutable ^long rcp-shift]
+  ISymbolState
+  (init! [_ start freq]
+    (let [start (long start)
+          freq (long freq)]
+      (set! xmax (* (bit-shift-left 1 19) freq))
+      (set! cmpl-freq (- (bit-shift-left 1 12) freq))
+      (if (< freq 2)
+        (do (set! rcp-freq (bit-not 0))
+            (set! rcp-shift 0)
+            (set! bias (dec (+ start (bit-shift-left 1 12)))))
+        (let [shift (long
+                     (loop [shift 0]
+                       (if (< (bit-shift-left 1 shift) freq)
+                         (recur (inc shift))
+                         shift)))]
+          (set! rcp-freq (quot (dec (+ (bit-shift-left 1 (+ shift 31)) freq)) freq))
+          (set! rcp-shift (dec shift))
+          (set! bias start)))
+      (set! rcp-shift (+ rcp-shift 32))))
+  (update! [_ bb r]
+    (let [x (long
+             (loop [i 2, x (int r)]
+               (if (or (zero? i) (< x xmax))
+                 x
+                 (do (.put ^ByteBuffer bb (byte (bit-and 0xff x)))
+                     (recur (dec i) (unsigned-bit-shift-right x 8))))))
+          q (unsigned-bit-shift-right (* x (bit-and 0xffffffff rcp-freq)) rcp-shift)]
+      (+ x bias (* q cmpl-freq)))))
+
+(def ^:private ^:const RANS_BYTE_L (bit-shift-left 1 23))
+
+(defn- reverse-buffer! [^ByteBuffer bb]
+  (let [arr (.array bb)
+        offset (.arrayOffset bb)
+        size (.limit bb)]
+    (loop [i offset, j (dec (+ offset size))]
+      (when (< i j)
+        (let [t (aget arr j)]
+          (aset arr j (aget arr i))
+          (aset arr i t)
+          (recur (inc i) (dec j)))))))
+
+(defmacro ^:private aget1 [syms i]
+  `(aget ~syms (bit-and 0xff ~i)))
+
+(defn- encode0* ^long [^ByteBuffer in ^objects syms ^ByteBuffer out]
+  (let [raw-size (.remaining in)
+        r (bit-and raw-size 3)
+        out' (.slice out)
+        r2 (if (= r 3)
+             (long (update! (aget1 syms (.get in (- raw-size r -2))) out' RANS_BYTE_L))
+             RANS_BYTE_L)
+        r1 (if (>= r 2)
+             (long (update! (aget1 syms (.get in (- raw-size r -1))) out' RANS_BYTE_L))
+             RANS_BYTE_L)
+        r0 (if (>= r 1)
+             (long (update! (aget1 syms (.get in (- raw-size r))) out' RANS_BYTE_L))
+             RANS_BYTE_L)]
+    (loop [i (bit-and raw-size (bit-not 3)), r3 RANS_BYTE_L, r2 r2, r1 r1, r0 r0]
+      (if (> i 0)
+        (let [r3' (long (update! (aget1 syms (.get in (- i 1))) out' r3))
+              r2' (long (update! (aget1 syms (.get in (- i 2))) out' r2))
+              r1' (long (update! (aget1 syms (.get in (- i 3))) out' r1))
+              r0' (long (update! (aget1 syms (.get in (- i 4))) out' r0))]
+          (recur (- i 4) r3' r2' r1' r0'))
+        (do (.putInt out' r3)
+            (.putInt out' r2)
+            (.putInt out' r1)
+            (.putInt out' r0)
+            (.flip out')
+            (reverse-buffer! out')
+            (.position in (.limit in))
+            (.limit out'))))))
+
+(defmacro ^:private aget2 [syms i j]
+  `(aget ~(with-meta `(aget ~syms (bit-and 0xff ~i)) {:tag 'objects}) ~j))
+
+(defn- encode1* ^long [^ByteBuffer in ^objects syms ^ByteBuffer out]
+  (let [raw-size (.remaining in)
+        q (unsigned-bit-shift-right raw-size 2)
+        i0 (- q 2)
+        i1 (- (* 2 q) 2)
+        i2 (- (* 3 q) 2)
+        l0 (if (>= (inc i0) 0) (bit-and 0xff (.get in (inc i0))) 0)
+        l1 (if (>= (inc i1) 0) (bit-and 0xff (.get in (inc i1))) 0)
+        l2 (if (>= (inc i2) 0) (bit-and 0xff (.get in (inc i2))) 0)
+        out' (.slice out)]
+    (loop [i3 (- raw-size 2)
+           l3 (bit-and 0xff (.get in (dec raw-size)))
+           r3 RANS_BYTE_L]
+      (if (and (> i3 (- (* 4 q) 2)) (>= i3 0))
+        (let [c3 (bit-and 0xff (.get in i3))
+              r3' (long (update! (aget2 syms c3 l3) out' r3))]
+          (recur (dec i3) c3 r3'))
+        (loop [i0 i0, i1 i1, i2 i2, i3 i3,
+               l0 l0, l1 l1, l2 l2, l3 l3,
+               r0 RANS_BYTE_L, r1 RANS_BYTE_L, r2 RANS_BYTE_L, r3 r3]
+          (if (>= i0 0)
+            (let [c0 (bit-and 0xff (.get in i0))
+                  c1 (bit-and 0xff (.get in i1))
+                  c2 (bit-and 0xff (.get in i2))
+                  c3 (bit-and 0xff (.get in i3))
+                  r3' (long (update! (aget2 syms c3 l3) out' r3))
+                  r2' (long (update! (aget2 syms c2 l2) out' r2))
+                  r1' (long (update! (aget2 syms c1 l1) out' r1))
+                  r0' (long (update! (aget2 syms c0 l0) out' r0))]
+              (recur (dec i0) (dec i1) (dec i2) (dec i3) c0 c1 c2 c3 r0' r1' r2' r3'))
+            (let [r3' (long (update! (aget2 syms 0 l3) out' r3))
+                  r2' (long (update! (aget2 syms 0 l2) out' r2))
+                  r1' (long (update! (aget2 syms 0 l1) out' r1))
+                  r0' (long (update! (aget2 syms 0 l0) out' r0))]
+              (.putInt out' r3')
+              (.putInt out' r2')
+              (.putInt out' r1')
+              (.putInt out' r0')
+              (.flip out')
+              (reverse-buffer! out')
+              (.position in (.limit in))
+              (.limit out'))))))))
+
+(defn- allocate-output-buffer [^long raw-size]
+  (let [compressed-size (+ (* 1.05 raw-size) (* 257 257 3) 9)]
+    (bb/allocate-lsb-byte-buffer compressed-size)))
+
+(defn- encode0 ^long [^ByteBuffer in ^ByteBuffer out]
+  (let [freqs (calculate-frequencies0 in)
+        syms (object-array 256)
+        _ (loop [i 0, total 0]
+            (when (< i 256)
+              (aset syms i (->SymbolState 0 0 0 0 0))
+              (let [f (aget freqs i)]
+                (when (> f 0)
+                  (init! (aget syms i) total f))
+                (recur (inc i) (+ total f)))))
+        out' (.slice out)
+        freq-table-size (write-frequencies0 out' freqs)
+        _ (.rewind in)
+        compressed-data-size (encode0* in syms out')]
+    (+ freq-table-size compressed-data-size)))
+
+(defn- encode1 ^long [^ByteBuffer in ^ByteBuffer out]
+  (let [freqs (calculate-frequencies1 in)
+        ^objects syms (make-array SymbolState 256 256)
+        _ (dotimes [i 256]
+            (let [^ints fs (aget freqs i)]
+              (loop [j 0, total 0]
+                (when (< j 256)
+                  (aset ^objects (aget syms i) j (->SymbolState 0 0 0 0 0))
+                  (let [f (aget fs j)]
+                    (when (> f 0)
+                      (init! (aget2 syms i j) total f))
+                    (recur (inc j) (+ total f)))))))
+        out' (.slice out)
+        freq-table-size (write-frequencies1 out' freqs)
+        _ (.rewind in)
+        compressed-data-size (encode1* in syms out')]
+    (+ freq-table-size compressed-data-size)))
+
+(def ^:private ^:const ORDER_BYTE_LEN 1)
+(def ^:private ^:const COMPRESSED_BYTE_LEN 4)
+(def ^:private ^:const RAW_BYTE_LEN 4)
+(def ^:private ^:const PREFIX_BYTE_LEN
+  (+ ORDER_BYTE_LEN COMPRESSED_BYTE_LEN RAW_BYTE_LEN))
+
+(defn encode
+  "TODO"
+  ^bytes [^long order ^ByteBuffer in]
+  (let [raw-size (.remaining in)
+        out (doto ^ByteBuffer (allocate-output-buffer raw-size)
+              (.position PREFIX_BYTE_LEN))
+        compressed-size (case order
+                          0 (encode0 in out)
+                          1 (encode1 in out))]
+    (.limit out (+ PREFIX_BYTE_LEN compressed-size))
+    (.put out 0 (byte order))
+    (.putInt out ORDER_BYTE_LEN compressed-size)
+    (.putInt out (+ ORDER_BYTE_LEN COMPRESSED_BYTE_LEN) raw-size)
+    (.position in 0)
+    (Arrays/copyOfRange (.array out) 0 (.limit out))))

@@ -95,7 +95,7 @@
 (defn encode-block
   "Encodes a block to the given OutputStream."
   [^OutputStream out method content-type content-id raw-size ^bytes block-data]
-  (let [method' (case method :raw 0 :gzip 1 :bzip 2 :lzma 3)]
+  (let [method' (case method :raw 0 :gzip 1 :bzip 2 :lzma 3 (:r4x8-o0 :r4x8-o1) 4)]
     (with-crc-suffixed out
       (fn [out']
         (lsb/write-ubyte out' method')

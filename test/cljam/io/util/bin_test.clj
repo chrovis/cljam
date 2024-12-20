@@ -197,3 +197,16 @@
                       (number? (first %))
                       (number? (second %)))
                 (util-bin/get-spans csi* 0 1 100000)))))
+
+(deftest get-spans-for-regions-test
+  (testing "tabix"
+    (let [tabix (tabix/read-index test-tabix-file)]
+      (is (= [[0 50872]]
+             (util-bin/get-spans-for-regions tabix 0 [[1 100]])))
+      (is (= [[0 50872]]
+             (util-bin/get-spans-for-regions
+              tabix 0 [[1 10] [10 20] [30 40] [40 50] [50 100]])))))
+  (testing "csi"
+    (let [csi (csi/read-index test-csi-file)]
+      (is (= [[3904 3973]]
+             (util-bin/get-spans-for-regions csi 0 [[1 100000]]))))))

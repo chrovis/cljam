@@ -5,7 +5,7 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
   :dependencies [[org.clojure/core.memoize "1.1.266"]
                  [org.clojure/tools.logging "1.3.0"]
-                 [org.apache.commons/commons-compress "1.26.1"]
+                 [org.apache.commons/commons-compress "1.27.1"]
                  [org.tukaani/xz "1.9"] ; necessary for CRAM LZMA compression
                  [digest "1.4.10"]
                  [bgzf4j "0.1.2"]

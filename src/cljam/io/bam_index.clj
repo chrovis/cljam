@@ -19,6 +19,18 @@
   [bai ref-idx beg end]
   (util-bin/get-spans bai ref-idx beg end))
 
+(defn get-multi-spans
+  "Returns regions of a BAM file that may contain an alignment for the given
+  `ranges` which is a sequence of pairs of integers, begin and end."
+  [bai ^long ref-idx ranges]
+  (util-bin/get-multi-spans bai ref-idx ranges))
+
+(defn get-unplaced-spans
+  "Returns a sequence of [start end) pairs of virtual file offsets that may
+  contain alignments that don't have RNAME."
+  [bai]
+  (bai-core/get-unplaced-spans bai))
+
 (defn bam-index
   "Returns a cljam.bam-index.core.BAMIndex."
   [f]

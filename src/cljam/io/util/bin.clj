@@ -1,5 +1,6 @@
 (ns cljam.io.util.bin
-  (:require [cljam.io.util.chunk :as util-chunk]))
+  (:require [cljam.io.util.chunk :as util-chunk]
+            [cljam.util.region :as reg]))
 
 (defn max-pos
   "Returns a maximum position of a binning index. The value is identical to the
@@ -101,3 +102,36 @@
         min-offset (get-min-offset index-data ref-idx beg)]
     (->> (util-chunk/optimize-chunks chunks min-offset)
          (map vals))))
+
+(defn get-multi-spans
+  "Calculates span information for multiple regions."
+  [index-data ^long ref-idx regions]
+  (when (seq regions)
+    (let [min-shift (get-min-shift index-data)
+          depth (get-depth index-data)]
+      #_(->> regions
+             sort
+             (map (fn [[b e]] {:start b :end e}))
+             (reg/merge-regions 1000)
+             (mapcat
+              (fn [{beg :start end :end}] #_[[^long beg ^long end]]
+                (util-chunk/optimize-chunks
+                 (get-chunks index-data ref-idx
+                             (reg->bins beg end min-shift depth))
+                 (get-min-offset index-data ref-idx beg))))
+             (#(util-chunk/optimize-chunks % 0))
+             (map vals))
+      (->> regions
+           (transduce
+            (map
+             (fn [[^long beg ^long end]]
+               [(reg->bins beg end min-shift depth)
+                (get-min-offset index-data ref-idx beg)]))
+            (fn
+              ([[bins min-offset]]
+               [(get-chunks index-data ref-idx bins) min-offset])
+              ([[bins min-offset] [chunks' min-offset']]
+               [(into bins chunks') (min min-offset min-offset')]))
+            [#{} Long/MAX_VALUE])
+           (apply util-chunk/optimize-chunks)
+           (map vals)))))

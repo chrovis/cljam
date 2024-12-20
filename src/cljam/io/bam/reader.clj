@@ -3,15 +3,18 @@
   (:require [cljam.io.protocols :as protocols]
             [cljam.io.sam.util.refs :as refs]
             [cljam.io.sam.util.header :as header]
-            [cljam.io.bam-index.core :as bai]
+            [cljam.io.bam-index :as bai]
             [cljam.io.bam.decoder :as decoder]
-            [cljam.io.util.lsb.data-io :as lsb])
+            [cljam.io.util.lsb.data-io :as lsb]
+            [cljam.io.sam.util.flag :as flag]
+            [cljam.io.util.byte-buffer :as bb])
   (:import [java.io Closeable FileNotFoundException]
            [cljam.io.bam.decoder BAMRawBlock]
            [bgzf4j BGZFInputStream]))
 
 (declare read-blocks-sequentially*
-         read-blocks-randomly*)
+         read-blocks-randomly*
+         read-mate-alignments*)
 
 ;; BAMReader
 ;; ---------
@@ -47,6 +50,10 @@
       (if (nil? chr)
         (read-blocks-sequentially* this 64 decoder)
         (read-blocks-randomly* this chr start end 64 decoder))))
+  (read-mate-alignments [this alignments]
+    (protocols/read-mate-alignments this {} alignments))
+  (read-mate-alignments [this options alignments]
+    (read-mate-alignments* this options alignments))
   (read-blocks [this]
     (protocols/read-blocks this {} {}))
   (read-blocks [this region]
@@ -163,3 +170,68 @@
                                      :len  l-ref})))))]
     {:header header
      :refs refs}))
+
+(defn- mate?-fn
+  "Returns a predicate that checks if an alignment `block` is a mate of an
+  alignment in the given `alignments`."
+  [alignments]
+  (let [query (transduce
+               (map (fn [{:keys [pnext qname flag]}]
+                      [[(flag/r1? flag) pnext (count qname)] qname]))
+               (completing (fn [r [ks v]] (update-in r ks (fnil conj #{}) v)))
+               {}
+               alignments)]
+    (fn mate?
+      [^BAMRawBlock block]
+      (let [b (bb/make-lsb-byte-buffer (.data block))
+            flag (bit-and 0xFFFF (.getShort b 14))]
+        (when (flag/primary? flag)
+          (when-let [q' (query (not (flag/r1? flag)))] ; check R1/R2
+            (when-let [q'' (q' (inc (.getInt b 4)))]   ; check POS
+              (let [l-read-name (dec (bit-and 0xFF (.get b 8)))]
+                (when-let [q''' (q'' l-read-name)]     ; check length of QNAME
+                  (.position b 32)                     ; offset of qname
+                  (q''' (String. ^bytes (bb/read-bytes b l-read-name))))))))))))
+
+(defn- read-mate-alignments-1
+  "Reads mate alignments in a specific chr."
+  [^BAMReader rdr {:keys [chunk-size] :or {chunk-size 64}} [chr xs]]
+  (let [refs (.refs rdr)
+        rid (refs/ref-id refs chr)
+        decode-xf (comp (filter (mate?-fn xs))
+                        (map (partial decoder/decode-alignment refs)))]
+    (if (= chr "*")
+      ;; unmapped
+      (do (.seek ^BGZFInputStream (.reader rdr)
+                 (ffirst (bai/get-unplaced-spans @(.index-delay rdr))))
+          (eduction decode-xf (read-to-finish rdr chunk-size)))
+      ;; mapped
+      (->> xs
+           (map (comp (juxt identity identity) :pnext))
+           set
+           (bai/get-multi-spans @(.index-delay rdr) rid)
+           (eduction
+            (comp
+             (mapcat
+              (fn [[begin finish]]
+                (read-to-finish rdr begin finish chunk-size)))
+             decode-xf))))))
+
+(defn- ref-order [refs]
+  (into {}
+        (map-indexed (fn [i m] [(:name m) i]))
+        (concat refs [{:name "*"}])))
+
+(defn- read-mate-alignments*
+  "Implementation for `cljam.io.sam/read-mate-alignments`.
+
+  The following options are availabe:
+
+  - :chunk-size  A size of chunks used for the internal block sequence"
+  ([^BAMReader rdr alignments]
+   (read-mate-alignments* rdr {} alignments))
+  ([^BAMReader rdr options alignments]
+   (->> alignments
+        (group-by (fn [{:keys [rname rnext]}] (case rnext "=" rname rnext)))
+        (sort-by (comp (ref-order (.refs rdr)) key))
+        (eduction (mapcat (partial read-mate-alignments-1 rdr options))))))

@@ -50,9 +50,9 @@
         (let [curr (aget cum-freqs i)]
           (if (= start curr)
             (recur (inc i) start)
-            (do (Arrays/fill arr start curr (byte (dec i)))
+            (do (Arrays/fill arr start curr (unchecked-byte (dec i)))
                 (recur (inc i) curr))))
-        (Arrays/fill arr start 4096 (byte 255))))
+        (Arrays/fill arr start 4096 (unchecked-byte 255))))
     arr))
 
 (defn- advance-step ^long [^long c ^long f ^long state]
@@ -80,7 +80,7 @@
             state' (->> state
                         (advance-step (aget cum-freqs sym) (aget freqs sym))
                         (renormalize-state bb))]
-        (aset out i (byte sym))
+        (aset out i (unchecked-byte sym))
         (aset states j state')))
     out))
 
@@ -108,7 +108,7 @@
                           (advance-step (aget cfreqs sym)
                                         (aget ^ints (aget freqs last-sym) sym))
                           (renormalize-state bb))]
-          (aset out (+ i (* j quarter)) (byte sym))
+          (aset out (+ i (* j quarter)) (unchecked-byte sym))
           (aset states j state')
           (aset last-syms j sym))))
     (dotimes [i (- n-out truncated)]
@@ -121,7 +121,7 @@
                         (advance-step (aget cfreq sym)
                                       (aget ^ints (aget freqs last-sym) sym))
                         (renormalize-state bb))]
-        (aset out (+ i truncated) (byte sym))
+        (aset out (+ i truncated) (unchecked-byte sym))
         (aset states 3 state')
         (aset last-syms 3 sym)))
     out))
@@ -203,14 +203,14 @@
 
 (defn- next-rle ^long [^long rle ^ints freqs ^long i ^ByteBuffer out]
   (if (zero? rle)
-    (do (.put out (byte i))
+    (do (.put out (unchecked-byte i))
         (if (and (> i 0) (not (zero? (aget freqs (dec i)))))
           (let [rle' (loop [rle (inc i)]
                        (if (and (< rle 256)
                                 (not (zero? (aget freqs rle))))
                          (recur (inc rle))
                          (- rle (inc i))))]
-            (.put out (byte rle'))
+            (.put out (unchecked-byte rle'))
             rle')
           rle))
     (dec rle)))
@@ -219,9 +219,9 @@
   "Simplified version of ITF8 encoder for up to two bytes"
   [^ByteBuffer out ^long n]
   (if (< n 128)
-    (.put out (byte n))
-    (do (.put out (byte (bit-or 128 (unsigned-bit-shift-right n 8))))
-        (.put out (byte (bit-and 0xff n))))))
+    (.put out (unchecked-byte n))
+    (do (.put out (unchecked-byte (bit-or 128 (unsigned-bit-shift-right n 8))))
+        (.put out (unchecked-byte (bit-and 0xff n))))))
 
 (defn- write-frequencies0 ^long [^ByteBuffer out ^ints freqs]
   (let [start (.position out)]
@@ -233,7 +233,7 @@
             (let [rle' (next-rle rle freqs i out)]
               (encode-itf8 out f)
               (recur (inc i) rle'))))))
-    (.put out (byte 0))
+    (.put out (unchecked-byte 0))
     (- (.position out) start)))
 
 (defn- write-frequencies1 ^long [^ByteBuffer out ^"[[I" freqs]
@@ -257,9 +257,9 @@
                     (let [rle-j' (next-rle rle-j fs j out)]
                       (encode-itf8 out f)
                       (recur (inc j) rle-j'))))))
-            (.put out (byte 0))
+            (.put out (unchecked-byte 0))
             (recur (inc i) rle-i')))))
-    (.put out (byte 0))
+    (.put out (unchecked-byte 0))
     (- (.position out) start)))
 
 (defprotocol ISymbolState
@@ -296,7 +296,7 @@
              (loop [i 2, x (long r)]
                (if (or (zero? i) (< x xmax))
                  x
-                 (do (.put ^ByteBuffer bb (byte (bit-and 0xff x)))
+                 (do (.put ^ByteBuffer bb (unchecked-byte (bit-and 0xff x)))
                      (recur (dec i) (unsigned-bit-shift-right x 8))))))
           q (unsigned-bit-shift-right (* x (bit-and 0xffffffff rcp-freq)) rcp-shift)]
       (+ x bias (* q cmpl-freq)))))
@@ -446,7 +446,7 @@
                           0 (encode0 in out)
                           1 (encode1 in out))]
     (.reset ^Buffer out)
-    (.put out (byte order))
+    (.put out (unchecked-byte order))
     (.putInt out compressed-size)
     (.putInt out raw-size)
     (Arrays/copyOfRange (.array out) 0 (+ PREFIX_BYTE_LEN compressed-size))))

@@ -222,4 +222,9 @@
   (testing "Order-1"
     (let [uncompressed (read-as-buffer "test-resources/cram/codecs/rans4x8/uncompressed_order1.dat")
           compressed (bb/make-lsb-byte-buffer (rans/encode 1 uncompressed))]
+      (is (Arrays/equals (.array uncompressed) (rans/decode compressed)))))
+  (testing "Specifying Order-1, but ended up falling back to Order-0"
+    (let [uncompressed (bb/make-lsb-byte-buffer (byte-array (.getBytes "ab")))
+          compressed (bb/make-lsb-byte-buffer (rans/encode 1 uncompressed))]
+      (is (.get compressed 0))
       (is (Arrays/equals (.array uncompressed) (rans/decode compressed))))))

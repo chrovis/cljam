@@ -442,11 +442,15 @@
         ^ByteBuffer out (doto ^Buffer (allocate-output-buffer raw-size)
                           (.mark)
                           (.position PREFIX_BYTE_LEN))
-        compressed-size (case order
+        ;; According to the specification, Order-1 encoding cannot be applicable
+        ;; to the input that is smaller than 4 bytes. So, in that case, the encoder
+        ;; automatically falls back to Order-0 encoding.
+        order' (if (< raw-size 4) 0 order)
+        compressed-size (case order'
                           0 (encode0 in out)
                           1 (encode1 in out))]
     (.reset ^Buffer out)
-    (.put out (unchecked-byte order))
+    (.put out (unchecked-byte order'))
     (.putInt out compressed-size)
     (.putInt out raw-size)
     (Arrays/copyOfRange (.array out) 0 (+ PREFIX_BYTE_LEN compressed-size))))

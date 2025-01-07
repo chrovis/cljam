@@ -17,6 +17,10 @@ jobs:
         java-version: ${{ matrix.java }}
         distribution: 'temurin'
         architecture: x64
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@13.1
+      with:
+        lein: latest
     - name: Cache m2 repository
       uses: actions/cache@v4
       with:
@@ -49,6 +53,10 @@ jobs:
         java-version: '8'
         distribution: 'temurin'
         architecture: x64
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@13.1
+      with:
+        lein: latest
     - name: Deploy
       env:
         CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}

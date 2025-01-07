@@ -13,6 +13,10 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         architecture: x64
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@13.1
+      with:
+        lein: latest
     - name: Cache m2 repository
       uses: actions/cache@v4
       with:

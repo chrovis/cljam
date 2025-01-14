@@ -1,4 +1,6 @@
 (ns cljam.io.cram.encode.compressor
+  (:require [cljam.io.cram.codecs.rans4x8 :as rans]
+            [cljam.io.util.byte-buffer :as bb])
   (:import [java.io ByteArrayOutputStream OutputStream]
            [org.apache.commons.compress.compressors.bzip2 BZip2CompressorOutputStream]
            [org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream]
@@ -39,6 +41,16 @@
     (.finish out)
     {:compressor :lzma, :data (.toByteArray baos)}))
 
+(defn- compress-with-rans4x8 [order uncompressed]
+  (rans/encode order (bb/make-lsb-byte-buffer uncompressed)))
+
+(deftype RANS4x8Compressor [^long order ^ByteArrayOutputStream out]
+  ICompressor
+  (compressor-output-stream [_] out)
+  (->compressed-result [_]
+    {:compressor (if (zero? order) :r4x8-o0 :r4x8-o1),
+     :data (compress-with-rans4x8 order (.toByteArray out))}))
+
 (defn- compress-with [f ^bytes uncompressed]
   (let [out (ByteArrayOutputStream.)]
     (with-open [^OutputStream os (f out)]
@@ -62,6 +74,8 @@
                                                           uncompressed)
                                      :lzma (compress-with #(XZCompressorOutputStream. %)
                                                           uncompressed)
+                                     :r4x8-o0 (compress-with-rans4x8 0 uncompressed)
+                                     :r4x8-o1 (compress-with-rans4x8 1 uncompressed)
                                      (throw
                                       (ex-info (str "compression method " method
                                                     " not supported")
@@ -79,7 +93,9 @@
                 :gzip (->GzipCompressor (GzipCompressorOutputStream. baos) baos)
                 :bzip (->BZip2Compressor (BZip2CompressorOutputStream. baos) baos)
                 :lzma (->LZMACompressor (XZCompressorOutputStream. baos) baos)
-                :best (->SelectiveCompressor baos #{:raw :gzip :bzip :lzma})
+                :r4x8-o0 (->RANS4x8Compressor 0 baos)
+                :r4x8-o1 (->RANS4x8Compressor 1 baos)
+                :best (->SelectiveCompressor baos #{:raw :gzip :bzip :lzma :r4x8-o0 :r4x8-o1})
                 (if (set? method-or-methods)
                   (->SelectiveCompressor baos method-or-methods)
                   (throw

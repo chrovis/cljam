@@ -5,14 +5,14 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
   :dependencies [[org.clojure/core.memoize "1.1.266"]
                  [org.clojure/tools.logging "1.3.0"]
-                 [org.apache.commons/commons-compress "1.26.1"]
-                 [org.tukaani/xz "1.9"] ; necessary for CRAM LZMA compression
+                 [org.apache.commons/commons-compress "1.27.1"]
+                 [org.tukaani/xz "1.10"] ; necessary for CRAM LZMA compression
                  [digest "1.4.10"]
                  [bgzf4j "0.1.2"]
                  [com.climate/claypoole "1.1.4"]
                  [camel-snake-kebab "0.4.3"]
                  [proton "0.2.3"]]
-  :profiles {:dev {:dependencies [[org.clojure/clojure "1.11.3"]
+  :profiles {:dev {:dependencies [[org.clojure/clojure "1.12.0"]
                                   [cavia "0.5.1"]
                                   [criterium "0.4.6"]
                                   [net.totakke/libra "0.1.1"]
@@ -31,7 +31,8 @@
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
-             :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]]}}
+             :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]]}
+             :1.11 {:dependencies [[org.clojure/clojure "1.11.4"]]}}
   :deploy-repositories [["snapshots" {:url "https://clojars.org/repo/"
                                       :username [:env/clojars_username :gpg]
                                       :password [:env/clojars_password :gpg]}]]

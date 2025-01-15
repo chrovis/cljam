@@ -7,7 +7,8 @@
             [cljam.io.sam.writer :as sam-writer]
             [cljam.io.bam.core :as bam-core]
             [cljam.io.protocols :as protocols]
-            [cljam.io.util :as io-util])
+            [cljam.io.util :as io-util]
+            [cljam.io.sam.util.flag :as flag])
   (:import java.io.Closeable
            cljam.io.sam.reader.SAMReader
            cljam.io.sam.writer.SAMWriter
@@ -68,6 +69,46 @@
   "Reads alignments of the SAM/BAM file, returning the alignments as an eduction."
   ([rdr] (protocols/read-alignments rdr))
   ([rdr region] (protocols/read-alignments rdr region)))
+
+(defn read-mate-alignments
+  "Reads the mate alignments corresponding to the given `alignments` from the
+  `rdr`. A mate alignment here refers to a primary alignment that has the same
+  QNAME as the given alignment and is the opposite R1/R2 pair. The `rdr` must
+  be indexed. Returns an eduction."
+  ([rdr alignments]
+   (protocols/read-mate-alignments rdr alignments))
+  ([rdr options alignments]
+   (protocols/read-mate-alignments rdr options alignments)))
+
+(defn make-pairs
+  "Pairs mate alignments from the given `alignments` and `rdr`.
+
+  This is a convenient wrapper for `read-mate-alignments`. This function
+  processes the alignments provided in the `alignments` sequence, pairing mate
+  alignments based on their QNAMEs. If a mate alignment is missing from
+  `alignments`, it attempts to read the mate alignment from the reader `rdr`.
+  Non-primary alignments are ignored. The order of the paired alignments in the
+  output is not guaranteed."
+  ([rdr alignments]
+   (make-pairs rdr {} alignments))
+  ([rdr options alignments]
+   (letfn [(has-mate? [{:keys [flag]}]
+             (and (flag/multiple? flag)
+                  (flag/primary? flag)))]
+     (let [{solos true,
+            pairs false} (->> alignments
+                              (group-by :qname)
+                              (keep
+                               (fn [[_ vs]] (not-empty (filterv has-mate? vs))))
+                              (group-by #(= 1 (count %))))
+           solos (mapv first solos)
+           mates (->> solos
+                      (read-mate-alignments rdr options)
+                      (into {} (map (juxt :qname identity))))]
+       (concat pairs
+               (sequence
+                (comp (map (juxt identity (comp mates :qname)))
+                      (filter second)) solos))))))
 
 (defn read-blocks
   "Reads alignment blocks of the SAM/BAM file, returning the blocks as an eduction."

@@ -31,6 +31,8 @@
     "Returns references of the SAM/BAM file.")
   (read-alignments [this] [this region]
     "Reads alignments of the SAM/BAM file, returning the alignments as an eduction.")
+  (read-mate-alignments [this alignments] [this option alignments]
+    "Reads mate alignments of given `alignments`.")
   (read-blocks [this] [this region] [this region option]
     "Reads alignment blocks of the SAM/BAM file, returning the blocks as an eduction."))
 

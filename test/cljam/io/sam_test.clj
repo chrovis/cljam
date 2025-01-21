@@ -468,3 +468,14 @@
       temp-bam-file
       (cio/file temp-bam-file)
       (cio/as-url (cio/file temp-bam-file)))))
+
+(deftest make-pairs-test
+  (testing "BAM"
+    (with-open [r (sam/reader test-sorted-bam-file)]
+      (let [[r001 r002 r003 r004 r003' r001'] (vec (sam/read-alignments r))]
+        (is (= [[r001 r001']]
+               (sam/make-pairs r [r001])))
+        (is (= [[r001 r001']]
+               (sam/make-pairs r [r001 r001'])))
+        (is (= [[r001 r001']] ;; r003 is not flagged as paired
+               (sam/make-pairs r [r001  r002 r003 r003' r004])))))))

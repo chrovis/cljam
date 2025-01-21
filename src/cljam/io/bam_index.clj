@@ -19,6 +19,19 @@
   [bai ref-idx beg end]
   (util-bin/get-spans bai ref-idx beg end))
 
+(defn get-spans-for-regions
+  "Returns a sequence of [start end) pairs of virtual file offsets of a BAM file
+  that may contain alignments overlapping one of the given genomic `regions`
+  which is a sequence of pairs of integers, begin and end."
+  [bai ^long ref-idx regions]
+  (util-bin/get-spans-for-regions bai ref-idx regions))
+
+(defn get-unplaced-spans
+  "Returns a sequence of [start end) pairs of virtual file offsets that may
+  contain alignments that don't have RNAME."
+  [bai]
+  (bai-core/get-unplaced-spans bai))
+
 (defn bam-index
   "Returns a cljam.bam-index.core.BAMIndex."
   [f]

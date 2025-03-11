@@ -24,6 +24,12 @@ Leiningen/Boot:
 [cljam "0.8.5"]
 ```
 
+## Breaking changes in 0.9.0
+
+* Dropped support for JDK < 11 and clojure < 1.10.
+* The CLI has been integrated into [chrovis/gnife](https://github.com/chrovis/gnife).
+  * The final release of the executable `cljam` is [0.8.5](https://github.com/xcoo/homebrew-formulae/pull/10).
+
 ## Breaking changes in 0.8.0
 
 * `cljam.io.tabix` is rewritten. [#180](https://github.com/chrovis/cljam/pull/180)

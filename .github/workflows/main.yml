@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: [ '8', '11', '17', '21']
+        java: [ '11', '17', '21' ]
     name: Java ${{ matrix.java }}
     steps:
     - uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
         grep '::warning'
     - name: Run tests
       run: |
-        lein with-profile +dev:+1.8:+1.9 test
+        lein with-profile +dev:+1.10:+1.11 test
 
   deploy:
     needs: [build]
@@ -50,7 +50,7 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
-        java-version: '8'
+        java-version: '11'
         distribution: 'temurin'
         architecture: x64
     - name: Setup Clojure

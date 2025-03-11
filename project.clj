@@ -13,7 +13,7 @@
                  [camel-snake-kebab "0.4.3"]
                  [proton "0.2.3"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.12.0"]
-                                  [cavia "0.5.1"]
+                                  [cavia "0.7.2"]
                                   [criterium "0.4.6"]
                                   [net.totakke/libra "0.1.1"]
                                   [se.haleby/stub-http "0.2.14"]]
@@ -28,9 +28,6 @@
                                     :all (constantly true)}
                    :global-vars {*warn-on-reflection* true
                                  *unchecked-math* :warn-on-boxed}}
-             :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
-             :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
-             :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
              :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]]}
              :1.11 {:dependencies [[org.clojure/clojure "1.11.4"]]}}
   :deploy-repositories [["snapshots" {:url "https://clojars.org/repo/"

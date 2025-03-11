@@ -33,37 +33,37 @@
 
 (defprofile mycavia
   {:resources [{:id "hg19.2bit"
-                :url "https://test.chrov.is/data/refs/hg19.2bit"
+                :url "https://test-resources.chrov.is/refs/hg19.2bit"
                 :sha1 "95e5806aee9ecc092d30a482aaa008ef66cbc468"}
                {:id "hg38.2bit"
-                :url "https://test.chrov.is/data/refs/hg38.2bit"
+                :url "https://test-resources.chrov.is/refs/hg38.2bit"
                 :sha1 "6fb20ba4de0b49247b78e08c2394d0c4f8594148"}
                {:id "large.bam"
-                :url "https://test.chrov.is/data/GSM721144_H3K36me3.nodup.bam"
+                :url "https://test-resources.chrov.is/GSM721144_H3K36me3.nodup.bam"
                 :sha1 "ad282c3779120057abc274ad8fad1910a4ad867b"}
                {:id "large.bai"
-                :url "https://test.chrov.is/data/GSM721144_H3K36me3.nodup.bam.bai"
+                :url "https://test-resources.chrov.is/GSM721144_H3K36me3.nodup.bam.bai"
                 :sha1 "afe9ffea88433f35f9395360201583e52c3b3cd9"}
                {:id "large.bed.gz"
-                :url "https://test.chrov.is/data/test3_summits.bed.gz"
+                :url "https://test-resources.chrov.is/test3_summits.bed.gz"
                 :sha1 "dcc3ba10c8432be3094cbf5d6fb1b577317e3429"}
                {:id "large.tbi"
-                :url "https://test.chrov.is/data/test3_summits.bed.gz.tbi"
+                :url "https://test-resources.chrov.is/test3_summits.bed.gz.tbi"
                 :sha1 "1aff56f9961c0b93c6de3a190f02d3264c27a9c7"}
                {:id "large.vcf.gz"
-                :url "https://test.chrov.is/data/cljam/example-500-10000.vcf.gz"
+                :url "https://test-resources.chrov.is/cljam/example-500-10000.vcf.gz"
                 :sha1 "15eda0cb653e29ced47caafa5c2f58f014e36437"}
                {:id "large.vcf.gz.tbi"
-                :url "https://test.chrov.is/data/cljam/example-500-10000.vcf.gz.tbi"
+                :url "https://test-resources.chrov.is/cljam/example-500-10000.vcf.gz.tbi"
                 :sha1 "f5e42e5af8666a39e1db1a477b25f183bf09fc9b"}
                {:id "large.vcf.gz.csi"
-                :url "https://test.chrov.is/data/cljam/example-500-10000.vcf.gz.csi"
+                :url "https://test-resources.chrov.is/cljam/example-500-10000.vcf.gz.csi"
                 :sha1 "568a47f463de8df846e021640d38b8cf8f257e66"}
                {:id "large.bcf"
-                :url "https://test.chrov.is/data/cljam/example-500-10000.bcf"
+                :url "https://test-resources.chrov.is/cljam/example-500-10000.bcf"
                 :sha1 "f7f57ed9d21874c92331ef6d86d85b36959f4d16"}
                {:id "large.bcf.csi"
-                :url "https://test.chrov.is/data/cljam/example-500-10000.bcf.csi"
+                :url "https://test-resources.chrov.is/cljam/example-500-10000.bcf.csi"
                 :sha1 "5f0c2deab6c33eda887139227c691f140f88ade9"}]})
 
 (defn prepare-cavia! []

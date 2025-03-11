@@ -28,7 +28,7 @@
                   #"\d+" (str (Integer/parseInt base))
                   #"(?i)Un" "Un"
                   (cstr/upper-case base))]
-      (str "chr" (str base* (cstr/upper-case leftover))))
+      (str "chr" base* (cstr/upper-case leftover)))
     s))
 
 (defn- prepend-chromosome-prefix

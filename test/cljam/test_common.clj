@@ -21,8 +21,7 @@
 (def ^:private in-cloverage? (memoize _in-cloverage?))
 
 (defn- expand-deftest [sym args body]
-  (if (in-cloverage?)
-    nil
+  (when-not (in-cloverage?)
     `(clojure.test/deftest ~sym ~args ~@body)))
 
 (defmacro deftest-slow [sym args & body]
@@ -332,7 +331,7 @@
 
 (defn get-shuffled-test-sam
   []
-  (assoc test-sam :alignments (shuffle (:alignments test-sam))))
+  (update test-sam :alignments shuffle))
 
 (def test-sam-only-header
   (assoc test-sam :alignments nil))
@@ -525,21 +524,20 @@
       (when-not (= target-rnames (get-rnames contrast-sam))
         (throw (Exception. "not matched by rnames order"))))
     ;; check order
-    (dorun
-     (map
-      (fn [rname]
-        (reduce
-         (fn [prev one]
-           (case (compare (:pos prev) (:pos one))
-             -1 true
-             1 (throw (Exception. "pos not sorted"))
-             (case (compare (bit-and 16 (:flag prev)) (bit-and 16 (:flag one)))
-               -1 true
-               1 (throw (Exception. "reverse flag not sorted"))
-               true))
-           one)
-         (filter #(= rname (:rname %)) (:alignments target-sam))))
-      target-rnames))))
+    (run!
+     (fn [rname]
+       (reduce
+        (fn [prev one]
+          (case (compare (:pos prev) (:pos one))
+            -1 true
+            1 (throw (Exception. "pos not sorted"))
+            (case (compare (bit-and 16 (:flag prev)) (bit-and 16 (:flag one)))
+              -1 true
+              1 (throw (Exception. "reverse flag not sorted"))
+              true))
+          one)
+        (filter #(= rname (:rname %)) (:alignments target-sam))))
+     target-rnames)))
 
 (defn coord-sorted? [f]
   (with-open [r (sam/reader f)]

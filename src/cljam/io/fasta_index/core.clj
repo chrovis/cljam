@@ -93,8 +93,8 @@
             end (min index-len end)
             proj (fn [^long pos]
                    (+ index-offset
-                      (+ (* (quot pos index-line-blen)
-                            index-line-len)
-                         (rem pos index-line-blen))))]
+                      (* (quot pos index-line-blen)
+                         index-line-len)
+                      (rem pos index-line-blen)))]
         (when (< start end)
           [(proj start) (proj end)])))))

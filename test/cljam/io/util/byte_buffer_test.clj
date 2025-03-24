@@ -14,7 +14,7 @@
   (let [bb (doto (bb/allocate-lsb-byte-buffer 8)
              (.putLong 0x789ABCDEF0123456)
              (.flip))]
-    (is (= (int 0xF0123456) (.getInt bb)))
+    (is (= (unchecked-int 0xF0123456) (.getInt bb)))
     (is (= (int 0x789ABCDE) (.getInt bb)))))
 
 (deftest allocate-msb-byte-buffer-test
@@ -22,7 +22,7 @@
              (.putLong 0x789ABCDEF0123456)
              (.flip))]
     (is (= (int 0x789ABCDE) (.getInt bb)))
-    (is (= (int 0xF0123456) (.getInt bb)))))
+    (is (= (unchecked-int 0xF0123456) (.getInt bb)))))
 
 (deftest read-ops-test
   (let [bb (doto (bb/allocate-lsb-byte-buffer 8)

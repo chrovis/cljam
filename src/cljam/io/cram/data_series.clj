@@ -105,7 +105,7 @@
            (dotimes [i n]
              (let [b (bit-or (bit-shift-left (Character/digit (aget s (* 2 i)) 16) 4)
                              (Character/digit (aget s (inc (* 2 i))) 16))]
-               (aset arr i (byte b))))
+               (aset arr i (unchecked-byte b))))
            arr))
     \B (fn [^ByteBuffer bb]
          (let [tag-type' (char (.get bb))

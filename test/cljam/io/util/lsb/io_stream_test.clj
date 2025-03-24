@@ -133,7 +133,7 @@
         (is (= (seq ba) (seq ret)))))
 
     (with-open [baos (ByteArrayOutputStream. 8)]
-      (lsb/write-int baos 0xF0123456)
+      (lsb/write-int baos (unchecked-int 0xF0123456))
       (lsb/write-int baos 0x789ABCDE)
       (let [ret (.toByteArray baos)]
         (is (= (count ba) (count ret)))

@@ -316,7 +316,7 @@
 (deftest read-features
   (are [?str ?edn]
        (= ?edn
-          (with-open [bais (ByteArrayInputStream. (.getBytes ^String ?str))
+          (with-open [bais (ByteArrayInputStream. (.getBytes ?str))
                       r (gff/reader bais)]
             (doall (gff/read-features r))))
     simple-gff simple-edn
@@ -364,7 +364,7 @@
   (are [?edn ?str]
       ;; ignore directives and comment lines
        (= (cstr/replace ?str #"(?<=\n)#.*?\n" "")
-          (with-open [bais (ByteArrayInputStream. (.getBytes ^String ?str))
+          (with-open [bais (ByteArrayInputStream. (.getBytes ?str))
                       baos (ByteArrayOutputStream.)]
             (let [v (with-open [r (gff/reader bais)]
                       (gff/version r))]

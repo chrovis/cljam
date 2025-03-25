@@ -16,13 +16,14 @@
 
 (def ^:private ^String
   simple-gff
-  (->> ["##gff-version 3"
-        "ctg123	.	exon	1300	1500	.	+	.	ID=exon00001"
-        "ctg123	.	exon	1050	1500	.	+	.	ID=exon00002"
-        "ctg123	.	exon	3000	3902	.	+	.	ID=exon00003"
-        "ctg123	.	exon	5000	5500	.	+	.	ID=exon00004"
-        "ctg123	.	exon	7000	9000	.	+	.	ID=exon00005"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3"
+    "ctg123	.	exon	1300	1500	.	+	.	ID=exon00001"
+    "ctg123	.	exon	1050	1500	.	+	.	ID=exon00002"
+    "ctg123	.	exon	3000	3902	.	+	.	ID=exon00003"
+    "ctg123	.	exon	5000	5500	.	+	.	ID=exon00004"
+    "ctg123	.	exon	7000	9000	.	+	.	ID=exon00005"]))
 
 (def ^:private
   simple-edn
@@ -34,14 +35,15 @@
 
 (def ^:private ^String
   nested-gff-1
-  (->> ["##gff-version 3"
-        "ctg123	.	mRNA	1300	9000	.	+	.	ID=mrna0001;Name=foobar"
-        "ctg123	.	exon	1300	1500	.	+	.	ID=exon00001;Parent=mrna0001"
-        "ctg123	.	exon	1050	1500	.	+	.	ID=exon00002;Parent=mrna0001"
-        "ctg123	.	exon	3000	3902	.	+	.	ID=exon00003;Parent=mrna0001"
-        "ctg123	.	exon	5000	5500	.	+	.	ID=exon00004;Parent=mrna0001"
-        "ctg123	.	exon	7000	9000	.	+	.	ID=exon00005;Parent=mrna0001"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3"
+    "ctg123	.	mRNA	1300	9000	.	+	.	ID=mrna0001;Name=foobar"
+    "ctg123	.	exon	1300	1500	.	+	.	ID=exon00001;Parent=mrna0001"
+    "ctg123	.	exon	1050	1500	.	+	.	ID=exon00002;Parent=mrna0001"
+    "ctg123	.	exon	3000	3902	.	+	.	ID=exon00003;Parent=mrna0001"
+    "ctg123	.	exon	5000	5500	.	+	.	ID=exon00004;Parent=mrna0001"
+    "ctg123	.	exon	7000	9000	.	+	.	ID=exon00005;Parent=mrna0001"]))
 
 (def ^:private
   nested-edn-1
@@ -54,18 +56,19 @@
 
 (def ^:private ^String
   nested-gff-2
-  (->> ["##gff-version 3"
-        "ctg123	.	operon	1300	15000	.	+	.	ID=operon001;Name=Operon"
-        "ctg123	.	mRNA	1300	9000	.	+	.	ID=mrna0001;Parent=operon001;Name=foobar"
-        "ctg123	.	exon	1300	1500	.	+	.	Parent=mrna0001"
-        "ctg123	.	exon	1050	1500	.	+	.	Parent=mrna0001"
-        "ctg123	.	exon	3000	3902	.	+	.	Parent=mrna0001"
-        "ctg123	.	exon	5000	5500	.	+	.	Parent=mrna0001"
-        "ctg123	.	exon	7000	9000	.	+	.	Parent=mrna0001"
-        "ctg123	.	mRNA	10000	15000	.	+	.	ID=mrna0002;Parent=operon001;Name=baz"
-        "ctg123	.	exon	10000	12000	.	+	.	Parent=mrna0002"
-        "ctg123	.	exon	14000	15000	.	+	.	Parent=mrna0002"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3"
+    "ctg123	.	operon	1300	15000	.	+	.	ID=operon001;Name=Operon"
+    "ctg123	.	mRNA	1300	9000	.	+	.	ID=mrna0001;Parent=operon001;Name=foobar"
+    "ctg123	.	exon	1300	1500	.	+	.	Parent=mrna0001"
+    "ctg123	.	exon	1050	1500	.	+	.	Parent=mrna0001"
+    "ctg123	.	exon	3000	3902	.	+	.	Parent=mrna0001"
+    "ctg123	.	exon	5000	5500	.	+	.	Parent=mrna0001"
+    "ctg123	.	exon	7000	9000	.	+	.	Parent=mrna0001"
+    "ctg123	.	mRNA	10000	15000	.	+	.	ID=mrna0002;Parent=operon001;Name=baz"
+    "ctg123	.	exon	10000	12000	.	+	.	Parent=mrna0002"
+    "ctg123	.	exon	14000	15000	.	+	.	Parent=mrna0002"]))
 
 (def ^:private
   nested-edn-2
@@ -82,13 +85,14 @@
 
 (def ^:private ^String
   discontinuous-gff
-  (->> ["##gff-version 3"
-        "ctg123	example	match	26122	26126	.	+	.	ID=match001"
-        "ctg123	example	match	26497	26869	.	+	.	ID=match001"
-        "ctg123	example	match	27201	27325	.	+	.	ID=match001"
-        "ctg123	example	match	27372	27433	.	+	.	ID=match001"
-        "ctg123	example	match	27565	27565	.	+	.	ID=match001"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3"
+    "ctg123	example	match	26122	26126	.	+	.	ID=match001"
+    "ctg123	example	match	26497	26869	.	+	.	ID=match001"
+    "ctg123	example	match	27201	27325	.	+	.	ID=match001"
+    "ctg123	example	match	27372	27433	.	+	.	ID=match001"
+    "ctg123	example	match	27565	27565	.	+	.	ID=match001"]))
 
 (def ^:private
   discontinuous-edn
@@ -100,32 +104,33 @@
 
 (def ^:private ^String
   example-gene-gff
-  (->> ["##gff-version 3.2.1"
-        "##sequence-region ctg123 1 1497228"
-        "ctg123	.	gene	1000	9000	.	+	.	ID=gene00001;Name=EDEN"
-        "ctg123	.	TF_binding_site	1000	1012	.	+	.	ID=tfbs00001;Parent=gene00001"
-        "ctg123	.	mRNA	1050	9000	.	+	.	ID=mRNA00001;Parent=gene00001;Name=EDEN.1"
-        "ctg123	.	mRNA	1050	9000	.	+	.	ID=mRNA00002;Parent=gene00001;Name=EDEN.2"
-        "ctg123	.	mRNA	1300	9000	.	+	.	ID=mRNA00003;Parent=gene00001;Name=EDEN.3"
-        "ctg123	.	exon	1300	1500	.	+	.	ID=exon00001;Parent=mRNA00003"
-        "ctg123	.	exon	1050	1500	.	+	.	ID=exon00002;Parent=mRNA00001,mRNA00002"
-        "ctg123	.	exon	3000	3902	.	+	.	ID=exon00003;Parent=mRNA00001,mRNA00003"
-        "ctg123	.	exon	5000	5500	.	+	.	ID=exon00004;Parent=mRNA00001,mRNA00002,mRNA00003"
-        "ctg123	.	exon	7000	9000	.	+	.	ID=exon00005;Parent=mRNA00001,mRNA00002,mRNA00003"
-        "ctg123	.	CDS	1201	1500	.	+	0	ID=cds00001;Parent=mRNA00001;Name=edenprotein.1"
-        "ctg123	.	CDS	3000	3902	.	+	0	ID=cds00001;Parent=mRNA00001;Name=edenprotein.1"
-        "ctg123	.	CDS	5000	5500	.	+	0	ID=cds00001;Parent=mRNA00001;Name=edenprotein.1"
-        "ctg123	.	CDS	7000	7600	.	+	0	ID=cds00001;Parent=mRNA00001;Name=edenprotein.1"
-        "ctg123	.	CDS	1201	1500	.	+	0	ID=cds00002;Parent=mRNA00002;Name=edenprotein.2"
-        "ctg123	.	CDS	5000	5500	.	+	0	ID=cds00002;Parent=mRNA00002;Name=edenprotein.2"
-        "ctg123	.	CDS	7000	7600	.	+	0	ID=cds00002;Parent=mRNA00002;Name=edenprotein.2"
-        "ctg123	.	CDS	3301	3902	.	+	0	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3"
-        "ctg123	.	CDS	5000	5500	.	+	1	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3"
-        "ctg123	.	CDS	7000	7600	.	+	1	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3"
-        "ctg123	.	CDS	3391	3902	.	+	0	ID=cds00004;Parent=mRNA00003;Name=edenprotein.4"
-        "ctg123	.	CDS	5000	5500	.	+	1	ID=cds00004;Parent=mRNA00003;Name=edenprotein.4"
-        "ctg123	.	CDS	7000	7600	.	+	1	ID=cds00004;Parent=mRNA00003;Name=edenprotein.4"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3.2.1"
+    "##sequence-region ctg123 1 1497228"
+    "ctg123	.	gene	1000	9000	.	+	.	ID=gene00001;Name=EDEN"
+    "ctg123	.	TF_binding_site	1000	1012	.	+	.	ID=tfbs00001;Parent=gene00001"
+    "ctg123	.	mRNA	1050	9000	.	+	.	ID=mRNA00001;Parent=gene00001;Name=EDEN.1"
+    "ctg123	.	mRNA	1050	9000	.	+	.	ID=mRNA00002;Parent=gene00001;Name=EDEN.2"
+    "ctg123	.	mRNA	1300	9000	.	+	.	ID=mRNA00003;Parent=gene00001;Name=EDEN.3"
+    "ctg123	.	exon	1300	1500	.	+	.	ID=exon00001;Parent=mRNA00003"
+    "ctg123	.	exon	1050	1500	.	+	.	ID=exon00002;Parent=mRNA00001,mRNA00002"
+    "ctg123	.	exon	3000	3902	.	+	.	ID=exon00003;Parent=mRNA00001,mRNA00003"
+    "ctg123	.	exon	5000	5500	.	+	.	ID=exon00004;Parent=mRNA00001,mRNA00002,mRNA00003"
+    "ctg123	.	exon	7000	9000	.	+	.	ID=exon00005;Parent=mRNA00001,mRNA00002,mRNA00003"
+    "ctg123	.	CDS	1201	1500	.	+	0	ID=cds00001;Parent=mRNA00001;Name=edenprotein.1"
+    "ctg123	.	CDS	3000	3902	.	+	0	ID=cds00001;Parent=mRNA00001;Name=edenprotein.1"
+    "ctg123	.	CDS	5000	5500	.	+	0	ID=cds00001;Parent=mRNA00001;Name=edenprotein.1"
+    "ctg123	.	CDS	7000	7600	.	+	0	ID=cds00001;Parent=mRNA00001;Name=edenprotein.1"
+    "ctg123	.	CDS	1201	1500	.	+	0	ID=cds00002;Parent=mRNA00002;Name=edenprotein.2"
+    "ctg123	.	CDS	5000	5500	.	+	0	ID=cds00002;Parent=mRNA00002;Name=edenprotein.2"
+    "ctg123	.	CDS	7000	7600	.	+	0	ID=cds00002;Parent=mRNA00002;Name=edenprotein.2"
+    "ctg123	.	CDS	3301	3902	.	+	0	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3"
+    "ctg123	.	CDS	5000	5500	.	+	1	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3"
+    "ctg123	.	CDS	7000	7600	.	+	1	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3"
+    "ctg123	.	CDS	3391	3902	.	+	0	ID=cds00004;Parent=mRNA00003;Name=edenprotein.4"
+    "ctg123	.	CDS	5000	5500	.	+	1	ID=cds00004;Parent=mRNA00003;Name=edenprotein.4"
+    "ctg123	.	CDS	7000	7600	.	+	1	ID=cds00004;Parent=mRNA00003;Name=edenprotein.4"]))
 
 (def ^:private
   example-gene-edn
@@ -155,12 +160,13 @@
 
 (def ^:private ^String
   circular-gff
-  (->> ["##gff-version 3.2.1"
-        "# organism Enterobacteria phage f1"
-        "# Note Bacteriophage f1, complete genome."
-        "J02448	GenBank	region	1	6407	.	+	.	ID=J02448;Name=J02448;Is_circular=true"
-        "J02448	GenBank	CDS	6006	7238	.	+	0	ID=geneII;Name=II;Note=protein II"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3.2.1"
+    "# organism Enterobacteria phage f1"
+    "# Note Bacteriophage f1, complete genome."
+    "J02448	GenBank	region	1	6407	.	+	.	ID=J02448;Name=J02448;Is_circular=true"
+    "J02448	GenBank	CDS	6006	7238	.	+	0	ID=geneII;Name=II;Note=protein II"]))
 
 (def ^:private
   circular-edn
@@ -169,10 +175,11 @@
 
 (def ^:private ^String
   gap-gff
-  (->> ["##gff-version 3.2.1"
-        "chr3	.	Match	1	23	.	.	.	ID=Match1;Target=EST23 1 21;Gap=M8 D3 M6 I1 M6"
-        "ctg123	.	nucleotide_to_protein	100	129	.	+	.	ID=match008;Target=p101 1 10;Gap=M3 I1 M2 D1 M4"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3.2.1"
+    "chr3	.	Match	1	23	.	.	.	ID=Match1;Target=EST23 1 21;Gap=M8 D3 M6 I1 M6"
+    "ctg123	.	nucleotide_to_protein	100	129	.	+	.	ID=match008;Target=p101 1 10;Gap=M3 I1 M2 D1 M4"]))
 
 (def ^:private
   gap-edn
@@ -183,9 +190,10 @@
 
 (def ^:private ^String
   alignment-gff
-  (->> ["##gff-version 3.2.1"
-        "ctg123	.	cDNA_match	1050	9000	6.2e-45	+	.	ID=match00001;Target=cdna0123 12 2964;Gap=M451 D3499 M501 D1499 M2001"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3.2.1"
+    "ctg123	.	cDNA_match	1050	9000	6.2e-45	+	.	ID=match00001;Target=cdna0123 12 2964;Gap=M451 D3499 M501 D1499 M2001"]))
 
 (def ^:private
   alignment-edn
@@ -194,11 +202,12 @@
 
 (def ^:private ^String
   alignment-multiple-gff
-  (->> ["##gff-version 3.2.1"
-        "ctg123	.	cDNA_match	1050	1500	5.8e-42	+	.	ID=match00001;Target=cdna0123 12 462"
-        "ctg123	.	cDNA_match	5000	5500	8.1e-43	+	.	ID=match00001;Target=cdna0123 463 963"
-        "ctg123	.	cDNA_match	7000	9000	1.4e-40	+	.	ID=match00001;Target=cdna0123 964 2964"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3.2.1"
+    "ctg123	.	cDNA_match	1050	1500	5.8e-42	+	.	ID=match00001;Target=cdna0123 12 462"
+    "ctg123	.	cDNA_match	5000	5500	8.1e-43	+	.	ID=match00001;Target=cdna0123 463 963"
+    "ctg123	.	cDNA_match	7000	9000	1.4e-40	+	.	ID=match00001;Target=cdna0123 964 2964"]))
 
 (def ^:private
   alignment-multiple-edn
@@ -208,10 +217,11 @@
 
 (def ^:private ^String
   alignment-reverse-gff
-  (->> ["##gff-version 3.2.1"
-        "ctg123	.	EST_match	1200	3200	2.2e-30	+	.	ID=match00002;Target=mjm1123.5 5 506;Gap=M301 D1499 M201"
-        "ctg123	.	EST_match	7000	9000	7.4e-32	-	.	ID=match00003;Target=mjm1123.3 1 502;Gap=M101 D1499 M401"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3.2.1"
+    "ctg123	.	EST_match	1200	3200	2.2e-30	+	.	ID=match00002;Target=mjm1123.5 5 506;Gap=M301 D1499 M201"
+    "ctg123	.	EST_match	7000	9000	7.4e-32	-	.	ID=match00003;Target=mjm1123.3 1 502;Gap=M101 D1499 M401"]))
 
 (def ^:private
   alignment-reverse-edn
@@ -222,11 +232,12 @@
 
 (def ^:private ^String
   alignment-group-gff
-  (->> ["##gff-version 3.2.1"
-        "ctg123	.	cDNA_match	1200	9000	.	.	.	ID=cDNA00001"
-        "ctg123	.	match_part	1200	3200	2.2e-30	+	.	ID=match00002;Parent=cDNA00001;Target=mjm1123.5 5 506;Gap=M301 D1499 M201"
-        "ctg123	.	match_part	7000	9000	7.4e-32	-	.	ID=match00003;Parent=cDNA00001;Target=mjm1123.3 1 502;Gap=M101 D1499 M401"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3.2.1"
+    "ctg123	.	cDNA_match	1200	9000	.	.	.	ID=cDNA00001"
+    "ctg123	.	match_part	1200	3200	2.2e-30	+	.	ID=match00002;Parent=cDNA00001;Target=mjm1123.5 5 506;Gap=M301 D1499 M201"
+    "ctg123	.	match_part	7000	9000	7.4e-32	-	.	ID=match00003;Parent=cDNA00001;Target=mjm1123.3 1 502;Gap=M101 D1499 M401"]))
 
 (def ^:private
   alignment-group-edn
@@ -239,11 +250,12 @@
 
 (def ^:private ^String
   encoding-gff
-  (->> ["##gff-version 3.2"
-        "ch r;1	sour =ce	ty &p,e	1	10	9.0	?	.	."
-        "chr%253B1	sour%253Dce	ty%2526p%252Ce	1	10	.	+	.	Target=Foo%20Bar 1 10 +;Dbxref=EMBL:AA816246,NCBI_gi:10727410;Foo=Bar%2C,Baz "
-        " !\"#$%25&'%09()*+,-./%0A0123456789:;<=>?@[\\]^_`{|}~	.	type	1	10	.	.	.	ID= !\"#$%25%26'%09()*+%2C-./%0A0123456789:%3B<%3D>?@[\\]^_`{|}~;Target=%20!\"#$%25%26'%09()*+%2C-./%0A0123456789:%3B<%3D>?@[\\]^_`{|}~ 1 10 -"]
-       (cstr/join \newline)))
+  (cstr/join
+   \newline
+   ["##gff-version 3.2"
+    "ch r;1	sour =ce	ty &p,e	1	10	9.0	?	.	."
+    "chr%253B1	sour%253Dce	ty%2526p%252Ce	1	10	.	+	.	Target=Foo%20Bar 1 10 +;Dbxref=EMBL:AA816246,NCBI_gi:10727410;Foo=Bar%2C,Baz "
+    " !\"#$%25&'%09()*+,-./%0A0123456789:;<=>?@[\\]^_`{|}~	.	type	1	10	.	.	.	ID= !\"#$%25%26'%09()*+%2C-./%0A0123456789:%3B<%3D>?@[\\]^_`{|}~;Target=%20!\"#$%25%26'%09()*+%2C-./%0A0123456789:%3B<%3D>?@[\\]^_`{|}~ 1 10 -"]))
 
 (def ^:private
   encoding-edn
@@ -316,7 +328,7 @@
 (deftest read-features
   (are [?str ?edn]
        (= ?edn
-          (with-open [bais (ByteArrayInputStream. (.getBytes ^String ?str))
+          (with-open [bais (ByteArrayInputStream. (.getBytes ?str))
                       r (gff/reader bais)]
             (doall (gff/read-features r))))
     simple-gff simple-edn
@@ -364,7 +376,7 @@
   (are [?edn ?str]
       ;; ignore directives and comment lines
        (= (cstr/replace ?str #"(?<=\n)#.*?\n" "")
-          (with-open [bais (ByteArrayInputStream. (.getBytes ^String ?str))
+          (with-open [bais (ByteArrayInputStream. (.getBytes ?str))
                       baos (ByteArrayOutputStream.)]
             (let [v (with-open [r (gff/reader bais)]
                       (gff/version r))]

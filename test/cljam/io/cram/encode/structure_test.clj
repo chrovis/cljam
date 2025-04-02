@@ -21,7 +21,7 @@
   (let [crc (CRC32.)]
     (.update crc bs start end)
     (-> (bb/allocate-lsb-byte-buffer 4)
-        (.putInt (.getValue crc))
+        (.putInt (unchecked-int (.getValue crc)))
         .array)))
 
 (deftest encode-file-definition-test

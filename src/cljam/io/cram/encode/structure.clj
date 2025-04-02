@@ -74,7 +74,7 @@
         out' (CheckedOutputStream. out crc)
         bb (bb/allocate-lsb-byte-buffer 4)]
     (f out')
-    (.putInt bb (int (.getValue crc)))
+    (.putInt bb (unchecked-int (.getValue crc)))
     (lsb/write-bytes out (.array bb))))
 
 (defn encode-container-header
@@ -145,7 +145,7 @@
       (let [r (nth all-bases i)
             codes (get m r)]
         (aset ret i
-              (byte
+              (unchecked-byte
                (loop [j 0, k 0, acc 0]
                  (if (< j 5)
                    (if (= i j)

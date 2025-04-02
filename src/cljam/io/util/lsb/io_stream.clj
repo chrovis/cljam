@@ -103,16 +103,12 @@
 (defn write-ubyte
   "Writes 1 byte."
   [^OutputStream stream b]
-  (let [bb (bb/allocate-lsb-byte-buffer)]
-    (.putShort bb b)
-    (.write stream (.array bb) 0 1)))
+  (.write stream (unchecked-byte b)))
 
 (defn write-char
   "Writes a 1-byte ascii character."
   [^OutputStream stream b]
-  (let [bb (bb/allocate-lsb-byte-buffer)]
-    (.putChar bb b)
-    (.write stream (.array bb) 0 1)))
+  (.write stream (unchecked-byte (int b))))
 
 (defn write-short
   "Writes a 2-byte short value."
@@ -125,7 +121,7 @@
   "Writes a 2-byte unsigned short value."
   [^OutputStream stream n]
   (let [bb (bb/allocate-lsb-byte-buffer)]
-    (.putInt bb n)
+    (.putShort bb (unchecked-short n))
     (.write stream (.array bb) 0 2)))
 
 (defn write-int

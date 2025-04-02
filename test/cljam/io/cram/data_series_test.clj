@@ -131,15 +131,15 @@
                      :data (doto (bb/allocate-lsb-byte-buffer 8)
                              (.putShort 0x0123)
                              (.putShort 0x4567)
-                             (.putShort 0x89ab)
-                             (.putShort 0xcdef)
+                             (.putShort (unchecked-short 0x89ab))
+                             (.putShort (unchecked-short 0xcdef))
                              .flip)}
                     {:content-id 7697235
                      :data (doto (bb/allocate-lsb-byte-buffer 8)
                              (.putShort 0x0123)
                              (.putShort 0x4567)
-                             (.putShort 0x89ab)
-                             (.putShort 0xcdef)
+                             (.putShort (unchecked-short 0x89ab))
+                             (.putShort (unchecked-short 0xcdef))
                              .flip)}]
             decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             ss (get-in decoders [:ss \s])
@@ -171,15 +171,15 @@
                      :data (doto (bb/allocate-lsb-byte-buffer 16)
                              (.putInt 0)
                              (.putInt 0x01234567)
-                             (.putInt 0x89abcdef)
-                             (.putInt 0xffffffff)
+                             (.putInt (unchecked-int 0x89abcdef))
+                             (.putInt (unchecked-int 0xffffffff))
                              .flip)}
                     {:content-id 7694665
                      :data (doto (bb/allocate-lsb-byte-buffer 16)
                              (.putInt 0)
                              (.putInt 0x01234567)
-                             (.putInt 0x89abcdef)
-                             (.putInt 0xffffffff)
+                             (.putInt (unchecked-int 0x89abcdef))
+                             (.putInt (unchecked-int 0xffffffff))
                              .flip)}]
             decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             si (get-in decoders [:si \i])
@@ -275,7 +275,7 @@
                                          [0xfc 0xfd 0xfe 0xff]]]
                                (.put bb (byte (int \c)))
                                (.putInt bb 4)
-                               (doseq [v vs] (.put bb (byte v))))
+                               (doseq [v vs] (.put bb (unchecked-byte v))))
                              (.flip bb))}
                     {:content-id 7692866
                      :data (let [bb (bb/allocate-lsb-byte-buffer 36)]
@@ -285,7 +285,7 @@
                                          [0xfc 0xfd 0xfe 0xff]]]
                                (.put bb (byte (int \C)))
                                (.putInt bb 4)
-                               (doseq [v vs] (.put bb (byte v))))
+                               (doseq [v vs] (.put bb (unchecked-byte v))))
                              (.flip bb))}]
             decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             sb (get-in decoders [:sb \B])
@@ -321,7 +321,7 @@
                                          [0xfffe 0xffff]]]
                                (.put bb (byte (int \s)))
                                (.putInt bb 2)
-                               (doseq [v vs] (.putShort bb v)))
+                               (doseq [v vs] (.putShort bb (unchecked-short v))))
                              (.flip bb))}
                     {:content-id 7697218
                      :data (let [bb (bb/allocate-lsb-byte-buffer 36)]
@@ -331,7 +331,7 @@
                                          [0xfffe 0xffff]]]
                                (.put bb (byte (int \S)))
                                (.putInt bb 2)
-                               (doseq [v vs] (.putShort bb v)))
+                               (doseq [v vs] (.putShort bb (unchecked-short v))))
                              (.flip bb))}]
             decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             ss (get-in decoders [:ss \B])
@@ -369,7 +369,7 @@
                                          [0xfffffffe 0xffffffff]]]
                                (.put bb (byte (int \i)))
                                (.putInt bb 2)
-                               (doseq [v vs] (.putInt bb v)))
+                               (doseq [v vs] (.putInt bb (unchecked-int v))))
                              (.flip bb))}
                     {:content-id 7694658
                      :data (let [bb (bb/allocate-lsb-byte-buffer 52)]
@@ -379,7 +379,7 @@
                                          [0xfffffffe 0xffffffff]]]
                                (.put bb (byte (int \I)))
                                (.putInt bb 2)
-                               (doseq [v vs] (.putInt bb v)))
+                               (doseq [v vs] (.putInt bb (unchecked-int v))))
                              (.flip bb))}]
             decoders (ds/build-tag-decoders {:tags encodings} nil blocks)
             si (get-in decoders [:si \B])
@@ -903,7 +903,7 @@
                              (.put bb (byte (int \I)))
                              (.putInt bb (count encoded))
                              (run! #(.putInt bb %) encoded)
-                             (.put bb (byte 0xff))
+                             (.put bb (unchecked-byte 0xff))
                              (.array bb)))
                          vs)
                  (seq (decompress res)))))))

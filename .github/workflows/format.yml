@@ -14,7 +14,7 @@ jobs:
         distribution: 'temurin'
         architecture: x64
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@13.2
+      uses: DeLaGuardo/setup-clojure@13.4
       with:
         lein: latest
     - name: Cache m2 repository

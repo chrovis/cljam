@@ -7,13 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
-    - name: Cache m2 repository
-      uses: actions/cache@v6
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
-        restore-keys: |
-          ${{ runner.os }}-m2-
     - uses: actions/setup-java@v5
       with:
         java-version: '21'

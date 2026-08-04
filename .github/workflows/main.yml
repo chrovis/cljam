@@ -21,13 +21,6 @@ jobs:
       uses: DeLaGuardo/setup-clojure@13.5
       with:
         lein: latest
-    - name: Cache m2 repository
-      uses: actions/cache@v6
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
-        restore-keys: |
-          ${{ runner.os }}-m2-
     - name: Install dependencies
       run: lein deps
     - name: Run lein check

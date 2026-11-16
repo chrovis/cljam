@@ -134,6 +134,13 @@
      :as variant}
     {:keys [window] :or {window 100}}]
    (cond
+     (and (= 1 (count ref'))
+          (seq alt)
+          (every? #(and (= 1 (count %))
+                        (not= ref' %))
+                  alt))
+     variant
+
      (some->> (seq alt)
               (every? (comp #{:snv :mnv :insertion :deletion :complex}
                             :type

@@ -65,6 +65,21 @@
    (and (char-equals-ignore-case? x y)
         (apply char-equals-ignore-case? y z))))
 
+(defn- differing-last-base?
+  "True when at least one ALT has a different terminal base from REF.
+  Empty or non-string alleles fall back to the original trimming logic."
+  [ref' alt]
+  (when (and (string? ref')
+             (seq ref')
+             (seq alt)
+             (every? #(and (string? %) (seq %)) alt))
+    (let [last-base #(nth % (dec (count %)))]
+      (not-every? (fn [allele]
+                    (char-equals-ignore-case?
+                     (last-base ref')
+                     (last-base allele)))
+                  alt))))
+
 (defn- trim-right
   "Trims all duplicated allele sequences from right. If reached the start,
   reference sequences of length `window` will be read from `seq-reader` and
@@ -72,40 +87,42 @@
   [seq-reader {:keys [chr ^long pos alt]
                ref' :ref
                {:keys [END]} :info :as v} ^long window]
-  (let [alleles (cons ref' alt)
-        min-end (dec (+ pos (long (apply min (map count alleles)))))
-        regs (regions-before chr pos window)
-        ref-seqs (sequence ;; unchunk
-                  (mapcat
-                   (fn [r]
-                     (-> seq-reader
-                         (io-seq/read-sequence r {:mask? false})
-                         cstr/reverse)))
-                  regs)
-        allele-seqs (map #(concat (cstr/reverse %) ref-seqs) alleles)
-        matched-length (->> allele-seqs
-                            (apply map char-equals-ignore-case?)
-                            (take-while true?)
-                            count
-                            long
-                            (Math/min (dec min-end)))]
-    (if (pos? matched-length)
-      (let [pos' (-> (some (fn [{:keys [start end]}]
-                             (when (<= start (- min-end matched-length) end)
-                               start)) regs)
-                     (or pos)
-                     long)
-            [ref'' & alt'] (map
-                            #(->> %2
-                                  (take (inc (- (dec (+ pos (count %1))) pos')))
-                                  (drop matched-length)
-                                  reverse
-                                  cstr/join)
-                            alleles
-                            allele-seqs)]
-        (cond-> (assoc v :pos pos' :ref ref'' :alt alt')
-          (integer? END) (assoc-in [:info :END] (dec (+ pos' (count ref''))))))
-      v)))
+  (if (differing-last-base? ref' alt)
+    v
+    (let [alleles (cons ref' alt)
+          min-end (dec (+ pos (long (apply min (map count alleles)))))
+          regs (regions-before chr pos window)
+          ref-seqs (sequence ;; unchunk
+                    (mapcat
+                     (fn [r]
+                       (-> seq-reader
+                           (io-seq/read-sequence r {:mask? false})
+                           cstr/reverse)))
+                    regs)
+          allele-seqs (map #(concat (cstr/reverse %) ref-seqs) alleles)
+          matched-length (->> allele-seqs
+                              (apply map char-equals-ignore-case?)
+                              (take-while true?)
+                              count
+                              long
+                              (Math/min (dec min-end)))]
+      (if (pos? matched-length)
+        (let [pos' (-> (some (fn [{:keys [start end]}]
+                               (when (<= start (- min-end matched-length) end)
+                                 start)) regs)
+                       (or pos)
+                       long)
+              [ref'' & alt'] (map
+                              #(->> %2
+                                    (take (inc (- (dec (+ pos (count %1))) pos')))
+                                    (drop matched-length)
+                                    reverse
+                                    cstr/join)
+                              alleles
+                              allele-seqs)]
+          (cond-> (assoc v :pos pos' :ref ref'' :alt alt')
+            (integer? END) (assoc-in [:info :END] (dec (+ pos' (count ref''))))))
+        v))))
 
 (defn- trim-left
   "Trims all duplicated allele sequences from left."
@@ -134,6 +151,16 @@
      :as variant}
     {:keys [window] :or {window 100}}]
    (cond
+     (and (string? ref')
+          (= 1 (count ref'))
+          (seq alt)
+          (every? #(and (string? %)
+                        (= 1 (count %))
+                        (not (char-equals-ignore-case?
+                              (first ref') (first %))))
+                  alt))
+     variant
+
      (some->> (seq alt)
               (every? (comp #{:snv :mnv :insertion :deletion :complex}
                             :type

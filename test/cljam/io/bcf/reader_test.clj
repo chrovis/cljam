@@ -1,7 +1,8 @@
 (ns cljam.io.bcf.reader-test
   (:require [cljam.io.bcf.reader :as bcf-reader]
-            [clojure.test :refer [are deftest]])
-  (:import [java.io ByteArrayInputStream]))
+            [cljam.io.vcf :as vcf]
+            [clojure.test :refer [are deftest is]])
+  (:import [java.io ByteArrayInputStream File]))
 
 (deftest parse-data-line-deep
   (are [?bytes ?var]
@@ -109,3 +110,21 @@
                                     [2 ["FOO" "BAR"]]
                                     [4 [256]]],
      :genotype [], :n-sample 0}))
+
+(deftest read-info-gt-as-string
+  ;; INFO/GT declared as Type=String is not a FORMAT genotype and must be read
+  ;; back as a string, not parsed with vcf-util/ints->genotype.
+  (let [meta-info {:fileformat "VCFv4.5"
+                   :contig [{:id "1"}]
+                   :info [{:id "GT" :number 1 :type "String" :description ""}]}
+        header ["CHROM" "POS" "ID" "REF" "ALT" "QUAL" "FILTER" "INFO"]
+        variant {:chr "1" :pos 10 :id nil :ref "A" :alt ["T"] :qual 100.0
+                 :filter [:PASS] :info {:GT "0/1"}}
+        f (File/createTempFile "cljam-info-gt" ".bcf")]
+    (try
+      (with-open [wtr (vcf/writer (.getPath f) meta-info header)]
+        (vcf/write-variants wtr [variant]))
+      (with-open [rdr (vcf/reader (.getPath f))]
+        (is (= [{:GT "0/1"}] (map :info (vcf/read-variants rdr)))))
+      (finally
+        (.delete f)))))

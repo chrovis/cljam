@@ -105,7 +105,7 @@
                             allele-seqs)]
         (cond-> (assoc v :pos pos' :ref ref'' :alt alt')
           (integer? END) (assoc-in [:info :END] (dec (+ pos' (count ref''))))))
-    v)))
+      v)))
 
 (defn- trim-left
   "Trims all duplicated allele sequences from left."

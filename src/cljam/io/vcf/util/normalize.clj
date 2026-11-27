@@ -86,9 +86,9 @@
         matched-length (->> allele-seqs
                             (apply map char-equals-ignore-case?)
                             (take-while true?)
+                            (take (max 0 (dec min-end)))
                             count
-                            long
-                            (Math/min (dec min-end)))]
+                            long)]
     (if (pos? matched-length)
       (let [pos' (-> (some (fn [{:keys [start end]}]
                              (when (<= start (- min-end matched-length) end)
@@ -134,6 +134,13 @@
      :as variant}
     {:keys [window] :or {window 100}}]
    (cond
+     (and (seq alt)
+          (every? (comp true?
+                        :single-base-snv?
+                        (partial vcf-util/inspect-allele ref'))
+                  alt))
+     variant
+
      (some->> (seq alt)
               (every? (comp #{:snv :mnv :insertion :deletion :complex}
                             :type

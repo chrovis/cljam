@@ -356,7 +356,8 @@
 
       (= (inc matched-length) ref-length alt-length)
       {:type :snv, :ref (nth ref' left-match),
-       :alt (nth alt left-match), :offset left-match}
+       :alt (nth alt left-match), :offset left-match,
+       :single-base-snv? (= 1 ref-length)}
 
       (= matched-length alt-length)
       {:type :deletion, :offset (dec left-match),

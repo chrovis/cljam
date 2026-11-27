@@ -214,12 +214,17 @@
      :genotype genotype
      :n-sample n-sample}))
 
-(defn- fixup-val [{kw :kw t :type n :number} v]
-  (cond->> v
-    (= kw :GT) vcf-util/ints->genotype
-    (= t "Flag") ((constantly :exists))
-    (= t "Character") (map first)
-    (and (= n 1) (not= kw :GT)) first))
+(defn- fixup-val
+  "Adjusts a typed BCF value. genotype? is true when the value comes from the
+  FORMAT column, where GT is stored as encoded integers even though its header
+  type is String; an INFO field that happens to be called GT is left alone."
+  [{kw :kw t :type n :number} v genotype?]
+  (let [genotype (and genotype? (= kw :GT))]
+    (cond->> v
+      genotype vcf-util/ints->genotype
+      (= t "Flag") ((constantly :exists))
+      (= t "Character") (map first)
+      (and (= n 1) (not genotype)) first)))
 
 (defn- bcf-map->parsed-variant
   "Converts a BCF-style variant map to parsed variant using meta-info."
@@ -229,10 +234,10 @@
                   (let [{:keys [kw] :as f} (formats k)
                         v (nth vs i nil)]
                     [kw (when-not (or (nil? v) (= [nil] v))
-                          (fixup-val f v))]))
+                          (fixup-val f v true))]))
         ->info-kv (fn [[k v]]
                     (let [{:keys [kw] :as i} (info k)]
-                      [kw (fixup-val i v)]))
+                      [kw (fixup-val i v false)]))
         indiv (map (fn [i] (not-empty (into {} (map #(->gt-kv i %)) genotype)))
                    (range n-sample))
         v (-> (dissoc variant :genotype :ref-length :n-sample)

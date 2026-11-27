@@ -416,12 +416,18 @@
     "A" "<INV>"     {:type :id, :id "INV"}
     "A" "<NON_REF>" {:type :id, :id "NON_REF"} ;; not :unspecified
 
-    "A"  "T"      {:type :snv, :ref \A, :alt \T, :offset 0}
-    "TC" "TG"     {:type :snv, :ref \C, :alt \G, :offset 1}
-    "TC" "GC"     {:type :snv, :ref \T, :alt \G, :offset 0}
-    "TCA" "TAA"   {:type :snv, :ref \C, :alt \A, :offset 1}
-    "TCAG" "tcAC" {:type :snv, :ref \G, :alt \C, :offset 3}
-    "TGTAT" "TGcAT" {:type :snv, :ref \T, :alt \c, :offset 2}
+    "A"  "T"        {:type :snv, :ref \A, :alt \T, :offset 0,
+                     :single-base-snv? true}
+    "TC" "TG"       {:type :snv, :ref \C, :alt \G, :offset 1,
+                     :single-base-snv? false}
+    "TC" "GC"       {:type :snv, :ref \T, :alt \G, :offset 0,
+                     :single-base-snv? false}
+    "TCA" "TAA"     {:type :snv, :ref \C, :alt \A, :offset 1,
+                     :single-base-snv? false}
+    "TCAG" "tcAC"   {:type :snv, :ref \G, :alt \C, :offset 3,
+                     :single-base-snv? false}
+    "TGTAT" "TGcAT" {:type :snv, :ref \T, :alt \c, :offset 2,
+                     :single-base-snv? false}
 
     "TG"   "Gc"   {:type :mnv, :ref "TG",  :alt "Gc",  :offset 0}
     "TCG"  "tGA"  {:type :mnv, :ref "CG",  :alt "GA",  :offset 1}
